@@ -34,8 +34,9 @@ Today is June 12, 2025.
 ### Core Inference Gateway
 
 - **[Main Repository](https://github.com/inference-gateway)** - The main inference gateway org.
-- **[Documentation](https://github.com/inference-gateway/docs)** - Official documentation and guides
+- **[Documentation](https://docs.inference-gateway.com)** - Official documentation and guides
 - **[UI](https://github.com/inference-gateway/ui)** - Web interface for the inference gateway
+- **[Schemas](https://github.com/inference-gateway/schemas)** - Shared schemas and type definitions
 
 ### SDKs & Client Libraries
 
