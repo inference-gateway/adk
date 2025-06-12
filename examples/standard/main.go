@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/inference-gateway/a2a/adk/server"
+	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 )
 
@@ -23,45 +24,39 @@ func main() {
 	}
 	defer logger.Sync()
 
-	// Create basic configuration
+	// Load environment variables using envconfig
+	var envConfig server.Config
+	if err := envconfig.Process(context.Background(), &envConfig); err != nil {
+		log.Fatalf("failed to load environment variables: %v", err)
+	}
+
+	// Configure the server with environment variables
 	cfg := server.Config{
-		AgentName:        "standard-example-agent",
-		AgentDescription: "A simple example A2A agent demonstrating basic functionality",
-		AgentURL:         "http://localhost:8080",
-		AgentVersion:     "1.0.0",
-		Port:             "8080",
-		Debug:            true,
-		// Optional: Configure LLM provider client settings
-		// LLMProviderClientConfig: &server.LLMProviderClientConfig{
-		//     Provider:                    "openai",
-		//     Model:                       "gpt-4",
-		//     BaseURL:                     "https://api.openai.com/v1",
-		//     APIKey:                      "your-api-key",
-		//     Timeout:                     30 * time.Second,
-		//     MaxRetries:                  3,
-		//     MaxChatCompletionIterations: 10,
-		//     MaxTokens:                   4096,
-		//     Temperature:                 0.7,
-		// },
+		AgentName:        envConfig.AgentName,
+		AgentDescription: envConfig.AgentDescription,
+		AgentURL:         envConfig.AgentURL,
+		AgentVersion:     envConfig.AgentVersion,
+		Port:             envConfig.Port,
+		Debug:            envConfig.Debug,
 		CapabilitiesConfig: &server.CapabilitiesConfig{
-			Streaming:              true,
-			PushNotifications:      false,
-			StateTransitionHistory: false,
+			Streaming:              envConfig.CapabilitiesConfig.Streaming,
+			PushNotifications:      envConfig.CapabilitiesConfig.PushNotifications,
+			StateTransitionHistory: envConfig.CapabilitiesConfig.StateTransitionHistory,
 		},
 		TLSConfig: &server.TLSConfig{
-			Enable: false,
+			Enable: envConfig.TLSConfig.Enable,
 		},
 		AuthConfig: &server.AuthConfig{
-			Enable: false,
+			Enable: envConfig.AuthConfig.Enable,
 		},
 		QueueConfig: &server.QueueConfig{
-			MaxSize:         100,
-			CleanupInterval: 30 * time.Second,
+			MaxSize:         envConfig.QueueConfig.MaxSize,
+			CleanupInterval: envConfig.QueueConfig.CleanupInterval,
 		},
 		ServerConfig: &server.ServerConfig{
-			ReadTimeout:  30 * time.Second,
-			WriteTimeout: 30 * time.Second,
-			IdleTimeout:  60 * time.Second,
+			ReadTimeout:  envConfig.ServerConfig.ReadTimeout,
+			WriteTimeout: envConfig.ServerConfig.WriteTimeout,
+			IdleTimeout:  envConfig.ServerConfig.IdleTimeout,
 		},
 	}
 

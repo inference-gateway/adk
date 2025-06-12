@@ -159,12 +159,12 @@ func (s *DefaultA2AServer) GetTaskHandler() TaskHandler {
 
 // SetupRouter configures the HTTP router with A2A endpoints
 func (s *DefaultA2AServer) SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin.Engine {
-	r := gin.Default()
-
 	gin.SetMode(gin.ReleaseMode)
 	if s.cfg.Debug {
 		gin.SetMode(gin.DebugMode)
 	}
+
+	r := gin.Default()
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
