@@ -1,0 +1,45 @@
+---
+version: '3'
+
+tasks:
+  default:
+    desc: 'Show available tasks'
+    cmds:
+      - task --list
+
+  install:generator:
+    desc: 'Install the generator tool'
+    cmds:
+      - go install github.com/inference-gateway/tools/cmd/generator@v0.1.1
+
+  a2a:download-schema:
+    desc: 'Download the latest A2A schema and convert to YAML'
+    cmds:
+      - curl -o schema.yaml https://raw.githubusercontent.com/inference-gateway/schemas/refs/heads/main/a2a/a2a-schema.yaml
+
+  a2a:generate-types:
+    desc: 'Generate the Golang ADK types from the A2A schema'
+    deps:
+      - install:generator
+    cmds:
+      - generator -generator jsonrpc -package adk schema.yaml adk/generated_types.go
+
+  tidy:
+    desc: 'Tidy all Go modules'
+    cmds:
+      - find . -name 'go.mod' -execdir go mod tidy \;
+
+  lint:
+    desc: 'Run Go static analysis and linting'
+    cmds:
+      - golangci-lint run
+
+  build:
+    desc: 'Build the Go application'
+    cmds:
+      - go build -o bin/app .
+
+  test:
+    desc: 'Run tests'
+    cmds:
+      - go test -v ./...

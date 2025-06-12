@@ -1,0 +1,397 @@
+# Contributing to A2A ADK
+
+We welcome contributions to the Application Development Kit for A2A-compatible Agents! This document provides guidelines for contributing to the project.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Before contributing, ensure you have the following installed:
+
+- **Go 1.24.3 or later**
+- **[Task](https://taskfile.dev/)** for build automation
+- **[golangci-lint](https://golangci-lint.run/)** for linting
+- **Git** for version control
+
+### Setting Up Your Development Environment
+
+1. **Fork the repository** on GitHub
+2. **Clone your fork**:
+   ```bash
+   git clone https://github.com/your-username/a2a.git
+   cd a2a
+   ```
+3. **Add the upstream remote**:
+   ```bash
+   git remote add upstream https://github.com/inference-gateway/a2a.git
+   ```
+4. **Install dependencies**:
+   ```bash
+   go mod download
+   ```
+5. **Verify your setup**:
+   ```bash
+   task build
+   task test
+   ```
+
+## 📋 Development Workflow
+
+### 1. Download Latest A2A Schema
+
+When working on A2A features, always start by downloading the latest schema:
+
+```bash
+task a2a:download-schema
+```
+
+### 2. Generate Types
+
+After downloading the schema or adding new schemas to `openapi.yaml`, generate the types:
+
+```bash
+task a2a:generate-types
+```
+
+If you've added new schemas to `openapi.yaml`, update `internal/openapi/schemas.go` to include the new schemas.
+
+### 3. Development Cycle
+
+Follow this cycle for development:
+
+```bash
+# Make your changes
+# ...
+
+# Run linting
+task lint
+
+# Build to verify compilation
+task build
+
+# Run tests
+task test
+
+# Tidy modules if needed
+task tidy
+```
+
+### 4. Before Committing
+
+**Always run these commands before committing:**
+
+1. `task a2a:download-schema` (if working on A2A features)
+2. `task a2a:generate-types` (if schema changes were made)
+3. `task lint` (ensure code quality)
+4. `task build` (verify compilation)
+5. `task test` (ensure all tests pass)
+
+## 🎯 Coding Guidelines
+
+### Code Style
+
+- **Follow established conventions**: Use Go standard formatting and naming conventions
+- **Early returns**: Favor early returns to simplify logic and avoid deep nesting
+- **Switch over if-else**: Prefer switch statements over if-else chains for cleaner, more readable code
+- **Type safety**: Use strong typing and interfaces to ensure type safety and reduce runtime errors
+- **Interface-driven design**: When possible, code to an interface to make mocking easier in tests
+
+### Logging
+
+- **Lowercase messages**: Always use lowercase log messages for consistency and readability
+- **Structured logging**: Use structured logging with appropriate log levels
+
+### Testing
+
+- **Table-driven tests**: Always prefer table-driven testing patterns
+- **Isolated mocks**: Each test case should have its own isolated mock server and mock dependencies
+- **Test coverage**: Ensure comprehensive test coverage for new functionality
+
+#### Example Table-Driven Test
+
+```go
+func TestAgentEndpoints(t *testing.T) {
+    tests := []struct {
+        name           string
+        endpoint       string
+        method         string
+        body           string
+        expectedStatus int
+        expectedBody   string
+    }{
+        {
+            name:           "health check returns ok",
+            endpoint:       "/health",
+            method:         "GET",
+            body:           "",
+            expectedStatus: http.StatusOK,
+            expectedBody:   `{"status":"healthy"}`,
+        },
+        {
+            name:           "agent info returns metadata",
+            endpoint:       "/.well-known/agent.json",
+            method:         "GET",
+            body:           "",
+            expectedStatus: http.StatusOK,
+            expectedBody:   "", // validate structure separately
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // Create isolated test environment
+            agent := setupTestAgent(t)
+            router := agent.SetupRouter(nil)
+
+            // Make request
+            req := httptest.NewRequest(tt.method, tt.endpoint, strings.NewReader(tt.body))
+            rec := httptest.NewRecorder()
+            router.ServeHTTP(rec, req)
+
+            // Assert results
+            assert.Equal(t, tt.expectedStatus, rec.Code)
+            if tt.expectedBody != "" {
+                assert.JSONEq(t, tt.expectedBody, rec.Body.String())
+            }
+        })
+    }
+}
+```
+
+## 🛠️ Making Changes
+
+### Creating a Feature Branch
+
+```bash
+git checkout main
+git pull upstream main
+git checkout -b feature/your-feature-name
+```
+
+### Branch Naming Convention
+
+- **Features**: `feature/feature-name`
+- **Bug fixes**: `fix/bug-description`
+- **Documentation**: `docs/doc-topic`
+- **Refactoring**: `refactor/component-name`
+
+### Commit Message Format
+
+Use conventional commit format:
+
+```
+type(scope): Description
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:**
+
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+
+**Examples:**
+
+```
+feat(agent): Add custom task result processor interface
+
+fix(auth): Handle expired OIDC tokens properly
+
+docs(readme): Update installation instructions
+
+test(agent): Add table-driven tests for endpoint handlers
+```
+
+## 🧪 Testing Guidelines
+
+### Test Structure
+
+- **Unit tests**: Test individual functions and methods
+- **Integration tests**: Test component interactions
+- **End-to-end tests**: Test complete workflows
+
+### Test Organization
+
+```
+project/
+├── pkg/
+│   ├── agent/
+│   │   ├── agent.go
+│   │   └── agent_test.go
+│   └── tools/
+│       ├── handler.go
+│       └── handler_test.go
+└── test/
+    ├── integration/
+    └── e2e/
+```
+
+### Mock Guidelines
+
+- Use interfaces for dependencies to enable easy mocking
+- Create isolated mocks for each test case
+- Prefer dependency injection for testability
+
+### Test Utilities
+
+Create helper functions for common test setup:
+
+```go
+func setupTestAgent(t *testing.T) *adk.A2AAgent {
+    logger := zap.NewNop()
+    cfg := adk.Config{
+        Port: 0, // Use random port for tests
+        AgentConfig: adk.AgentConfig{
+            Name:        "test-agent",
+            Description: "Test agent",
+            Version:     "1.0.0",
+        },
+    }
+
+    client := &mockSDKClient{} // Your mock implementation
+    toolsHandler := adk.NewToolsHandler()
+
+    return adk.NewA2AAgent(cfg, logger, client, toolsHandler)
+}
+```
+
+## 📚 Documentation
+
+### Code Documentation
+
+- **Godoc comments**: Write clear godoc comments for all public APIs
+- **Examples**: Include code examples in documentation
+- **Inline comments**: Use inline comments for complex logic
+
+### Documentation Updates
+
+When adding new features:
+
+1. Update relevant godoc comments
+2. Add examples to documentation
+3. Update README.md if needed
+4. Consider adding to the project wiki
+
+## 🔄 Pull Request Process
+
+### Before Submitting
+
+1. **Sync with upstream**:
+
+   ```bash
+   git fetch upstream
+   git rebase upstream/main
+   ```
+
+2. **Run the complete workflow**:
+
+   ```bash
+   task a2a:download-schema  # if needed
+   task a2a:generate-types   # if needed
+   task lint
+   task build
+   task test
+   ```
+
+3. **Check for conflicts** and resolve them
+
+### Pull Request Template
+
+When creating a pull request, include:
+
+- **Clear description** of the changes
+- **Motivation** for the changes
+- **Testing performed**
+- **Screenshots** (if UI changes)
+- **Breaking changes** (if any)
+- **Related issues** (if applicable)
+
+### Review Process
+
+1. **Automated checks**: Ensure all CI checks pass
+2. **Code review**: Address reviewer feedback promptly
+3. **Testing**: Verify that tests cover the new functionality
+4. **Documentation**: Ensure documentation is updated
+
+## 🐛 Reporting Issues
+
+### Bug Reports
+
+When reporting bugs, include:
+
+- **Go version** and operating system
+- **Steps to reproduce** the issue
+- **Expected behavior**
+- **Actual behavior**
+- **Error messages** and stack traces
+- **Minimal reproducible example**
+
+### Feature Requests
+
+For feature requests:
+
+- **Use case description**
+- **Proposed solution**
+- **Alternative solutions considered**
+- **Additional context**
+
+## 🛡️ Security
+
+### Reporting Security Vulnerabilities
+
+- **Do not** create public issues for security vulnerabilities
+- Email security concerns to: security@inference-gateway.com
+- Include detailed information about the vulnerability
+- Allow time for the team to address the issue before disclosure
+
+## 📞 Getting Help
+
+### Community Resources
+
+- **GitHub Discussions**: [Project Discussions](https://github.com/inference-gateway/a2a/discussions)
+- **Discord**: [Inference Gateway Discord](https://discord.gg/inference-gateway)
+- **Documentation**: [Official Docs](https://docs.inference-gateway.com)
+
+### Development Questions
+
+- Check existing issues and discussions first
+- Provide context and examples when asking questions
+- Be respectful and patient with community members
+
+## 🎉 Recognition
+
+Contributors are recognized in:
+
+- **CONTRIBUTORS.md** file
+- **Release notes** for significant contributions
+- **Project documentation** for documentation improvements
+
+## 📋 Checklist
+
+Before submitting your contribution:
+
+- [ ] Code follows project style guidelines
+- [ ] Tests are written and passing
+- [ ] Documentation is updated
+- [ ] Commit messages follow conventional format
+- [ ] All CI checks pass
+- [ ] Changes are rebased on latest main
+- [ ] Pull request description is clear and complete
+
+## 🔗 Additional Resources
+
+- [A2A Protocol Specification](https://github.com/inference-gateway/schemas/tree/main/a2a)
+- [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
+- [Effective Go](https://golang.org/doc/effective_go.html)
+- [Task Documentation](https://taskfile.dev/)
+
+---
+
+Thank you for contributing to the A2A ADK! Your contributions help make agent-to-agent communication more accessible and powerful for developers worldwide.
