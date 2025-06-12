@@ -43,3 +43,8 @@ tasks:
     desc: 'Run tests'
     cmds:
       - go test -v ./...
+
+  clean:
+    desc: 'Clean up'
+    cmds:
+      - rm -rf bin
