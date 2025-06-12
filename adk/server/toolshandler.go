@@ -1,4 +1,4 @@
-package adk
+package server
 
 import (
 	sdk "github.com/inference-gateway/sdk"

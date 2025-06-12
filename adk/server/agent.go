@@ -1,4 +1,4 @@
-package adk
+package server
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
+	adk "github.com/inference-gateway/a2a/adk"
 	sdk "github.com/inference-gateway/sdk"
 	zap "go.uber.org/zap"
 )
@@ -17,13 +18,13 @@ import (
 type TaskResultProcessor interface {
 	// ProcessToolResult processes a tool call result and returns a completion message if the task should be completed
 	// Returns nil if the task should continue processing
-	ProcessToolResult(toolCallResult string) *Message
+	ProcessToolResult(toolCallResult string) *adk.Message
 }
 
 // AgentInfoProvider defines how to provide agent-specific information
 type AgentInfoProvider interface {
 	// GetAgentCard returns the agent's capabilities and metadata
-	GetAgentCard(baseConfig Config) AgentCard
+	GetAgentCard(baseConfig Config) adk.AgentCard
 }
 
 // JRPCErrorCode represents JSON-RPC error codes
@@ -40,7 +41,7 @@ const (
 
 // QueuedTask represents a task in the processing queue
 type QueuedTask struct {
-	Task      *Task
+	Task      *adk.Task
 	Messages  []sdk.Message
 	RequestID interface{}
 }
@@ -52,9 +53,9 @@ type A2AAgent struct {
 	client              sdk.Client
 	toolsHandler        *ToolsHandler
 	taskQueue           chan *QueuedTask
-	allTasks            map[string]*Task
+	allTasks            map[string]*adk.Task
 	allTasksMu          sync.RWMutex
-	pushNotifications   map[string]*PushNotificationConfig
+	pushNotifications   map[string]*adk.PushNotificationConfig
 	tools               []sdk.ChatCompletionTool
 	taskResultProcessor TaskResultProcessor
 	agentInfoProvider   AgentInfoProvider
@@ -70,8 +71,8 @@ func NewA2AAgent(cfg Config, logger *zap.Logger, client sdk.Client, toolsHandler
 		client:            client,
 		toolsHandler:      toolsHandler,
 		taskQueue:         make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
-		allTasks:          make(map[string]*Task),
-		pushNotifications: make(map[string]*PushNotificationConfig),
+		allTasks:          make(map[string]*adk.Task),
+		pushNotifications: make(map[string]*adk.PushNotificationConfig),
 		tools:             tools,
 	}
 }
@@ -109,23 +110,23 @@ func (agent *A2AAgent) SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin.Eng
 func (agent *A2AAgent) handleAgentInfo(c *gin.Context) {
 	agent.logger.Info("agent info requested")
 
-	var info AgentCard
+	var info adk.AgentCard
 	if agent.agentInfoProvider != nil {
 		info = agent.agentInfoProvider.GetAgentCard(agent.cfg)
 	} else {
-		info = AgentCard{
+		info = adk.AgentCard{
 			Name:        agent.cfg.AgentName,
 			Description: agent.cfg.AgentDescription,
 			URL:         agent.cfg.AgentURL,
 			Version:     agent.cfg.AgentVersion,
-			Capabilities: AgentCapabilities{
+			Capabilities: adk.AgentCapabilities{
 				Streaming:              &agent.cfg.CapabilitiesConfig.Streaming,
 				PushNotifications:      &agent.cfg.CapabilitiesConfig.PushNotifications,
 				StateTransitionHistory: &agent.cfg.CapabilitiesConfig.StateTransitionHistory,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
-			Skills:             []AgentSkill{},
+			Skills:             []adk.AgentSkill{},
 		}
 	}
 	c.JSON(http.StatusOK, info)
@@ -133,7 +134,7 @@ func (agent *A2AAgent) handleAgentInfo(c *gin.Context) {
 
 // handleA2ARequest processes A2A protocol requests
 func (agent *A2AAgent) handleA2ARequest(c *gin.Context) {
-	var req JSONRPCRequest
+	var req adk.JSONRPCRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		agent.logger.Error("failed to parse json request", zap.Error(err))
 		agent.sendError(c, req.ID, int(ErrParseError), "parse error")
@@ -170,10 +171,10 @@ func (agent *A2AAgent) handleA2ARequest(c *gin.Context) {
 
 // sendError sends a JSON-RPC error response
 func (agent *A2AAgent) sendError(c *gin.Context, id interface{}, code int, message string) {
-	resp := JSONRPCErrorResponse{
+	resp := adk.JSONRPCErrorResponse{
 		JSONRPC: "2.0",
 		ID:      id,
-		Error: &JSONRPCError{
+		Error: &adk.JSONRPCError{
 			Code:    code,
 			Message: message,
 		},
@@ -184,7 +185,7 @@ func (agent *A2AAgent) sendError(c *gin.Context, id interface{}, code int, messa
 
 // sendSuccess sends a JSON-RPC success response
 func (agent *A2AAgent) sendSuccess(c *gin.Context, id interface{}, result interface{}) {
-	resp := JSONRPCSuccessResponse{
+	resp := adk.JSONRPCSuccessResponse{
 		JSONRPC: "2.0",
 		ID:      id,
 		Result:  result,
@@ -194,8 +195,8 @@ func (agent *A2AAgent) sendSuccess(c *gin.Context, id interface{}, result interf
 }
 
 // handleMessageSend processes message/send requests
-func (agent *A2AAgent) handleMessageSend(c *gin.Context, req JSONRPCRequest) {
-	var params MessageSendParams
+func (agent *A2AAgent) handleMessageSend(c *gin.Context, req adk.JSONRPCRequest) {
+	var params adk.MessageSendParams
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		agent.logger.Error("failed to marshal params", zap.Error(err))
@@ -227,7 +228,7 @@ func (agent *A2AAgent) handleMessageSend(c *gin.Context, req JSONRPCRequest) {
 		contextID = &newContextID
 	}
 
-	task := agent.createTask(*contextID, TaskStateSubmitted, nil)
+	task := agent.createTask(*contextID, adk.TaskStateSubmitted, nil)
 
 	queuedTask := &QueuedTask{
 		Task:      task,
@@ -240,11 +241,11 @@ func (agent *A2AAgent) handleMessageSend(c *gin.Context, req JSONRPCRequest) {
 		agent.logger.Info("task queued for processing", zap.String("task_id", task.ID))
 	default:
 		agent.logger.Error("task queue is full")
-		agent.updateTask(task.ID, TaskStateFailed, &Message{
+		agent.updateTask(task.ID, adk.TaskStateFailed, &adk.Message{
 			Kind:      "message",
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
-			Parts: []Part{
+			Parts: []adk.Part{
 				map[string]interface{}{
 					"kind": "text",
 					"text": "Task queue is full. Please try again later.",
@@ -257,7 +258,7 @@ func (agent *A2AAgent) handleMessageSend(c *gin.Context, req JSONRPCRequest) {
 }
 
 // convertPartsToMessages converts A2A message parts to SDK messages
-func (agent *A2AAgent) convertPartsToMessages(parts []Part, role string) ([]sdk.Message, error) {
+func (agent *A2AAgent) convertPartsToMessages(parts []adk.Part, role string) ([]sdk.Message, error) {
 	var messages []sdk.Message
 	for _, part := range parts {
 		partMap, ok := part.(map[string]interface{})
@@ -306,18 +307,18 @@ func (agent *A2AAgent) processTask(ctx context.Context, queuedTask *QueuedTask) 
 	messages := queuedTask.Messages
 
 	agent.logger.Info("processing task", zap.String("task_id", task.ID))
-	agent.updateTask(task.ID, TaskStateWorking, nil)
+	agent.updateTask(task.ID, adk.TaskStateWorking, nil)
 
 	var iteration int
 	for iteration < agent.cfg.MaxChatCompletionIterations {
 		response, err := agent.client.WithTools(&agent.tools).WithHeader("X-A2A-Internal", "true").GenerateContent(ctx, sdk.Provider(agent.cfg.LLMProvider), agent.cfg.LLMModel, messages)
 		if err != nil {
 			agent.logger.Error("failed to create chat completion", zap.Error(err))
-			agent.updateTask(task.ID, TaskStateFailed, &Message{
+			agent.updateTask(task.ID, adk.TaskStateFailed, &adk.Message{
 				Kind:      "message",
 				MessageID: uuid.New().String(),
 				Role:      "assistant",
-				Parts: []Part{
+				Parts: []adk.Part{
 					map[string]interface{}{
 						"kind": "text",
 						"text": "failed to process request: " + err.Error(),
@@ -329,11 +330,11 @@ func (agent *A2AAgent) processTask(ctx context.Context, queuedTask *QueuedTask) 
 
 		if len(response.Choices) == 0 {
 			agent.logger.Error("no choices returned from chat completion")
-			agent.updateTask(task.ID, TaskStateFailed, &Message{
+			agent.updateTask(task.ID, adk.TaskStateFailed, &adk.Message{
 				Kind:      "message",
 				MessageID: uuid.New().String(),
 				Role:      "assistant",
-				Parts: []Part{
+				Parts: []adk.Part{
 					map[string]interface{}{
 						"kind": "text",
 						"text": "no response generated",
@@ -347,18 +348,18 @@ func (agent *A2AAgent) processTask(ctx context.Context, queuedTask *QueuedTask) 
 
 		if toolCalls == nil || len(*toolCalls) == 0 {
 			agent.logger.Debug("no tool calls found in response, using text content")
-			resultMessage := &Message{
+			resultMessage := &adk.Message{
 				Kind:      "message",
 				MessageID: uuid.New().String(),
 				Role:      "assistant",
-				Parts: []Part{
+				Parts: []adk.Part{
 					map[string]interface{}{
 						"kind": "text",
 						"text": response.Choices[0].Message.Content,
 					},
 				},
 			}
-			agent.updateTask(task.ID, TaskStateCompleted, resultMessage)
+			agent.updateTask(task.ID, adk.TaskStateCompleted, resultMessage)
 			return
 		}
 
@@ -397,7 +398,7 @@ func (agent *A2AAgent) processTask(ctx context.Context, queuedTask *QueuedTask) 
 		if agent.taskResultProcessor != nil {
 			for _, toolResult := range allToolResults {
 				if completionMessage := agent.taskResultProcessor.ProcessToolResult(toolResult); completionMessage != nil {
-					agent.updateTask(task.ID, TaskStateCompleted, completionMessage)
+					agent.updateTask(task.ID, adk.TaskStateCompleted, completionMessage)
 					return
 				}
 			}
@@ -406,11 +407,11 @@ func (agent *A2AAgent) processTask(ctx context.Context, queuedTask *QueuedTask) 
 		iteration++
 	}
 
-	agent.updateTask(task.ID, TaskStateFailed, &Message{
+	agent.updateTask(task.ID, adk.TaskStateFailed, &adk.Message{
 		Kind:      "message",
 		MessageID: uuid.New().String(),
 		Role:      "assistant",
-		Parts: []Part{
+		Parts: []adk.Part{
 			map[string]interface{}{
 				"kind": "text",
 				"text": "maximum processing iterations reached",
@@ -420,14 +421,14 @@ func (agent *A2AAgent) processTask(ctx context.Context, queuedTask *QueuedTask) 
 }
 
 // handleMessageStream processes message/stream requests
-func (agent *A2AAgent) handleMessageStream(c *gin.Context, req JSONRPCRequest) {
+func (agent *A2AAgent) handleMessageStream(c *gin.Context, req adk.JSONRPCRequest) {
 	agent.logger.Info("streaming not implemented yet")
 	agent.sendError(c, req.ID, int(ErrServerError), "streaming not implemented")
 }
 
 // handleTaskGet processes tasks/get requests
-func (agent *A2AAgent) handleTaskGet(c *gin.Context, req JSONRPCRequest) {
-	var params TaskQueryParams
+func (agent *A2AAgent) handleTaskGet(c *gin.Context, req adk.JSONRPCRequest) {
+	var params adk.TaskQueryParams
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		agent.logger.Error("failed to marshal params", zap.Error(err))
@@ -455,20 +456,20 @@ func (agent *A2AAgent) handleTaskGet(c *gin.Context, req JSONRPCRequest) {
 }
 
 // handleTaskCancel processes tasks/cancel requests
-func (agent *A2AAgent) handleTaskCancel(c *gin.Context, req JSONRPCRequest) {
+func (agent *A2AAgent) handleTaskCancel(c *gin.Context, req adk.JSONRPCRequest) {
 	agent.logger.Info("tasks/cancel not implemented yet")
 	agent.sendError(c, req.ID, int(ErrServerError), "tasks/cancel not implemented")
 }
 
 // createTask creates a new task and stores it
-func (agent *A2AAgent) createTask(contextID string, state TaskState, message *Message) *Task {
+func (agent *A2AAgent) createTask(contextID string, state adk.TaskState, message *adk.Message) *adk.Task {
 	taskID := uuid.New().String()
 
-	task := &Task{
+	task := &adk.Task{
 		ID:        taskID,
 		ContextID: contextID,
 		Kind:      "task",
-		Status: TaskStatus{
+		Status: adk.TaskStatus{
 			State:   state,
 			Message: message,
 		},
@@ -482,7 +483,7 @@ func (agent *A2AAgent) createTask(contextID string, state TaskState, message *Me
 }
 
 // updateTask updates an existing task
-func (agent *A2AAgent) updateTask(taskID string, state TaskState, message *Message) {
+func (agent *A2AAgent) updateTask(taskID string, state adk.TaskState, message *adk.Message) {
 	agent.allTasksMu.Lock()
 	defer agent.allTasksMu.Unlock()
 
@@ -493,7 +494,7 @@ func (agent *A2AAgent) updateTask(taskID string, state TaskState, message *Messa
 }
 
 // getTask retrieves a task by ID
-func (agent *A2AAgent) getTask(taskID string) (*Task, bool) {
+func (agent *A2AAgent) getTask(taskID string) (*adk.Task, bool) {
 	agent.allTasksMu.RLock()
 	task, ok := agent.allTasks[taskID]
 	agent.allTasksMu.RUnlock()
@@ -524,7 +525,7 @@ func (agent *A2AAgent) cleanupCompletedTasks() {
 	var toRemove []string
 
 	for taskID, task := range agent.allTasks {
-		if task.Status.State == TaskStateCompleted || task.Status.State == TaskStateFailed {
+		if task.Status.State == adk.TaskStateCompleted || task.Status.State == adk.TaskStateFailed {
 			toRemove = append(toRemove, taskID)
 		}
 	}
