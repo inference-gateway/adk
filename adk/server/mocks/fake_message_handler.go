@@ -7,24 +7,9 @@ import (
 
 	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/server"
-	"github.com/inference-gateway/sdk"
 )
 
 type FakeMessageHandler struct {
-	ConvertPartsToMessagesStub        func([]adk.Part, string) ([]sdk.Message, error)
-	convertPartsToMessagesMutex       sync.RWMutex
-	convertPartsToMessagesArgsForCall []struct {
-		arg1 []adk.Part
-		arg2 string
-	}
-	convertPartsToMessagesReturns struct {
-		result1 []sdk.Message
-		result2 error
-	}
-	convertPartsToMessagesReturnsOnCall map[int]struct {
-		result1 []sdk.Message
-		result2 error
-	}
 	HandleMessageSendStub        func(context.Context, adk.MessageSendParams) (*adk.Task, error)
 	handleMessageSendMutex       sync.RWMutex
 	handleMessageSendArgsForCall []struct {
@@ -53,76 +38,6 @@ type FakeMessageHandler struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *FakeMessageHandler) ConvertPartsToMessages(arg1 []adk.Part, arg2 string) ([]sdk.Message, error) {
-	var arg1Copy []adk.Part
-	if arg1 != nil {
-		arg1Copy = make([]adk.Part, len(arg1))
-		copy(arg1Copy, arg1)
-	}
-	fake.convertPartsToMessagesMutex.Lock()
-	ret, specificReturn := fake.convertPartsToMessagesReturnsOnCall[len(fake.convertPartsToMessagesArgsForCall)]
-	fake.convertPartsToMessagesArgsForCall = append(fake.convertPartsToMessagesArgsForCall, struct {
-		arg1 []adk.Part
-		arg2 string
-	}{arg1Copy, arg2})
-	stub := fake.ConvertPartsToMessagesStub
-	fakeReturns := fake.convertPartsToMessagesReturns
-	fake.recordInvocation("ConvertPartsToMessages", []interface{}{arg1Copy, arg2})
-	fake.convertPartsToMessagesMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeMessageHandler) ConvertPartsToMessagesCallCount() int {
-	fake.convertPartsToMessagesMutex.RLock()
-	defer fake.convertPartsToMessagesMutex.RUnlock()
-	return len(fake.convertPartsToMessagesArgsForCall)
-}
-
-func (fake *FakeMessageHandler) ConvertPartsToMessagesCalls(stub func([]adk.Part, string) ([]sdk.Message, error)) {
-	fake.convertPartsToMessagesMutex.Lock()
-	defer fake.convertPartsToMessagesMutex.Unlock()
-	fake.ConvertPartsToMessagesStub = stub
-}
-
-func (fake *FakeMessageHandler) ConvertPartsToMessagesArgsForCall(i int) ([]adk.Part, string) {
-	fake.convertPartsToMessagesMutex.RLock()
-	defer fake.convertPartsToMessagesMutex.RUnlock()
-	argsForCall := fake.convertPartsToMessagesArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *FakeMessageHandler) ConvertPartsToMessagesReturns(result1 []sdk.Message, result2 error) {
-	fake.convertPartsToMessagesMutex.Lock()
-	defer fake.convertPartsToMessagesMutex.Unlock()
-	fake.ConvertPartsToMessagesStub = nil
-	fake.convertPartsToMessagesReturns = struct {
-		result1 []sdk.Message
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeMessageHandler) ConvertPartsToMessagesReturnsOnCall(i int, result1 []sdk.Message, result2 error) {
-	fake.convertPartsToMessagesMutex.Lock()
-	defer fake.convertPartsToMessagesMutex.Unlock()
-	fake.ConvertPartsToMessagesStub = nil
-	if fake.convertPartsToMessagesReturnsOnCall == nil {
-		fake.convertPartsToMessagesReturnsOnCall = make(map[int]struct {
-			result1 []sdk.Message
-			result2 error
-		})
-	}
-	fake.convertPartsToMessagesReturnsOnCall[i] = struct {
-		result1 []sdk.Message
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *FakeMessageHandler) HandleMessageSend(arg1 context.Context, arg2 adk.MessageSendParams) (*adk.Task, error) {
@@ -255,8 +170,6 @@ func (fake *FakeMessageHandler) HandleMessageStreamReturnsOnCall(i int, result1 
 func (fake *FakeMessageHandler) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.convertPartsToMessagesMutex.RLock()
-	defer fake.convertPartsToMessagesMutex.RUnlock()
 	fake.handleMessageSendMutex.RLock()
 	defer fake.handleMessageSendMutex.RUnlock()
 	fake.handleMessageStreamMutex.RLock()
