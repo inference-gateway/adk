@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5.5.0
         with:
-          go-version: "1.24"
+          go-version: '1.24'
           cache: true
 
       - name: Install golangci-lint
@@ -31,16 +31,19 @@ jobs:
       - name: Install Mockgen
         run: go install go.uber.org/mock/mockgen@v0.5.0
 
+      - name: Install generator tool
+        run: go install github.com/inference-gateway/tools/cmd/generator@v0.1.1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4.4.0
         with:
-          node-version: "lts/*"
+          node-version: 'lts/*'
 
-      - name: Install dependencies
-        run: go mod tidy
+      - name: Tidy Go modules
+        run: find . -name 'go.mod' -execdir go mod tidy \;
 
       - name: Run generate
-        run: go generate ./providers/... ./api/... ./otel/...
+        run: generator -generator jsonrpc -package adk schema.yaml adk/generated_types.go
 
       - name: Check dirty
         run: git diff --exit-code
