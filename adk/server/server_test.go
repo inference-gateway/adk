@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestDefaultA2AServer_TaskManager_CreateTask(t *testing.T) {
+func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 	tests := []struct {
 		name      string
 		contextID string
@@ -72,7 +72,7 @@ func TestDefaultA2AServer_TaskManager_CreateTask(t *testing.T) {
 	}
 }
 
-func TestDefaultA2AServer_TaskManager_UpdateTask(t *testing.T) {
+func TestA2AServer_TaskManager_UpdateTask(t *testing.T) {
 	tests := []struct {
 		name        string
 		newState    adk.TaskState
@@ -140,7 +140,7 @@ func TestDefaultA2AServer_TaskManager_UpdateTask(t *testing.T) {
 	}
 }
 
-func TestDefaultA2AServer_TaskManager_GetTask(t *testing.T) {
+func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger)
 
@@ -161,7 +161,7 @@ func TestDefaultA2AServer_TaskManager_GetTask(t *testing.T) {
 	assert.Nil(t, nonExistentTask)
 }
 
-func TestDefaultA2AServer_ResponseSender_SendSuccess(t *testing.T) {
+func TestA2AServer_ResponseSender_SendSuccess(t *testing.T) {
 	logger := zap.NewNop()
 	responseSender := server.NewDefaultResponseSender(logger)
 
@@ -179,7 +179,7 @@ func TestDefaultA2AServer_ResponseSender_SendSuccess(t *testing.T) {
 	})
 }
 
-func TestDefaultA2AServer_ResponseSender_SendError(t *testing.T) {
+func TestA2AServer_ResponseSender_SendError(t *testing.T) {
 	logger := zap.NewNop()
 	responseSender := server.NewDefaultResponseSender(logger)
 
@@ -192,7 +192,7 @@ func TestDefaultA2AServer_ResponseSender_SendError(t *testing.T) {
 	})
 }
 
-func TestDefaultA2AServer_MessageHandler_Integration(t *testing.T) {
+func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger)
 
@@ -223,45 +223,7 @@ func TestDefaultA2AServer_MessageHandler_Integration(t *testing.T) {
 	assert.Equal(t, adk.TaskStateSubmitted, task.Status.State)
 }
 
-func TestDefaultA2AServer_SetDependencies(t *testing.T) {
-	cfg := server.Config{
-		QueueConfig: &server.QueueConfig{
-			MaxSize:         100,
-			CleanupInterval: 30 * time.Second,
-		},
-		CapabilitiesConfig: &server.CapabilitiesConfig{
-			Streaming:              true,
-			PushNotifications:      false,
-			StateTransitionHistory: true,
-		},
-		AuthConfig: &server.AuthConfig{
-			Enable: false,
-		},
-	}
-	logger := zap.NewNop()
-
-	a2aServer := server.NewA2AServer(cfg, logger)
-
-	mockTaskHandler := &mocks.FakeTaskHandler{}
-	a2aServer.SetTaskHandler(mockTaskHandler)
-
-	mockAgentProvider := &mocks.FakeAgentInfoProvider{}
-	mockAgentProvider.GetAgentCardReturns(adk.AgentCard{
-		Name:        "custom-agent",
-		Description: "custom description",
-		Version:     "1.0.0",
-	})
-	a2aServer.SetAgentInfoProvider(mockAgentProvider)
-
-	mockProcessor := &mocks.FakeTaskResultProcessor{}
-	a2aServer.SetTaskResultProcessor(mockProcessor)
-
-	agentCard := a2aServer.GetAgentCard()
-	assert.Equal(t, "custom-agent", agentCard.Name)
-	assert.Equal(t, "custom description", agentCard.Description)
-}
-
-func TestDefaultA2AServer_TaskProcessing_Background(t *testing.T) {
+func TestA2AServer_TaskProcessing_Background(t *testing.T) {
 	cfg := server.Config{
 		QueueConfig: &server.QueueConfig{
 			MaxSize:         10,
@@ -280,16 +242,34 @@ func TestDefaultA2AServer_TaskProcessing_Background(t *testing.T) {
 
 	a2aServer := server.NewA2AServer(cfg, logger)
 
-	// Create context with timeout for the background processor
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 
-	// Start task processor in background
 	go a2aServer.StartTaskProcessor(ctx)
 
-	// Give it time to start and run
 	time.Sleep(100 * time.Millisecond)
 
-	// Test passes if no panic occurs
 	assert.True(t, true)
+}
+
+func TestDefaultA2AServer_SetDependencies(t *testing.T) {
+	a2aServer := server.NewDefaultA2AServer()
+
+	mockTaskHandler := &mocks.FakeTaskHandler{}
+	a2aServer.SetTaskHandler(mockTaskHandler)
+
+	mockAgentProvider := &mocks.FakeAgentInfoProvider{}
+	mockAgentProvider.GetAgentCardReturns(adk.AgentCard{
+		Name:        "custom-agent",
+		Description: "custom description",
+		Version:     "1.0.0",
+	})
+	a2aServer.SetAgentInfoProvider(mockAgentProvider)
+
+	mockProcessor := &mocks.FakeTaskResultProcessor{}
+	a2aServer.SetTaskResultProcessor(mockProcessor)
+
+	agentCard := a2aServer.GetAgentCard()
+	assert.Equal(t, "custom-agent", agentCard.Name)
+	assert.Equal(t, "custom description", agentCard.Description)
 }

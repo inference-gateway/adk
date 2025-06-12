@@ -119,7 +119,7 @@ func NewA2AServer(cfg Config, logger *zap.Logger) *A2AServerImpl {
 
 	server.setupRouter(&cfg)
 
-	if cfg.TelemetryConfig.Enable {
+	if cfg.TelemetryConfig != nil && cfg.TelemetryConfig.Enable {
 		go func() {
 			metricsRouter := gin.Default()
 			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
