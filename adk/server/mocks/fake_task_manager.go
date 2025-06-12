@@ -3,6 +3,7 @@ package mocks
 
 import (
 	"sync"
+	"time"
 
 	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/server"
@@ -49,6 +50,21 @@ type FakeTaskManager struct {
 	getTaskReturnsOnCall map[int]struct {
 		result1 *adk.Task
 		result2 bool
+	}
+	PollTaskStatusStub        func(string, time.Duration, time.Duration) (*adk.Task, error)
+	pollTaskStatusMutex       sync.RWMutex
+	pollTaskStatusArgsForCall []struct {
+		arg1 string
+		arg2 time.Duration
+		arg3 time.Duration
+	}
+	pollTaskStatusReturns struct {
+		result1 *adk.Task
+		result2 error
+	}
+	pollTaskStatusReturnsOnCall map[int]struct {
+		result1 *adk.Task
+		result2 error
 	}
 	UpdateTaskStub        func(string, adk.TaskState, *adk.Message) error
 	updateTaskMutex       sync.RWMutex
@@ -279,6 +295,72 @@ func (fake *FakeTaskManager) GetTaskReturnsOnCall(i int, result1 *adk.Task, resu
 	}{result1, result2}
 }
 
+func (fake *FakeTaskManager) PollTaskStatus(arg1 string, arg2 time.Duration, arg3 time.Duration) (*adk.Task, error) {
+	fake.pollTaskStatusMutex.Lock()
+	ret, specificReturn := fake.pollTaskStatusReturnsOnCall[len(fake.pollTaskStatusArgsForCall)]
+	fake.pollTaskStatusArgsForCall = append(fake.pollTaskStatusArgsForCall, struct {
+		arg1 string
+		arg2 time.Duration
+		arg3 time.Duration
+	}{arg1, arg2, arg3})
+	stub := fake.PollTaskStatusStub
+	fakeReturns := fake.pollTaskStatusReturns
+	fake.recordInvocation("PollTaskStatus", []interface{}{arg1, arg2, arg3})
+	fake.pollTaskStatusMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeTaskManager) PollTaskStatusCallCount() int {
+	fake.pollTaskStatusMutex.RLock()
+	defer fake.pollTaskStatusMutex.RUnlock()
+	return len(fake.pollTaskStatusArgsForCall)
+}
+
+func (fake *FakeTaskManager) PollTaskStatusCalls(stub func(string, time.Duration, time.Duration) (*adk.Task, error)) {
+	fake.pollTaskStatusMutex.Lock()
+	defer fake.pollTaskStatusMutex.Unlock()
+	fake.PollTaskStatusStub = stub
+}
+
+func (fake *FakeTaskManager) PollTaskStatusArgsForCall(i int) (string, time.Duration, time.Duration) {
+	fake.pollTaskStatusMutex.RLock()
+	defer fake.pollTaskStatusMutex.RUnlock()
+	argsForCall := fake.pollTaskStatusArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeTaskManager) PollTaskStatusReturns(result1 *adk.Task, result2 error) {
+	fake.pollTaskStatusMutex.Lock()
+	defer fake.pollTaskStatusMutex.Unlock()
+	fake.PollTaskStatusStub = nil
+	fake.pollTaskStatusReturns = struct {
+		result1 *adk.Task
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) PollTaskStatusReturnsOnCall(i int, result1 *adk.Task, result2 error) {
+	fake.pollTaskStatusMutex.Lock()
+	defer fake.pollTaskStatusMutex.Unlock()
+	fake.PollTaskStatusStub = nil
+	if fake.pollTaskStatusReturnsOnCall == nil {
+		fake.pollTaskStatusReturnsOnCall = make(map[int]struct {
+			result1 *adk.Task
+			result2 error
+		})
+	}
+	fake.pollTaskStatusReturnsOnCall[i] = struct {
+		result1 *adk.Task
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeTaskManager) UpdateTask(arg1 string, arg2 adk.TaskState, arg3 *adk.Message) error {
 	fake.updateTaskMutex.Lock()
 	ret, specificReturn := fake.updateTaskReturnsOnCall[len(fake.updateTaskArgsForCall)]
@@ -353,6 +435,8 @@ func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	defer fake.createTaskMutex.RUnlock()
 	fake.getTaskMutex.RLock()
 	defer fake.getTaskMutex.RUnlock()
+	fake.pollTaskStatusMutex.RLock()
+	defer fake.pollTaskStatusMutex.RUnlock()
 	fake.updateTaskMutex.RLock()
 	defer fake.updateTaskMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

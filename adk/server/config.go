@@ -17,6 +17,7 @@ type Config struct {
 	AuthConfig                    *AuthConfig              `env:",prefix=AUTH_"`
 	QueueConfig                   *QueueConfig             `env:",prefix=QUEUE_"`
 	ServerConfig                  *ServerConfig            `env:",prefix=SERVER_"`
+	TelemetryConfig               *TelemetryConfig         `env:",prefix=TELEMETRY_"`
 }
 
 // LLMProviderClientConfig holds LLM provider client configuration
@@ -81,4 +82,9 @@ type ServerConfig struct {
 	ReadTimeout  time.Duration `env:"READ_TIMEOUT,default=120s" description:"HTTP server read timeout"`
 	WriteTimeout time.Duration `env:"WRITE_TIMEOUT,default=120s" description:"HTTP server write timeout"`
 	IdleTimeout  time.Duration `env:"IDLE_TIMEOUT,default=120s" description:"HTTP server idle timeout"`
+}
+
+// TelemetryConfig holds telemetry configuration
+type TelemetryConfig struct {
+	Enable bool `env:"ENABLE,default=false" description:"Enable telemetry collection"`
 }

@@ -240,7 +240,7 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 	}
 	logger := zap.NewNop()
 
-	a2aServer := server.NewDefaultA2AServer(cfg, logger)
+	a2aServer := server.NewA2AServer(cfg, logger)
 
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	a2aServer.SetTaskHandler(mockTaskHandler)
@@ -261,66 +261,6 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 	assert.Equal(t, "custom description", agentCard.Description)
 }
 
-func TestDefaultA2AServer_Router_Middleware(t *testing.T) {
-	tests := []struct {
-		name         string
-		authEnabled  bool
-		expectRoutes int
-	}{
-		{
-			name:         "router without auth",
-			authEnabled:  false,
-			expectRoutes: 3,
-		},
-		{
-			name:         "router with auth middleware",
-			authEnabled:  true,
-			expectRoutes: 3,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := server.Config{
-				AuthConfig: &server.AuthConfig{
-					Enable: tt.authEnabled,
-				},
-				QueueConfig: &server.QueueConfig{
-					MaxSize:         100,
-					CleanupInterval: 30 * time.Second,
-				},
-				CapabilitiesConfig: &server.CapabilitiesConfig{
-					Streaming:              true,
-					PushNotifications:      false,
-					StateTransitionHistory: true,
-				},
-			}
-			logger := zap.NewNop()
-			mockAuth := &mocks.FakeOIDCAuthenticator{}
-
-			if tt.authEnabled {
-				mockAuth.MiddlewareReturns(gin.HandlerFunc(func(c *gin.Context) {
-					c.Next()
-				}))
-			}
-
-			a2aServer := server.NewDefaultA2AServer(cfg, logger)
-			router := a2aServer.SetupRouter(mockAuth)
-
-			assert.NotNil(t, router)
-
-			// Verify routes are configured
-			routes := router.Routes()
-			assert.GreaterOrEqual(t, len(routes), tt.expectRoutes)
-
-			// Verify auth middleware was called if enabled
-			if tt.authEnabled {
-				assert.Equal(t, 1, mockAuth.MiddlewareCallCount())
-			}
-		})
-	}
-}
-
 func TestDefaultA2AServer_TaskProcessing_Background(t *testing.T) {
 	cfg := server.Config{
 		QueueConfig: &server.QueueConfig{
@@ -338,7 +278,7 @@ func TestDefaultA2AServer_TaskProcessing_Background(t *testing.T) {
 	}
 	logger := zap.NewNop()
 
-	a2aServer := server.NewDefaultA2AServer(cfg, logger)
+	a2aServer := server.NewA2AServer(cfg, logger)
 
 	// Create context with timeout for the background processor
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)

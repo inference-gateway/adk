@@ -14,6 +14,7 @@ type MessageHandler interface {
 	HandleMessageSend(ctx context.Context, params adk.MessageSendParams) (*adk.Task, error)
 
 	// HandleMessageStream processes message/stream requests (for streaming responses)
+	// This method is used for handling streaming messages, such as those sent via Server-Sent Events (SSE).
 	HandleMessageStream(ctx context.Context, params adk.MessageSendParams) error
 }
 
@@ -51,6 +52,28 @@ func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params a
 
 // HandleMessageStream processes message/stream requests (for streaming responses)
 func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params adk.MessageSendParams) error {
-	// TODO: Implement streaming support
-	return NewStreamingNotImplementedError()
+	if len(params.Message.Parts) == 0 {
+		return NewEmptyMessagePartsError()
+	}
+
+	contextID := params.Message.ContextID
+	if contextID == nil {
+		newContextID := uuid.New().String()
+		contextID = &newContextID
+	}
+
+	task := mh.taskManager.CreateTask(*contextID, adk.TaskStateSubmitted, &params.Message)
+
+	mh.logger.Info("streaming message handled", zap.String("task_id", task.ID))
+
+	// Simulate streaming via SSE
+	for _, part := range params.Message.Parts {
+		if textPart, ok := part.(adk.TextPart); ok {
+			mh.logger.Info("streaming part", zap.String("content", textPart.Text))
+		} else {
+			mh.logger.Warn("unsupported part type")
+		}
+	}
+
+	return nil
 }

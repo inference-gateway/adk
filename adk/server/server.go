@@ -4,21 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
 	adk "github.com/inference-gateway/a2a/adk"
-	zap "go.uber.org/zap"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sethvargo/go-envconfig"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"go.uber.org/zap"
 )
 
 // A2AServer defines the interface for an A2A-compatible server
 // This interface allows for easy testing and different implementations
 type A2AServer interface {
-	// SetupRouter configures the HTTP router with A2A endpoints
-	SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin.Engine
-
 	// Start starts the A2A server on the configured port
 	Start(ctx context.Context) error
 
@@ -45,18 +48,9 @@ type A2AServer interface {
 
 	// GetTaskHandler returns the configured task handler
 	GetTaskHandler() TaskHandler
-}
 
-// HTTPServer defines the interface for HTTP server operations
-type HTTPServer interface {
-	// ListenAndServe starts the HTTP server
-	ListenAndServe() error
-
-	// Shutdown gracefully shuts down the HTTP server
-	Shutdown(ctx context.Context) error
-
-	// Handler returns the HTTP handler
-	Handler() http.Handler
+	// InitializeTelemetry sets up OpenTelemetry with Prometheus exporter
+	InitializeTelemetry() error
 }
 
 // TaskResultProcessor defines how to process tool call results for task completion
@@ -90,9 +84,7 @@ type QueuedTask struct {
 	RequestID interface{}
 }
 
-// DefaultA2AServer implements the A2AServer interface
-// This is the main implementation inspired by the reference A2A sample
-type DefaultA2AServer struct {
+type A2AServerImpl struct {
 	cfg            Config
 	logger         *zap.Logger
 	taskHandler    TaskHandler
@@ -110,57 +102,120 @@ type DefaultA2AServer struct {
 	agentInfoProvider   AgentInfoProvider
 }
 
-// NewDefaultA2AServer creates a new default A2A server implementation
-func NewDefaultA2AServer(cfg Config, logger *zap.Logger) *DefaultA2AServer {
-	server := &DefaultA2AServer{
+var _ A2AServer = (*A2AServerImpl)(nil)
+
+// NewA2AServer creates a new A2A server with the provided configuration and logger
+func NewA2AServer(cfg Config, logger *zap.Logger) *A2AServerImpl {
+	server := &A2AServerImpl{
 		cfg:       cfg,
 		logger:    logger,
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	// Initialize components with dependency injection
 	server.taskManager = NewDefaultTaskManager(logger)
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
+	server.setupRouter(&cfg)
+
+	if cfg.TelemetryConfig.Enable {
+		go func() {
+			metricsRouter := gin.Default()
+			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+			metricsServer := &http.Server{
+				Addr:    ":9090",
+				Handler: metricsRouter,
+			}
+
+			logger.Info("starting metrics server on port 9090")
+			if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logger.Error("metrics server failed", zap.Error(err))
+			}
+		}()
+	}
+
+	return server
+}
+
+// NewDefaultA2AServer creates a new default A2A server implementation
+func NewDefaultA2AServer() *A2AServerImpl {
+	var cfg Config
+	if err := envconfig.Process(context.Background(), &cfg); err != nil {
+		log.Fatalf("failed to load environment variables: %v", err)
+	}
+
+	var logger *zap.Logger
+	var err error
+	if cfg.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatalf("failed to initialize logger: %v", err)
+	}
+
+	server := NewA2AServer(cfg, logger)
+
 	return server
 }
 
 // SetTaskHandler allows injecting a custom task handler
-func (s *DefaultA2AServer) SetTaskHandler(handler TaskHandler) {
+func (s *A2AServerImpl) SetTaskHandler(handler TaskHandler) {
 	s.taskHandler = handler
 }
 
 // SetTaskResultProcessor sets the task result processor for custom business logic
-func (s *DefaultA2AServer) SetTaskResultProcessor(processor TaskResultProcessor) {
+func (s *A2AServerImpl) SetTaskResultProcessor(processor TaskResultProcessor) {
 	s.taskResultProcessor = processor
 }
 
 // SetAgentInfoProvider sets the agent info provider for custom agent metadata
-func (s *DefaultA2AServer) SetAgentInfoProvider(provider AgentInfoProvider) {
+func (s *A2AServerImpl) SetAgentInfoProvider(provider AgentInfoProvider) {
 	s.agentInfoProvider = provider
 }
 
 // SetLLMClient sets the LLM client for AI/ML processing
-func (s *DefaultA2AServer) SetLLMClient(client LLMClient) {
+func (s *A2AServerImpl) SetLLMClient(client LLMClient) {
 	s.llmClient = client
 }
 
 // GetLLMClient returns the configured LLM client
-func (s *DefaultA2AServer) GetLLMClient() LLMClient {
+func (s *A2AServerImpl) GetLLMClient() LLMClient {
 	return s.llmClient
 }
 
 // GetTaskHandler returns the configured task handler
-func (s *DefaultA2AServer) GetTaskHandler() TaskHandler {
+func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
 	return s.taskHandler
 }
 
+// InitializeTelemetry sets up OpenTelemetry with Prometheus exporter
+func (s *A2AServerImpl) InitializeTelemetry() error {
+	if !s.cfg.TelemetryConfig.Enable {
+		return nil
+	}
+
+	_, err := prometheus.New()
+	if err != nil {
+		return fmt.Errorf("failed to create prometheus exporter: %w", err)
+	}
+
+	provider := trace.NewTracerProvider(
+		trace.WithSampler(trace.AlwaysSample()),
+	)
+	otel.SetTracerProvider(provider)
+
+	s.logger.Info("telemetry initialized")
+	return nil
+}
+
 // SetupRouter configures the HTTP router with A2A endpoints
-func (s *DefaultA2AServer) SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin.Engine {
+func (s *A2AServerImpl) setupRouter(cfg *Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
-	if s.cfg.Debug {
+	if cfg.Debug {
 		gin.SetMode(gin.DebugMode)
 	}
 
@@ -172,18 +227,26 @@ func (s *DefaultA2AServer) SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin
 
 	r.GET("/.well-known/agent.json", s.handleAgentInfo)
 
-	if s.cfg.AuthConfig.Enable {
-		r.POST("/a2a", oidcAuthenticator.Middleware(), s.handleA2ARequest)
-	} else {
+	if s.cfg.AuthConfig == nil || !s.cfg.AuthConfig.Enable {
 		r.POST("/a2a", s.handleA2ARequest)
+		s.logger.Warn("authentication is disabled, oidcAuthenticator will be nil")
+		return r
 	}
+	oidcAuthenticator, err := NewOIDCAuthenticatorMiddleware(s.logger, s.cfg)
+	if err != nil {
+		s.logger.Error("failed to create OIDC authenticator", zap.Error(err))
+		return r
+	}
+
+	s.logger.Info("oidcAuthenticator is valid, setting up authentication")
+	r.POST("/a2a", oidcAuthenticator.Middleware(), s.handleA2ARequest)
 
 	return r
 }
 
 // Start starts the A2A server
-func (s *DefaultA2AServer) Start(ctx context.Context) error {
-	router := s.SetupRouter(nil)
+func (s *A2AServerImpl) Start(ctx context.Context) error {
+	router := s.setupRouter(&s.cfg)
 
 	s.httpServer = &http.Server{
 		Addr:         fmt.Sprintf(":%s", s.cfg.Port),
@@ -205,16 +268,18 @@ func (s *DefaultA2AServer) Start(ctx context.Context) error {
 }
 
 // Stop gracefully stops the A2A server
-func (s *DefaultA2AServer) Stop(ctx context.Context) error {
+func (s *A2AServerImpl) Stop(ctx context.Context) error {
 	if s.httpServer == nil {
 		return nil
 	}
 	s.logger.Info("stopping A2A server")
-	return s.httpServer.Shutdown(ctx)
+	err := s.httpServer.Shutdown(ctx)
+	s.logger.Sync()
+	return err
 }
 
 // GetAgentCard returns the agent's capabilities and metadata
-func (s *DefaultA2AServer) GetAgentCard() adk.AgentCard {
+func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
 	if s.agentInfoProvider != nil {
 		return s.agentInfoProvider.GetAgentCard(s.cfg)
 	}
@@ -236,12 +301,12 @@ func (s *DefaultA2AServer) GetAgentCard() adk.AgentCard {
 }
 
 // ProcessTask processes a task with the given message
-func (s *DefaultA2AServer) ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error) {
+func (s *A2AServerImpl) ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error) {
 	return s.taskHandler.HandleTask(ctx, task, message)
 }
 
 // StartTaskProcessor starts the background task processing goroutine
-func (s *DefaultA2AServer) StartTaskProcessor(ctx context.Context) {
+func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 	s.logger.Info("starting task processor")
 
 	go s.startTaskCleanup(ctx)
@@ -258,7 +323,7 @@ func (s *DefaultA2AServer) StartTaskProcessor(ctx context.Context) {
 }
 
 // processQueuedTask processes a single queued task
-func (s *DefaultA2AServer) processQueuedTask(ctx context.Context, queuedTask *QueuedTask) {
+func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *QueuedTask) {
 	task := queuedTask.Task
 	message := &adk.Message{
 		Kind:      "message",
@@ -303,7 +368,7 @@ func (s *DefaultA2AServer) processQueuedTask(ctx context.Context, queuedTask *Qu
 }
 
 // startTaskCleanup starts the background task cleanup process
-func (s *DefaultA2AServer) startTaskCleanup(ctx context.Context) {
+func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
 	ticker := time.NewTicker(s.cfg.QueueConfig.CleanupInterval)
 	defer ticker.Stop()
 
@@ -319,14 +384,14 @@ func (s *DefaultA2AServer) startTaskCleanup(ctx context.Context) {
 }
 
 // handleAgentInfo returns agent capabilities and metadata
-func (s *DefaultA2AServer) handleAgentInfo(c *gin.Context) {
+func (s *A2AServerImpl) handleAgentInfo(c *gin.Context) {
 	s.logger.Info("agent info requested")
 	agentCard := s.GetAgentCard()
 	c.JSON(http.StatusOK, agentCard)
 }
 
 // handleA2ARequest processes A2A protocol requests
-func (s *DefaultA2AServer) handleA2ARequest(c *gin.Context) {
+func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 	var req adk.JSONRPCRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		s.logger.Error("failed to parse json request", zap.Error(err))
@@ -362,7 +427,7 @@ func (s *DefaultA2AServer) handleA2ARequest(c *gin.Context) {
 }
 
 // handleMessageSend processes message/send requests
-func (s *DefaultA2AServer) handleMessageSend(c *gin.Context, req adk.JSONRPCRequest) {
+func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req adk.JSONRPCRequest) {
 	var params adk.MessageSendParams
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
@@ -414,13 +479,34 @@ func (s *DefaultA2AServer) handleMessageSend(c *gin.Context, req adk.JSONRPCRequ
 }
 
 // handleMessageStream processes message/stream requests
-func (s *DefaultA2AServer) handleMessageStream(c *gin.Context, req adk.JSONRPCRequest) {
-	s.logger.Info("streaming not implemented yet")
-	s.responseSender.SendError(c, req.ID, int(ErrServerError), "streaming not implemented")
+func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req adk.JSONRPCRequest) {
+	var params adk.MessageSendParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		s.logger.Error("failed to marshal params", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		s.logger.Error("failed to parse message/stream request", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	ctx := c.Request.Context()
+	err = s.messageHandler.HandleMessageStream(ctx, params)
+	if err != nil {
+		s.logger.Error("failed to handle message stream", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	s.responseSender.SendSuccess(c, req.ID, "streaming started successfully")
 }
 
 // handleTaskGet processes tasks/get requests
-func (s *DefaultA2AServer) handleTaskGet(c *gin.Context, req adk.JSONRPCRequest) {
+func (s *A2AServerImpl) handleTaskGet(c *gin.Context, req adk.JSONRPCRequest) {
 	var params adk.TaskQueryParams
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
@@ -449,7 +535,7 @@ func (s *DefaultA2AServer) handleTaskGet(c *gin.Context, req adk.JSONRPCRequest)
 }
 
 // handleTaskCancel processes tasks/cancel requests
-func (s *DefaultA2AServer) handleTaskCancel(c *gin.Context, req adk.JSONRPCRequest) {
+func (s *A2AServerImpl) handleTaskCancel(c *gin.Context, req adk.JSONRPCRequest) {
 	var params adk.TaskIdParams
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {

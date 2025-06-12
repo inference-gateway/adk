@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -25,6 +26,9 @@ type TaskManager interface {
 
 	// CleanupCompletedTasks removes old completed tasks from memory
 	CleanupCompletedTasks()
+
+	// PollTaskStatus periodically checks the status of a task until it is completed or failed
+	PollTaskStatus(taskID string, interval time.Duration, timeout time.Duration) (*adk.Task, error)
 }
 
 // DefaultTaskManager implements the TaskManager interface
@@ -131,6 +135,32 @@ func (tm *DefaultTaskManager) CleanupCompletedTasks() {
 
 	if len(toRemove) > 0 {
 		tm.logger.Info("cleaned up completed tasks", zap.Int("count", len(toRemove)))
+	}
+}
+
+// PollTaskStatus periodically checks the status of a task until it is completed or failed
+func (tm *DefaultTaskManager) PollTaskStatus(taskID string, interval time.Duration, timeout time.Duration) (*adk.Task, error) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	timeoutTimer := time.NewTimer(timeout)
+	defer timeoutTimer.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			task, exists := tm.GetTask(taskID)
+			if !exists {
+				return nil, NewTaskNotFoundError(taskID)
+			}
+
+			if task.Status.State == adk.TaskStateCompleted || task.Status.State == adk.TaskStateFailed {
+				return task, nil
+			}
+
+		case <-timeoutTimer.C:
+			return nil, fmt.Errorf("polling timed out for task %s", taskID)
+		}
 	}
 }
 

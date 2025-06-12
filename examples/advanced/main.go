@@ -12,11 +12,18 @@ import (
 
 	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/server"
+	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 )
 
 func main() {
 	fmt.Println("🔧 Running Advanced A2A Server Example")
+
+	// Load environment variables using envconfig
+	var envConfig server.Config
+	if err := envconfig.Process(context.Background(), &envConfig); err != nil {
+		log.Fatalf("failed to load environment variables: %v", err)
+	}
 
 	// Create a development logger with more detailed output
 	logger, err := zap.NewDevelopment()
@@ -76,7 +83,7 @@ func main() {
 	}
 
 	// Create the A2A server
-	a2aServer := server.NewDefaultA2AServer(cfg, logger)
+	a2aServer := server.NewA2AServer(cfg, logger)
 
 	// Set custom task handler
 	customTaskHandler := &CustomTaskHandler{

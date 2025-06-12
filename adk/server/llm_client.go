@@ -9,7 +9,7 @@ import (
 
 	adk "github.com/inference-gateway/a2a/adk"
 	sdk "github.com/inference-gateway/sdk"
-	"go.uber.org/zap"
+	zap "go.uber.org/zap"
 )
 
 // LLMClient defines the interface for Language Model clients

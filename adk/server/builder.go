@@ -90,7 +90,7 @@ func (b *A2AServerBuilder) WithOpenAICompatibleLLMAndTaskHandler(config *LLMProv
 
 // Build creates and returns the configured A2A server
 func (b *A2AServerBuilder) Build() A2AServer {
-	server := NewDefaultA2AServer(b.cfg, b.logger)
+	server := NewDefaultA2AServer()
 
 	if b.taskHandler != nil {
 		server.SetTaskHandler(b.taskHandler)

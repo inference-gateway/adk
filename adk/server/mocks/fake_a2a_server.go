@@ -41,6 +41,16 @@ type FakeA2AServer struct {
 	getTaskHandlerReturnsOnCall map[int]struct {
 		result1 server.TaskHandler
 	}
+	InitializeTelemetryStub        func() error
+	initializeTelemetryMutex       sync.RWMutex
+	initializeTelemetryArgsForCall []struct {
+	}
+	initializeTelemetryReturns struct {
+		result1 error
+	}
+	initializeTelemetryReturnsOnCall map[int]struct {
+		result1 error
+	}
 	ProcessTaskStub        func(context.Context, *adk.Task, *adk.Message) (*adk.Task, error)
 	processTaskMutex       sync.RWMutex
 	processTaskArgsForCall []struct {
@@ -264,6 +274,59 @@ func (fake *FakeA2AServer) GetTaskHandlerReturnsOnCall(i int, result1 server.Tas
 	}
 	fake.getTaskHandlerReturnsOnCall[i] = struct {
 		result1 server.TaskHandler
+	}{result1}
+}
+
+func (fake *FakeA2AServer) InitializeTelemetry() error {
+	fake.initializeTelemetryMutex.Lock()
+	ret, specificReturn := fake.initializeTelemetryReturnsOnCall[len(fake.initializeTelemetryArgsForCall)]
+	fake.initializeTelemetryArgsForCall = append(fake.initializeTelemetryArgsForCall, struct {
+	}{})
+	stub := fake.InitializeTelemetryStub
+	fakeReturns := fake.initializeTelemetryReturns
+	fake.recordInvocation("InitializeTelemetry", []interface{}{})
+	fake.initializeTelemetryMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServer) InitializeTelemetryCallCount() int {
+	fake.initializeTelemetryMutex.RLock()
+	defer fake.initializeTelemetryMutex.RUnlock()
+	return len(fake.initializeTelemetryArgsForCall)
+}
+
+func (fake *FakeA2AServer) InitializeTelemetryCalls(stub func() error) {
+	fake.initializeTelemetryMutex.Lock()
+	defer fake.initializeTelemetryMutex.Unlock()
+	fake.InitializeTelemetryStub = stub
+}
+
+func (fake *FakeA2AServer) InitializeTelemetryReturns(result1 error) {
+	fake.initializeTelemetryMutex.Lock()
+	defer fake.initializeTelemetryMutex.Unlock()
+	fake.InitializeTelemetryStub = nil
+	fake.initializeTelemetryReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeA2AServer) InitializeTelemetryReturnsOnCall(i int, result1 error) {
+	fake.initializeTelemetryMutex.Lock()
+	defer fake.initializeTelemetryMutex.Unlock()
+	fake.InitializeTelemetryStub = nil
+	if fake.initializeTelemetryReturnsOnCall == nil {
+		fake.initializeTelemetryReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.initializeTelemetryReturnsOnCall[i] = struct {
+		result1 error
 	}{result1}
 }
 
@@ -621,6 +684,8 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.getLLMClientMutex.RUnlock()
 	fake.getTaskHandlerMutex.RLock()
 	defer fake.getTaskHandlerMutex.RUnlock()
+	fake.initializeTelemetryMutex.RLock()
+	defer fake.initializeTelemetryMutex.RUnlock()
 	fake.processTaskMutex.RLock()
 	defer fake.processTaskMutex.RUnlock()
 	fake.setLLMClientMutex.RLock()

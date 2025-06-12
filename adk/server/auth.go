@@ -39,6 +39,11 @@ func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg Config) (OIDCAuthent
 		return &OIDCAuthenticatorNoop{}, nil
 	}
 
+	if cfg.AuthConfig.IssuerURL == "" || cfg.AuthConfig.ClientID == "" || cfg.AuthConfig.ClientSecret == "" {
+		logger.Warn("AuthConfig is enabled but required fields are missing, disabling authentication")
+		return &OIDCAuthenticatorNoop{}, nil
+	}
+
 	provider, err := oidcV3.NewProvider(context.Background(), cfg.AuthConfig.IssuerURL)
 	if err != nil {
 		return nil, err
