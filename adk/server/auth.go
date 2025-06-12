@@ -35,6 +35,11 @@ type OIDCAuthenticatorNoop struct{}
 
 // NewOIDCAuthenticatorMiddleware creates a new OIDC authenticator middleware
 func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg Config) (OIDCAuthenticator, error) {
+	if cfg.AuthConfig == nil {
+		logger.Warn("AuthConfig is nil, disabling authentication")
+		return &OIDCAuthenticatorNoop{}, nil
+	}
+
 	if !cfg.AuthConfig.Enable {
 		return &OIDCAuthenticatorNoop{}, nil
 	}
