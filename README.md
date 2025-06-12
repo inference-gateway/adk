@@ -461,8 +461,7 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 ### Issues & Questions
 
 - **Bug Reports**: [GitHub Issues](https://github.com/inference-gateway/a2a/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/inference-gateway/a2a/discussions)
-- **Documentation**: [Official Docs](https://github.com/inference-gateway/docs)
+- **Documentation**: [Official Docs](https://docs.inference-gateway.com)
 
 ### Community
 
@@ -485,12 +484,6 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 - [A2A Protocol Specification](https://github.com/inference-gateway/schemas/tree/main/a2a)
 - [API Documentation](https://docs.inference-gateway.com/a2a)
 - [Examples Repository](https://github.com/inference-gateway/examples)
-
-### Tools
-
-- [A2A Schema Validator](https://validator.inference-gateway.com)
-- [Agent Testing Toolkit](https://github.com/inference-gateway/testing-toolkit)
-- [Performance Benchmarks](https://benchmarks.inference-gateway.com)
 
 ---
 
