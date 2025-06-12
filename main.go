@@ -3,6 +3,7 @@ package main
 import (
 	_ "github.com/inference-gateway/a2a/adk"
 	_ "github.com/inference-gateway/a2a/adk/server"
+	_ "github.com/inference-gateway/sdk"
 	_ "github.com/sethvargo/go-envconfig"
 )
 

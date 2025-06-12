@@ -6,6 +6,15 @@ import (
 	zap "go.uber.org/zap"
 )
 
+// ResponseSender defines how to send JSON-RPC responses
+type ResponseSender interface {
+	// SendSuccess sends a JSON-RPC success response
+	SendSuccess(c *gin.Context, id interface{}, result interface{})
+
+	// SendError sends a JSON-RPC error response
+	SendError(c *gin.Context, id interface{}, code int, message string)
+}
+
 // DefaultResponseSender implements the ResponseSender interface
 type DefaultResponseSender struct {
 	logger *zap.Logger

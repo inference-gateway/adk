@@ -21,6 +21,26 @@ type FakeA2AServer struct {
 	getAgentCardReturnsOnCall map[int]struct {
 		result1 adk.AgentCard
 	}
+	GetLLMClientStub        func() server.LLMClient
+	getLLMClientMutex       sync.RWMutex
+	getLLMClientArgsForCall []struct {
+	}
+	getLLMClientReturns struct {
+		result1 server.LLMClient
+	}
+	getLLMClientReturnsOnCall map[int]struct {
+		result1 server.LLMClient
+	}
+	GetTaskHandlerStub        func() server.TaskHandler
+	getTaskHandlerMutex       sync.RWMutex
+	getTaskHandlerArgsForCall []struct {
+	}
+	getTaskHandlerReturns struct {
+		result1 server.TaskHandler
+	}
+	getTaskHandlerReturnsOnCall map[int]struct {
+		result1 server.TaskHandler
+	}
 	ProcessTaskStub        func(context.Context, *adk.Task, *adk.Message) (*adk.Task, error)
 	processTaskMutex       sync.RWMutex
 	processTaskArgsForCall []struct {
@@ -35,6 +55,16 @@ type FakeA2AServer struct {
 	processTaskReturnsOnCall map[int]struct {
 		result1 *adk.Task
 		result2 error
+	}
+	SetLLMClientStub        func(server.LLMClient)
+	setLLMClientMutex       sync.RWMutex
+	setLLMClientArgsForCall []struct {
+		arg1 server.LLMClient
+	}
+	SetTaskHandlerStub        func(server.TaskHandler)
+	setTaskHandlerMutex       sync.RWMutex
+	setTaskHandlerArgsForCall []struct {
+		arg1 server.TaskHandler
 	}
 	SetupRouterStub        func(server.OIDCAuthenticator) *gin.Engine
 	setupRouterMutex       sync.RWMutex
@@ -131,6 +161,112 @@ func (fake *FakeA2AServer) GetAgentCardReturnsOnCall(i int, result1 adk.AgentCar
 	}{result1}
 }
 
+func (fake *FakeA2AServer) GetLLMClient() server.LLMClient {
+	fake.getLLMClientMutex.Lock()
+	ret, specificReturn := fake.getLLMClientReturnsOnCall[len(fake.getLLMClientArgsForCall)]
+	fake.getLLMClientArgsForCall = append(fake.getLLMClientArgsForCall, struct {
+	}{})
+	stub := fake.GetLLMClientStub
+	fakeReturns := fake.getLLMClientReturns
+	fake.recordInvocation("GetLLMClient", []interface{}{})
+	fake.getLLMClientMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServer) GetLLMClientCallCount() int {
+	fake.getLLMClientMutex.RLock()
+	defer fake.getLLMClientMutex.RUnlock()
+	return len(fake.getLLMClientArgsForCall)
+}
+
+func (fake *FakeA2AServer) GetLLMClientCalls(stub func() server.LLMClient) {
+	fake.getLLMClientMutex.Lock()
+	defer fake.getLLMClientMutex.Unlock()
+	fake.GetLLMClientStub = stub
+}
+
+func (fake *FakeA2AServer) GetLLMClientReturns(result1 server.LLMClient) {
+	fake.getLLMClientMutex.Lock()
+	defer fake.getLLMClientMutex.Unlock()
+	fake.GetLLMClientStub = nil
+	fake.getLLMClientReturns = struct {
+		result1 server.LLMClient
+	}{result1}
+}
+
+func (fake *FakeA2AServer) GetLLMClientReturnsOnCall(i int, result1 server.LLMClient) {
+	fake.getLLMClientMutex.Lock()
+	defer fake.getLLMClientMutex.Unlock()
+	fake.GetLLMClientStub = nil
+	if fake.getLLMClientReturnsOnCall == nil {
+		fake.getLLMClientReturnsOnCall = make(map[int]struct {
+			result1 server.LLMClient
+		})
+	}
+	fake.getLLMClientReturnsOnCall[i] = struct {
+		result1 server.LLMClient
+	}{result1}
+}
+
+func (fake *FakeA2AServer) GetTaskHandler() server.TaskHandler {
+	fake.getTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.getTaskHandlerReturnsOnCall[len(fake.getTaskHandlerArgsForCall)]
+	fake.getTaskHandlerArgsForCall = append(fake.getTaskHandlerArgsForCall, struct {
+	}{})
+	stub := fake.GetTaskHandlerStub
+	fakeReturns := fake.getTaskHandlerReturns
+	fake.recordInvocation("GetTaskHandler", []interface{}{})
+	fake.getTaskHandlerMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServer) GetTaskHandlerCallCount() int {
+	fake.getTaskHandlerMutex.RLock()
+	defer fake.getTaskHandlerMutex.RUnlock()
+	return len(fake.getTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServer) GetTaskHandlerCalls(stub func() server.TaskHandler) {
+	fake.getTaskHandlerMutex.Lock()
+	defer fake.getTaskHandlerMutex.Unlock()
+	fake.GetTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServer) GetTaskHandlerReturns(result1 server.TaskHandler) {
+	fake.getTaskHandlerMutex.Lock()
+	defer fake.getTaskHandlerMutex.Unlock()
+	fake.GetTaskHandlerStub = nil
+	fake.getTaskHandlerReturns = struct {
+		result1 server.TaskHandler
+	}{result1}
+}
+
+func (fake *FakeA2AServer) GetTaskHandlerReturnsOnCall(i int, result1 server.TaskHandler) {
+	fake.getTaskHandlerMutex.Lock()
+	defer fake.getTaskHandlerMutex.Unlock()
+	fake.GetTaskHandlerStub = nil
+	if fake.getTaskHandlerReturnsOnCall == nil {
+		fake.getTaskHandlerReturnsOnCall = make(map[int]struct {
+			result1 server.TaskHandler
+		})
+	}
+	fake.getTaskHandlerReturnsOnCall[i] = struct {
+		result1 server.TaskHandler
+	}{result1}
+}
+
 func (fake *FakeA2AServer) ProcessTask(arg1 context.Context, arg2 *adk.Task, arg3 *adk.Message) (*adk.Task, error) {
 	fake.processTaskMutex.Lock()
 	ret, specificReturn := fake.processTaskReturnsOnCall[len(fake.processTaskArgsForCall)]
@@ -195,6 +331,70 @@ func (fake *FakeA2AServer) ProcessTaskReturnsOnCall(i int, result1 *adk.Task, re
 		result1 *adk.Task
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeA2AServer) SetLLMClient(arg1 server.LLMClient) {
+	fake.setLLMClientMutex.Lock()
+	fake.setLLMClientArgsForCall = append(fake.setLLMClientArgsForCall, struct {
+		arg1 server.LLMClient
+	}{arg1})
+	stub := fake.SetLLMClientStub
+	fake.recordInvocation("SetLLMClient", []interface{}{arg1})
+	fake.setLLMClientMutex.Unlock()
+	if stub != nil {
+		fake.SetLLMClientStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetLLMClientCallCount() int {
+	fake.setLLMClientMutex.RLock()
+	defer fake.setLLMClientMutex.RUnlock()
+	return len(fake.setLLMClientArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetLLMClientCalls(stub func(server.LLMClient)) {
+	fake.setLLMClientMutex.Lock()
+	defer fake.setLLMClientMutex.Unlock()
+	fake.SetLLMClientStub = stub
+}
+
+func (fake *FakeA2AServer) SetLLMClientArgsForCall(i int) server.LLMClient {
+	fake.setLLMClientMutex.RLock()
+	defer fake.setLLMClientMutex.RUnlock()
+	argsForCall := fake.setLLMClientArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServer) SetTaskHandler(arg1 server.TaskHandler) {
+	fake.setTaskHandlerMutex.Lock()
+	fake.setTaskHandlerArgsForCall = append(fake.setTaskHandlerArgsForCall, struct {
+		arg1 server.TaskHandler
+	}{arg1})
+	stub := fake.SetTaskHandlerStub
+	fake.recordInvocation("SetTaskHandler", []interface{}{arg1})
+	fake.setTaskHandlerMutex.Unlock()
+	if stub != nil {
+		fake.SetTaskHandlerStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetTaskHandlerCallCount() int {
+	fake.setTaskHandlerMutex.RLock()
+	defer fake.setTaskHandlerMutex.RUnlock()
+	return len(fake.setTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetTaskHandlerCalls(stub func(server.TaskHandler)) {
+	fake.setTaskHandlerMutex.Lock()
+	defer fake.setTaskHandlerMutex.Unlock()
+	fake.SetTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServer) SetTaskHandlerArgsForCall(i int) server.TaskHandler {
+	fake.setTaskHandlerMutex.RLock()
+	defer fake.setTaskHandlerMutex.RUnlock()
+	argsForCall := fake.setTaskHandlerArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeA2AServer) SetupRouter(arg1 server.OIDCAuthenticator) *gin.Engine {
@@ -417,8 +617,16 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.getAgentCardMutex.RLock()
 	defer fake.getAgentCardMutex.RUnlock()
+	fake.getLLMClientMutex.RLock()
+	defer fake.getLLMClientMutex.RUnlock()
+	fake.getTaskHandlerMutex.RLock()
+	defer fake.getTaskHandlerMutex.RUnlock()
 	fake.processTaskMutex.RLock()
 	defer fake.processTaskMutex.RUnlock()
+	fake.setLLMClientMutex.RLock()
+	defer fake.setLLMClientMutex.RUnlock()
+	fake.setTaskHandlerMutex.RLock()
+	defer fake.setTaskHandlerMutex.RUnlock()
 	fake.setupRouterMutex.RLock()
 	defer fake.setupRouterMutex.RUnlock()
 	fake.startMutex.RLock()

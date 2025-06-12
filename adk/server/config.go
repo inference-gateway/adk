@@ -37,6 +37,7 @@ type LLMProviderClientConfig struct {
 	TopP                        float64           `env:"TOP_P,default=1.0" description:"Top-p for completion"`
 	FrequencyPenalty            float64           `env:"FREQUENCY_PENALTY,default=0.0" description:"Frequency penalty for completion"`
 	PresencePenalty             float64           `env:"PRESENCE_PENALTY,default=0.0" description:"Presence penalty for completion"`
+	SystemPrompt                string            `env:"SYSTEM_PROMPT,default=You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses." description:"System prompt for LLM interactions"`
 }
 
 // ClientTLSConfig holds TLS configuration for LLM client

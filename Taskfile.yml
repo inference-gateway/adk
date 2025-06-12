@@ -61,7 +61,6 @@ tasks:
       - task: generate:mock:task-handler
       - task: generate:mock:message-handler
       - task: generate:mock:task-manager
-      - task: generate:mock:a2a-request-handler
       - task: generate:mock:response-sender
       - task: generate:mock:http-server
       - task: generate:mock:oidc-authenticator
@@ -94,11 +93,6 @@ tasks:
     desc: 'Generate mock for TaskManager interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_task_manager.go adk/server TaskManager
-
-  generate:mock:a2a-request-handler:
-    desc: 'Generate mock for A2ARequestHandler interface'
-    cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_a2a_request_handler.go adk/server A2ARequestHandler
 
   generate:mock:response-sender:
     desc: 'Generate mock for ResponseSender interface'

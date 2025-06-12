@@ -13,6 +13,52 @@ import (
 	zap "go.uber.org/zap"
 )
 
+// A2AServer defines the interface for an A2A-compatible server
+// This interface allows for easy testing and different implementations
+type A2AServer interface {
+	// SetupRouter configures the HTTP router with A2A endpoints
+	SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin.Engine
+
+	// Start starts the A2A server on the configured port
+	Start(ctx context.Context) error
+
+	// Stop gracefully stops the A2A server
+	Stop(ctx context.Context) error
+
+	// GetAgentCard returns the agent's capabilities and metadata
+	GetAgentCard() adk.AgentCard
+
+	// ProcessTask processes a task with the given message
+	ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error)
+
+	// StartTaskProcessor starts the background task processor
+	StartTaskProcessor(ctx context.Context)
+
+	// SetLLMClient sets the LLM client for AI/ML processing
+	SetLLMClient(client LLMClient)
+
+	// GetLLMClient returns the configured LLM client
+	GetLLMClient() LLMClient
+
+	// SetTaskHandler sets the task handler for processing tasks
+	SetTaskHandler(handler TaskHandler)
+
+	// GetTaskHandler returns the configured task handler
+	GetTaskHandler() TaskHandler
+}
+
+// HTTPServer defines the interface for HTTP server operations
+type HTTPServer interface {
+	// ListenAndServe starts the HTTP server
+	ListenAndServe() error
+
+	// Shutdown gracefully shuts down the HTTP server
+	Shutdown(ctx context.Context) error
+
+	// Handler returns the HTTP handler
+	Handler() http.Handler
+}
+
 // TaskResultProcessor defines how to process tool call results for task completion
 type TaskResultProcessor interface {
 	// ProcessToolResult processes a tool call result and returns a completion message if the task should be completed
@@ -53,6 +99,7 @@ type DefaultA2AServer struct {
 	taskManager    TaskManager
 	messageHandler MessageHandler
 	responseSender ResponseSender
+	llmClient      LLMClient
 
 	// Server state
 	httpServer *http.Server
@@ -93,6 +140,21 @@ func (s *DefaultA2AServer) SetTaskResultProcessor(processor TaskResultProcessor)
 // SetAgentInfoProvider sets the agent info provider for custom agent metadata
 func (s *DefaultA2AServer) SetAgentInfoProvider(provider AgentInfoProvider) {
 	s.agentInfoProvider = provider
+}
+
+// SetLLMClient sets the LLM client for AI/ML processing
+func (s *DefaultA2AServer) SetLLMClient(client LLMClient) {
+	s.llmClient = client
+}
+
+// GetLLMClient returns the configured LLM client
+func (s *DefaultA2AServer) GetLLMClient() LLMClient {
+	return s.llmClient
+}
+
+// GetTaskHandler returns the configured task handler
+func (s *DefaultA2AServer) GetTaskHandler() TaskHandler {
+	return s.taskHandler
 }
 
 // SetupRouter configures the HTTP router with A2A endpoints
@@ -177,7 +239,6 @@ func (s *DefaultA2AServer) ProcessTask(ctx context.Context, task *adk.Task, mess
 func (s *DefaultA2AServer) StartTaskProcessor(ctx context.Context) {
 	s.logger.Info("starting task processor")
 
-	// Start cleanup routine
 	go s.startTaskCleanup(ctx)
 
 	for {
@@ -198,12 +259,11 @@ func (s *DefaultA2AServer) processQueuedTask(ctx context.Context, queuedTask *Qu
 		Kind:      "message",
 		MessageID: uuid.New().String(),
 		Role:      "user",
-		Parts:     []adk.Part{}, // This would be populated from the queued task
+		Parts:     []adk.Part{},
 	}
 
 	s.logger.Info("processing task", zap.String("task_id", task.ID))
 
-	// Update task to working state
 	err := s.taskManager.UpdateTask(task.ID, adk.TaskStateWorking, nil)
 	if err != nil {
 		s.logger.Error("failed to update task state", zap.Error(err))
@@ -269,7 +329,6 @@ func (s *DefaultA2AServer) handleA2ARequest(c *gin.Context) {
 		return
 	}
 
-	// Set defaults
 	if req.JSONRPC == "" {
 		req.JSONRPC = "2.0"
 	}
@@ -320,7 +379,6 @@ func (s *DefaultA2AServer) handleMessageSend(c *gin.Context, req adk.JSONRPCRequ
 		return
 	}
 
-	// Queue task for processing
 	queuedTask := &QueuedTask{
 		Task:      task,
 		RequestID: req.ID,

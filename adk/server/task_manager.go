@@ -9,6 +9,24 @@ import (
 	zap "go.uber.org/zap"
 )
 
+// TaskManager defines task lifecycle management
+type TaskManager interface {
+	// CreateTask creates a new task and stores it
+	CreateTask(contextID string, state adk.TaskState, message *adk.Message) *adk.Task
+
+	// UpdateTask updates an existing task
+	UpdateTask(taskID string, state adk.TaskState, message *adk.Message) error
+
+	// GetTask retrieves a task by ID
+	GetTask(taskID string) (*adk.Task, bool)
+
+	// CancelTask cancels a task
+	CancelTask(taskID string) error
+
+	// CleanupCompletedTasks removes old completed tasks from memory
+	CleanupCompletedTasks()
+}
+
 // DefaultTaskManager implements the TaskManager interface
 type DefaultTaskManager struct {
 	logger  *zap.Logger
