@@ -42,7 +42,7 @@ tasks:
   test:
     desc: 'Run tests'
     cmds:
-      - go test -v ./...
+      - go test -v -cover ./...
 
   clean:
     desc: 'Clean up'
