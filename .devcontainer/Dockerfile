@@ -33,7 +33,6 @@ RUN apt-get update && \
                    @semantic-release/changelog \
                    @semantic-release/git \
                    @semantic-release/github \
-                   @semantic-release/exec \
                    conventional-changelog-cli \
                    conventional-changelog-conventionalcommits && \
     # Install js-yaml for converting JSON RPC schema to YAML

@@ -58,7 +58,6 @@ jobs:
             conventional-changelog-cli \
             conventional-changelog-conventionalcommits \
             @semantic-release/changelog \
-            @semantic-release/exec \
             @semantic-release/git \
             @semantic-release/github
 
