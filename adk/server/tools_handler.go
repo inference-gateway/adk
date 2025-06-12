@@ -1,18 +1,30 @@
 package server
 
 import (
-	sdk "github.com/inference-gateway/sdk"
 	"go.uber.org/zap"
 )
 
-// ToolProvider defines the interface for providing tools to agents
+// A2ATool represents a tool definition for A2A protocol
+type A2ATool struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+}
+
+// A2AToolCall represents a tool call in A2A protocol
+type A2AToolCall struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
+// ToolsProvider defines the interface for providing tools to agents
 // This interface should be implemented by domain-specific tool providers
 type ToolsProvider interface {
 	// GetToolDefinitions returns the tool definitions for this provider
-	GetToolDefinitions() []sdk.ChatCompletionTool
+	GetToolDefinitions() []A2ATool
 
 	// HandleToolCall processes a tool call and returns the result
-	HandleToolCall(toolCall sdk.ChatCompletionMessageToolCall) (string, error)
+	HandleToolCall(toolCall A2AToolCall) (string, error)
 
 	// GetSupportedTools returns a list of supported tool names
 	GetSupportedTools() []string
@@ -36,8 +48,8 @@ func NewToolsHandler(logger *zap.Logger, toolsHandler ...ToolsProvider) *ToolsHa
 }
 
 // GetAllToolDefinitions returns all tool definitions from all providers
-func (t *ToolsHandler) GetAllToolDefinitions() []sdk.ChatCompletionTool {
-	var allTools []sdk.ChatCompletionTool
+func (t *ToolsHandler) GetAllToolDefinitions() []A2ATool {
+	var allTools []A2ATool
 	for _, tool := range t.tools {
 		tools := tool.GetToolDefinitions()
 		allTools = append(allTools, tools...)
@@ -46,8 +58,8 @@ func (t *ToolsHandler) GetAllToolDefinitions() []sdk.ChatCompletionTool {
 }
 
 // HandleToolCall processes a tool call by delegating to the appropriate provider
-func (t *ToolsHandler) HandleToolCall(toolCall sdk.ChatCompletionMessageToolCall) (string, error) {
-	toolName := toolCall.Function.Name
+func (t *ToolsHandler) HandleToolCall(toolCall A2AToolCall) (string, error) {
+	toolName := toolCall.Name
 
 	// Find the provider that supports this tool
 	for _, provider := range t.tools {
