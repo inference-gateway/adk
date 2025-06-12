@@ -161,6 +161,11 @@ func (s *DefaultA2AServer) GetTaskHandler() TaskHandler {
 func (s *DefaultA2AServer) SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin.Engine {
 	r := gin.Default()
 
+	gin.SetMode(gin.ReleaseMode)
+	if s.cfg.Debug {
+		gin.SetMode(gin.DebugMode)
+	}
+
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
@@ -178,7 +183,7 @@ func (s *DefaultA2AServer) SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin
 
 // Start starts the A2A server
 func (s *DefaultA2AServer) Start(ctx context.Context) error {
-	router := s.SetupRouter(nil) // TODO: Pass authenticator if needed
+	router := s.SetupRouter(nil)
 
 	s.httpServer = &http.Server{
 		Addr:         fmt.Sprintf(":%s", s.cfg.Port),
