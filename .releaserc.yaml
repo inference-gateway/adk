@@ -3,7 +3,7 @@ branches:
   - { name: main, prerelease: false, channel: latest }
   - { name: 'rc/*', prerelease: rc, channel: rc }
 
-repositoryUrl: 'https://github.com/inference-gateway/inference-gateway'
+repositoryUrl: 'https://github.com/inference-gateway/a2a'
 tagFormat: 'v${version}'
 
 verifyConditions:
