@@ -8,6 +8,7 @@ import (
 	"time"
 
 	adk "github.com/inference-gateway/a2a/adk"
+	config "github.com/inference-gateway/a2a/adk/server/config"
 	sdk "github.com/inference-gateway/sdk"
 	zap "go.uber.org/zap"
 )
@@ -27,48 +28,48 @@ type LLMClient interface {
 // OpenAICompatibleLLMClient implements LLMClient using an OpenAI-compatible API via the Inference Gateway SDK
 type OpenAICompatibleLLMClient struct {
 	client   sdk.Client
-	config   *LLMProviderClientConfig
+	config   *config.LLMProviderClientConfig
 	logger   *zap.Logger
 	provider sdk.Provider
 	model    string
 }
 
 // NewOpenAICompatibleLLMClient creates a new OpenAI-compatible LLM client
-func NewOpenAICompatibleLLMClient(config *LLMProviderClientConfig, logger *zap.Logger) (*OpenAICompatibleLLMClient, error) {
-	if config == nil {
+func NewOpenAICompatibleLLMClient(cfg *config.LLMProviderClientConfig, logger *zap.Logger) (*OpenAICompatibleLLMClient, error) {
+	if cfg == nil {
 		return nil, fmt.Errorf("llm provider client config is required")
 	}
 
 	clientOptions := &sdk.ClientOptions{}
 
-	if config.BaseURL != "" {
-		clientOptions.BaseURL = config.BaseURL
+	if cfg.BaseURL != "" {
+		clientOptions.BaseURL = cfg.BaseURL
 	}
 
-	if config.APIKey != "" {
-		clientOptions.APIKey = config.APIKey
+	if cfg.APIKey != "" {
+		clientOptions.APIKey = cfg.APIKey
 	}
 
-	if config.Timeout > 0 {
-		clientOptions.Timeout = config.Timeout
+	if cfg.Timeout > 0 {
+		clientOptions.Timeout = cfg.Timeout
 	}
 
-	if len(config.CustomHeaders) > 0 {
-		clientOptions.Headers = config.CustomHeaders
+	if len(cfg.CustomHeaders) > 0 {
+		clientOptions.Headers = cfg.CustomHeaders
 	}
 
 	client := sdk.NewClient(clientOptions)
 
-	provider, err := parseProvider(config.Provider)
+	provider, err := parseProvider(cfg.Provider)
 	if err != nil {
-		return nil, fmt.Errorf("invalid provider %s: %w", config.Provider, err)
+		return nil, fmt.Errorf("invalid provider %s: %w", cfg.Provider, err)
 	}
 
-	model := parseModelName(config.Model, config.Provider)
+	model := parseModelName(cfg.Model, cfg.Provider)
 
 	return &OpenAICompatibleLLMClient{
 		client:   client,
-		config:   config,
+		config:   cfg,
 		logger:   logger,
 		provider: provider,
 		model:    model,

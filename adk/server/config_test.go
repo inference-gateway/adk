@@ -5,22 +5,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inference-gateway/a2a/adk/server"
-	"github.com/sethvargo/go-envconfig"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	config "github.com/inference-gateway/a2a/adk/server/config"
+	envconfig "github.com/sethvargo/go-envconfig"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 )
 
 func TestConfig_LoadFromEnvironment(t *testing.T) {
 	tests := []struct {
 		name         string
 		envVars      map[string]string
-		validateFunc func(t *testing.T, cfg *server.Config)
+		validateFunc func(t *testing.T, cfg *config.Config)
 	}{
 		{
 			name:    "loads defaults when no env vars set",
 			envVars: map[string]string{},
-			validateFunc: func(t *testing.T, cfg *server.Config) {
+			validateFunc: func(t *testing.T, cfg *config.Config) {
 				assert.Equal(t, "helloworld-agent", cfg.AgentName)
 				assert.Equal(t, "A simple greeting agent that provides personalized greetings using the A2A protocol", cfg.AgentDescription)
 				assert.Equal(t, "http://helloworld-agent:8080", cfg.AgentURL)
@@ -97,7 +97,7 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				"SERVER_WRITE_TIMEOUT":                      "180s",
 				"SERVER_IDLE_TIMEOUT":                       "300s",
 			},
-			validateFunc: func(t *testing.T, cfg *server.Config) {
+			validateFunc: func(t *testing.T, cfg *config.Config) {
 				// Test main config overrides
 				assert.Equal(t, "custom-agent", cfg.AgentName)
 				assert.Equal(t, "A custom test agent", cfg.AgentDescription)
@@ -161,7 +161,7 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				"LLM_CLIENT_MODEL":    "claude-3",
 				"QUEUE_MAX_SIZE":      "200",
 			},
-			validateFunc: func(t *testing.T, cfg *server.Config) {
+			validateFunc: func(t *testing.T, cfg *config.Config) {
 				assert.Equal(t, "partial-agent", cfg.AgentName)
 				assert.True(t, cfg.Debug)
 
@@ -187,7 +187,7 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 			lookuper := envconfig.MapLookuper(tt.envVars)
 
 			ctx := context.Background()
-			var cfg server.Config
+			var cfg config.Config
 			err := envconfig.ProcessWith(ctx, &envconfig.Config{
 				Target:   &cfg,
 				Lookuper: lookuper,
@@ -244,7 +244,7 @@ func TestConfig_LoadFromEnvironmentWithInvalidValues(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lookuper := envconfig.MapLookuper(tt.envVars)
 			ctx := context.Background()
-			var cfg server.Config
+			var cfg config.Config
 
 			err := envconfig.ProcessWith(ctx, &envconfig.Config{
 				Target:   &cfg,

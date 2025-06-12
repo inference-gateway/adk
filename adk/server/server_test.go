@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/server"
+	"github.com/inference-gateway/a2a/adk/server/config"
 	"github.com/inference-gateway/a2a/adk/server/mocks"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
@@ -224,23 +225,23 @@ func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 }
 
 func TestA2AServer_TaskProcessing_Background(t *testing.T) {
-	cfg := server.Config{
-		QueueConfig: &server.QueueConfig{
+	cfg := config.Config{
+		QueueConfig: &config.QueueConfig{
 			MaxSize:         10,
 			CleanupInterval: 50 * time.Millisecond,
 		},
-		CapabilitiesConfig: &server.CapabilitiesConfig{
+		CapabilitiesConfig: &config.CapabilitiesConfig{
 			Streaming:              true,
 			PushNotifications:      false,
 			StateTransitionHistory: true,
 		},
-		AuthConfig: &server.AuthConfig{
+		AuthConfig: &config.AuthConfig{
 			Enable: false,
 		},
 	}
 	logger := zap.NewNop()
 
-	a2aServer := server.NewA2AServer(cfg, logger)
+	a2aServer := server.NewA2AServer(&cfg, logger, nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()

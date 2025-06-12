@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	adk "github.com/inference-gateway/a2a/adk"
-	"go.uber.org/zap"
+	config "github.com/inference-gateway/a2a/adk/server/config"
+	zap "go.uber.org/zap"
 )
 
 // LLMTaskHandler implements the TaskHandler interface using an LLM client
@@ -25,7 +26,7 @@ func NewLLMTaskHandler(logger *zap.Logger, llmClient LLMClient) *LLMTaskHandler 
 }
 
 // NewLLMTaskHandlerWithConfig creates a new LLM-powered task handler with configuration
-func NewLLMTaskHandlerWithConfig(logger *zap.Logger, llmClient LLMClient, config *LLMProviderClientConfig) *LLMTaskHandler {
+func NewLLMTaskHandlerWithConfig(logger *zap.Logger, llmClient LLMClient, config *config.LLMProviderClientConfig) *LLMTaskHandler {
 	systemPrompt := "You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses."
 	if config != nil && config.SystemPrompt != "" {
 		systemPrompt = config.SystemPrompt

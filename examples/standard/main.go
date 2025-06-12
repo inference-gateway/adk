@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/inference-gateway/a2a/adk/server"
+	"github.com/inference-gateway/a2a/adk/server/config"
 	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 )
@@ -18,7 +19,7 @@ func main() {
 	fmt.Println("🚀 Running Standard A2A Server Example")
 
 	// Load environment variables using envconfig
-	var envConfig server.Config
+	var envConfig config.Config
 	if err := envconfig.Process(context.Background(), &envConfig); err != nil {
 		log.Fatalf("failed to load environment variables: %v", err)
 	}
@@ -36,40 +37,40 @@ func main() {
 	}
 
 	// Configure the server with environment variables
-	cfg := server.Config{
+	cfg := config.Config{
 		AgentName:        envConfig.AgentName,
 		AgentDescription: envConfig.AgentDescription,
 		AgentURL:         envConfig.AgentURL,
 		AgentVersion:     envConfig.AgentVersion,
 		Port:             envConfig.Port,
 		Debug:            envConfig.Debug,
-		CapabilitiesConfig: &server.CapabilitiesConfig{
+		CapabilitiesConfig: &config.CapabilitiesConfig{
 			Streaming:              envConfig.CapabilitiesConfig.Streaming,
 			PushNotifications:      envConfig.CapabilitiesConfig.PushNotifications,
 			StateTransitionHistory: envConfig.CapabilitiesConfig.StateTransitionHistory,
 		},
-		TLSConfig: &server.TLSConfig{
+		TLSConfig: &config.TLSConfig{
 			Enable: envConfig.TLSConfig.Enable,
 		},
-		AuthConfig: &server.AuthConfig{
+		AuthConfig: &config.AuthConfig{
 			Enable: envConfig.AuthConfig.Enable,
 		},
-		QueueConfig: &server.QueueConfig{
+		QueueConfig: &config.QueueConfig{
 			MaxSize:         envConfig.QueueConfig.MaxSize,
 			CleanupInterval: envConfig.QueueConfig.CleanupInterval,
 		},
-		ServerConfig: &server.ServerConfig{
+		ServerConfig: &config.ServerConfig{
 			ReadTimeout:  envConfig.ServerConfig.ReadTimeout,
 			WriteTimeout: envConfig.ServerConfig.WriteTimeout,
 			IdleTimeout:  envConfig.ServerConfig.IdleTimeout,
 		},
-		TelemetryConfig: &server.TelemetryConfig{
+		TelemetryConfig: &config.TelemetryConfig{
 			Enable: envConfig.TelemetryConfig.Enable,
 		},
 	}
 
 	// Create the A2A server with default handlers
-	a2aServer := server.NewA2AServer(cfg, logger)
+	a2aServer := server.NewA2AServer(&cfg, logger, nil)
 
 	// Start the server
 	// Handle graceful shutdown

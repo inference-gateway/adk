@@ -11,12 +11,11 @@ import (
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
 	adk "github.com/inference-gateway/a2a/adk"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sethvargo/go-envconfig"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/sdk/trace"
-	"go.uber.org/zap"
+	config "github.com/inference-gateway/a2a/adk/server/config"
+	otel "github.com/inference-gateway/a2a/adk/server/otel"
+	promhttp "github.com/prometheus/client_golang/prometheus/promhttp"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
 )
 
 // A2AServer defines the interface for an A2A-compatible server
@@ -48,9 +47,6 @@ type A2AServer interface {
 
 	// GetTaskHandler returns the configured task handler
 	GetTaskHandler() TaskHandler
-
-	// InitializeTelemetry sets up OpenTelemetry with Prometheus exporter
-	InitializeTelemetry() error
 }
 
 // TaskResultProcessor defines how to process tool call results for task completion
@@ -63,7 +59,7 @@ type TaskResultProcessor interface {
 // AgentInfoProvider defines how to provide agent-specific information
 type AgentInfoProvider interface {
 	// GetAgentCard returns the agent's capabilities and metadata
-	GetAgentCard(baseConfig Config) adk.AgentCard
+	GetAgentCard(baseConfig *config.Config) adk.AgentCard
 }
 
 // JRPCErrorCode represents JSON-RPC error codes
@@ -85,7 +81,7 @@ type QueuedTask struct {
 }
 
 type A2AServerImpl struct {
-	cfg            Config
+	cfg            *config.Config
 	logger         *zap.Logger
 	taskHandler    TaskHandler
 	taskManager    TaskManager
@@ -105,7 +101,7 @@ type A2AServerImpl struct {
 var _ A2AServer = (*A2AServerImpl)(nil)
 
 // NewA2AServer creates a new A2A server with the provided configuration and logger
-func NewA2AServer(cfg Config, logger *zap.Logger) *A2AServerImpl {
+func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
 	server := &A2AServerImpl{
 		cfg:       cfg,
 		logger:    logger,
@@ -117,9 +113,13 @@ func NewA2AServer(cfg Config, logger *zap.Logger) *A2AServerImpl {
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
-	server.setupRouter(&cfg)
+	server.setupRouter(cfg)
 
 	if cfg.TelemetryConfig != nil && cfg.TelemetryConfig.Enable {
+		// TODO setup server in the otel package
+		if err := otel.Init(cfg, *logger); err != nil {
+			logger.Error("failed to initialize telemetry", zap.Error(err))
+		}
 		go func() {
 			metricsRouter := gin.Default()
 			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -141,7 +141,7 @@ func NewA2AServer(cfg Config, logger *zap.Logger) *A2AServerImpl {
 
 // NewDefaultA2AServer creates a new default A2A server implementation
 func NewDefaultA2AServer() *A2AServerImpl {
-	var cfg Config
+	var cfg config.Config
 	if err := envconfig.Process(context.Background(), &cfg); err != nil {
 		log.Fatalf("failed to load environment variables: %v", err)
 	}
@@ -157,7 +157,7 @@ func NewDefaultA2AServer() *A2AServerImpl {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}
 
-	server := NewA2AServer(cfg, logger)
+	server := NewA2AServer(&cfg, logger, nil)
 
 	return server
 }
@@ -192,28 +192,8 @@ func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
 	return s.taskHandler
 }
 
-// InitializeTelemetry sets up OpenTelemetry with Prometheus exporter
-func (s *A2AServerImpl) InitializeTelemetry() error {
-	if !s.cfg.TelemetryConfig.Enable {
-		return nil
-	}
-
-	_, err := prometheus.New()
-	if err != nil {
-		return fmt.Errorf("failed to create prometheus exporter: %w", err)
-	}
-
-	provider := trace.NewTracerProvider(
-		trace.WithSampler(trace.AlwaysSample()),
-	)
-	otel.SetTracerProvider(provider)
-
-	s.logger.Info("telemetry initialized")
-	return nil
-}
-
 // SetupRouter configures the HTTP router with A2A endpoints
-func (s *A2AServerImpl) setupRouter(cfg *Config) *gin.Engine {
+func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	if cfg.Debug {
 		gin.SetMode(gin.DebugMode)
@@ -232,7 +212,7 @@ func (s *A2AServerImpl) setupRouter(cfg *Config) *gin.Engine {
 		s.logger.Warn("authentication is disabled, oidcAuthenticator will be nil")
 		return r
 	}
-	oidcAuthenticator, err := NewOIDCAuthenticatorMiddleware(s.logger, s.cfg)
+	oidcAuthenticator, err := NewOIDCAuthenticatorMiddleware(s.logger, *s.cfg)
 	if err != nil {
 		s.logger.Error("failed to create OIDC authenticator", zap.Error(err))
 		return r
@@ -246,7 +226,7 @@ func (s *A2AServerImpl) setupRouter(cfg *Config) *gin.Engine {
 
 // Start starts the A2A server
 func (s *A2AServerImpl) Start(ctx context.Context) error {
-	router := s.setupRouter(&s.cfg)
+	router := s.setupRouter(s.cfg)
 
 	s.httpServer = &http.Server{
 		Addr:         fmt.Sprintf(":%s", s.cfg.Port),

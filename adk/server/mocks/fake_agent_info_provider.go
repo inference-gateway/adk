@@ -6,13 +6,14 @@ import (
 
 	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/server"
+	"github.com/inference-gateway/a2a/adk/server/config"
 )
 
 type FakeAgentInfoProvider struct {
-	GetAgentCardStub        func(server.Config) adk.AgentCard
+	GetAgentCardStub        func(*config.Config) adk.AgentCard
 	getAgentCardMutex       sync.RWMutex
 	getAgentCardArgsForCall []struct {
-		arg1 server.Config
+		arg1 *config.Config
 	}
 	getAgentCardReturns struct {
 		result1 adk.AgentCard
@@ -24,11 +25,11 @@ type FakeAgentInfoProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeAgentInfoProvider) GetAgentCard(arg1 server.Config) adk.AgentCard {
+func (fake *FakeAgentInfoProvider) GetAgentCard(arg1 *config.Config) adk.AgentCard {
 	fake.getAgentCardMutex.Lock()
 	ret, specificReturn := fake.getAgentCardReturnsOnCall[len(fake.getAgentCardArgsForCall)]
 	fake.getAgentCardArgsForCall = append(fake.getAgentCardArgsForCall, struct {
-		arg1 server.Config
+		arg1 *config.Config
 	}{arg1})
 	stub := fake.GetAgentCardStub
 	fakeReturns := fake.getAgentCardReturns
@@ -49,13 +50,13 @@ func (fake *FakeAgentInfoProvider) GetAgentCardCallCount() int {
 	return len(fake.getAgentCardArgsForCall)
 }
 
-func (fake *FakeAgentInfoProvider) GetAgentCardCalls(stub func(server.Config) adk.AgentCard) {
+func (fake *FakeAgentInfoProvider) GetAgentCardCalls(stub func(*config.Config) adk.AgentCard) {
 	fake.getAgentCardMutex.Lock()
 	defer fake.getAgentCardMutex.Unlock()
 	fake.GetAgentCardStub = stub
 }
 
-func (fake *FakeAgentInfoProvider) GetAgentCardArgsForCall(i int) server.Config {
+func (fake *FakeAgentInfoProvider) GetAgentCardArgsForCall(i int) *config.Config {
 	fake.getAgentCardMutex.RLock()
 	defer fake.getAgentCardMutex.RUnlock()
 	argsForCall := fake.getAgentCardArgsForCall[i]
