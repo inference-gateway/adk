@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2](https://github.com/inference-gateway/a2a/compare/v0.1.1...v0.1.2) (2025-06-12)
+
+### ♻️ Improvements
+
+* Replace a2a types with local types in agent.go and update go.mod/go.sum ([35274b6](https://github.com/inference-gateway/a2a/commit/35274b6bb31f1ae1b42fb122285a6d0ba45dcd09))
+
+### 🐛 Bug Fixes
+
+* Update documentation link for Core Inference Gateway ([0fd71ce](https://github.com/inference-gateway/a2a/commit/0fd71cef658ddafe45206072762f0b9d48e15ce5))
+
 ## [0.1.1](https://github.com/inference-gateway/a2a/compare/v0.1.0...v0.1.1) (2025-06-12)
 
 ### ♻️ Improvements
