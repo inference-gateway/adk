@@ -5,7 +5,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/gin-gonic/gin"
 	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/server"
 )
@@ -75,17 +74,6 @@ type FakeA2AServer struct {
 	setTaskHandlerMutex       sync.RWMutex
 	setTaskHandlerArgsForCall []struct {
 		arg1 server.TaskHandler
-	}
-	SetupRouterStub        func(server.OIDCAuthenticator) *gin.Engine
-	setupRouterMutex       sync.RWMutex
-	setupRouterArgsForCall []struct {
-		arg1 server.OIDCAuthenticator
-	}
-	setupRouterReturns struct {
-		result1 *gin.Engine
-	}
-	setupRouterReturnsOnCall map[int]struct {
-		result1 *gin.Engine
 	}
 	StartStub        func(context.Context) error
 	startMutex       sync.RWMutex
@@ -460,67 +448,6 @@ func (fake *FakeA2AServer) SetTaskHandlerArgsForCall(i int) server.TaskHandler {
 	return argsForCall.arg1
 }
 
-func (fake *FakeA2AServer) SetupRouter(arg1 server.OIDCAuthenticator) *gin.Engine {
-	fake.setupRouterMutex.Lock()
-	ret, specificReturn := fake.setupRouterReturnsOnCall[len(fake.setupRouterArgsForCall)]
-	fake.setupRouterArgsForCall = append(fake.setupRouterArgsForCall, struct {
-		arg1 server.OIDCAuthenticator
-	}{arg1})
-	stub := fake.SetupRouterStub
-	fakeReturns := fake.setupRouterReturns
-	fake.recordInvocation("SetupRouter", []interface{}{arg1})
-	fake.setupRouterMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *FakeA2AServer) SetupRouterCallCount() int {
-	fake.setupRouterMutex.RLock()
-	defer fake.setupRouterMutex.RUnlock()
-	return len(fake.setupRouterArgsForCall)
-}
-
-func (fake *FakeA2AServer) SetupRouterCalls(stub func(server.OIDCAuthenticator) *gin.Engine) {
-	fake.setupRouterMutex.Lock()
-	defer fake.setupRouterMutex.Unlock()
-	fake.SetupRouterStub = stub
-}
-
-func (fake *FakeA2AServer) SetupRouterArgsForCall(i int) server.OIDCAuthenticator {
-	fake.setupRouterMutex.RLock()
-	defer fake.setupRouterMutex.RUnlock()
-	argsForCall := fake.setupRouterArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *FakeA2AServer) SetupRouterReturns(result1 *gin.Engine) {
-	fake.setupRouterMutex.Lock()
-	defer fake.setupRouterMutex.Unlock()
-	fake.SetupRouterStub = nil
-	fake.setupRouterReturns = struct {
-		result1 *gin.Engine
-	}{result1}
-}
-
-func (fake *FakeA2AServer) SetupRouterReturnsOnCall(i int, result1 *gin.Engine) {
-	fake.setupRouterMutex.Lock()
-	defer fake.setupRouterMutex.Unlock()
-	fake.SetupRouterStub = nil
-	if fake.setupRouterReturnsOnCall == nil {
-		fake.setupRouterReturnsOnCall = make(map[int]struct {
-			result1 *gin.Engine
-		})
-	}
-	fake.setupRouterReturnsOnCall[i] = struct {
-		result1 *gin.Engine
-	}{result1}
-}
-
 func (fake *FakeA2AServer) Start(arg1 context.Context) error {
 	fake.startMutex.Lock()
 	ret, specificReturn := fake.startReturnsOnCall[len(fake.startArgsForCall)]
@@ -692,8 +619,6 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.setLLMClientMutex.RUnlock()
 	fake.setTaskHandlerMutex.RLock()
 	defer fake.setTaskHandlerMutex.RUnlock()
-	fake.setupRouterMutex.RLock()
-	defer fake.setupRouterMutex.RUnlock()
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	fake.startTaskProcessorMutex.RLock()

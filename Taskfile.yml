@@ -62,7 +62,6 @@ tasks:
       - task: generate:mock:message-handler
       - task: generate:mock:task-manager
       - task: generate:mock:response-sender
-      - task: generate:mock:http-server
       - task: generate:mock:oidc-authenticator
       - task: generate:mock:tools-provider
       - task: generate:mock:task-result-processor
@@ -98,11 +97,6 @@ tasks:
     desc: 'Generate mock for ResponseSender interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_response_sender.go adk/server ResponseSender
-
-  generate:mock:http-server:
-    desc: 'Generate mock for HTTPServer interface'
-    cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_http_server.go adk/server HTTPServer
 
   generate:mock:oidc-authenticator:
     desc: 'Generate mock for OIDCAuthenticator interface'
