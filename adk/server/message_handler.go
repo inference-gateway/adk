@@ -19,13 +19,15 @@ type MessageHandler interface {
 
 // DefaultMessageHandler implements the MessageHandler interface
 type DefaultMessageHandler struct {
-	logger *zap.Logger
+	logger      *zap.Logger
+	taskManager TaskManager
 }
 
 // NewDefaultMessageHandler creates a new default message handler
-func NewDefaultMessageHandler(logger *zap.Logger) *DefaultMessageHandler {
+func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager) *DefaultMessageHandler {
 	return &DefaultMessageHandler{
-		logger: logger,
+		logger:      logger,
+		taskManager: taskManager,
 	}
 }
 
@@ -41,13 +43,7 @@ func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params a
 		contextID = &newContextID
 	}
 
-	task := &adk.Task{
-		ID: uuid.New().String(),
-		Status: adk.TaskStatus{
-			State: adk.TaskStateSubmitted,
-		},
-		ContextID: *contextID,
-	}
+	task := mh.taskManager.CreateTask(*contextID, adk.TaskStateSubmitted, &params.Message)
 
 	mh.logger.Info("message send handled", zap.String("task_id", task.ID))
 	return task, nil

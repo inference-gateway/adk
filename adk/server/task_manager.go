@@ -130,7 +130,7 @@ func (tm *DefaultTaskManager) CleanupCompletedTasks() {
 	}
 
 	if len(toRemove) > 0 {
-		tm.logger.Debug("cleaned up completed tasks", zap.Int("count", len(toRemove)))
+		tm.logger.Info("cleaned up completed tasks", zap.Int("count", len(toRemove)))
 	}
 }
 

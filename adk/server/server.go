@@ -120,7 +120,7 @@ func NewDefaultA2AServer(cfg Config, logger *zap.Logger) *DefaultA2AServer {
 
 	// Initialize components with dependency injection
 	server.taskManager = NewDefaultTaskManager(logger)
-	server.messageHandler = NewDefaultMessageHandler(logger)
+	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 

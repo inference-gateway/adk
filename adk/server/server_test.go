@@ -194,8 +194,9 @@ func TestDefaultA2AServer_ResponseSender_SendError(t *testing.T) {
 
 func TestDefaultA2AServer_MessageHandler_Integration(t *testing.T) {
 	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger)
 
-	messageHandler := server.NewDefaultMessageHandler(logger)
+	messageHandler := server.NewDefaultMessageHandler(logger, taskManager)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{
