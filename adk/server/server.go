@@ -274,7 +274,11 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 	}
 	s.logger.Info("stopping A2A server")
 	err := s.httpServer.Shutdown(ctx)
-	s.logger.Sync()
+	defer func() {
+		if err := s.logger.Sync(); err != nil {
+			s.logger.Error("failed to sync logger on shutdown", zap.Error(err))
+		}
+	}()
 	return err
 }
 
