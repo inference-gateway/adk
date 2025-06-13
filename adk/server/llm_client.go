@@ -40,15 +40,25 @@ func NewOpenAICompatibleLLMClient(cfg *config.LLMProviderClientConfig, logger *z
 		return nil, fmt.Errorf("llm provider client config is required")
 	}
 
+	if cfg.Provider == "" {
+		return nil, fmt.Errorf("provider is required")
+	}
+
+	if cfg.Model == "" {
+		return nil, fmt.Errorf("model is required")
+	}
+
+	if cfg.APIKey == "" {
+		return nil, fmt.Errorf("api key is required")
+	}
+
 	clientOptions := &sdk.ClientOptions{}
 
 	if cfg.BaseURL != "" {
 		clientOptions.BaseURL = cfg.BaseURL
 	}
 
-	if cfg.APIKey != "" {
-		clientOptions.APIKey = cfg.APIKey
-	}
+	clientOptions.APIKey = cfg.APIKey
 
 	if cfg.Timeout > 0 {
 		clientOptions.Timeout = cfg.Timeout

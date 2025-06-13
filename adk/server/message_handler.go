@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	uuid "github.com/google/uuid"
 	adk "github.com/inference-gateway/a2a/adk"
@@ -46,34 +47,16 @@ func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params a
 
 	task := mh.taskManager.CreateTask(*contextID, adk.TaskStateSubmitted, &params.Message)
 
-	mh.logger.Info("message send handled", zap.String("task_id", task.ID))
+	if task != nil {
+		mh.logger.Info("message send handled", zap.String("task_id", task.ID))
+	} else {
+		mh.logger.Error("failed to create task - task manager returned nil")
+		return nil, fmt.Errorf("failed to create task")
+	}
 	return task, nil
 }
 
 // HandleMessageStream processes message/stream requests (for streaming responses)
 func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params adk.MessageSendParams) error {
-	if len(params.Message.Parts) == 0 {
-		return NewEmptyMessagePartsError()
-	}
-
-	contextID := params.Message.ContextID
-	if contextID == nil {
-		newContextID := uuid.New().String()
-		contextID = &newContextID
-	}
-
-	task := mh.taskManager.CreateTask(*contextID, adk.TaskStateSubmitted, &params.Message)
-
-	mh.logger.Info("streaming message handled", zap.String("task_id", task.ID))
-
-	// Simulate streaming via SSE
-	for _, part := range params.Message.Parts {
-		if textPart, ok := part.(adk.TextPart); ok {
-			mh.logger.Info("streaming part", zap.String("content", textPart.Text))
-		} else {
-			mh.logger.Warn("unsupported part type")
-		}
-	}
-
-	return nil
+	return NewStreamingNotImplementedError()
 }

@@ -51,7 +51,7 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state adk.TaskState, 
 	tm.tasksMu.Lock()
 	defer tm.tasksMu.Unlock()
 
-	timestamp := time.Now().UTC().Format(time.RFC3339)
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 	task := &adk.Task{
 		ID: uuid.New().String(),
 		Status: adk.TaskStatus{
@@ -78,7 +78,7 @@ func (tm *DefaultTaskManager) UpdateTask(taskID string, state adk.TaskState, mes
 		return NewTaskNotFoundError(taskID)
 	}
 
-	timestamp := time.Now().UTC().Format(time.RFC3339)
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 	task.Status.State = state
 	task.Status.Message = message
 	task.Status.Timestamp = &timestamp

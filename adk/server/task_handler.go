@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	adk "github.com/inference-gateway/a2a/adk"
 	zap "go.uber.org/zap"
@@ -79,7 +80,10 @@ func (th *DefaultTaskHandler) HandleTask(ctx context.Context, task *adk.Task, me
 	if task.History == nil {
 		task.History = []adk.Message{}
 	}
-	task.History = append(task.History, *message)
+
+	if message != nil {
+		task.History = append(task.History, *message)
+	}
 
 	task.History = append(task.History, *responseMessage)
 
@@ -116,7 +120,10 @@ func (th *DefaultTaskHandler) handleTaskWithLLM(ctx context.Context, task *adk.T
 	if task.History == nil {
 		task.History = []adk.Message{}
 	}
-	task.History = append(task.History, *message)
+
+	if message != nil {
+		task.History = append(task.History, *message)
+	}
 	task.History = append(task.History, *response)
 
 	th.logger.Info("task processed with llm", zap.String("task_id", task.ID))
@@ -131,7 +138,9 @@ func (th *DefaultTaskHandler) prepareMessages(task *adk.Task, message *adk.Messa
 		messages = append(messages, task.History...)
 	}
 
-	messages = append(messages, *message)
+	if message != nil {
+		messages = append(messages, *message)
+	}
 
 	return messages
 }
@@ -157,5 +166,5 @@ func (th *DefaultTaskHandler) handleError(task *adk.Task, errorMsg string) (*adk
 	}
 	task.History = append(task.History, *errorMessage)
 
-	return task, nil
+	return task, fmt.Errorf("%s", errorMsg)
 }

@@ -61,7 +61,6 @@ func (t *ToolsHandler) GetAllToolDefinitions() []A2ATool {
 func (t *ToolsHandler) HandleToolCall(toolCall A2AToolCall) (string, error) {
 	toolName := toolCall.Name
 
-	// Find the provider that supports this tool
 	for _, provider := range t.tools {
 		if provider.IsToolSupported(toolName) {
 			t.logger.Debug("delegating tool call to provider",
@@ -70,7 +69,6 @@ func (t *ToolsHandler) HandleToolCall(toolCall A2AToolCall) (string, error) {
 		}
 	}
 
-	// No provider found for this tool
 	t.logger.Warn("no provider found for tool", zap.String("tool", toolName))
 	return "", NewUnsupportedToolError(toolName)
 }

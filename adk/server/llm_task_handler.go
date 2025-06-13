@@ -41,9 +41,16 @@ func NewLLMTaskHandlerWithConfig(logger *zap.Logger, llmClient LLMClient, config
 
 // HandleTask processes a task using the LLM client
 func (th *LLMTaskHandler) HandleTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error) {
+	var messageKind string
+	if message != nil {
+		messageKind = message.Kind
+	} else {
+		messageKind = "nil"
+	}
+
 	th.logger.Info("processing task with llm handler",
 		zap.String("task_id", task.ID),
-		zap.String("message_kind", message.Kind))
+		zap.String("message_kind", messageKind))
 
 	if th.llmClient == nil {
 		th.logger.Error("llm client not configured")
