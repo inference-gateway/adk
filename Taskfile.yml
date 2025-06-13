@@ -57,6 +57,7 @@ tasks:
   generate:mocks:
     desc: 'Generate all mocks using counterfeiter'
     cmds:
+      - task: generate:mock:a2a-client
       - task: generate:mock:a2a-server
       - task: generate:mock:task-handler
       - task: generate:mock:message-handler
@@ -75,6 +76,11 @@ tasks:
     cmds:
       - task: clean:mocks
       - task: generate:mocks
+
+  generate:mock:a2a-client:
+    desc: 'Generate mock for A2AClient interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/client/mocks/fake_a2a_client.go adk/client A2AClient
 
   generate:mock:a2a-server:
     desc: 'Generate mock for A2AServer interface'
