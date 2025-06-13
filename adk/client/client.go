@@ -15,7 +15,10 @@ import (
 
 // A2AClient defines the interface for an A2A protocol client
 type A2AClient interface {
-	// Task operations (primary interface - follows official A2A pattern)
+	// Agent discovery
+	GetAgentCard(ctx context.Context) (*adk.AgentCard, error)
+
+	// Task operations
 	SendTask(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
 	SendTaskStreaming(ctx context.Context, params adk.MessageSendParams, eventChan chan<- interface{}) error
 	GetTask(ctx context.Context, params adk.TaskQueryParams) (*adk.JSONRPCSuccessResponse, error)
@@ -286,6 +289,52 @@ func (c *Client) CancelTask(ctx context.Context, params adk.TaskIdParams) (*adk.
 	return &resp, nil
 }
 
+// GetAgentCard retrieves the agent card information via HTTP GET to .well-known/agent.json
+func (c *Client) GetAgentCard(ctx context.Context) (*adk.AgentCard, error) {
+	c.logger.Debug("retrieving agent card", zap.String("endpoint", "/.well-known/agent.json"))
+
+	agentCardURL := c.config.BaseURL + "/.well-known/agent.json"
+
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", agentCardURL, nil)
+	if err != nil {
+		c.logger.Error("failed to create agent card request", zap.Error(err))
+		return nil, fmt.Errorf("failed to create agent card request: %w", err)
+	}
+
+	httpReq.Header.Set("Accept", "application/json")
+	httpReq.Header.Set("User-Agent", c.config.UserAgent)
+
+	httpResp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		c.logger.Error("agent card request failed", zap.Error(err))
+		return nil, fmt.Errorf("agent card request failed: %w", err)
+	}
+	defer func() {
+		if closeErr := httpResp.Body.Close(); closeErr != nil {
+			c.logger.Warn("failed to close agent card response body", zap.Error(closeErr))
+		}
+	}()
+
+	if httpResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(httpResp.Body)
+		c.logger.Error("unexpected status code for agent card",
+			zap.Int("status_code", httpResp.StatusCode),
+			zap.String("response_body", string(bodyBytes)))
+		return nil, fmt.Errorf("unexpected status code for agent card: %d, body: %s", httpResp.StatusCode, string(bodyBytes))
+	}
+
+	var agentCard adk.AgentCard
+	if err := json.NewDecoder(httpResp.Body).Decode(&agentCard); err != nil {
+		c.logger.Error("failed to decode agent card response", zap.Error(err))
+		return nil, fmt.Errorf("failed to decode agent card response: %w", err)
+	}
+
+	c.logger.Debug("agent card retrieved successfully",
+		zap.String("name", agentCard.Name),
+		zap.String("version", agentCard.Version))
+	return &agentCard, nil
+}
+
 // doRequestWithContext performs the HTTP request with context support and handles the response
 func (c *Client) doRequestWithContext(ctx context.Context, req adk.JSONRPCRequest, resp *adk.JSONRPCSuccessResponse) error {
 	c.logger.Debug("preparing request", zap.String("method", req.Method), zap.String("base_url", c.config.BaseURL))
@@ -330,12 +379,15 @@ func (c *Client) doRequestWithContext(ctx context.Context, req adk.JSONRPCReques
 			zap.Error(err))
 
 		if attempt < c.config.MaxRetries {
-			c.logger.Debug("waiting before retry", zap.Duration("delay", c.config.RetryDelay))
+			delay := c.config.RetryDelay * time.Duration(attempt+1)
+			c.logger.Debug("waiting before retry",
+				zap.Duration("delay", delay),
+				zap.Int("attempt", attempt+1))
 			select {
 			case <-ctx.Done():
 				c.logger.Debug("request context cancelled during retry delay")
 				return ctx.Err()
-			case <-time.After(c.config.RetryDelay):
+			case <-time.After(delay):
 				// Continue to next attempt
 			}
 		}

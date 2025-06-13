@@ -27,6 +27,19 @@ type FakeA2AClient struct {
 		result1 *adk.JSONRPCSuccessResponse
 		result2 error
 	}
+	GetAgentCardStub        func(context.Context) (*adk.AgentCard, error)
+	getAgentCardMutex       sync.RWMutex
+	getAgentCardArgsForCall []struct {
+		arg1 context.Context
+	}
+	getAgentCardReturns struct {
+		result1 *adk.AgentCard
+		result2 error
+	}
+	getAgentCardReturnsOnCall map[int]struct {
+		result1 *adk.AgentCard
+		result2 error
+	}
 	GetBaseURLStub        func() string
 	getBaseURLMutex       sync.RWMutex
 	getBaseURLArgsForCall []struct {
@@ -168,6 +181,70 @@ func (fake *FakeA2AClient) CancelTaskReturnsOnCall(i int, result1 *adk.JSONRPCSu
 	}
 	fake.cancelTaskReturnsOnCall[i] = struct {
 		result1 *adk.JSONRPCSuccessResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeA2AClient) GetAgentCard(arg1 context.Context) (*adk.AgentCard, error) {
+	fake.getAgentCardMutex.Lock()
+	ret, specificReturn := fake.getAgentCardReturnsOnCall[len(fake.getAgentCardArgsForCall)]
+	fake.getAgentCardArgsForCall = append(fake.getAgentCardArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.GetAgentCardStub
+	fakeReturns := fake.getAgentCardReturns
+	fake.recordInvocation("GetAgentCard", []interface{}{arg1})
+	fake.getAgentCardMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeA2AClient) GetAgentCardCallCount() int {
+	fake.getAgentCardMutex.RLock()
+	defer fake.getAgentCardMutex.RUnlock()
+	return len(fake.getAgentCardArgsForCall)
+}
+
+func (fake *FakeA2AClient) GetAgentCardCalls(stub func(context.Context) (*adk.AgentCard, error)) {
+	fake.getAgentCardMutex.Lock()
+	defer fake.getAgentCardMutex.Unlock()
+	fake.GetAgentCardStub = stub
+}
+
+func (fake *FakeA2AClient) GetAgentCardArgsForCall(i int) context.Context {
+	fake.getAgentCardMutex.RLock()
+	defer fake.getAgentCardMutex.RUnlock()
+	argsForCall := fake.getAgentCardArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AClient) GetAgentCardReturns(result1 *adk.AgentCard, result2 error) {
+	fake.getAgentCardMutex.Lock()
+	defer fake.getAgentCardMutex.Unlock()
+	fake.GetAgentCardStub = nil
+	fake.getAgentCardReturns = struct {
+		result1 *adk.AgentCard
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeA2AClient) GetAgentCardReturnsOnCall(i int, result1 *adk.AgentCard, result2 error) {
+	fake.getAgentCardMutex.Lock()
+	defer fake.getAgentCardMutex.Unlock()
+	fake.GetAgentCardStub = nil
+	if fake.getAgentCardReturnsOnCall == nil {
+		fake.getAgentCardReturnsOnCall = make(map[int]struct {
+			result1 *adk.AgentCard
+			result2 error
+		})
+	}
+	fake.getAgentCardReturnsOnCall[i] = struct {
+		result1 *adk.AgentCard
 		result2 error
 	}{result1, result2}
 }
@@ -572,6 +649,8 @@ func (fake *FakeA2AClient) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.cancelTaskMutex.RLock()
 	defer fake.cancelTaskMutex.RUnlock()
+	fake.getAgentCardMutex.RLock()
+	defer fake.getAgentCardMutex.RUnlock()
 	fake.getBaseURLMutex.RLock()
 	defer fake.getBaseURLMutex.RUnlock()
 	fake.getLoggerMutex.RLock()

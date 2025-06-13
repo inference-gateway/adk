@@ -1434,3 +1434,284 @@ func TestClient_ConcurrentRequests(t *testing.T) {
 
 	assert.Equal(t, numGoroutines, requestCount, "Expected %d requests, got %d", numGoroutines, requestCount)
 }
+
+func TestClient_GetAgentCard(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupServer   func() *httptest.Server
+		expectedError string
+		expectedCard  *adk.AgentCard
+	}{
+		{
+			name: "successful agent card retrieval",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+					assert.Equal(t, "application/json", r.Header.Get("Accept"))
+					assert.Equal(t, "A2A-Go-Client/1.0", r.Header.Get("User-Agent"))
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+
+					agentCard := adk.AgentCard{
+						Name:        "test-agent",
+						Description: "A test agent for demonstration",
+						Version:     "1.0.0",
+						URL:         "https://example.com",
+						Capabilities: adk.AgentCapabilities{
+							Streaming:              &[]bool{true}[0],
+							PushNotifications:      &[]bool{false}[0],
+							StateTransitionHistory: &[]bool{true}[0],
+						},
+						DefaultInputModes:  []string{"text/plain"},
+						DefaultOutputModes: []string{"text/plain"},
+						Skills: []adk.AgentSkill{
+							{
+								Name:        "text_processing",
+								Description: "Process and analyze text",
+							},
+						},
+					}
+
+					json.NewEncoder(w).Encode(agentCard)
+				}))
+			},
+			expectedCard: &adk.AgentCard{
+				Name:        "test-agent",
+				Description: "A test agent for demonstration",
+				Version:     "1.0.0",
+				URL:         "https://example.com",
+				Capabilities: adk.AgentCapabilities{
+					Streaming:              &[]bool{true}[0],
+					PushNotifications:      &[]bool{false}[0],
+					StateTransitionHistory: &[]bool{true}[0],
+				},
+				DefaultInputModes:  []string{"text/plain"},
+				DefaultOutputModes: []string{"text/plain"},
+				Skills: []adk.AgentSkill{
+					{
+						Name:        "text_processing",
+						Description: "Process and analyze text",
+					},
+				},
+			},
+		},
+		{
+			name: "server returns 404 not found",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+
+					w.WriteHeader(http.StatusNotFound)
+					w.Write([]byte("Agent card not found"))
+				}))
+			},
+			expectedError: "unexpected status code for agent card: 404, body: Agent card not found",
+		},
+		{
+			name: "server returns 500 internal server error",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte("Internal server error"))
+				}))
+			},
+			expectedError: "unexpected status code for agent card: 500, body: Internal server error",
+		},
+		{
+			name: "server returns invalid JSON",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					w.Write([]byte("invalid json response"))
+				}))
+			},
+			expectedError: "failed to decode agent card response:",
+		},
+		{
+			name: "minimal agent card response",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+
+					minimalCard := adk.AgentCard{
+						Name:    "minimal-agent",
+						Version: "0.1.0",
+					}
+
+					json.NewEncoder(w).Encode(minimalCard)
+				}))
+			},
+			expectedCard: &adk.AgentCard{
+				Name:    "minimal-agent",
+				Version: "0.1.0",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := tt.setupServer()
+			defer server.Close()
+
+			c := client.NewClient(server.URL)
+			ctx := context.Background()
+
+			card, err := c.GetAgentCard(ctx)
+
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, card)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, card)
+				assert.Equal(t, tt.expectedCard, card)
+			}
+		})
+	}
+}
+
+func TestClient_GetAgentCard_NetworkErrors(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupClient   func() client.A2AClient
+		expectedError string
+	}{
+		{
+			name: "connection refused",
+			setupClient: func() client.A2AClient {
+				return client.NewClient("http://localhost:99999")
+			},
+			expectedError: "agent card request failed:",
+		},
+		{
+			name: "invalid URL in base config",
+			setupClient: func() client.A2AClient {
+				config := client.DefaultConfig("://invalid-url")
+				return client.NewClientWithConfig(config)
+			},
+			expectedError: "failed to create agent card request:",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := tt.setupClient()
+			ctx := context.Background()
+
+			card, err := c.GetAgentCard(ctx)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedError)
+			assert.Nil(t, card)
+		})
+	}
+}
+
+func TestClient_GetAgentCard_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		agentCard := adk.AgentCard{
+			Name:    "slow-agent",
+			Version: "1.0.0",
+		}
+		json.NewEncoder(w).Encode(agentCard)
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	card, err := c.GetAgentCard(ctx)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "context deadline exceeded")
+	assert.Nil(t, card)
+}
+
+func TestClient_GetAgentCard_WithCustomHeaders(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+		assert.Equal(t, "A2A-Go-Client/1.0", r.Header.Get("User-Agent"))
+
+		assert.Empty(t, r.Header.Get("Authorization"))
+		assert.Empty(t, r.Header.Get("X-Custom-Header"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		agentCard := adk.AgentCard{
+			Name:    "test-agent",
+			Version: "1.0.0",
+		}
+		json.NewEncoder(w).Encode(agentCard)
+	}))
+	defer server.Close()
+
+	config := client.DefaultConfig(server.URL)
+	config.Headers = map[string]string{
+		"Authorization":   "Bearer test-token",
+		"X-Custom-Header": "custom-value",
+	}
+	c := client.NewClientWithConfig(config)
+
+	ctx := context.Background()
+	card, err := c.GetAgentCard(ctx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, card)
+	assert.Equal(t, "test-agent", card.Name)
+	assert.Equal(t, "1.0.0", card.Version)
+}
+
+func TestClient_GetAgentCard_WithCustomUserAgent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+		assert.Equal(t, "CustomAgent/2.0", r.Header.Get("User-Agent"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		agentCard := adk.AgentCard{
+			Name:    "test-agent",
+			Version: "1.0.0",
+		}
+		json.NewEncoder(w).Encode(agentCard)
+	}))
+	defer server.Close()
+
+	config := client.DefaultConfig(server.URL)
+	config.UserAgent = "CustomAgent/2.0"
+	c := client.NewClientWithConfig(config)
+
+	ctx := context.Background()
+	card, err := c.GetAgentCard(ctx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, card)
+	assert.Equal(t, "test-agent", card.Name)
+	assert.Equal(t, "1.0.0", card.Version)
+}
