@@ -21,19 +21,19 @@ type Config struct {
 }
 
 func main() {
+	// Load configuration from environment variables
+	ctx := context.Background()
+	var config Config
+	if err := envconfig.Process(ctx, &config); err != nil {
+		log.Fatal("failed to process configuration", zap.Error(err))
+	}
+
 	// Initialize logger
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}
 	defer logger.Sync()
-
-	// Load configuration from environment variables
-	ctx := context.Background()
-	var config Config
-	if err := envconfig.Process(ctx, &config); err != nil {
-		logger.Fatal("failed to process configuration", zap.Error(err))
-	}
 
 	logger.Info("starting simple a2a async polling example",
 		zap.String("server_url", config.ServerURL),
