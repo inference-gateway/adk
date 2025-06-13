@@ -61,31 +61,31 @@ type FakeA2AClient struct {
 		result1 *adk.JSONRPCSuccessResponse
 		result2 error
 	}
-	SendMessageStub        func(context.Context, adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
-	sendMessageMutex       sync.RWMutex
-	sendMessageArgsForCall []struct {
+	SendTaskStub        func(context.Context, adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
+	sendTaskMutex       sync.RWMutex
+	sendTaskArgsForCall []struct {
 		arg1 context.Context
 		arg2 adk.MessageSendParams
 	}
-	sendMessageReturns struct {
+	sendTaskReturns struct {
 		result1 *adk.JSONRPCSuccessResponse
 		result2 error
 	}
-	sendMessageReturnsOnCall map[int]struct {
+	sendTaskReturnsOnCall map[int]struct {
 		result1 *adk.JSONRPCSuccessResponse
 		result2 error
 	}
-	SendMessageStreamingStub        func(context.Context, adk.MessageSendParams, chan<- interface{}) error
-	sendMessageStreamingMutex       sync.RWMutex
-	sendMessageStreamingArgsForCall []struct {
+	SendTaskStreamingStub        func(context.Context, adk.MessageSendParams, chan<- interface{}) error
+	sendTaskStreamingMutex       sync.RWMutex
+	sendTaskStreamingArgsForCall []struct {
 		arg1 context.Context
 		arg2 adk.MessageSendParams
 		arg3 chan<- interface{}
 	}
-	sendMessageStreamingReturns struct {
+	sendTaskStreamingReturns struct {
 		result1 error
 	}
-	sendMessageStreamingReturnsOnCall map[int]struct {
+	sendTaskStreamingReturnsOnCall map[int]struct {
 		result1 error
 	}
 	SetHTTPClientStub        func(*http.Client)
@@ -343,17 +343,17 @@ func (fake *FakeA2AClient) GetTaskReturnsOnCall(i int, result1 *adk.JSONRPCSucce
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) SendMessage(arg1 context.Context, arg2 adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error) {
-	fake.sendMessageMutex.Lock()
-	ret, specificReturn := fake.sendMessageReturnsOnCall[len(fake.sendMessageArgsForCall)]
-	fake.sendMessageArgsForCall = append(fake.sendMessageArgsForCall, struct {
+func (fake *FakeA2AClient) SendTask(arg1 context.Context, arg2 adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error) {
+	fake.sendTaskMutex.Lock()
+	ret, specificReturn := fake.sendTaskReturnsOnCall[len(fake.sendTaskArgsForCall)]
+	fake.sendTaskArgsForCall = append(fake.sendTaskArgsForCall, struct {
 		arg1 context.Context
 		arg2 adk.MessageSendParams
 	}{arg1, arg2})
-	stub := fake.SendMessageStub
-	fakeReturns := fake.sendMessageReturns
-	fake.recordInvocation("SendMessage", []interface{}{arg1, arg2})
-	fake.sendMessageMutex.Unlock()
+	stub := fake.SendTaskStub
+	fakeReturns := fake.sendTaskReturns
+	fake.recordInvocation("SendTask", []interface{}{arg1, arg2})
+	fake.sendTaskMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2)
 	}
@@ -363,63 +363,63 @@ func (fake *FakeA2AClient) SendMessage(arg1 context.Context, arg2 adk.MessageSen
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *FakeA2AClient) SendMessageCallCount() int {
-	fake.sendMessageMutex.RLock()
-	defer fake.sendMessageMutex.RUnlock()
-	return len(fake.sendMessageArgsForCall)
+func (fake *FakeA2AClient) SendTaskCallCount() int {
+	fake.sendTaskMutex.RLock()
+	defer fake.sendTaskMutex.RUnlock()
+	return len(fake.sendTaskArgsForCall)
 }
 
-func (fake *FakeA2AClient) SendMessageCalls(stub func(context.Context, adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)) {
-	fake.sendMessageMutex.Lock()
-	defer fake.sendMessageMutex.Unlock()
-	fake.SendMessageStub = stub
+func (fake *FakeA2AClient) SendTaskCalls(stub func(context.Context, adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)) {
+	fake.sendTaskMutex.Lock()
+	defer fake.sendTaskMutex.Unlock()
+	fake.SendTaskStub = stub
 }
 
-func (fake *FakeA2AClient) SendMessageArgsForCall(i int) (context.Context, adk.MessageSendParams) {
-	fake.sendMessageMutex.RLock()
-	defer fake.sendMessageMutex.RUnlock()
-	argsForCall := fake.sendMessageArgsForCall[i]
+func (fake *FakeA2AClient) SendTaskArgsForCall(i int) (context.Context, adk.MessageSendParams) {
+	fake.sendTaskMutex.RLock()
+	defer fake.sendTaskMutex.RUnlock()
+	argsForCall := fake.sendTaskArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeA2AClient) SendMessageReturns(result1 *adk.JSONRPCSuccessResponse, result2 error) {
-	fake.sendMessageMutex.Lock()
-	defer fake.sendMessageMutex.Unlock()
-	fake.SendMessageStub = nil
-	fake.sendMessageReturns = struct {
+func (fake *FakeA2AClient) SendTaskReturns(result1 *adk.JSONRPCSuccessResponse, result2 error) {
+	fake.sendTaskMutex.Lock()
+	defer fake.sendTaskMutex.Unlock()
+	fake.SendTaskStub = nil
+	fake.sendTaskReturns = struct {
 		result1 *adk.JSONRPCSuccessResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) SendMessageReturnsOnCall(i int, result1 *adk.JSONRPCSuccessResponse, result2 error) {
-	fake.sendMessageMutex.Lock()
-	defer fake.sendMessageMutex.Unlock()
-	fake.SendMessageStub = nil
-	if fake.sendMessageReturnsOnCall == nil {
-		fake.sendMessageReturnsOnCall = make(map[int]struct {
+func (fake *FakeA2AClient) SendTaskReturnsOnCall(i int, result1 *adk.JSONRPCSuccessResponse, result2 error) {
+	fake.sendTaskMutex.Lock()
+	defer fake.sendTaskMutex.Unlock()
+	fake.SendTaskStub = nil
+	if fake.sendTaskReturnsOnCall == nil {
+		fake.sendTaskReturnsOnCall = make(map[int]struct {
 			result1 *adk.JSONRPCSuccessResponse
 			result2 error
 		})
 	}
-	fake.sendMessageReturnsOnCall[i] = struct {
+	fake.sendTaskReturnsOnCall[i] = struct {
 		result1 *adk.JSONRPCSuccessResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) SendMessageStreaming(arg1 context.Context, arg2 adk.MessageSendParams, arg3 chan<- interface{}) error {
-	fake.sendMessageStreamingMutex.Lock()
-	ret, specificReturn := fake.sendMessageStreamingReturnsOnCall[len(fake.sendMessageStreamingArgsForCall)]
-	fake.sendMessageStreamingArgsForCall = append(fake.sendMessageStreamingArgsForCall, struct {
+func (fake *FakeA2AClient) SendTaskStreaming(arg1 context.Context, arg2 adk.MessageSendParams, arg3 chan<- interface{}) error {
+	fake.sendTaskStreamingMutex.Lock()
+	ret, specificReturn := fake.sendTaskStreamingReturnsOnCall[len(fake.sendTaskStreamingArgsForCall)]
+	fake.sendTaskStreamingArgsForCall = append(fake.sendTaskStreamingArgsForCall, struct {
 		arg1 context.Context
 		arg2 adk.MessageSendParams
 		arg3 chan<- interface{}
 	}{arg1, arg2, arg3})
-	stub := fake.SendMessageStreamingStub
-	fakeReturns := fake.sendMessageStreamingReturns
-	fake.recordInvocation("SendMessageStreaming", []interface{}{arg1, arg2, arg3})
-	fake.sendMessageStreamingMutex.Unlock()
+	stub := fake.SendTaskStreamingStub
+	fakeReturns := fake.sendTaskStreamingReturns
+	fake.recordInvocation("SendTaskStreaming", []interface{}{arg1, arg2, arg3})
+	fake.sendTaskStreamingMutex.Unlock()
 	if stub != nil {
 		return stub(arg1, arg2, arg3)
 	}
@@ -429,44 +429,44 @@ func (fake *FakeA2AClient) SendMessageStreaming(arg1 context.Context, arg2 adk.M
 	return fakeReturns.result1
 }
 
-func (fake *FakeA2AClient) SendMessageStreamingCallCount() int {
-	fake.sendMessageStreamingMutex.RLock()
-	defer fake.sendMessageStreamingMutex.RUnlock()
-	return len(fake.sendMessageStreamingArgsForCall)
+func (fake *FakeA2AClient) SendTaskStreamingCallCount() int {
+	fake.sendTaskStreamingMutex.RLock()
+	defer fake.sendTaskStreamingMutex.RUnlock()
+	return len(fake.sendTaskStreamingArgsForCall)
 }
 
-func (fake *FakeA2AClient) SendMessageStreamingCalls(stub func(context.Context, adk.MessageSendParams, chan<- interface{}) error) {
-	fake.sendMessageStreamingMutex.Lock()
-	defer fake.sendMessageStreamingMutex.Unlock()
-	fake.SendMessageStreamingStub = stub
+func (fake *FakeA2AClient) SendTaskStreamingCalls(stub func(context.Context, adk.MessageSendParams, chan<- interface{}) error) {
+	fake.sendTaskStreamingMutex.Lock()
+	defer fake.sendTaskStreamingMutex.Unlock()
+	fake.SendTaskStreamingStub = stub
 }
 
-func (fake *FakeA2AClient) SendMessageStreamingArgsForCall(i int) (context.Context, adk.MessageSendParams, chan<- interface{}) {
-	fake.sendMessageStreamingMutex.RLock()
-	defer fake.sendMessageStreamingMutex.RUnlock()
-	argsForCall := fake.sendMessageStreamingArgsForCall[i]
+func (fake *FakeA2AClient) SendTaskStreamingArgsForCall(i int) (context.Context, adk.MessageSendParams, chan<- interface{}) {
+	fake.sendTaskStreamingMutex.RLock()
+	defer fake.sendTaskStreamingMutex.RUnlock()
+	argsForCall := fake.sendTaskStreamingArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeA2AClient) SendMessageStreamingReturns(result1 error) {
-	fake.sendMessageStreamingMutex.Lock()
-	defer fake.sendMessageStreamingMutex.Unlock()
-	fake.SendMessageStreamingStub = nil
-	fake.sendMessageStreamingReturns = struct {
+func (fake *FakeA2AClient) SendTaskStreamingReturns(result1 error) {
+	fake.sendTaskStreamingMutex.Lock()
+	defer fake.sendTaskStreamingMutex.Unlock()
+	fake.SendTaskStreamingStub = nil
+	fake.sendTaskStreamingReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *FakeA2AClient) SendMessageStreamingReturnsOnCall(i int, result1 error) {
-	fake.sendMessageStreamingMutex.Lock()
-	defer fake.sendMessageStreamingMutex.Unlock()
-	fake.SendMessageStreamingStub = nil
-	if fake.sendMessageStreamingReturnsOnCall == nil {
-		fake.sendMessageStreamingReturnsOnCall = make(map[int]struct {
+func (fake *FakeA2AClient) SendTaskStreamingReturnsOnCall(i int, result1 error) {
+	fake.sendTaskStreamingMutex.Lock()
+	defer fake.sendTaskStreamingMutex.Unlock()
+	fake.SendTaskStreamingStub = nil
+	if fake.sendTaskStreamingReturnsOnCall == nil {
+		fake.sendTaskStreamingReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.sendMessageStreamingReturnsOnCall[i] = struct {
+	fake.sendTaskStreamingReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -578,10 +578,10 @@ func (fake *FakeA2AClient) Invocations() map[string][][]interface{} {
 	defer fake.getLoggerMutex.RUnlock()
 	fake.getTaskMutex.RLock()
 	defer fake.getTaskMutex.RUnlock()
-	fake.sendMessageMutex.RLock()
-	defer fake.sendMessageMutex.RUnlock()
-	fake.sendMessageStreamingMutex.RLock()
-	defer fake.sendMessageStreamingMutex.RUnlock()
+	fake.sendTaskMutex.RLock()
+	defer fake.sendTaskMutex.RUnlock()
+	fake.sendTaskStreamingMutex.RLock()
+	defer fake.sendTaskStreamingMutex.RUnlock()
 	fake.setHTTPClientMutex.RLock()
 	defer fake.setHTTPClientMutex.RUnlock()
 	fake.setLoggerMutex.RLock()

@@ -254,7 +254,7 @@ func TestClient_LoggerConfiguration(t *testing.T) {
 	}
 }
 
-func TestClient_SendMessage(t *testing.T) {
+func TestClient_SendTask(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupServer    func() *httptest.Server
@@ -406,7 +406,7 @@ func TestClient_SendMessage(t *testing.T) {
 			c := client.NewClient(server.URL)
 			ctx := context.Background()
 
-			resp, err := c.SendMessage(ctx, tt.params)
+			resp, err := c.SendTask(ctx, tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -704,7 +704,7 @@ func TestClient_CancelTask(t *testing.T) {
 	}
 }
 
-func TestClient_SendMessageStreaming(t *testing.T) {
+func TestClient_SendTaskStreaming(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupServer    func() *httptest.Server
@@ -864,7 +864,7 @@ func TestClient_SendMessageStreaming(t *testing.T) {
 
 			eventChan := make(chan interface{}, 10)
 
-			err := c.SendMessageStreaming(ctx, tt.params, eventChan)
+			err := c.SendTaskStreaming(ctx, tt.params, eventChan)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1019,7 +1019,7 @@ func TestClient_RetryMechanism(t *testing.T) {
 				},
 			}
 
-			_, err := c.SendMessage(ctx, params)
+			_, err := c.SendTask(ctx, params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1138,7 +1138,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 				},
 			}
 
-			_, err := c.SendMessage(ctx, params)
+			_, err := c.SendTask(ctx, params)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -1300,7 +1300,7 @@ func TestClient_HeadersAndAuthentication(t *testing.T) {
 				},
 			}
 
-			_, err := c.SendMessage(ctx, params)
+			_, err := c.SendTask(ctx, params)
 			require.NoError(t, err)
 
 			for expectedName, expectedValue := range tt.expectedHeaders {
@@ -1375,7 +1375,7 @@ func TestClient_LargeResponses(t *testing.T) {
 		},
 	}
 
-	resp, err := c.SendMessage(ctx, params)
+	resp, err := c.SendTask(ctx, params)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, "2.0", resp.JSONRPC)
@@ -1422,7 +1422,7 @@ func TestClient_ConcurrentRequests(t *testing.T) {
 				},
 			}
 
-			_, err := c.SendMessage(ctx, params)
+			_, err := c.SendTask(ctx, params)
 			results <- err
 		}(i)
 	}

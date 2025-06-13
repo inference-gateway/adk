@@ -15,11 +15,9 @@ import (
 
 // A2AClient defines the interface for an A2A protocol client
 type A2AClient interface {
-	// Message operations
-	SendMessage(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
-	SendMessageStreaming(ctx context.Context, params adk.MessageSendParams, eventChan chan<- interface{}) error
-
-	// Task operations
+	// Task operations (primary interface - follows official A2A pattern)
+	SendTask(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
+	SendTaskStreaming(ctx context.Context, params adk.MessageSendParams, eventChan chan<- interface{}) error
 	GetTask(ctx context.Context, params adk.TaskQueryParams) (*adk.JSONRPCSuccessResponse, error)
 	CancelTask(ctx context.Context, params adk.TaskIdParams) (*adk.JSONRPCSuccessResponse, error)
 
@@ -94,9 +92,9 @@ func NewClientWithConfig(config *Config) A2AClient {
 	}
 }
 
-// SendMessageWithContext sends a message to the agent with context support
-func (c *Client) SendMessage(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error) {
-	c.logger.Debug("sending message",
+// SendTask sends a task to the agent (primary interface following official A2A pattern)
+func (c *Client) SendTask(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("sending task",
 		zap.String("method", "message/send"),
 		zap.String("message_id", params.Message.MessageID),
 		zap.String("role", params.Message.Role))
@@ -122,83 +120,17 @@ func (c *Client) SendMessage(ctx context.Context, params adk.MessageSendParams) 
 
 	var resp adk.JSONRPCSuccessResponse
 	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to send message", zap.Error(err), zap.String("message_id", params.Message.MessageID))
+		c.logger.Error("failed to send task", zap.Error(err), zap.String("message_id", params.Message.MessageID))
 		return nil, err
 	}
 
-	c.logger.Debug("message sent successfully", zap.String("message_id", params.Message.MessageID))
+	c.logger.Debug("task sent successfully", zap.String("message_id", params.Message.MessageID))
 	return &resp, nil
 }
 
-// GetTaskWithContext retrieves the status of a task with context support
-func (c *Client) GetTask(ctx context.Context, params adk.TaskQueryParams) (*adk.JSONRPCSuccessResponse, error) {
-	c.logger.Debug("retrieving task", zap.String("method", "tasks/get"), zap.String("task_id", params.ID))
-
-	req := adk.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  "tasks/get",
-		Params:  make(map[string]interface{}),
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		c.logger.Error("failed to marshal params", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
-	}
-
-	var paramsMap map[string]interface{}
-	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
-	}
-	req.Params = paramsMap
-
-	var resp adk.JSONRPCSuccessResponse
-	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to retrieve task", zap.Error(err), zap.String("task_id", params.ID))
-		return nil, err
-	}
-
-	c.logger.Debug("task retrieved successfully", zap.String("task_id", params.ID))
-	return &resp, nil
-}
-
-// CancelTaskWithContext cancels a task with context support
-func (c *Client) CancelTask(ctx context.Context, params adk.TaskIdParams) (*adk.JSONRPCSuccessResponse, error) {
-	c.logger.Debug("cancelling task", zap.String("method", "tasks/cancel"), zap.String("task_id", params.ID))
-
-	req := adk.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  "tasks/cancel",
-		Params:  make(map[string]interface{}),
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		c.logger.Error("failed to marshal params", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
-	}
-
-	var paramsMap map[string]interface{}
-	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
-	}
-	req.Params = paramsMap
-
-	var resp adk.JSONRPCSuccessResponse
-	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to cancel task", zap.Error(err), zap.String("task_id", params.ID))
-		return nil, err
-	}
-
-	c.logger.Debug("task cancelled successfully", zap.String("task_id", params.ID))
-	return &resp, nil
-}
-
-// SendMessageStreamingWithContext sends a message and streams the response with context support
-func (c *Client) SendMessageStreaming(ctx context.Context, params adk.MessageSendParams, eventChan chan<- interface{}) error {
-	c.logger.Debug("starting message streaming",
+// SendTaskStreaming sends a task and streams the response (primary interface following official A2A pattern)
+func (c *Client) SendTaskStreaming(ctx context.Context, params adk.MessageSendParams, eventChan chan<- interface{}) error {
+	c.logger.Debug("starting task streaming",
 		zap.String("method", "message/stream"),
 		zap.String("message_id", params.Message.MessageID),
 		zap.String("role", params.Message.Role))
@@ -286,6 +218,72 @@ func (c *Client) SendMessageStreaming(ctx context.Context, params adk.MessageSen
 			}
 		}
 	}
+}
+
+// GetTaskWithContext retrieves the status of a task with context support
+func (c *Client) GetTask(ctx context.Context, params adk.TaskQueryParams) (*adk.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("retrieving task", zap.String("method", "tasks/get"), zap.String("task_id", params.ID))
+
+	req := adk.JSONRPCRequest{
+		JSONRPC: "2.0",
+		Method:  "tasks/get",
+		Params:  make(map[string]interface{}),
+	}
+
+	paramsBytes, err := json.Marshal(params)
+	if err != nil {
+		c.logger.Error("failed to marshal params", zap.Error(err))
+		return nil, fmt.Errorf("failed to marshal params: %w", err)
+	}
+
+	var paramsMap map[string]interface{}
+	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
+		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
+		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
+	}
+	req.Params = paramsMap
+
+	var resp adk.JSONRPCSuccessResponse
+	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
+		c.logger.Error("failed to retrieve task", zap.Error(err), zap.String("task_id", params.ID))
+		return nil, err
+	}
+
+	c.logger.Debug("task retrieved successfully", zap.String("task_id", params.ID))
+	return &resp, nil
+}
+
+// CancelTaskWithContext cancels a task with context support
+func (c *Client) CancelTask(ctx context.Context, params adk.TaskIdParams) (*adk.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("cancelling task", zap.String("method", "tasks/cancel"), zap.String("task_id", params.ID))
+
+	req := adk.JSONRPCRequest{
+		JSONRPC: "2.0",
+		Method:  "tasks/cancel",
+		Params:  make(map[string]interface{}),
+	}
+
+	paramsBytes, err := json.Marshal(params)
+	if err != nil {
+		c.logger.Error("failed to marshal params", zap.Error(err))
+		return nil, fmt.Errorf("failed to marshal params: %w", err)
+	}
+
+	var paramsMap map[string]interface{}
+	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
+		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
+		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
+	}
+	req.Params = paramsMap
+
+	var resp adk.JSONRPCSuccessResponse
+	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
+		c.logger.Error("failed to cancel task", zap.Error(err), zap.String("task_id", params.ID))
+		return nil, err
+	}
+
+	c.logger.Debug("task cancelled successfully", zap.String("task_id", params.ID))
+	return &resp, nil
 }
 
 // doRequestWithContext performs the HTTP request with context support and handles the response
