@@ -37,7 +37,7 @@ func main() {
 		zap.String("server_url", serverURL))
 
 	// Create A2A client
-	a2aClient := client.NewClient(serverURL)
+	a2aClient := client.NewClientWithLogger(serverURL, logger)
 	ctx := context.Background()
 
 	// Submit task using A2A ADK
