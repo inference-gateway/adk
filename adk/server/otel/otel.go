@@ -18,8 +18,6 @@ import (
 
 // OpenTelemetry defines the operations for telemetry
 type OpenTelemetry interface {
-	Init(config *config.Config, logger zap.Logger) error
-
 	// Application level metrics
 	RecordTokenUsage(ctx context.Context, attrs TelemetryAttributes, usage sdk.CompletionUsage)
 	RecordRequestCount(ctx context.Context, attrs TelemetryAttributes, requestType string)
@@ -35,7 +33,7 @@ type OpenTelemetry interface {
 }
 
 type OpenTelemetryImpl struct {
-	logger        zap.Logger
+	logger        *zap.Logger
 	meterProvider *sdkmetric.MeterProvider
 	meter         metric.Meter
 
@@ -59,15 +57,30 @@ type TelemetryAttributes struct {
 	TaskID   string
 }
 
-// NewOpenTelemetry creates a new OpenTelemetry implementation
-func NewOpenTelemetry() OpenTelemetry {
-	return &OpenTelemetryImpl{}
+// NewOpenTelemetry creates a new OpenTelemetry implementation with proper dependency injection
+func NewOpenTelemetry(cfg *config.Config, logger *zap.Logger) (OpenTelemetry, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("config cannot be nil")
+	}
+	if logger == nil {
+		return nil, fmt.Errorf("logger cannot be nil")
+	}
+
+	o := &OpenTelemetryImpl{
+		logger: logger,
+	}
+
+	if err := o.initialize(cfg); err != nil {
+		return nil, fmt.Errorf("failed to initialize opentelemetry: %w", err)
+	}
+
+	return o, nil
 }
 
-func (o *OpenTelemetryImpl) Init(cfg *config.Config, logger zap.Logger) error {
-	o.logger = logger
-
-	o.logger.Info("initializing opentelemetry", zap.String("agent_name", cfg.AgentName), zap.String("version", cfg.AgentVersion))
+func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
+	o.logger.Info("initializing opentelemetry",
+		zap.String("agent_name", cfg.AgentName),
+		zap.String("version", cfg.AgentVersion))
 
 	exporter, err := prometheus.New()
 	if err != nil {
@@ -83,7 +96,9 @@ func (o *OpenTelemetryImpl) Init(cfg *config.Config, logger zap.Logger) error {
 		semconv.ServiceVersion(cfg.AgentVersion),
 	)
 
-	o.logger.Debug("opentelemetry resource created", zap.String("agent_name", cfg.AgentName), zap.String("version", cfg.AgentVersion))
+	o.logger.Debug("opentelemetry resource created",
+		zap.String("agent_name", cfg.AgentName),
+		zap.String("version", cfg.AgentVersion))
 
 	histogramBoundaries := []float64{1, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
 

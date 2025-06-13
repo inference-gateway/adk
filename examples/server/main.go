@@ -74,7 +74,11 @@ func main() {
 	// Initialize OpenTelemetry for metrics collection
 	var telemetryInstance otel.OpenTelemetry
 	if cfg.TelemetryConfig.Enable {
-		telemetryInstance = otel.NewOpenTelemetry()
+		var err error
+		telemetryInstance, err = otel.NewOpenTelemetry(&cfg, logger)
+		if err != nil {
+			logger.Fatal("failed to initialize telemetry", zap.Error(err))
+		}
 		logger.Info("telemetry enabled - metrics will be available on :9090/metrics")
 	}
 

@@ -5,25 +5,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/inference-gateway/a2a/adk/server/config"
 	"github.com/inference-gateway/a2a/adk/server/otel"
 	"github.com/inference-gateway/sdk"
-	"go.uber.org/zap"
 )
 
 type FakeOpenTelemetry struct {
-	InitStub        func(*config.Config, zap.Logger) error
-	initMutex       sync.RWMutex
-	initArgsForCall []struct {
-		arg1 *config.Config
-		arg2 zap.Logger
-	}
-	initReturns struct {
-		result1 error
-	}
-	initReturnsOnCall map[int]struct {
-		result1 error
-	}
 	RecordRequestCountStub        func(context.Context, otel.TelemetryAttributes, string)
 	recordRequestCountMutex       sync.RWMutex
 	recordRequestCountArgsForCall []struct {
@@ -98,68 +84,6 @@ type FakeOpenTelemetry struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *FakeOpenTelemetry) Init(arg1 *config.Config, arg2 zap.Logger) error {
-	fake.initMutex.Lock()
-	ret, specificReturn := fake.initReturnsOnCall[len(fake.initArgsForCall)]
-	fake.initArgsForCall = append(fake.initArgsForCall, struct {
-		arg1 *config.Config
-		arg2 zap.Logger
-	}{arg1, arg2})
-	stub := fake.InitStub
-	fakeReturns := fake.initReturns
-	fake.recordInvocation("Init", []interface{}{arg1, arg2})
-	fake.initMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *FakeOpenTelemetry) InitCallCount() int {
-	fake.initMutex.RLock()
-	defer fake.initMutex.RUnlock()
-	return len(fake.initArgsForCall)
-}
-
-func (fake *FakeOpenTelemetry) InitCalls(stub func(*config.Config, zap.Logger) error) {
-	fake.initMutex.Lock()
-	defer fake.initMutex.Unlock()
-	fake.InitStub = stub
-}
-
-func (fake *FakeOpenTelemetry) InitArgsForCall(i int) (*config.Config, zap.Logger) {
-	fake.initMutex.RLock()
-	defer fake.initMutex.RUnlock()
-	argsForCall := fake.initArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *FakeOpenTelemetry) InitReturns(result1 error) {
-	fake.initMutex.Lock()
-	defer fake.initMutex.Unlock()
-	fake.InitStub = nil
-	fake.initReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *FakeOpenTelemetry) InitReturnsOnCall(i int, result1 error) {
-	fake.initMutex.Lock()
-	defer fake.initMutex.Unlock()
-	fake.InitStub = nil
-	if fake.initReturnsOnCall == nil {
-		fake.initReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.initReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
 }
 
 func (fake *FakeOpenTelemetry) RecordRequestCount(arg1 context.Context, arg2 otel.TelemetryAttributes, arg3 string) {
@@ -503,8 +427,6 @@ func (fake *FakeOpenTelemetry) ShutDownReturnsOnCall(i int, result1 error) {
 func (fake *FakeOpenTelemetry) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.initMutex.RLock()
-	defer fake.initMutex.RUnlock()
 	fake.recordRequestCountMutex.RLock()
 	defer fake.recordRequestCountMutex.RUnlock()
 	fake.recordRequestDurationMutex.RLock()

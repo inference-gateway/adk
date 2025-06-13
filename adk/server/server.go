@@ -117,13 +117,6 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
-	// Initialize OpenTelemetry if telemetry is enabled
-	if cfg.TelemetryConfig != nil && cfg.TelemetryConfig.Enable && otel != nil {
-		if err := otel.Init(cfg, *logger); err != nil {
-			logger.Error("failed to initialize telemetry", zap.Error(err))
-		}
-	}
-
 	return server
 }
 
