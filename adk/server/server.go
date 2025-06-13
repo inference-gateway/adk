@@ -138,7 +138,17 @@ func NewDefaultA2AServer() *A2AServerImpl {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}
 
-	server := NewA2AServer(&cfg, logger, nil)
+	var telemetryInstance otel.OpenTelemetry
+	if cfg.TelemetryConfig != nil && cfg.TelemetryConfig.Enable {
+		var err error
+		telemetryInstance, err = otel.NewOpenTelemetry(&cfg, logger)
+		if err != nil {
+			logger.Fatal("failed to initialize telemetry", zap.Error(err))
+		}
+		logger.Info("telemetry enabled - metrics will be available on :9090/metrics")
+	}
+
+	server := NewA2AServer(&cfg, logger, telemetryInstance)
 
 	return server
 }

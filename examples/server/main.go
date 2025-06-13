@@ -82,8 +82,10 @@ func main() {
 		logger.Info("telemetry enabled - metrics will be available on :9090/metrics")
 	}
 
-	// Create the A2A server with telemetry support
 	a2aServer := server.NewA2AServer(&cfg, logger, telemetryInstance)
+
+	// Or create the A2A server with default configurations
+	// a2aServer := server.NewDefaultA2AServer()
 
 	// Start the server
 	// Handle graceful shutdown
