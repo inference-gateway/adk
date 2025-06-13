@@ -1,4 +1,4 @@
-module standard-example
+module server-example
 
 go 1.24.3
 
