@@ -48,6 +48,18 @@ type A2AServer interface {
 
 	// GetTaskHandler returns the configured task handler
 	GetTaskHandler() TaskHandler
+
+	// SetAgentName sets the agent's name dynamically
+	SetAgentName(name string)
+
+	// SetAgentDescription sets the agent's description dynamically
+	SetAgentDescription(description string)
+
+	// SetAgentURL sets the agent's URL dynamically
+	SetAgentURL(url string)
+
+	// SetAgentVersion sets the agent's version dynamically
+	SetAgentVersion(version string)
 }
 
 // TaskResultProcessor defines how to process tool call results for task completion
@@ -181,6 +193,26 @@ func (s *A2AServerImpl) GetLLMClient() LLMClient {
 // GetTaskHandler returns the configured task handler
 func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
 	return s.taskHandler
+}
+
+// SetAgentName sets the agent's name dynamically
+func (s *A2AServerImpl) SetAgentName(name string) {
+	s.cfg.AgentName = name
+}
+
+// SetAgentDescription sets the agent's description dynamically
+func (s *A2AServerImpl) SetAgentDescription(description string) {
+	s.cfg.AgentDescription = description
+}
+
+// SetAgentURL sets the agent's URL dynamically
+func (s *A2AServerImpl) SetAgentURL(url string) {
+	s.cfg.AgentURL = url
+}
+
+// SetAgentVersion sets the agent's version dynamically
+func (s *A2AServerImpl) SetAgentVersion(version string) {
+	s.cfg.AgentVersion = version
 }
 
 // SetupRouter configures the HTTP router with A2A endpoints

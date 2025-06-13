@@ -55,6 +55,26 @@ type FakeA2AServer struct {
 		result1 *adk.Task
 		result2 error
 	}
+	SetAgentDescriptionStub        func(string)
+	setAgentDescriptionMutex       sync.RWMutex
+	setAgentDescriptionArgsForCall []struct {
+		arg1 string
+	}
+	SetAgentNameStub        func(string)
+	setAgentNameMutex       sync.RWMutex
+	setAgentNameArgsForCall []struct {
+		arg1 string
+	}
+	SetAgentURLStub        func(string)
+	setAgentURLMutex       sync.RWMutex
+	setAgentURLArgsForCall []struct {
+		arg1 string
+	}
+	SetAgentVersionStub        func(string)
+	setAgentVersionMutex       sync.RWMutex
+	setAgentVersionArgsForCall []struct {
+		arg1 string
+	}
 	SetLLMClientStub        func(server.LLMClient)
 	setLLMClientMutex       sync.RWMutex
 	setLLMClientArgsForCall []struct {
@@ -321,6 +341,134 @@ func (fake *FakeA2AServer) ProcessTaskReturnsOnCall(i int, result1 *adk.Task, re
 	}{result1, result2}
 }
 
+func (fake *FakeA2AServer) SetAgentDescription(arg1 string) {
+	fake.setAgentDescriptionMutex.Lock()
+	fake.setAgentDescriptionArgsForCall = append(fake.setAgentDescriptionArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.SetAgentDescriptionStub
+	fake.recordInvocation("SetAgentDescription", []interface{}{arg1})
+	fake.setAgentDescriptionMutex.Unlock()
+	if stub != nil {
+		fake.SetAgentDescriptionStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetAgentDescriptionCallCount() int {
+	fake.setAgentDescriptionMutex.RLock()
+	defer fake.setAgentDescriptionMutex.RUnlock()
+	return len(fake.setAgentDescriptionArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetAgentDescriptionCalls(stub func(string)) {
+	fake.setAgentDescriptionMutex.Lock()
+	defer fake.setAgentDescriptionMutex.Unlock()
+	fake.SetAgentDescriptionStub = stub
+}
+
+func (fake *FakeA2AServer) SetAgentDescriptionArgsForCall(i int) string {
+	fake.setAgentDescriptionMutex.RLock()
+	defer fake.setAgentDescriptionMutex.RUnlock()
+	argsForCall := fake.setAgentDescriptionArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServer) SetAgentName(arg1 string) {
+	fake.setAgentNameMutex.Lock()
+	fake.setAgentNameArgsForCall = append(fake.setAgentNameArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.SetAgentNameStub
+	fake.recordInvocation("SetAgentName", []interface{}{arg1})
+	fake.setAgentNameMutex.Unlock()
+	if stub != nil {
+		fake.SetAgentNameStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetAgentNameCallCount() int {
+	fake.setAgentNameMutex.RLock()
+	defer fake.setAgentNameMutex.RUnlock()
+	return len(fake.setAgentNameArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetAgentNameCalls(stub func(string)) {
+	fake.setAgentNameMutex.Lock()
+	defer fake.setAgentNameMutex.Unlock()
+	fake.SetAgentNameStub = stub
+}
+
+func (fake *FakeA2AServer) SetAgentNameArgsForCall(i int) string {
+	fake.setAgentNameMutex.RLock()
+	defer fake.setAgentNameMutex.RUnlock()
+	argsForCall := fake.setAgentNameArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServer) SetAgentURL(arg1 string) {
+	fake.setAgentURLMutex.Lock()
+	fake.setAgentURLArgsForCall = append(fake.setAgentURLArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.SetAgentURLStub
+	fake.recordInvocation("SetAgentURL", []interface{}{arg1})
+	fake.setAgentURLMutex.Unlock()
+	if stub != nil {
+		fake.SetAgentURLStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetAgentURLCallCount() int {
+	fake.setAgentURLMutex.RLock()
+	defer fake.setAgentURLMutex.RUnlock()
+	return len(fake.setAgentURLArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetAgentURLCalls(stub func(string)) {
+	fake.setAgentURLMutex.Lock()
+	defer fake.setAgentURLMutex.Unlock()
+	fake.SetAgentURLStub = stub
+}
+
+func (fake *FakeA2AServer) SetAgentURLArgsForCall(i int) string {
+	fake.setAgentURLMutex.RLock()
+	defer fake.setAgentURLMutex.RUnlock()
+	argsForCall := fake.setAgentURLArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServer) SetAgentVersion(arg1 string) {
+	fake.setAgentVersionMutex.Lock()
+	fake.setAgentVersionArgsForCall = append(fake.setAgentVersionArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.SetAgentVersionStub
+	fake.recordInvocation("SetAgentVersion", []interface{}{arg1})
+	fake.setAgentVersionMutex.Unlock()
+	if stub != nil {
+		fake.SetAgentVersionStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetAgentVersionCallCount() int {
+	fake.setAgentVersionMutex.RLock()
+	defer fake.setAgentVersionMutex.RUnlock()
+	return len(fake.setAgentVersionArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetAgentVersionCalls(stub func(string)) {
+	fake.setAgentVersionMutex.Lock()
+	defer fake.setAgentVersionMutex.Unlock()
+	fake.SetAgentVersionStub = stub
+}
+
+func (fake *FakeA2AServer) SetAgentVersionArgsForCall(i int) string {
+	fake.setAgentVersionMutex.RLock()
+	defer fake.setAgentVersionMutex.RUnlock()
+	argsForCall := fake.setAgentVersionArgsForCall[i]
+	return argsForCall.arg1
+}
+
 func (fake *FakeA2AServer) SetLLMClient(arg1 server.LLMClient) {
 	fake.setLLMClientMutex.Lock()
 	fake.setLLMClientArgsForCall = append(fake.setLLMClientArgsForCall, struct {
@@ -550,6 +698,14 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.getTaskHandlerMutex.RUnlock()
 	fake.processTaskMutex.RLock()
 	defer fake.processTaskMutex.RUnlock()
+	fake.setAgentDescriptionMutex.RLock()
+	defer fake.setAgentDescriptionMutex.RUnlock()
+	fake.setAgentNameMutex.RLock()
+	defer fake.setAgentNameMutex.RUnlock()
+	fake.setAgentURLMutex.RLock()
+	defer fake.setAgentURLMutex.RUnlock()
+	fake.setAgentVersionMutex.RLock()
+	defer fake.setAgentVersionMutex.RUnlock()
 	fake.setLLMClientMutex.RLock()
 	defer fake.setLLMClientMutex.RUnlock()
 	fake.setTaskHandlerMutex.RLock()
