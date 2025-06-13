@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/inference-gateway/a2a/adk/server"
 	"github.com/inference-gateway/a2a/adk/server/config"
+	"github.com/inference-gateway/a2a/adk/server/otel"
 	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 )
@@ -65,12 +67,19 @@ func main() {
 			IdleTimeout:  envConfig.ServerConfig.IdleTimeout,
 		},
 		TelemetryConfig: &config.TelemetryConfig{
-			Enable: envConfig.TelemetryConfig.Enable,
+			Enable: true, // Enable telemetry for this example
 		},
 	}
 
-	// Create the A2A server with default handlers
-	a2aServer := server.NewA2AServer(&cfg, logger, nil)
+	// Initialize OpenTelemetry for metrics collection
+	var telemetryInstance otel.OpenTelemetry
+	if cfg.TelemetryConfig.Enable {
+		telemetryInstance = otel.NewOpenTelemetry()
+		logger.Info("telemetry enabled - metrics will be available on :9090/metrics")
+	}
+
+	// Create the A2A server with telemetry support
+	a2aServer := server.NewA2AServer(&cfg, logger, telemetryInstance)
 
 	// Start the server
 	// Handle graceful shutdown
@@ -88,19 +97,25 @@ func main() {
 		}
 	}()
 
-	logger.Info("starting standard A2A server",
-		zap.String("port", cfg.Port),
-		zap.String("agent_name", cfg.AgentName))
-
 	fmt.Printf("🌐 Server starting on http://localhost:%s\n", cfg.Port)
 	fmt.Println("📋 Available endpoints:")
 	fmt.Println("  • GET  /health - Health check")
 	fmt.Println("  • GET  /.well-known/agent.json - Agent capabilities")
 	fmt.Println("  • POST /a2a - A2A protocol endpoint")
+	if cfg.TelemetryConfig.Enable {
+		fmt.Println("📊 Telemetry endpoints:")
+		fmt.Println("  • GET  :9090/metrics - Prometheus metrics")
+		fmt.Println("")
+		fmt.Println("🔍 Telemetry features:")
+		fmt.Println("  • Request count and duration tracking")
+		fmt.Println("  • Response status code monitoring")
+		fmt.Println("  • Provider and model metrics")
+		fmt.Println("  • Task processing metrics")
+	}
 	fmt.Println("👋 Press Ctrl+C to stop the server")
 
 	err = a2aServer.Start(context.Background())
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		logger.Fatal("failed to start server", zap.Error(err))
 	}
 }

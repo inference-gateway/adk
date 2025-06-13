@@ -12,6 +12,7 @@ import (
 	uuid "github.com/google/uuid"
 	adk "github.com/inference-gateway/a2a/adk"
 	config "github.com/inference-gateway/a2a/adk/server/config"
+	middlewares "github.com/inference-gateway/a2a/adk/server/middlewares"
 	otel "github.com/inference-gateway/a2a/adk/server/otel"
 	promhttp "github.com/prometheus/client_golang/prometheus/promhttp"
 	envconfig "github.com/sethvargo/go-envconfig"
@@ -88,10 +89,12 @@ type A2AServerImpl struct {
 	messageHandler MessageHandler
 	responseSender ResponseSender
 	llmClient      LLMClient
+	otel           otel.OpenTelemetry
 
 	// Server state
-	httpServer *http.Server
-	taskQueue  chan *QueuedTask
+	httpServer    *http.Server
+	metricsServer *http.Server
+	taskQueue     chan *QueuedTask
 
 	// Optional processors
 	taskResultProcessor TaskResultProcessor
@@ -105,6 +108,7 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 	server := &A2AServerImpl{
 		cfg:       cfg,
 		logger:    logger,
+		otel:      otel,
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
@@ -113,27 +117,11 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
-	server.setupRouter(cfg)
-
-	if cfg.TelemetryConfig != nil && cfg.TelemetryConfig.Enable {
-		// TODO setup server in the otel package
+	// Initialize OpenTelemetry if telemetry is enabled
+	if cfg.TelemetryConfig != nil && cfg.TelemetryConfig.Enable && otel != nil {
 		if err := otel.Init(cfg, *logger); err != nil {
 			logger.Error("failed to initialize telemetry", zap.Error(err))
 		}
-		go func() {
-			metricsRouter := gin.Default()
-			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
-
-			metricsServer := &http.Server{
-				Addr:    ":9090",
-				Handler: metricsRouter,
-			}
-
-			logger.Info("starting metrics server on port 9090")
-			if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				logger.Error("metrics server failed", zap.Error(err))
-			}
-		}()
 	}
 
 	return server
@@ -207,8 +195,22 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 
 	r.GET("/.well-known/agent.json", s.handleAgentInfo)
 
+	var telemetryMiddleware gin.HandlerFunc
+	if s.cfg.TelemetryConfig != nil && s.cfg.TelemetryConfig.Enable && s.otel != nil {
+		telemetryMw, err := middlewares.NewTelemetryMiddleware(*s.cfg, s.otel, s.logger)
+		if err != nil {
+			s.logger.Error("failed to create telemetry middleware", zap.Error(err))
+		} else {
+			telemetryMiddleware = telemetryMw.Middleware()
+		}
+	}
+
 	if s.cfg.AuthConfig == nil || !s.cfg.AuthConfig.Enable {
-		r.POST("/a2a", s.handleA2ARequest)
+		if telemetryMiddleware != nil {
+			r.POST("/a2a", telemetryMiddleware, s.handleA2ARequest)
+		} else {
+			r.POST("/a2a", s.handleA2ARequest)
+		}
 		s.logger.Warn("authentication is disabled, oidcAuthenticator will be nil")
 		return r
 	}
@@ -219,7 +221,11 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	}
 
 	s.logger.Info("oidcAuthenticator is valid, setting up authentication")
-	r.POST("/a2a", oidcAuthenticator.Middleware(), s.handleA2ARequest)
+	if telemetryMiddleware != nil {
+		r.POST("/a2a", telemetryMiddleware, oidcAuthenticator.Middleware(), s.handleA2ARequest)
+	} else {
+		r.POST("/a2a", oidcAuthenticator.Middleware(), s.handleA2ARequest)
+	}
 
 	return r
 }
@@ -238,6 +244,23 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	s.logger.Info("starting A2A server", zap.String("port", s.cfg.Port))
 
+	if s.cfg.TelemetryConfig != nil && s.cfg.TelemetryConfig.Enable && s.otel != nil {
+		go func() {
+			metricsRouter := gin.Default()
+			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+			s.metricsServer = &http.Server{
+				Addr:    ":9090",
+				Handler: metricsRouter,
+			}
+
+			s.logger.Info("starting metrics server on port 9090")
+			if err := s.metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				s.logger.Error("metrics server failed", zap.Error(err))
+			}
+		}()
+	}
+
 	go s.StartTaskProcessor(ctx)
 
 	if s.cfg.TLSConfig.Enable {
@@ -249,16 +272,44 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 // Stop gracefully stops the A2A server
 func (s *A2AServerImpl) Stop(ctx context.Context) error {
-	if s.httpServer == nil {
-		return nil
-	}
 	s.logger.Info("stopping A2A server")
-	err := s.httpServer.Shutdown(ctx)
+
+	var err error
+
+	// Stop the main HTTP server
+	if s.httpServer != nil {
+		if shutdownErr := s.httpServer.Shutdown(ctx); shutdownErr != nil {
+			s.logger.Error("error stopping HTTP server", zap.Error(shutdownErr))
+			err = shutdownErr
+		}
+	}
+
+	// Stop the metrics server
+	if s.metricsServer != nil {
+		if shutdownErr := s.metricsServer.Shutdown(ctx); shutdownErr != nil {
+			s.logger.Error("error stopping metrics server", zap.Error(shutdownErr))
+			if err == nil {
+				err = shutdownErr
+			}
+		}
+	}
+
+	// Shutdown OpenTelemetry
+	if s.otel != nil {
+		if shutdownErr := s.otel.ShutDown(ctx); shutdownErr != nil {
+			s.logger.Error("error shutting down telemetry", zap.Error(shutdownErr))
+			if err == nil {
+				err = shutdownErr
+			}
+		}
+	}
+
 	defer func() {
-		if err := s.logger.Sync(); err != nil {
-			s.logger.Error("failed to sync logger on shutdown", zap.Error(err))
+		if syncErr := s.logger.Sync(); syncErr != nil {
+			s.logger.Error("failed to sync logger on shutdown", zap.Error(syncErr))
 		}
 	}()
+
 	return err
 }
 

@@ -66,6 +66,8 @@ tasks:
       - task: generate:mock:tools-provider
       - task: generate:mock:task-result-processor
       - task: generate:mock:agent-info-provider
+      - task: generate:mock:telemetry
+      - task: generate:mock:opentelemetry
 
   generate:mocks:clean:
     desc: 'Clean and regenerate all mocks'
@@ -117,3 +119,13 @@ tasks:
     desc: 'Generate mock for AgentInfoProvider interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_agent_info_provider.go adk/server AgentInfoProvider
+
+  generate:mock:telemetry:
+    desc: 'Generate mock for Telemetry interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_telemetry.go adk/server/middlewares Telemetry
+
+  generate:mock:opentelemetry:
+    desc: 'Generate mock for OpenTelemetry interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_opentelemetry.go adk/server/otel OpenTelemetry

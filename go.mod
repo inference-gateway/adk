@@ -1,6 +1,6 @@
 module github.com/inference-gateway/a2a
 
-go 1.24.3
+go 1.24
 
 require (
 	github.com/coreos/go-oidc/v3 v3.14.1
