@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/inference-gateway/a2a/adk/server"
+	"github.com/inference-gateway/a2a/adk/server/middlewares"
 )
 
 type FakeOIDCAuthenticator struct {
@@ -100,4 +100,4 @@ func (fake *FakeOIDCAuthenticator) recordInvocation(key string, args []interface
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ server.OIDCAuthenticator = new(FakeOIDCAuthenticator)
+var _ middlewares.OIDCAuthenticator = new(FakeOIDCAuthenticator)

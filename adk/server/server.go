@@ -214,7 +214,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		s.logger.Warn("authentication is disabled, oidcAuthenticator will be nil")
 		return r
 	}
-	oidcAuthenticator, err := NewOIDCAuthenticatorMiddleware(s.logger, *s.cfg)
+	oidcAuthenticator, err := middlewares.NewOIDCAuthenticatorMiddleware(s.logger, *s.cfg)
 	if err != nil {
 		s.logger.Error("failed to create OIDC authenticator", zap.Error(err))
 		return r

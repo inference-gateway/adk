@@ -100,11 +100,6 @@ tasks:
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_response_sender.go adk/server ResponseSender
 
-  generate:mock:oidc-authenticator:
-    desc: 'Generate mock for OIDCAuthenticator interface'
-    cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_oidc_authenticator.go adk/server OIDCAuthenticator
-
   generate:mock:tools-provider:
     desc: 'Generate mock for ToolsProvider interface'
     cmds:
@@ -124,6 +119,11 @@ tasks:
     desc: 'Generate mock for Telemetry interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_telemetry.go adk/server/middlewares Telemetry
+
+  generate:mock:oidc-authenticator:
+    desc: 'Generate mock for OIDCAuthenticator interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_oidc_authenticator.go adk/server/middlewares OIDCAuthenticator
 
   generate:mock:opentelemetry:
     desc: 'Generate mock for OpenTelemetry interface'
