@@ -10,6 +10,16 @@ import (
 )
 
 type FakeA2AServer struct {
+	GetAgentStub        func() server.OpenAICompatibleAgent
+	getAgentMutex       sync.RWMutex
+	getAgentArgsForCall []struct {
+	}
+	getAgentReturns struct {
+		result1 server.OpenAICompatibleAgent
+	}
+	getAgentReturnsOnCall map[int]struct {
+		result1 server.OpenAICompatibleAgent
+	}
 	GetAgentCardStub        func() adk.AgentCard
 	getAgentCardMutex       sync.RWMutex
 	getAgentCardArgsForCall []struct {
@@ -54,6 +64,11 @@ type FakeA2AServer struct {
 	processTaskReturnsOnCall map[int]struct {
 		result1 *adk.Task
 		result2 error
+	}
+	SetAgentStub        func(server.OpenAICompatibleAgent)
+	setAgentMutex       sync.RWMutex
+	setAgentArgsForCall []struct {
+		arg1 server.OpenAICompatibleAgent
 	}
 	SetAgentDescriptionStub        func(string)
 	setAgentDescriptionMutex       sync.RWMutex
@@ -114,6 +129,59 @@ type FakeA2AServer struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *FakeA2AServer) GetAgent() server.OpenAICompatibleAgent {
+	fake.getAgentMutex.Lock()
+	ret, specificReturn := fake.getAgentReturnsOnCall[len(fake.getAgentArgsForCall)]
+	fake.getAgentArgsForCall = append(fake.getAgentArgsForCall, struct {
+	}{})
+	stub := fake.GetAgentStub
+	fakeReturns := fake.getAgentReturns
+	fake.recordInvocation("GetAgent", []interface{}{})
+	fake.getAgentMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServer) GetAgentCallCount() int {
+	fake.getAgentMutex.RLock()
+	defer fake.getAgentMutex.RUnlock()
+	return len(fake.getAgentArgsForCall)
+}
+
+func (fake *FakeA2AServer) GetAgentCalls(stub func() server.OpenAICompatibleAgent) {
+	fake.getAgentMutex.Lock()
+	defer fake.getAgentMutex.Unlock()
+	fake.GetAgentStub = stub
+}
+
+func (fake *FakeA2AServer) GetAgentReturns(result1 server.OpenAICompatibleAgent) {
+	fake.getAgentMutex.Lock()
+	defer fake.getAgentMutex.Unlock()
+	fake.GetAgentStub = nil
+	fake.getAgentReturns = struct {
+		result1 server.OpenAICompatibleAgent
+	}{result1}
+}
+
+func (fake *FakeA2AServer) GetAgentReturnsOnCall(i int, result1 server.OpenAICompatibleAgent) {
+	fake.getAgentMutex.Lock()
+	defer fake.getAgentMutex.Unlock()
+	fake.GetAgentStub = nil
+	if fake.getAgentReturnsOnCall == nil {
+		fake.getAgentReturnsOnCall = make(map[int]struct {
+			result1 server.OpenAICompatibleAgent
+		})
+	}
+	fake.getAgentReturnsOnCall[i] = struct {
+		result1 server.OpenAICompatibleAgent
+	}{result1}
 }
 
 func (fake *FakeA2AServer) GetAgentCard() adk.AgentCard {
@@ -339,6 +407,38 @@ func (fake *FakeA2AServer) ProcessTaskReturnsOnCall(i int, result1 *adk.Task, re
 		result1 *adk.Task
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeA2AServer) SetAgent(arg1 server.OpenAICompatibleAgent) {
+	fake.setAgentMutex.Lock()
+	fake.setAgentArgsForCall = append(fake.setAgentArgsForCall, struct {
+		arg1 server.OpenAICompatibleAgent
+	}{arg1})
+	stub := fake.SetAgentStub
+	fake.recordInvocation("SetAgent", []interface{}{arg1})
+	fake.setAgentMutex.Unlock()
+	if stub != nil {
+		fake.SetAgentStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetAgentCallCount() int {
+	fake.setAgentMutex.RLock()
+	defer fake.setAgentMutex.RUnlock()
+	return len(fake.setAgentArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetAgentCalls(stub func(server.OpenAICompatibleAgent)) {
+	fake.setAgentMutex.Lock()
+	defer fake.setAgentMutex.Unlock()
+	fake.SetAgentStub = stub
+}
+
+func (fake *FakeA2AServer) SetAgentArgsForCall(i int) server.OpenAICompatibleAgent {
+	fake.setAgentMutex.RLock()
+	defer fake.setAgentMutex.RUnlock()
+	argsForCall := fake.setAgentArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeA2AServer) SetAgentDescription(arg1 string) {
@@ -690,6 +790,8 @@ func (fake *FakeA2AServer) StopReturnsOnCall(i int, result1 error) {
 func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.getAgentMutex.RLock()
+	defer fake.getAgentMutex.RUnlock()
 	fake.getAgentCardMutex.RLock()
 	defer fake.getAgentCardMutex.RUnlock()
 	fake.getLLMClientMutex.RLock()
@@ -698,6 +800,8 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.getTaskHandlerMutex.RUnlock()
 	fake.processTaskMutex.RLock()
 	defer fake.processTaskMutex.RUnlock()
+	fake.setAgentMutex.RLock()
+	defer fake.setAgentMutex.RUnlock()
 	fake.setAgentDescriptionMutex.RLock()
 	defer fake.setAgentDescriptionMutex.RUnlock()
 	fake.setAgentNameMutex.RLock()

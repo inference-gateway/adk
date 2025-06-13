@@ -68,6 +68,7 @@ tasks:
       - task: generate:mock:agent-info-provider
       - task: generate:mock:telemetry
       - task: generate:mock:opentelemetry
+      - task: generate:mock:llm-client
 
   generate:mocks:clean:
     desc: 'Clean and regenerate all mocks'
@@ -129,3 +130,8 @@ tasks:
     desc: 'Generate mock for OpenTelemetry interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_opentelemetry.go adk/server/otel OpenTelemetry
+
+  generate:mock:llm-client:
+    desc: 'Generate mock for LLMClient interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_llm_client.go adk/server LLMClient

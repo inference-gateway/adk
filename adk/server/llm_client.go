@@ -16,7 +16,8 @@ import (
 // LLMClient defines the interface for Language Model clients
 type LLMClient interface {
 	// CreateChatCompletion sends a chat completion request and returns the response
-	CreateChatCompletion(ctx context.Context, messages []adk.Message) (*adk.Message, error)
+	// If tools are provided, returns the raw SDK response for tool call handling
+	CreateChatCompletion(ctx context.Context, messages []adk.Message, tools ...sdk.ChatCompletionTool) (interface{}, error)
 
 	// CreateStreamingChatCompletion sends a streaming chat completion request
 	CreateStreamingChatCompletion(ctx context.Context, messages []adk.Message) (<-chan *adk.Message, <-chan error)
@@ -87,7 +88,7 @@ func NewOpenAICompatibleLLMClient(cfg *config.LLMProviderClientConfig, logger *z
 }
 
 // CreateChatCompletion implements LLMClient.CreateChatCompletion
-func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, messages []adk.Message) (*adk.Message, error) {
+func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, messages []adk.Message, tools ...sdk.ChatCompletionTool) (interface{}, error) {
 	sdkMessages, err := c.convertToSDKMessages(messages)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert messages: %w", err)
@@ -117,12 +118,22 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 			}
 		}
 
-		response, lastErr = c.client.WithOptions(options).GenerateContent(
-			ctx,
-			c.provider,
-			c.model,
-			sdkMessages,
-		)
+		if len(tools) > 0 {
+			response, lastErr = c.client.WithOptions(options).WithTools(&tools).GenerateContent(
+				ctx,
+				c.provider,
+				c.model,
+				sdkMessages,
+			)
+		} else {
+			response, lastErr = c.client.WithOptions(options).GenerateContent(
+				ctx,
+				c.provider,
+				c.model,
+				sdkMessages,
+			)
+		}
+
 		if lastErr == nil {
 			break
 		}
@@ -138,6 +149,10 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 
 	if len(response.Choices) == 0 {
 		return nil, fmt.Errorf("no choices returned from llm")
+	}
+
+	if len(tools) > 0 {
+		return response, nil
 	}
 
 	return c.convertFromSDKMessage(response.Choices[0].Message), nil

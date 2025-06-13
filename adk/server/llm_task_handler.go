@@ -65,7 +65,13 @@ func (th *LLMTaskHandler) HandleTask(ctx context.Context, task *adk.Task, messag
 		return th.handleError(task, fmt.Sprintf("LLM processing failed: %v", err))
 	}
 
-	return th.updateTaskWithResponse(task, message, response), nil
+	responseMessage, ok := response.(*adk.Message)
+	if !ok {
+		th.logger.Error("unexpected response type from llm client")
+		return th.handleError(task, "Unexpected response type from LLM")
+	}
+
+	return th.updateTaskWithResponse(task, message, responseMessage), nil
 }
 
 // HandleTaskStream processes a task using streaming LLM responses

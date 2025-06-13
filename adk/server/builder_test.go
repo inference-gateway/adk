@@ -101,7 +101,7 @@ func TestA2AServerBuilder_WithAgentInfoProvider(t *testing.T) {
 	assert.NotNil(t, a2aServer)
 }
 
-func TestA2AServerBuilder_WithSystemPrompt(t *testing.T) {
+func TestA2AServerBuilder_WithAIPoweredAgent(t *testing.T) {
 	cfg := config.Config{
 		AgentName: "test-agent",
 		Port:      "8080",
@@ -109,14 +109,18 @@ func TestA2AServerBuilder_WithSystemPrompt(t *testing.T) {
 	logger := zap.NewNop()
 	systemPrompt := "You are a helpful assistant"
 
+	agent := server.NewDefaultOpenAICompatibleAgent(logger)
+	agent.SetSystemPrompt(systemPrompt)
+
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
-		WithSystemPrompt(systemPrompt).
+		WithAIPoweredAgent(agent).
 		Build()
 
 	assert.NotNil(t, a2aServer)
+	assert.NotNil(t, a2aServer.GetAgent())
 }
 
-func TestA2AServerBuilder_WithOpenAICompatibleLLMAndTaskHandler(t *testing.T) {
+func TestA2AServerBuilder_WithOpenAICompatibleAgent(t *testing.T) {
 	cfg := config.Config{
 		AgentName: "test-agent",
 		Port:      "8080",
@@ -130,12 +134,11 @@ func TestA2AServerBuilder_WithOpenAICompatibleLLMAndTaskHandler(t *testing.T) {
 	}
 
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
-		WithOpenAICompatibleLLMAndTaskHandler(llmConfig).
+		WithOpenAICompatibleAgent(llmConfig).
 		Build()
 
 	assert.NotNil(t, a2aServer)
-	assert.NotNil(t, a2aServer.GetTaskHandler())
-	assert.NotNil(t, a2aServer.GetLLMClient())
+	assert.NotNil(t, a2aServer.GetAgent())
 }
 
 func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
@@ -148,11 +151,15 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 	mockProvider := &mocks.FakeAgentInfoProvider{}
 
+	// Create an agent with system prompt
+	agent := server.NewDefaultOpenAICompatibleAgent(logger)
+	agent.SetSystemPrompt("Test prompt")
+
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(mockTaskHandler).
 		WithTaskResultProcessor(mockProcessor).
 		WithAgentInfoProvider(mockProvider).
-		WithSystemPrompt("Test prompt").
+		WithAIPoweredAgent(agent).
 		Build()
 
 	assert.NotNil(t, a2aServer)

@@ -1,77 +1,93 @@
-# A2A Server Example
+# A2A Server Examples
 
-This example demonstrates a basic A2A (Agent-to-Agent) server using the inference-gateway A2A framework.
+This directory contains examples demonstrating how to create A2A (Agent-to-Agent) compatible servers using the A2A ADK (Agent Development Kit).
 
-## Features
+## Overview
 
-- Basic A2A server setup
-- Message and task handlers
-- Health check endpoint
-- Agent capabilities endpoint
-- OpenTelemetry telemetry support
-- Graceful shutdown
+The A2A protocol enables agents to communicate with each other using JSON-RPC over HTTP. These examples show different approaches to creating A2A servers:
 
-## Running the Example
+1. **Basic Non-AI Server** - A minimal server without AI capabilities that handles A2A protocol messages using simple task handlers
+2. **AI-Powered Server** - A full-featured server with LLM integration and tool capabilities
+
+## Quick Start
+
+### 1. Minimal Non-AI Server
+
+The simplest way to create an A2A server is using `NewDefaultA2AServer()`. This creates a basic server that handles A2A protocol messages without any AI capabilities:
 
 ```bash
-cd examples/server
-go run main.go
+go run cmd/minimal/main.go
 ```
 
-The server will start on `http://localhost:8080` with telemetry metrics on `http://localhost:9090/metrics`
+This minimal example:
 
-## API Endpoints
+- ✅ Handles A2A protocol messages (`message/send`, `message/stream`, `tasks/get`, `tasks/cancel`)
+- ✅ Provides agent metadata via `/.well-known/agent.json`
+- ✅ Health check endpoint at `/health`
+- ✅ Automatic configuration from environment variables
+- ❌ No AI/LLM integration
+- ❌ No custom tools
+- ❌ No complex setup required
 
-- `GET /health` - Health check
-- `GET /.well-known/agent.json` - Agent capabilities
-- `POST /a2a` - A2A protocol endpoint
-- `GET /metrics` - Prometheus metrics (port 9090)
+This is perfect for understanding the basic A2A protocol or creating simple non-AI agents.
 
-## Testing
+### 2. AI-Powered Server with Tools
 
-Send a test message:
+For AI capabilities, use the aipowered example which supports both modes:
 
 ```bash
+# Without AI (mock mode)
+go run cmd/aipowered/main.go
+
+# With AI (set your API key)
+LLM_API_KEY=your-api-key go run cmd/aipowered/main.go
+```
+
+## Example Usage
+
+Once your server is running, you can test it with the A2A protocol:
+
+```bash
+# Test agent info
+curl http://localhost:8080/.well-known/agent.json
+
+# Send a message
 curl -X POST http://localhost:8080/a2a \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
     "method": "message/send",
-    "id": "test-1",
     "params": {
       "message": {
-        "kind": "message",
-        "messageId": "msg-1",
         "role": "user",
-        "parts": [
-          {
-            "kind": "text",
-            "text": "Hello, A2A server!"
-          }
-        ]
+        "content": "Hello!"
       }
-    }
+    },
+    "id": 1
   }'
-```
-
-Check health:
-
-```bash
-curl http://localhost:8080/health
-```
-
-View metrics:
-
-```bash
-curl http://localhost:9090/metrics
 ```
 
 ## Configuration
 
-Basic development configuration:
+All servers support configuration via environment variables:
 
-- Port: 8080 (main server)
-- Metrics Port: 9090 (telemetry)
-- TLS: Disabled
-- Authentication: Disabled
-- Telemetry: Disabled
+- `AGENT_NAME` - Name of your agent (default: "helloworld-agent")
+- `AGENT_DESCRIPTION` - Description of your agent
+- `PORT` - Server port (default: "8080")
+- `DEBUG` - Enable debug logging (default: false)
+- `LLM_API_KEY` - API key for LLM provider (enables AI features)
+
+## Files
+
+- `cmd/minimal/main.go` - Minimal non-AI server example using `NewDefaultA2AServer()`
+- `cmd/aipowered/main.go` - Full-featured example with AI support and tools
+- `main.go` - Placeholder with general guidance
+
+## Next Steps
+
+1. Start with the minimal example to understand the basic A2A protocol
+2. Add custom task handlers for your specific use case
+3. Integrate LLM providers for AI capabilities
+4. Add custom tools for enhanced functionality
+
+For more advanced usage, see the ADK documentation and builder patterns in the main codebase.

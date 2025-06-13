@@ -115,6 +115,12 @@ func (th *DefaultTaskHandler) handleTaskWithLLM(ctx context.Context, task *adk.T
 		return th.handleError(task, "Failed to process with LLM: "+err.Error())
 	}
 
+	responseMessage, ok := response.(*adk.Message)
+	if !ok {
+		th.logger.Error("unexpected response type from llm client")
+		return th.handleError(task, "Unexpected response type from LLM")
+	}
+
 	task.Status.State = adk.TaskStateCompleted
 
 	if task.History == nil {
@@ -124,7 +130,7 @@ func (th *DefaultTaskHandler) handleTaskWithLLM(ctx context.Context, task *adk.T
 	if message != nil {
 		task.History = append(task.History, *message)
 	}
-	task.History = append(task.History, *response)
+	task.History = append(task.History, *responseMessage)
 
 	th.logger.Info("task processed with llm", zap.String("task_id", task.ID))
 	return task, nil

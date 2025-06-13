@@ -12,8 +12,7 @@ type A2AServerBuilder struct {
 	taskHandler         TaskHandler
 	taskResultProcessor TaskResultProcessor
 	agentInfoProvider   AgentInfoProvider
-	llmClient           LLMClient
-	llmConfig           *config.LLMProviderClientConfig
+	agent               OpenAICompatibleAgent
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies
@@ -42,68 +41,51 @@ func (b *A2AServerBuilder) WithAgentInfoProvider(provider AgentInfoProvider) *A2
 	return b
 }
 
-// WithLLMClient sets a custom LLM client
-func (b *A2AServerBuilder) WithLLMClient(client LLMClient) *A2AServerBuilder {
-	b.llmClient = client
+// WithAIPoweredAgent sets a custom OpenAI-compatible agent
+func (b *A2AServerBuilder) WithAIPoweredAgent(agent OpenAICompatibleAgent) *A2AServerBuilder {
+	b.agent = agent
 	return b
 }
 
-// WithOpenAICompatibleLLMClient configures an OpenAI-compatible LLM client using the provided config
-func (b *A2AServerBuilder) WithOpenAICompatibleLLMClient(config *config.LLMProviderClientConfig) *A2AServerBuilder {
-	if config != nil {
-		if client, err := NewOpenAICompatibleLLMClient(config, b.logger); err == nil {
-			b.llmClient = client
-			b.llmConfig = config
-		} else {
-			b.logger.Error("failed to create openai-compatible llm client", zap.Error(err))
-		}
-	}
-	return b
-}
-
-// WithLLMTaskHandler configures an LLM-powered task handler using the configured LLM client
-func (b *A2AServerBuilder) WithLLMTaskHandler() *A2AServerBuilder {
-	if b.llmClient != nil {
-		if b.llmConfig != nil {
-			b.taskHandler = NewLLMTaskHandlerWithConfig(b.logger, b.llmClient, b.llmConfig)
-		} else {
-			b.taskHandler = NewLLMTaskHandler(b.logger, b.llmClient)
-		}
+// WithOpenAICompatibleAgent creates an OpenAI-compatible agent with LLM configuration
+func (b *A2AServerBuilder) WithOpenAICompatibleAgent(llmConfig *config.LLMProviderClientConfig) *A2AServerBuilder {
+	agent, err := NewOpenAICompatibleAgentWithConfig(b.logger, llmConfig)
+	if err != nil {
+		b.logger.Error("failed to create openai-compatible agent", zap.Error(err))
 	} else {
-		b.logger.Warn("llm client not configured, cannot create llm task handler")
+		b.agent = agent
 	}
 	return b
 }
 
-// WithSystemPrompt sets a custom system prompt for the LLM task handler
-func (b *A2AServerBuilder) WithSystemPrompt(prompt string) *A2AServerBuilder {
-	if b.llmConfig == nil {
-		b.llmConfig = &config.LLMProviderClientConfig{}
+// WithOpenAICompatibleAgentAndTools creates an agent with tools and LLM client
+func (b *A2AServerBuilder) WithOpenAICompatibleAgentAndTools(llmConfig *config.LLMProviderClientConfig, toolBox ToolBox) *A2AServerBuilder {
+	agent, err := NewOpenAICompatibleAgentWithConfig(b.logger, llmConfig)
+	if err != nil {
+		b.logger.Error("failed to create openai-compatible agent", zap.Error(err))
+	} else {
+		agent.SetToolBox(toolBox)
+		b.agent = agent
 	}
-	b.llmConfig.SystemPrompt = prompt
-	return b
-}
 
-// WithOpenAICompatibleLLMAndTaskHandler is a convenience method that sets up both LLM client and task handler
-func (b *A2AServerBuilder) WithOpenAICompatibleLLMAndTaskHandler(config *config.LLMProviderClientConfig) *A2AServerBuilder {
-	return b.WithOpenAICompatibleLLMClient(config).WithLLMTaskHandler()
+	return b
 }
 
 // Build creates and returns the configured A2A server
 func (b *A2AServerBuilder) Build() A2AServer {
 	server := NewDefaultA2AServer()
 
+	if b.agent != nil {
+		server.SetAgent(b.agent)
+
+		if b.taskHandler == nil {
+			server.SetTaskHandler(NewAgentTaskHandler(b.logger, b.agent))
+			b.logger.Info("configured agent task handler with openai-compatible agent")
+		}
+	}
+
 	if b.taskHandler != nil {
 		server.SetTaskHandler(b.taskHandler)
-	} else if b.llmClient != nil {
-		var defaultHandler *DefaultTaskHandler
-		if b.llmConfig != nil {
-			defaultHandler = NewDefaultTaskHandlerWithLLM(b.logger, b.llmClient)
-		} else {
-			defaultHandler = NewDefaultTaskHandlerWithLLM(b.logger, b.llmClient)
-		}
-		server.SetTaskHandler(defaultHandler)
-		b.logger.Info("configured default task handler with llm support")
 	}
 
 	if b.taskResultProcessor != nil {
@@ -114,15 +96,6 @@ func (b *A2AServerBuilder) Build() A2AServer {
 		server.SetAgentInfoProvider(b.agentInfoProvider)
 	}
 
-	if b.llmClient != nil {
-		server.SetLLMClient(b.llmClient)
-
-		// If we have a default task handler, also set the LLM client on it
-		if defaultHandler, ok := server.GetTaskHandler().(*DefaultTaskHandler); ok {
-			defaultHandler.SetLLMClient(b.llmClient)
-		}
-	}
-
 	return server
 }
 
@@ -130,6 +103,14 @@ func (b *A2AServerBuilder) Build() A2AServer {
 // This is a convenience function for simple use cases
 func SimpleA2AServer(cfg config.Config, logger *zap.Logger) A2AServer {
 	return NewA2AServerBuilder(cfg, logger).Build()
+}
+
+// SimpleA2AServerWithAgent creates a basic A2A server with an OpenAI-compatible agent
+// This is a convenience function for agent-based use cases
+func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, llmConfig *config.LLMProviderClientConfig, toolBox ToolBox) A2AServer {
+	return NewA2AServerBuilder(cfg, logger).
+		WithOpenAICompatibleAgentAndTools(llmConfig, toolBox).
+		Build()
 }
 
 // CustomA2AServer creates an A2A server with custom components
@@ -143,6 +124,27 @@ func CustomA2AServer(
 ) A2AServer {
 	return NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(taskHandler).
+		WithTaskResultProcessor(taskResultProcessor).
+		WithAgentInfoProvider(agentInfoProvider).
+		Build()
+}
+
+// CustomA2AServerWithAgent creates an A2A server with custom components and an agent
+// This provides maximum control over the server configuration
+func CustomA2AServerWithAgent(
+	cfg config.Config,
+	logger *zap.Logger,
+	agent OpenAICompatibleAgent,
+	toolBox ToolBox,
+	taskResultProcessor TaskResultProcessor,
+	agentInfoProvider AgentInfoProvider,
+) A2AServer {
+	if toolBox != nil {
+		agent.SetToolBox(toolBox)
+	}
+
+	return NewA2AServerBuilder(cfg, logger).
+		WithAIPoweredAgent(agent).
 		WithTaskResultProcessor(taskResultProcessor).
 		WithAgentInfoProvider(agentInfoProvider).
 		Build()

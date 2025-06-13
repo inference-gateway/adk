@@ -49,6 +49,12 @@ type A2AServer interface {
 	// GetTaskHandler returns the configured task handler
 	GetTaskHandler() TaskHandler
 
+	// SetAgent sets the OpenAI-compatible agent for processing tasks
+	SetAgent(agent OpenAICompatibleAgent)
+
+	// GetAgent returns the configured OpenAI-compatible agent
+	GetAgent() OpenAICompatibleAgent
+
 	// SetAgentName sets the agent's name dynamically
 	SetAgentName(name string)
 
@@ -111,6 +117,7 @@ type A2AServerImpl struct {
 	// Optional processors
 	taskResultProcessor TaskResultProcessor
 	agentInfoProvider   AgentInfoProvider
+	agent               OpenAICompatibleAgent
 }
 
 var _ A2AServer = (*A2AServerImpl)(nil)
@@ -128,6 +135,19 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
+
+	return server
+}
+
+// NewA2AServerWithAgent creates a new A2A server with an optional OpenAI-compatible agent
+func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry, agent OpenAICompatibleAgent) *A2AServerImpl {
+	server := NewA2AServer(cfg, logger, otel)
+
+	if agent != nil {
+		server.agent = agent
+		// If agent is provided, use it as the primary task processor
+		server.taskHandler = NewAgentTaskHandler(logger, agent)
+	}
 
 	return server
 }
@@ -170,6 +190,21 @@ func (s *A2AServerImpl) SetTaskHandler(handler TaskHandler) {
 	s.taskHandler = handler
 }
 
+// GetTaskHandler returns the configured task handler
+func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
+	return s.taskHandler
+}
+
+// SetAgent sets the OpenAI-compatible agent for processing tasks
+func (s *A2AServerImpl) SetAgent(agent OpenAICompatibleAgent) {
+	s.agent = agent
+}
+
+// GetAgent returns the configured OpenAI-compatible agent
+func (s *A2AServerImpl) GetAgent() OpenAICompatibleAgent {
+	return s.agent
+}
+
 // SetTaskResultProcessor sets the task result processor for custom business logic
 func (s *A2AServerImpl) SetTaskResultProcessor(processor TaskResultProcessor) {
 	s.taskResultProcessor = processor
@@ -188,11 +223,6 @@ func (s *A2AServerImpl) SetLLMClient(client LLMClient) {
 // GetLLMClient returns the configured LLM client
 func (s *A2AServerImpl) GetLLMClient() LLMClient {
 	return s.llmClient
-}
-
-// GetTaskHandler returns the configured task handler
-func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
-	return s.taskHandler
 }
 
 // SetAgentName sets the agent's name dynamically
@@ -372,6 +402,13 @@ func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
 
 // ProcessTask processes a task with the given message
 func (s *A2AServerImpl) ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error) {
+	// Use agent if available, otherwise fall back to task handler
+	if s.agent != nil {
+		s.logger.Info("processing task with openai-compatible agent",
+			zap.String("task_id", task.ID))
+		return s.agent.ProcessTask(ctx, task, message)
+	}
+
 	return s.taskHandler.HandleTask(ctx, task, message)
 }
 

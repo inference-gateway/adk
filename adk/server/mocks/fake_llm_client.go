@@ -7,21 +7,23 @@ import (
 
 	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/server"
+	"github.com/inference-gateway/sdk"
 )
 
 type FakeLLMClient struct {
-	CreateChatCompletionStub        func(context.Context, []adk.Message) (*adk.Message, error)
+	CreateChatCompletionStub        func(context.Context, []adk.Message, ...sdk.ChatCompletionTool) (interface{}, error)
 	createChatCompletionMutex       sync.RWMutex
 	createChatCompletionArgsForCall []struct {
 		arg1 context.Context
 		arg2 []adk.Message
+		arg3 []sdk.ChatCompletionTool
 	}
 	createChatCompletionReturns struct {
-		result1 *adk.Message
+		result1 interface{}
 		result2 error
 	}
 	createChatCompletionReturnsOnCall map[int]struct {
-		result1 *adk.Message
+		result1 interface{}
 		result2 error
 	}
 	CreateStreamingChatCompletionStub        func(context.Context, []adk.Message) (<-chan *adk.Message, <-chan error)
@@ -53,7 +55,7 @@ type FakeLLMClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeLLMClient) CreateChatCompletion(arg1 context.Context, arg2 []adk.Message) (*adk.Message, error) {
+func (fake *FakeLLMClient) CreateChatCompletion(arg1 context.Context, arg2 []adk.Message, arg3 ...sdk.ChatCompletionTool) (interface{}, error) {
 	var arg2Copy []adk.Message
 	if arg2 != nil {
 		arg2Copy = make([]adk.Message, len(arg2))
@@ -64,13 +66,14 @@ func (fake *FakeLLMClient) CreateChatCompletion(arg1 context.Context, arg2 []adk
 	fake.createChatCompletionArgsForCall = append(fake.createChatCompletionArgsForCall, struct {
 		arg1 context.Context
 		arg2 []adk.Message
-	}{arg1, arg2Copy})
+		arg3 []sdk.ChatCompletionTool
+	}{arg1, arg2Copy, arg3})
 	stub := fake.CreateChatCompletionStub
 	fakeReturns := fake.createChatCompletionReturns
-	fake.recordInvocation("CreateChatCompletion", []interface{}{arg1, arg2Copy})
+	fake.recordInvocation("CreateChatCompletion", []interface{}{arg1, arg2Copy, arg3})
 	fake.createChatCompletionMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -84,41 +87,41 @@ func (fake *FakeLLMClient) CreateChatCompletionCallCount() int {
 	return len(fake.createChatCompletionArgsForCall)
 }
 
-func (fake *FakeLLMClient) CreateChatCompletionCalls(stub func(context.Context, []adk.Message) (*adk.Message, error)) {
+func (fake *FakeLLMClient) CreateChatCompletionCalls(stub func(context.Context, []adk.Message, ...sdk.ChatCompletionTool) (interface{}, error)) {
 	fake.createChatCompletionMutex.Lock()
 	defer fake.createChatCompletionMutex.Unlock()
 	fake.CreateChatCompletionStub = stub
 }
 
-func (fake *FakeLLMClient) CreateChatCompletionArgsForCall(i int) (context.Context, []adk.Message) {
+func (fake *FakeLLMClient) CreateChatCompletionArgsForCall(i int) (context.Context, []adk.Message, []sdk.ChatCompletionTool) {
 	fake.createChatCompletionMutex.RLock()
 	defer fake.createChatCompletionMutex.RUnlock()
 	argsForCall := fake.createChatCompletionArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeLLMClient) CreateChatCompletionReturns(result1 *adk.Message, result2 error) {
+func (fake *FakeLLMClient) CreateChatCompletionReturns(result1 interface{}, result2 error) {
 	fake.createChatCompletionMutex.Lock()
 	defer fake.createChatCompletionMutex.Unlock()
 	fake.CreateChatCompletionStub = nil
 	fake.createChatCompletionReturns = struct {
-		result1 *adk.Message
+		result1 interface{}
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeLLMClient) CreateChatCompletionReturnsOnCall(i int, result1 *adk.Message, result2 error) {
+func (fake *FakeLLMClient) CreateChatCompletionReturnsOnCall(i int, result1 interface{}, result2 error) {
 	fake.createChatCompletionMutex.Lock()
 	defer fake.createChatCompletionMutex.Unlock()
 	fake.CreateChatCompletionStub = nil
 	if fake.createChatCompletionReturnsOnCall == nil {
 		fake.createChatCompletionReturnsOnCall = make(map[int]struct {
-			result1 *adk.Message
+			result1 interface{}
 			result2 error
 		})
 	}
 	fake.createChatCompletionReturnsOnCall[i] = struct {
-		result1 *adk.Message
+		result1 interface{}
 		result2 error
 	}{result1, result2}
 }
