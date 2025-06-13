@@ -5,19 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/client"
+	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 )
 
-const (
-	defaultServerURL = "http://localhost:8080/a2a"
-	pollInterval     = 2 * time.Second
-	maxPollTimeout   = 30 * time.Second
-)
+// Config represents the application configuration
+type Config struct {
+	ServerURL      string        `env:"A2A_SERVER_URL,default=http://localhost:8080/a2a"`
+	PollInterval   time.Duration `env:"POLL_INTERVAL,default=2s"`
+	MaxPollTimeout time.Duration `env:"MAX_POLL_TIMEOUT,default=30s"`
+}
 
 func main() {
 	// Initialize logger
@@ -27,18 +28,21 @@ func main() {
 	}
 	defer logger.Sync()
 
-	// Get server URL from environment or use default
-	serverURL := os.Getenv("A2A_SERVER_URL")
-	if serverURL == "" {
-		serverURL = defaultServerURL
+	// Load configuration from environment variables
+	ctx := context.Background()
+	var config Config
+	if err := envconfig.Process(ctx, &config); err != nil {
+		logger.Fatal("failed to process configuration", zap.Error(err))
 	}
 
 	logger.Info("starting simple a2a async polling example",
-		zap.String("server_url", serverURL))
+		zap.String("server_url", config.ServerURL),
+		zap.Duration("poll_interval", config.PollInterval),
+		zap.Duration("max_poll_timeout", config.MaxPollTimeout))
 
 	// Create A2A client
-	a2aClient := client.NewClientWithLogger(serverURL, logger)
-	ctx := context.Background()
+	a2aClient := client.NewClientWithLogger(config.ServerURL, logger)
+	ctx = context.Background()
 
 	// Submit task using A2A ADK
 	logger.Info("submitting task to agent")
@@ -86,7 +90,7 @@ func main() {
 	errorChan := make(chan error, 1)
 
 	go func() {
-		ticker := time.NewTicker(pollInterval)
+		ticker := time.NewTicker(config.PollInterval)
 		defer ticker.Stop()
 
 		pollCount := 0
@@ -94,7 +98,7 @@ func main() {
 
 		logger.Info("starting background polling",
 			zap.String("task_id", task.ID),
-			zap.Duration("poll_interval", pollInterval))
+			zap.Duration("poll_interval", config.PollInterval))
 
 		for {
 			select {
@@ -220,8 +224,8 @@ func main() {
 	case err := <-errorChan:
 		logger.Fatal("polling failed", zap.Error(err))
 
-	case <-time.After(maxPollTimeout):
-		logger.Fatal("task polling timed out", zap.Duration("timeout", maxPollTimeout))
+	case <-time.After(config.MaxPollTimeout):
+		logger.Fatal("task polling timed out", zap.Duration("timeout", config.MaxPollTimeout))
 	}
 }
 
