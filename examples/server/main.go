@@ -67,7 +67,7 @@ func main() {
 			IdleTimeout:  envConfig.ServerConfig.IdleTimeout,
 		},
 		TelemetryConfig: &config.TelemetryConfig{
-			Enable: true, // Enable telemetry for this example
+			Enable: envConfig.TelemetryConfig.Enable,
 		},
 	}
 
