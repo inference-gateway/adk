@@ -7,11 +7,6 @@ tasks:
     cmds:
       - task --list
 
-  install:generator:
-    desc: 'Install the generator tool'
-    cmds:
-      - go install github.com/inference-gateway/tools/cmd/generator@v0.1.1
-
   a2a:download-schema:
     desc: 'Download the latest A2A schema and convert to YAML'
     cmds:
@@ -19,10 +14,8 @@ tasks:
 
   a2a:generate-types:
     desc: 'Generate the Golang ADK types from the A2A schema'
-    deps:
-      - install:generator
     cmds:
-      - generator -generator jsonrpc -package adk schema.yaml adk/generated_types.go
+      - go run github.com/inference-gateway/tools/cmd/generator@v0.1.1 -generator jsonrpc -package adk schema.yaml adk/generated_types.go
 
   tidy:
     desc: 'Tidy all Go modules'

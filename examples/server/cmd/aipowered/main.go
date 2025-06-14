@@ -75,7 +75,7 @@ func main() {
 		agent.SetToolBox(toolBox)
 
 		a2aServer = server.NewA2AServerBuilder(cfg, logger).
-			WithAIPoweredAgent(agent).
+			WithAgent(agent).
 			Build()
 		logger.Info("✅ Server created in mock mode (set LLM_API_KEY for AI features)")
 	}

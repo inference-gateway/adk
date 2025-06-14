@@ -41,25 +41,14 @@ func (b *A2AServerBuilder) WithAgentInfoProvider(provider AgentInfoProvider) *A2
 	return b
 }
 
-// WithAIPoweredAgent sets a custom OpenAI-compatible agent
-func (b *A2AServerBuilder) WithAIPoweredAgent(agent OpenAICompatibleAgent) *A2AServerBuilder {
+// WithAgent sets a custom OpenAI-compatible agent
+func (b *A2AServerBuilder) WithAgent(agent OpenAICompatibleAgent) *A2AServerBuilder {
 	b.agent = agent
 	return b
 }
 
-// WithOpenAICompatibleAgent creates an OpenAI-compatible agent with LLM configuration
-func (b *A2AServerBuilder) WithOpenAICompatibleAgent(llmConfig *config.LLMProviderClientConfig) *A2AServerBuilder {
-	agent, err := NewOpenAICompatibleAgentWithConfig(b.logger, llmConfig)
-	if err != nil {
-		b.logger.Error("failed to create openai-compatible agent", zap.Error(err))
-	} else {
-		b.agent = agent
-	}
-	return b
-}
-
-// WithOpenAICompatibleAgentAndTools creates an agent with tools and LLM client
-func (b *A2AServerBuilder) WithOpenAICompatibleAgentAndTools(llmConfig *config.LLMProviderClientConfig, toolBox ToolBox) *A2AServerBuilder {
+// WithAgentAndTools creates an agent with LLM configuration and tools
+func (b *A2AServerBuilder) WithAgentAndTools(llmConfig *config.LLMProviderClientConfig, toolBox ToolBox) *A2AServerBuilder {
 	agent, err := NewOpenAICompatibleAgentWithConfig(b.logger, llmConfig)
 	if err != nil {
 		b.logger.Error("failed to create openai-compatible agent", zap.Error(err))
@@ -99,17 +88,11 @@ func (b *A2AServerBuilder) Build() A2AServer {
 	return server
 }
 
-// SimpleA2AServer creates a basic A2A server with minimal configuration
-// This is a convenience function for simple use cases
-func SimpleA2AServer(cfg config.Config, logger *zap.Logger) A2AServer {
-	return NewA2AServerBuilder(cfg, logger).Build()
-}
-
 // SimpleA2AServerWithAgent creates a basic A2A server with an OpenAI-compatible agent
 // This is a convenience function for agent-based use cases
 func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, llmConfig *config.LLMProviderClientConfig, toolBox ToolBox) A2AServer {
 	return NewA2AServerBuilder(cfg, logger).
-		WithOpenAICompatibleAgentAndTools(llmConfig, toolBox).
+		WithAgentAndTools(llmConfig, toolBox).
 		Build()
 }
 
@@ -144,7 +127,7 @@ func CustomA2AServerWithAgent(
 	}
 
 	return NewA2AServerBuilder(cfg, logger).
-		WithAIPoweredAgent(agent).
+		WithAgent(agent).
 		WithTaskResultProcessor(taskResultProcessor).
 		WithAgentInfoProvider(agentInfoProvider).
 		Build()

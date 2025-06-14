@@ -37,12 +37,6 @@ type A2AServer interface {
 	// StartTaskProcessor starts the background task processor
 	StartTaskProcessor(ctx context.Context)
 
-	// SetLLMClient sets the LLM client for AI/ML processing
-	SetLLMClient(client LLMClient)
-
-	// GetLLMClient returns the configured LLM client
-	GetLLMClient() LLMClient
-
 	// SetTaskHandler sets the task handler for processing tasks
 	SetTaskHandler(handler TaskHandler)
 
@@ -106,7 +100,6 @@ type A2AServerImpl struct {
 	taskManager    TaskManager
 	messageHandler MessageHandler
 	responseSender ResponseSender
-	llmClient      LLMClient
 	otel           otel.OpenTelemetry
 
 	// Server state
@@ -145,7 +138,6 @@ func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.Ope
 
 	if agent != nil {
 		server.agent = agent
-		// If agent is provided, use it as the primary task processor
 		server.taskHandler = NewAgentTaskHandler(logger, agent)
 	}
 
@@ -213,16 +205,6 @@ func (s *A2AServerImpl) SetTaskResultProcessor(processor TaskResultProcessor) {
 // SetAgentInfoProvider sets the agent info provider for custom agent metadata
 func (s *A2AServerImpl) SetAgentInfoProvider(provider AgentInfoProvider) {
 	s.agentInfoProvider = provider
-}
-
-// SetLLMClient sets the LLM client for AI/ML processing
-func (s *A2AServerImpl) SetLLMClient(client LLMClient) {
-	s.llmClient = client
-}
-
-// GetLLMClient returns the configured LLM client
-func (s *A2AServerImpl) GetLLMClient() LLMClient {
-	return s.llmClient
 }
 
 // SetAgentName sets the agent's name dynamically

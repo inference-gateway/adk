@@ -101,7 +101,7 @@ func TestA2AServerBuilder_WithAgentInfoProvider(t *testing.T) {
 	assert.NotNil(t, a2aServer)
 }
 
-func TestA2AServerBuilder_WithAIPoweredAgent(t *testing.T) {
+func TestA2AServerBuilder_WithAgent(t *testing.T) {
 	cfg := config.Config{
 		AgentName: "test-agent",
 		Port:      "8080",
@@ -113,14 +113,14 @@ func TestA2AServerBuilder_WithAIPoweredAgent(t *testing.T) {
 	agent.SetSystemPrompt(systemPrompt)
 
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
-		WithAIPoweredAgent(agent).
+		WithAgent(agent).
 		Build()
 
 	assert.NotNil(t, a2aServer)
 	assert.NotNil(t, a2aServer.GetAgent())
 }
 
-func TestA2AServerBuilder_WithOpenAICompatibleAgent(t *testing.T) {
+func TestA2AServerBuilder_WithAgentAndTools(t *testing.T) {
 	cfg := config.Config{
 		AgentName: "test-agent",
 		Port:      "8080",
@@ -134,7 +134,7 @@ func TestA2AServerBuilder_WithOpenAICompatibleAgent(t *testing.T) {
 	}
 
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
-		WithOpenAICompatibleAgent(llmConfig).
+		WithAgentAndTools(llmConfig, nil).
 		Build()
 
 	assert.NotNil(t, a2aServer)
@@ -159,21 +159,15 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 		WithTaskHandler(mockTaskHandler).
 		WithTaskResultProcessor(mockProcessor).
 		WithAgentInfoProvider(mockProvider).
-		WithAIPoweredAgent(agent).
+		WithAgent(agent).
 		Build()
 
 	assert.NotNil(t, a2aServer)
 	assert.Equal(t, mockTaskHandler, a2aServer.GetTaskHandler())
 }
 
-func TestSimpleA2AServer(t *testing.T) {
-	cfg := config.Config{
-		AgentName: "simple-agent",
-		Port:      "8080",
-	}
-	logger := zap.NewNop()
-
-	a2aServer := server.SimpleA2AServer(cfg, logger)
+func TestNewDefaultA2AServer(t *testing.T) {
+	a2aServer := server.NewDefaultA2AServer()
 
 	assert.NotNil(t, a2aServer)
 }
