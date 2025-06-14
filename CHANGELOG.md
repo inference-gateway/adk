@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6](https://github.com/inference-gateway/a2a/compare/v0.1.5...v0.1.6) (2025-06-14)
+
+### 📚 Documentation
+
+* **fix:** Update README title and improve section organization ([03a086e](https://github.com/inference-gateway/a2a/commit/03a086ea0154c1c097c381c95eca34eb7156a7c5))
+* Remove "Advanced Authentication" item from the roadmap ([322579e](https://github.com/inference-gateway/a2a/commit/322579e7247e377754e105efb17a2df948330a67))
+* Remove redundant Table of Contents section from README.md ([4c9e33a](https://github.com/inference-gateway/a2a/commit/4c9e33a7ed29926f26b404b6b66635252ba619c7))
+* Update README.md with enhanced table of contents and usage examples ([00d31eb](https://github.com/inference-gateway/a2a/commit/00d31eb78060d2b8cf4c0eddbc7a9a46bf4654a7))
+
+### 🔧 Miscellaneous
+
+* Update README.md ([e3a9480](https://github.com/inference-gateway/a2a/commit/e3a9480ad5cec677b1d494456c7cfb16a9efbe15))
+
 ## [0.1.5](https://github.com/inference-gateway/a2a/compare/v0.1.4...v0.1.5) (2025-06-14)
 
 ### ✅ Miscellaneous
