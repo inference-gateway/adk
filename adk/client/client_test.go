@@ -1474,7 +1474,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 						},
 					}
 
-					json.NewEncoder(w).Encode(agentCard)
+					_ = json.NewEncoder(w).Encode(agentCard)
 				}))
 			},
 			expectedCard: &adk.AgentCard{
@@ -1505,7 +1505,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
 
 					w.WriteHeader(http.StatusNotFound)
-					w.Write([]byte("Agent card not found"))
+					_, _ = w.Write([]byte("Agent card not found"))
 				}))
 			},
 			expectedError: "unexpected status code for agent card: 404, body: Agent card not found",
@@ -1518,7 +1518,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
 
 					w.WriteHeader(http.StatusInternalServerError)
-					w.Write([]byte("Internal server error"))
+					_, _ = w.Write([]byte("Internal server error"))
 				}))
 			},
 			expectedError: "unexpected status code for agent card: 500, body: Internal server error",
@@ -1532,7 +1532,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
-					w.Write([]byte("invalid json response"))
+					_, _ = w.Write([]byte("invalid json response"))
 				}))
 			},
 			expectedError: "failed to decode agent card response:",
@@ -1552,7 +1552,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 						Version: "0.1.0",
 					}
 
-					json.NewEncoder(w).Encode(minimalCard)
+					_ = json.NewEncoder(w).Encode(minimalCard)
 				}))
 			},
 			expectedCard: &adk.AgentCard{
@@ -1632,7 +1632,7 @@ func TestClient_GetAgentCard_ContextCancellation(t *testing.T) {
 			Name:    "slow-agent",
 			Version: "1.0.0",
 		}
-		json.NewEncoder(w).Encode(agentCard)
+		_ = json.NewEncoder(w).Encode(agentCard)
 	}))
 	defer server.Close()
 
@@ -1665,7 +1665,7 @@ func TestClient_GetAgentCard_WithCustomHeaders(t *testing.T) {
 			Name:    "test-agent",
 			Version: "1.0.0",
 		}
-		json.NewEncoder(w).Encode(agentCard)
+		_ = json.NewEncoder(w).Encode(agentCard)
 	}))
 	defer server.Close()
 
@@ -1699,7 +1699,7 @@ func TestClient_GetAgentCard_WithCustomUserAgent(t *testing.T) {
 			Name:    "test-agent",
 			Version: "1.0.0",
 		}
-		json.NewEncoder(w).Encode(agentCard)
+		_ = json.NewEncoder(w).Encode(agentCard)
 	}))
 	defer server.Close()
 
