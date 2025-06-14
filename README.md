@@ -89,6 +89,13 @@ func main() {
 }
 ```
 
+### Examples
+
+For complete working examples, see the [examples](./examples/) directory:
+
+- **[Server Example](./examples/server/)** - Complete A2A server implementation
+- **[Client Example](./examples/client/)** - A2A client implementation (coming soon)
+
 ## ✨ Key Features
 
 ### Core Capabilities
@@ -109,7 +116,7 @@ func main() {
 
 ### Production Ready
 
-- 🌿 **Lightweight**: Optimized binary size (~10.8MB) with minimal resource consumption
+- 🌿 **Lightweight**: Optimized binary size
 - 🛡️ **Production Hardened**: Configurable timeouts, TLS support, and error handling
 - 🐳 **Containerized**: OCI compliant and works with Docker and Docker Compose
 - ☸️ **Kubernetes Native**: Ready for cloud-native deployments

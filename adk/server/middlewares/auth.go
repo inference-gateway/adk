@@ -1,4 +1,4 @@
-package adk
+package middlewares
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	oidcV3 "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
+	config "github.com/inference-gateway/a2a/adk/server/config"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -34,8 +35,18 @@ type OIDCAuthenticatorImpl struct {
 type OIDCAuthenticatorNoop struct{}
 
 // NewOIDCAuthenticatorMiddleware creates a new OIDC authenticator middleware
-func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg Config) (OIDCAuthenticator, error) {
+func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDCAuthenticator, error) {
+	if cfg.AuthConfig == nil {
+		logger.Warn("AuthConfig is nil, disabling authentication")
+		return &OIDCAuthenticatorNoop{}, nil
+	}
+
 	if !cfg.AuthConfig.Enable {
+		return &OIDCAuthenticatorNoop{}, nil
+	}
+
+	if cfg.AuthConfig.IssuerURL == "" || cfg.AuthConfig.ClientID == "" || cfg.AuthConfig.ClientSecret == "" {
+		logger.Warn("AuthConfig is enabled but required fields are missing, disabling authentication")
 		return &OIDCAuthenticatorNoop{}, nil
 	}
 
