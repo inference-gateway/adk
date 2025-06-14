@@ -69,12 +69,6 @@ type TaskResultProcessor interface {
 	ProcessToolResult(toolCallResult string) *adk.Message
 }
 
-// AgentInfoProvider defines how to provide agent-specific information
-type AgentInfoProvider interface {
-	// GetAgentCard returns the agent's capabilities and metadata
-	GetAgentCard(baseConfig *config.Config) adk.AgentCard
-}
-
 // JRPCErrorCode represents JSON-RPC error codes
 type JRPCErrorCode int
 
@@ -109,7 +103,6 @@ type A2AServerImpl struct {
 
 	// Optional processors
 	taskResultProcessor TaskResultProcessor
-	agentInfoProvider   AgentInfoProvider
 	agent               OpenAICompatibleAgent
 }
 
@@ -117,16 +110,11 @@ var _ A2AServer = (*A2AServerImpl)(nil)
 
 // NewA2AServer creates a new A2A server with the provided configuration and logger
 func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
-	queueMaxSize := 100
-	if cfg.QueueConfig != nil {
-		queueMaxSize = cfg.QueueConfig.MaxSize
-	}
-
 	server := &A2AServerImpl{
 		cfg:       cfg,
 		logger:    logger,
 		otel:      otel,
-		taskQueue: make(chan *QueuedTask, queueMaxSize),
+		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
 	server.taskManager = NewDefaultTaskManager(logger)
@@ -150,15 +138,17 @@ func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.Ope
 }
 
 // NewDefaultA2AServer creates a new default A2A server implementation
-func NewDefaultA2AServer() *A2AServerImpl {
-	var cfg config.Config
-	if err := envconfig.Process(context.Background(), &cfg); err != nil {
-		log.Fatalf("failed to load environment variables: %v", err)
+func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl {
+	var finalCfg *config.Config
+	var err error
+
+	finalCfg, err = config.LoadWithLookuper(context.Background(), cfg, envconfig.OsLookuper())
+	if err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
 	var logger *zap.Logger
-	var err error
-	if cfg.Debug {
+	if finalCfg.Debug {
 		logger, err = zap.NewDevelopment()
 	} else {
 		logger, err = zap.NewProduction()
@@ -168,16 +158,38 @@ func NewDefaultA2AServer() *A2AServerImpl {
 	}
 
 	var telemetryInstance otel.OpenTelemetry
-	if cfg.TelemetryConfig != nil && cfg.TelemetryConfig.Enable {
-		var err error
-		telemetryInstance, err = otel.NewOpenTelemetry(&cfg, logger)
+	if finalCfg.TelemetryConfig != nil && finalCfg.TelemetryConfig.Enable {
+		telemetryInstance, err = otel.NewOpenTelemetry(finalCfg, logger)
 		if err != nil {
 			logger.Fatal("failed to initialize telemetry", zap.Error(err))
 		}
 		logger.Info("telemetry enabled - metrics will be available on :9090/metrics")
 	}
 
-	server := NewA2AServer(&cfg, logger, telemetryInstance)
+	server := NewA2AServer(finalCfg, logger, telemetryInstance)
+
+	return server
+}
+
+// NewA2AServerEnvironmentAware creates a new A2A server with environment-aware configuration.
+func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
+	var err error
+	cfg, err = config.LoadWithLookuper(context.Background(), cfg, envconfig.OsLookuper())
+	if err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
+	}
+
+	server := &A2AServerImpl{
+		cfg:       cfg,
+		logger:    logger,
+		otel:      otel,
+		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
+	}
+
+	server.taskManager = NewDefaultTaskManager(logger)
+	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
+	server.responseSender = NewDefaultResponseSender(logger)
+	server.taskHandler = NewDefaultTaskHandler(logger)
 
 	return server
 }
@@ -205,11 +217,6 @@ func (s *A2AServerImpl) GetAgent() OpenAICompatibleAgent {
 // SetTaskResultProcessor sets the task result processor for custom business logic
 func (s *A2AServerImpl) SetTaskResultProcessor(processor TaskResultProcessor) {
 	s.taskResultProcessor = processor
-}
-
-// SetAgentInfoProvider sets the agent info provider for custom agent metadata
-func (s *A2AServerImpl) SetAgentInfoProvider(provider AgentInfoProvider) {
-	s.agentInfoProvider = provider
 }
 
 // SetAgentName sets the agent's name dynamically
@@ -286,22 +293,12 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 func (s *A2AServerImpl) Start(ctx context.Context) error {
 	router := s.setupRouter(s.cfg)
 
-	// Apply server config defaults if not set
-	readTimeout := 120 * time.Second
-	writeTimeout := 120 * time.Second
-	idleTimeout := 120 * time.Second
-	if s.cfg.ServerConfig != nil {
-		readTimeout = s.cfg.ServerConfig.ReadTimeout
-		writeTimeout = s.cfg.ServerConfig.WriteTimeout
-		idleTimeout = s.cfg.ServerConfig.IdleTimeout
-	}
-
 	s.httpServer = &http.Server{
 		Addr:         fmt.Sprintf(":%s", s.cfg.Port),
 		Handler:      router,
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
+		ReadTimeout:  s.cfg.ServerConfig.ReadTimeout,
+		WriteTimeout: s.cfg.ServerConfig.WriteTimeout,
+		IdleTimeout:  s.cfg.ServerConfig.IdleTimeout,
 	}
 
 	s.logger.Info("starting A2A server", zap.String("port", s.cfg.Port))
@@ -325,7 +322,6 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	go s.StartTaskProcessor(ctx)
 
-	// Check TLS configuration safely
 	if s.cfg.TLSConfig != nil && s.cfg.TLSConfig.Enable {
 		return s.httpServer.ListenAndServeTLS(s.cfg.TLSConfig.CertPath, s.cfg.TLSConfig.KeyPath)
 	}
@@ -339,7 +335,6 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 
 	var err error
 
-	// Stop the main HTTP server
 	if s.httpServer != nil {
 		if shutdownErr := s.httpServer.Shutdown(ctx); shutdownErr != nil {
 			s.logger.Error("error stopping HTTP server", zap.Error(shutdownErr))
@@ -347,7 +342,6 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 		}
 	}
 
-	// Stop the metrics server
 	if s.metricsServer != nil {
 		if shutdownErr := s.metricsServer.Shutdown(ctx); shutdownErr != nil {
 			s.logger.Error("error stopping metrics server", zap.Error(shutdownErr))
@@ -357,7 +351,6 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 		}
 	}
 
-	// Shutdown OpenTelemetry
 	if s.otel != nil {
 		if shutdownErr := s.otel.ShutDown(ctx); shutdownErr != nil {
 			s.logger.Error("error shutting down telemetry", zap.Error(shutdownErr))
@@ -378,20 +371,13 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 
 // GetAgentCard returns the agent's capabilities and metadata
 func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
-	if s.agentInfoProvider != nil {
-		return s.agentInfoProvider.GetAgentCard(s.cfg)
-	}
-
-	// Create default capabilities with safe defaults
 	capabilities := adk.AgentCapabilities{}
 
-	// Apply capabilities config if available
 	if s.cfg.CapabilitiesConfig != nil {
 		capabilities.Streaming = &s.cfg.CapabilitiesConfig.Streaming
 		capabilities.PushNotifications = &s.cfg.CapabilitiesConfig.PushNotifications
 		capabilities.StateTransitionHistory = &s.cfg.CapabilitiesConfig.StateTransitionHistory
 	} else {
-		// Set safe defaults when capabilities config is nil
 		defaultStreaming := true
 		defaultPushNotifications := true
 		defaultStateTransitionHistory := false

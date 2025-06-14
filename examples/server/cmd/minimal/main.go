@@ -40,7 +40,7 @@ func main() {
 	// Step 2: Create the simplest possible A2A server
 	// This uses all default configurations and creates a basic server
 	// that handles A2A protocol messages without any AI capabilities
-	a2aServer := server.NewDefaultA2AServer()
+	a2aServer := server.NewDefaultA2AServer(nil)
 
 	logger.Info("✅ minimal A2A server created (no AI capabilities)")
 

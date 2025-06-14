@@ -26,10 +26,6 @@ type A2AServerBuilder interface {
 	// This allows custom business logic for determining when tasks should be completed.
 	WithTaskResultProcessor(processor TaskResultProcessor) A2AServerBuilder
 
-	// WithAgentInfoProvider sets a custom agent info provider for custom agent metadata.
-	// This allows overriding the default agent card information.
-	WithAgentInfoProvider(provider AgentInfoProvider) A2AServerBuilder
-
 	// WithAgent sets a pre-configured OpenAI-compatible agent for processing tasks.
 	// This is useful when you have already configured an agent with specific settings.
 	WithAgent(agent OpenAICompatibleAgent) A2AServerBuilder
@@ -53,7 +49,6 @@ type A2AServerBuilderImpl struct {
 	logger              *zap.Logger           // Logger instance for the server
 	taskHandler         TaskHandler           // Optional custom task handler
 	taskResultProcessor TaskResultProcessor   // Optional custom task result processor
-	agentInfoProvider   AgentInfoProvider     // Optional custom agent info provider
 	agent               OpenAICompatibleAgent // Optional pre-configured agent
 }
 
@@ -96,12 +91,6 @@ func (b *A2AServerBuilderImpl) WithTaskHandler(handler TaskHandler) A2AServerBui
 // WithTaskResultProcessor sets a custom task result processor
 func (b *A2AServerBuilderImpl) WithTaskResultProcessor(processor TaskResultProcessor) A2AServerBuilder {
 	b.taskResultProcessor = processor
-	return b
-}
-
-// WithAgentInfoProvider sets a custom agent info provider
-func (b *A2AServerBuilderImpl) WithAgentInfoProvider(provider AgentInfoProvider) A2AServerBuilder {
-	b.agentInfoProvider = provider
 	return b
 }
 
@@ -153,10 +142,6 @@ func (b *A2AServerBuilderImpl) Build() A2AServer {
 		server.SetTaskResultProcessor(b.taskResultProcessor)
 	}
 
-	if b.agentInfoProvider != nil {
-		server.SetAgentInfoProvider(b.agentInfoProvider)
-	}
-
 	return server
 }
 
@@ -175,12 +160,10 @@ func CustomA2AServer(
 	logger *zap.Logger,
 	taskHandler TaskHandler,
 	taskResultProcessor TaskResultProcessor,
-	agentInfoProvider AgentInfoProvider,
 ) A2AServer {
 	return NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(taskHandler).
 		WithTaskResultProcessor(taskResultProcessor).
-		WithAgentInfoProvider(agentInfoProvider).
 		Build()
 }
 
@@ -192,7 +175,6 @@ func CustomA2AServerWithAgent(
 	agent OpenAICompatibleAgent,
 	toolBox ToolBox,
 	taskResultProcessor TaskResultProcessor,
-	agentInfoProvider AgentInfoProvider,
 ) A2AServer {
 	if toolBox != nil {
 		agent.SetToolBox(toolBox)
@@ -201,7 +183,6 @@ func CustomA2AServerWithAgent(
 	return NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
 		WithTaskResultProcessor(taskResultProcessor).
-		WithAgentInfoProvider(agentInfoProvider).
 		Build()
 }
 

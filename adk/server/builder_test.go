@@ -86,21 +86,6 @@ func TestA2AServerBuilder_WithTaskResultProcessor(t *testing.T) {
 	assert.NotNil(t, a2aServer)
 }
 
-func TestA2AServerBuilder_WithAgentInfoProvider(t *testing.T) {
-	cfg := config.Config{
-		AgentName: "test-agent",
-		Port:      "8080",
-	}
-	logger := zap.NewNop()
-	mockProvider := &mocks.FakeAgentInfoProvider{}
-
-	a2aServer := server.NewA2AServerBuilder(cfg, logger).
-		WithAgentInfoProvider(mockProvider).
-		Build()
-
-	assert.NotNil(t, a2aServer)
-}
-
 func TestA2AServerBuilder_WithAgent(t *testing.T) {
 	cfg := config.Config{
 		AgentName: "test-agent",
@@ -120,20 +105,20 @@ func TestA2AServerBuilder_WithAgent(t *testing.T) {
 	assert.NotNil(t, a2aServer.GetAgent())
 }
 
-func TestA2AServerBuilder_WithAgentAndLLMConfig(t *testing.T) {
+func TestA2AServerBuilder_WithAgentAndConfig(t *testing.T) {
 	cfg := config.Config{
 		AgentName: "test-agent",
 		Port:      "8080",
 	}
 	logger := zap.NewNop()
-	llmConfig := &config.AgentConfig{
+	agentConfig := &config.AgentConfig{
 		Provider: "openai",
 		Model:    "gpt-4",
 		APIKey:   "test-key",
 		BaseURL:  "https://api.openai.com/v1",
 	}
 
-	agent, err := server.NewOpenAICompatibleAgentWithConfig(logger, llmConfig)
+	agent, err := server.NewOpenAICompatibleAgentWithConfig(logger, agentConfig)
 	assert.NoError(t, err)
 
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
@@ -152,7 +137,6 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
-	mockProvider := &mocks.FakeAgentInfoProvider{}
 
 	agent := server.NewDefaultOpenAICompatibleAgent(logger)
 	agent.SetSystemPrompt("Test prompt")
@@ -160,7 +144,6 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(mockTaskHandler).
 		WithTaskResultProcessor(mockProcessor).
-		WithAgentInfoProvider(mockProvider).
 		WithAgent(agent).
 		Build()
 
@@ -169,7 +152,7 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 }
 
 func TestNewDefaultA2AServer(t *testing.T) {
-	a2aServer := server.NewDefaultA2AServer()
+	a2aServer := server.NewDefaultA2AServer(nil)
 
 	assert.NotNil(t, a2aServer)
 }
@@ -182,9 +165,8 @@ func TestCustomA2AServer(t *testing.T) {
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
-	mockProvider := &mocks.FakeAgentInfoProvider{}
 
-	a2aServer := server.CustomA2AServer(cfg, logger, mockTaskHandler, mockProcessor, mockProvider)
+	a2aServer := server.CustomA2AServer(cfg, logger, mockTaskHandler, mockProcessor)
 
 	assert.NotNil(t, a2aServer)
 	assert.Equal(t, mockTaskHandler, a2aServer.GetTaskHandler())
@@ -198,7 +180,6 @@ func TestA2AServerBuilderInterface_WithMocks(t *testing.T) {
 	fakeBuilder.WithAgentReturns(fakeBuilder)
 	fakeBuilder.WithTaskHandlerReturns(fakeBuilder)
 	fakeBuilder.WithTaskResultProcessorReturns(fakeBuilder)
-	fakeBuilder.WithAgentInfoProviderReturns(fakeBuilder)
 	fakeBuilder.BuildReturns(mockServer)
 
 	logger := zap.NewNop()
@@ -246,7 +227,6 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 	fakeBuilder.WithAgentReturns(fakeBuilder)
 	fakeBuilder.WithTaskHandlerReturns(fakeBuilder)
 	fakeBuilder.WithTaskResultProcessorReturns(fakeBuilder)
-	fakeBuilder.WithAgentInfoProviderReturns(fakeBuilder)
 
 	mockServer := &mocks.FakeA2AServer{}
 	fakeBuilder.BuildReturns(mockServer)
@@ -255,21 +235,18 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 	agent := server.NewDefaultOpenAICompatibleAgent(logger)
 	taskHandler := &mocks.FakeTaskHandler{}
 	taskResultProcessor := &mocks.FakeTaskResultProcessor{}
-	agentInfoProvider := &mocks.FakeAgentInfoProvider{}
 
 	result := fakeBuilder.
 		WithLogger(logger).
 		WithAgent(agent).
 		WithTaskHandler(taskHandler).
 		WithTaskResultProcessor(taskResultProcessor).
-		WithAgentInfoProvider(agentInfoProvider).
 		Build()
 
 	assert.Equal(t, 1, fakeBuilder.WithLoggerCallCount())
 	assert.Equal(t, 1, fakeBuilder.WithAgentCallCount())
 	assert.Equal(t, 1, fakeBuilder.WithTaskHandlerCallCount())
 	assert.Equal(t, 1, fakeBuilder.WithTaskResultProcessorCallCount())
-	assert.Equal(t, 1, fakeBuilder.WithAgentInfoProviderCallCount())
 	assert.Equal(t, 1, fakeBuilder.BuildCallCount())
 
 	assert.Equal(t, mockServer, result)

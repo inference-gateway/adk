@@ -30,17 +30,6 @@ type FakeA2AServerBuilder struct {
 	withAgentReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
-	WithAgentInfoProviderStub        func(server.AgentInfoProvider) server.A2AServerBuilder
-	withAgentInfoProviderMutex       sync.RWMutex
-	withAgentInfoProviderArgsForCall []struct {
-		arg1 server.AgentInfoProvider
-	}
-	withAgentInfoProviderReturns struct {
-		result1 server.A2AServerBuilder
-	}
-	withAgentInfoProviderReturnsOnCall map[int]struct {
-		result1 server.A2AServerBuilder
-	}
 	WithLoggerStub        func(*zap.Logger) server.A2AServerBuilder
 	withLoggerMutex       sync.RWMutex
 	withLoggerArgsForCall []struct {
@@ -188,67 +177,6 @@ func (fake *FakeA2AServerBuilder) WithAgentReturnsOnCall(i int, result1 server.A
 		})
 	}
 	fake.withAgentReturnsOnCall[i] = struct {
-		result1 server.A2AServerBuilder
-	}{result1}
-}
-
-func (fake *FakeA2AServerBuilder) WithAgentInfoProvider(arg1 server.AgentInfoProvider) server.A2AServerBuilder {
-	fake.withAgentInfoProviderMutex.Lock()
-	ret, specificReturn := fake.withAgentInfoProviderReturnsOnCall[len(fake.withAgentInfoProviderArgsForCall)]
-	fake.withAgentInfoProviderArgsForCall = append(fake.withAgentInfoProviderArgsForCall, struct {
-		arg1 server.AgentInfoProvider
-	}{arg1})
-	stub := fake.WithAgentInfoProviderStub
-	fakeReturns := fake.withAgentInfoProviderReturns
-	fake.recordInvocation("WithAgentInfoProvider", []interface{}{arg1})
-	fake.withAgentInfoProviderMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *FakeA2AServerBuilder) WithAgentInfoProviderCallCount() int {
-	fake.withAgentInfoProviderMutex.RLock()
-	defer fake.withAgentInfoProviderMutex.RUnlock()
-	return len(fake.withAgentInfoProviderArgsForCall)
-}
-
-func (fake *FakeA2AServerBuilder) WithAgentInfoProviderCalls(stub func(server.AgentInfoProvider) server.A2AServerBuilder) {
-	fake.withAgentInfoProviderMutex.Lock()
-	defer fake.withAgentInfoProviderMutex.Unlock()
-	fake.WithAgentInfoProviderStub = stub
-}
-
-func (fake *FakeA2AServerBuilder) WithAgentInfoProviderArgsForCall(i int) server.AgentInfoProvider {
-	fake.withAgentInfoProviderMutex.RLock()
-	defer fake.withAgentInfoProviderMutex.RUnlock()
-	argsForCall := fake.withAgentInfoProviderArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *FakeA2AServerBuilder) WithAgentInfoProviderReturns(result1 server.A2AServerBuilder) {
-	fake.withAgentInfoProviderMutex.Lock()
-	defer fake.withAgentInfoProviderMutex.Unlock()
-	fake.WithAgentInfoProviderStub = nil
-	fake.withAgentInfoProviderReturns = struct {
-		result1 server.A2AServerBuilder
-	}{result1}
-}
-
-func (fake *FakeA2AServerBuilder) WithAgentInfoProviderReturnsOnCall(i int, result1 server.A2AServerBuilder) {
-	fake.withAgentInfoProviderMutex.Lock()
-	defer fake.withAgentInfoProviderMutex.Unlock()
-	fake.WithAgentInfoProviderStub = nil
-	if fake.withAgentInfoProviderReturnsOnCall == nil {
-		fake.withAgentInfoProviderReturnsOnCall = make(map[int]struct {
-			result1 server.A2AServerBuilder
-		})
-	}
-	fake.withAgentInfoProviderReturnsOnCall[i] = struct {
 		result1 server.A2AServerBuilder
 	}{result1}
 }
@@ -443,8 +371,6 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.buildMutex.RUnlock()
 	fake.withAgentMutex.RLock()
 	defer fake.withAgentMutex.RUnlock()
-	fake.withAgentInfoProviderMutex.RLock()
-	defer fake.withAgentInfoProviderMutex.RUnlock()
 	fake.withLoggerMutex.RLock()
 	defer fake.withLoggerMutex.RUnlock()
 	fake.withTaskHandlerMutex.RLock()
