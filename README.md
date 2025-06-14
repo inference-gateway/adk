@@ -1,4 +1,4 @@
-<h1 align="center">Application Development Kit (ADK) for A2A-compatible Agents</h1>
+<h1 align="center">Agent Development Kit (ADK) for A2A-compatible Agents</h1>
 
 <p align="center">
   <strong>Build powerful, interoperable AI agents with the Agent-to-Agent (A2A) protocol</strong>
@@ -25,7 +25,7 @@
 
 ## Overview
 
-The **A2A ADK (Application Development Kit)** is a Go library that simplifies building [Agent-to-Agent (A2A) protocol](https://github.com/inference-gateway/schemas/tree/main/a2a) compatible agents. A2A enables seamless communication between AI agents, allowing them to collaborate, delegate tasks, and share capabilities across different systems and providers.
+The **A2A ADK (Agent Development Kit)** is a Go library that simplifies building [Agent-to-Agent (A2A) protocol](https://github.com/inference-gateway/schemas/tree/main/a2a) compatible agents. A2A enables seamless communication between AI agents, allowing them to collaborate, delegate tasks, and share capabilities across different systems and providers.
 
 ### What is A2A?
 
