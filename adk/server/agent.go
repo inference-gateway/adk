@@ -59,7 +59,7 @@ func NewOpenAICompatibleAgentWithLLM(logger *zap.Logger, llmClient LLMClient) *D
 }
 
 // NewOpenAICompatibleAgentWithConfig creates a new agent with LLM configuration
-func NewOpenAICompatibleAgentWithConfig(logger *zap.Logger, config *config.LLMProviderClientConfig) (*DefaultOpenAICompatibleAgent, error) {
+func NewOpenAICompatibleAgentWithConfig(logger *zap.Logger, config *config.AgentConfig) (*DefaultOpenAICompatibleAgent, error) {
 	client, err := NewOpenAICompatibleLLMClient(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create llm client: %w", err)

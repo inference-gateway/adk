@@ -52,14 +52,13 @@ tasks:
     cmds:
       - task: generate:mock:a2a-client
       - task: generate:mock:a2a-server
+      - task: generate:mock:a2a-server-builder
       - task: generate:mock:task-handler
       - task: generate:mock:message-handler
       - task: generate:mock:task-manager
       - task: generate:mock:response-sender
       - task: generate:mock:oidc-authenticator
-      - task: generate:mock:tools-provider
       - task: generate:mock:task-result-processor
-      - task: generate:mock:agent-info-provider
       - task: generate:mock:telemetry
       - task: generate:mock:opentelemetry
       - task: generate:mock:llm-client
@@ -79,6 +78,11 @@ tasks:
     desc: 'Generate mock for A2AServer interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_a2a_server.go adk/server A2AServer
+
+  generate:mock:a2a-server-builder:
+    desc: 'Generate mock for A2AServerBuilder interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_a2a_server_builder.go adk/server A2AServerBuilder
 
   generate:mock:task-handler:
     desc: 'Generate mock for TaskHandler interface'
@@ -109,11 +113,6 @@ tasks:
     desc: 'Generate mock for TaskResultProcessor interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_task_result_processor.go adk/server TaskResultProcessor
-
-  generate:mock:agent-info-provider:
-    desc: 'Generate mock for AgentInfoProvider interface'
-    cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_agent_info_provider.go adk/server AgentInfoProvider
 
   generate:mock:telemetry:
     desc: 'Generate mock for Telemetry interface'

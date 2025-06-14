@@ -254,23 +254,119 @@ func TestA2AServer_TaskProcessing_Background(t *testing.T) {
 }
 
 func TestDefaultA2AServer_SetDependencies(t *testing.T) {
-	a2aServer := server.NewDefaultA2AServer()
+	customConfig := &config.Config{
+		AgentName:        "custom-test-agent",
+		AgentDescription: "A custom test agent for dependency injection",
+		AgentURL:         "http://custom-agent:9090",
+		AgentVersion:     "2.5.0",
+		Port:             "9090",
+		Debug:            true,
+	}
+
+	a2aServer := server.NewDefaultA2AServer(customConfig)
 
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	a2aServer.SetTaskHandler(mockTaskHandler)
-
-	mockAgentProvider := &mocks.FakeAgentInfoProvider{}
-	mockAgentProvider.GetAgentCardReturns(adk.AgentCard{
-		Name:        "custom-agent",
-		Description: "custom description",
-		Version:     "1.0.0",
-	})
-	a2aServer.SetAgentInfoProvider(mockAgentProvider)
 
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 	a2aServer.SetTaskResultProcessor(mockProcessor)
 
 	agentCard := a2aServer.GetAgentCard()
-	assert.Equal(t, "custom-agent", agentCard.Name)
-	assert.Equal(t, "custom description", agentCard.Description)
+	assert.Equal(t, "custom-test-agent", agentCard.Name)
+	assert.Equal(t, "A custom test agent for dependency injection", agentCard.Description)
+	assert.Equal(t, "http://custom-agent:9090", agentCard.URL)
+	assert.Equal(t, "2.5.0", agentCard.Version)
+}
+
+func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
+	cfg := config.Config{
+		AgentName:        "test-custom-agent",
+		AgentDescription: "A test agent with custom configuration",
+		AgentURL:         "http://test-agent:9999",
+		AgentVersion:     "2.0.0",
+		Port:             "9999",
+		Debug:            true,
+	}
+
+	logger := zap.NewNop()
+
+	serverInstance := server.NewA2AServerBuilder(cfg, logger).Build()
+
+	assert.NotNil(t, serverInstance)
+
+	agentCard := serverInstance.GetAgentCard()
+	assert.Equal(t, "test-custom-agent", agentCard.Name)
+	assert.Equal(t, "A test agent with custom configuration", agentCard.Description)
+	assert.Equal(t, "http://test-agent:9999", agentCard.URL)
+	assert.Equal(t, "2.0.0", agentCard.Version)
+
+	assert.NotNil(t, agentCard.Capabilities.Streaming)
+	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
+	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
+	assert.True(t, *agentCard.Capabilities.Streaming)
+	assert.True(t, *agentCard.Capabilities.PushNotifications)
+	assert.False(t, *agentCard.Capabilities.StateTransitionHistory)
+}
+
+func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
+	cfg := config.Config{
+		AgentName:        "test-agent",
+		AgentDescription: "A test agent",
+		AgentURL:         "http://test-agent:8080",
+		AgentVersion:     "1.0.0",
+		Port:             "8080",
+		CapabilitiesConfig: &config.CapabilitiesConfig{
+			Streaming:              false,
+			PushNotifications:      false,
+			StateTransitionHistory: true,
+		},
+	}
+
+	logger := zap.NewNop()
+
+	serverInstance := server.NewA2AServerBuilder(cfg, logger).Build()
+
+	assert.NotNil(t, serverInstance)
+
+	agentCard := serverInstance.GetAgentCard()
+	assert.Equal(t, "test-agent", agentCard.Name)
+
+	assert.NotNil(t, agentCard.Capabilities.Streaming)
+	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
+	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
+	assert.False(t, *agentCard.Capabilities.Streaming)
+	assert.False(t, *agentCard.Capabilities.PushNotifications)
+	assert.True(t, *agentCard.Capabilities.StateTransitionHistory)
+}
+
+func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
+	cfg := config.Config{
+		AgentName:          "test-agent",
+		AgentDescription:   "A test agent",
+		AgentURL:           "http://test-agent:8080",
+		AgentVersion:       "1.0.0",
+		Port:               "8080",
+		CapabilitiesConfig: nil,
+		QueueConfig:        nil,
+		ServerConfig:       nil,
+	}
+
+	logger := zap.NewNop()
+
+	serverInstance := server.NewA2AServerBuilder(cfg, logger).Build()
+
+	assert.NotNil(t, serverInstance)
+
+	agentCard := serverInstance.GetAgentCard()
+	assert.Equal(t, "test-agent", agentCard.Name)
+	assert.Equal(t, "A test agent", agentCard.Description)
+	assert.Equal(t, "http://test-agent:8080", agentCard.URL)
+	assert.Equal(t, "1.0.0", agentCard.Version)
+
+	assert.NotNil(t, agentCard.Capabilities.Streaming)
+	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
+	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
+	assert.True(t, *agentCard.Capabilities.Streaming)
+	assert.True(t, *agentCard.Capabilities.PushNotifications)
+	assert.False(t, *agentCard.Capabilities.StateTransitionHistory)
 }

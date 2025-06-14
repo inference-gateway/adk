@@ -54,9 +54,9 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 
 		// Create telemetry attributes with safe null checks
 		var provider, model string
-		if t.cfg.LLMProviderClientConfig != nil {
-			provider = t.cfg.LLMProviderClientConfig.Provider
-			model = t.cfg.LLMProviderClientConfig.Model
+		if t.cfg.AgentConfig != nil {
+			provider = t.cfg.AgentConfig.Provider
+			model = t.cfg.AgentConfig.Model
 		}
 
 		attrs := otel.TelemetryAttributes{

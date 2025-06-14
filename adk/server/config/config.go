@@ -1,29 +1,34 @@
 package config
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/sethvargo/go-envconfig"
+)
 
 // Config holds all application configuration
 type Config struct {
-	AgentName                     string                   `env:"AGENT_NAME,default=helloworld-agent"`
-	AgentDescription              string                   `env:"AGENT_DESCRIPTION,default=A simple greeting agent that provides personalized greetings using the A2A protocol"`
-	AgentURL                      string                   `env:"AGENT_URL,default=http://helloworld-agent:8080"`
-	AgentVersion                  string                   `env:"AGENT_VERSION,default=1.0.0"`
-	Debug                         bool                     `env:"DEBUG,default=false"`
-	Port                          string                   `env:"PORT,default=8080"`
-	StreamingStatusUpdateInterval time.Duration            `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
-	LLMProviderClientConfig       *LLMProviderClientConfig `env:",prefix=LLM_CLIENT_"`
-	CapabilitiesConfig            *CapabilitiesConfig      `env:",prefix=CAPABILITIES_"`
-	TLSConfig                     *TLSConfig               `env:",prefix=TLS_"`
-	AuthConfig                    *AuthConfig              `env:",prefix=AUTH_"`
-	QueueConfig                   *QueueConfig             `env:",prefix=QUEUE_"`
-	ServerConfig                  *ServerConfig            `env:",prefix=SERVER_"`
-	TelemetryConfig               *TelemetryConfig         `env:",prefix=TELEMETRY_"`
+	AgentName                     string              `env:"AGENT_NAME,default=helloworld-agent"`
+	AgentDescription              string              `env:"AGENT_DESCRIPTION,default=A simple greeting agent that provides personalized greetings using the A2A protocol"`
+	AgentURL                      string              `env:"AGENT_URL,default=http://helloworld-agent:8080"`
+	AgentVersion                  string              `env:"AGENT_VERSION,default=1.0.0"`
+	Debug                         bool                `env:"DEBUG,default=false"`
+	Port                          string              `env:"PORT,default=8080"`
+	StreamingStatusUpdateInterval time.Duration       `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
+	AgentConfig                   *AgentConfig        `env:",prefix=AGENT_CLIENT_"`
+	CapabilitiesConfig            *CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
+	TLSConfig                     *TLSConfig          `env:",prefix=TLS_"`
+	AuthConfig                    *AuthConfig         `env:",prefix=AUTH_"`
+	QueueConfig                   *QueueConfig        `env:",prefix=QUEUE_"`
+	ServerConfig                  *ServerConfig       `env:",prefix=SERVER_"`
+	TelemetryConfig               *TelemetryConfig    `env:",prefix=TELEMETRY_"`
 }
 
-// LLMProviderClientConfig holds LLM provider client configuration
-type LLMProviderClientConfig struct {
-	Provider                    string            `env:"PROVIDER,default=deepseek" description:"LLM provider name"`
-	Model                       string            `env:"MODEL,default=deepseek-chat" description:"LLM model name"`
+// AgentConfig holds agent-specific configuration
+type AgentConfig struct {
+	Provider                    string            `env:"PROVIDER" description:"LLM provider name"`
+	Model                       string            `env:"MODEL" description:"LLM model name"`
 	BaseURL                     string            `env:"BASE_URL" description:"Base URL for the LLM provider API"`
 	APIKey                      string            `env:"API_KEY" description:"API key for authentication"`
 	Timeout                     time.Duration     `env:"TIMEOUT,default=30s" description:"Client timeout for requests"`
@@ -87,4 +92,27 @@ type ServerConfig struct {
 // TelemetryConfig holds telemetry configuration
 type TelemetryConfig struct {
 	Enable bool `env:"ENABLE,default=false" description:"Enable telemetry collection"`
+}
+
+// Load loads configuration from environment variables, merging with the provided base config.
+func Load(ctx context.Context, baseConfig *Config) (*Config, error) {
+	return LoadWithLookuper(ctx, baseConfig, envconfig.OsLookuper())
+}
+
+// LoadWithLookuper creates and loads configuration using a custom lookuper and merges with user config
+func LoadWithLookuper(ctx context.Context, baseConfig *Config, lookuper envconfig.Lookuper) (*Config, error) {
+	var cfg Config
+
+	if baseConfig != nil {
+		cfg = *baseConfig
+	}
+
+	err := envconfig.ProcessWith(ctx, &envconfig.Config{
+		Target:   &cfg,
+		Lookuper: lookuper,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &cfg, nil
 }

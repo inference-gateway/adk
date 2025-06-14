@@ -1,4 +1,4 @@
-package server_test
+package config_test
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	require "github.com/stretchr/testify/require"
 )
 
-func TestConfig_LoadFromEnvironment(t *testing.T) {
+func TestConfig_LoadWithLookuper(t *testing.T) {
 	tests := []struct {
 		name         string
 		envVars      map[string]string
@@ -29,16 +29,16 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				assert.Equal(t, "8080", cfg.Port)
 				assert.Equal(t, 1*time.Second, cfg.StreamingStatusUpdateInterval)
 
-				require.NotNil(t, cfg.LLMProviderClientConfig)
-				assert.Equal(t, "deepseek", cfg.LLMProviderClientConfig.Provider)
-				assert.Equal(t, "deepseek-chat", cfg.LLMProviderClientConfig.Model)
-				assert.Equal(t, 30*time.Second, cfg.LLMProviderClientConfig.Timeout)
-				assert.Equal(t, 3, cfg.LLMProviderClientConfig.MaxRetries)
-				assert.Equal(t, 10, cfg.LLMProviderClientConfig.MaxChatCompletionIterations)
-				assert.Equal(t, "a2a-agent/1.0", cfg.LLMProviderClientConfig.UserAgent)
-				assert.Equal(t, 4096, cfg.LLMProviderClientConfig.MaxTokens)
-				assert.Equal(t, 0.7, cfg.LLMProviderClientConfig.Temperature)
-				assert.Equal(t, 1.0, cfg.LLMProviderClientConfig.TopP)
+				require.NotNil(t, cfg.AgentConfig)
+				assert.Equal(t, "", cfg.AgentConfig.Provider)
+				assert.Equal(t, "", cfg.AgentConfig.Model)
+				assert.Equal(t, 30*time.Second, cfg.AgentConfig.Timeout)
+				assert.Equal(t, 3, cfg.AgentConfig.MaxRetries)
+				assert.Equal(t, 10, cfg.AgentConfig.MaxChatCompletionIterations)
+				assert.Equal(t, "a2a-agent/1.0", cfg.AgentConfig.UserAgent)
+				assert.Equal(t, 4096, cfg.AgentConfig.MaxTokens)
+				assert.Equal(t, 0.7, cfg.AgentConfig.Temperature)
+				assert.Equal(t, 1.0, cfg.AgentConfig.TopP)
 
 				require.NotNil(t, cfg.CapabilitiesConfig)
 				assert.True(t, cfg.CapabilitiesConfig.Streaming)
@@ -70,32 +70,32 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				"DEBUG":                            "true",
 				"PORT":                             "9090",
 				"STREAMING_STATUS_UPDATE_INTERVAL": "5s",
-				"LLM_CLIENT_PROVIDER":              "openai",
-				"LLM_CLIENT_MODEL":                 "gpt-4",
-				"LLM_CLIENT_BASE_URL":              "https://api.openai.com/v1",
-				"LLM_CLIENT_API_KEY":               "test-key",
-				"LLM_CLIENT_TIMEOUT":               "45s",
-				"LLM_CLIENT_MAX_RETRIES":           "5",
-				"LLM_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS": "15",
-				"LLM_CLIENT_USER_AGENT":                     "custom-agent/2.0",
-				"LLM_CLIENT_MAX_TOKENS":                     "8192",
-				"LLM_CLIENT_TEMPERATURE":                    "0.8",
-				"LLM_CLIENT_TOP_P":                          "0.9",
-				"CAPABILITIES_STREAMING":                    "false",
-				"CAPABILITIES_PUSH_NOTIFICATIONS":           "false",
-				"CAPABILITIES_STATE_TRANSITION_HISTORY":     "true",
-				"TLS_ENABLE":                                "true",
-				"TLS_CERT_PATH":                             "/custom/cert.pem",
-				"TLS_KEY_PATH":                              "/custom/key.pem",
-				"AUTH_ENABLE":                               "true",
-				"AUTH_ISSUER_URL":                           "http://custom-keycloak:8080/realms/custom",
-				"AUTH_CLIENT_ID":                            "custom-client",
-				"AUTH_CLIENT_SECRET":                        "custom-secret",
-				"QUEUE_MAX_SIZE":                            "500",
-				"QUEUE_CLEANUP_INTERVAL":                    "60s",
-				"SERVER_READ_TIMEOUT":                       "180s",
-				"SERVER_WRITE_TIMEOUT":                      "180s",
-				"SERVER_IDLE_TIMEOUT":                       "300s",
+				"AGENT_CLIENT_PROVIDER":            "openai",
+				"AGENT_CLIENT_MODEL":               "gpt-4",
+				"AGENT_CLIENT_BASE_URL":            "https://api.openai.com/v1",
+				"AGENT_CLIENT_API_KEY":             "test-key",
+				"AGENT_CLIENT_TIMEOUT":             "45s",
+				"AGENT_CLIENT_MAX_RETRIES":         "5",
+				"AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS": "15",
+				"AGENT_CLIENT_USER_AGENT":                     "custom-agent/2.0",
+				"AGENT_CLIENT_MAX_TOKENS":                     "8192",
+				"AGENT_CLIENT_TEMPERATURE":                    "0.8",
+				"AGENT_CLIENT_TOP_P":                          "0.9",
+				"CAPABILITIES_STREAMING":                      "false",
+				"CAPABILITIES_PUSH_NOTIFICATIONS":             "false",
+				"CAPABILITIES_STATE_TRANSITION_HISTORY":       "true",
+				"TLS_ENABLE":                                  "true",
+				"TLS_CERT_PATH":                               "/custom/cert.pem",
+				"TLS_KEY_PATH":                                "/custom/key.pem",
+				"AUTH_ENABLE":                                 "true",
+				"AUTH_ISSUER_URL":                             "http://custom-keycloak:8080/realms/custom",
+				"AUTH_CLIENT_ID":                              "custom-client",
+				"AUTH_CLIENT_SECRET":                          "custom-secret",
+				"QUEUE_MAX_SIZE":                              "500",
+				"QUEUE_CLEANUP_INTERVAL":                      "60s",
+				"SERVER_READ_TIMEOUT":                         "180s",
+				"SERVER_WRITE_TIMEOUT":                        "180s",
+				"SERVER_IDLE_TIMEOUT":                         "300s",
 			},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
 				// Test main config overrides
@@ -108,18 +108,18 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				assert.Equal(t, 5*time.Second, cfg.StreamingStatusUpdateInterval)
 
 				// Test LLM config overrides
-				require.NotNil(t, cfg.LLMProviderClientConfig)
-				assert.Equal(t, "openai", cfg.LLMProviderClientConfig.Provider)
-				assert.Equal(t, "gpt-4", cfg.LLMProviderClientConfig.Model)
-				assert.Equal(t, "https://api.openai.com/v1", cfg.LLMProviderClientConfig.BaseURL)
-				assert.Equal(t, "test-key", cfg.LLMProviderClientConfig.APIKey)
-				assert.Equal(t, 45*time.Second, cfg.LLMProviderClientConfig.Timeout)
-				assert.Equal(t, 5, cfg.LLMProviderClientConfig.MaxRetries)
-				assert.Equal(t, 15, cfg.LLMProviderClientConfig.MaxChatCompletionIterations)
-				assert.Equal(t, "custom-agent/2.0", cfg.LLMProviderClientConfig.UserAgent)
-				assert.Equal(t, 8192, cfg.LLMProviderClientConfig.MaxTokens)
-				assert.Equal(t, 0.8, cfg.LLMProviderClientConfig.Temperature)
-				assert.Equal(t, 0.9, cfg.LLMProviderClientConfig.TopP)
+				require.NotNil(t, cfg.AgentConfig)
+				assert.Equal(t, "openai", cfg.AgentConfig.Provider)
+				assert.Equal(t, "gpt-4", cfg.AgentConfig.Model)
+				assert.Equal(t, "https://api.openai.com/v1", cfg.AgentConfig.BaseURL)
+				assert.Equal(t, "test-key", cfg.AgentConfig.APIKey)
+				assert.Equal(t, 45*time.Second, cfg.AgentConfig.Timeout)
+				assert.Equal(t, 5, cfg.AgentConfig.MaxRetries)
+				assert.Equal(t, 15, cfg.AgentConfig.MaxChatCompletionIterations)
+				assert.Equal(t, "custom-agent/2.0", cfg.AgentConfig.UserAgent)
+				assert.Equal(t, 8192, cfg.AgentConfig.MaxTokens)
+				assert.Equal(t, 0.8, cfg.AgentConfig.Temperature)
+				assert.Equal(t, 0.9, cfg.AgentConfig.TopP)
 
 				// Test Capabilities config overrides
 				require.NotNil(t, cfg.CapabilitiesConfig)
@@ -155,11 +155,11 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 		{
 			name: "partial override with remaining defaults",
 			envVars: map[string]string{
-				"AGENT_NAME":          "partial-agent",
-				"DEBUG":               "true",
-				"LLM_CLIENT_PROVIDER": "anthropic",
-				"LLM_CLIENT_MODEL":    "claude-3",
-				"QUEUE_MAX_SIZE":      "200",
+				"AGENT_NAME":            "partial-agent",
+				"DEBUG":                 "true",
+				"AGENT_CLIENT_PROVIDER": "anthropic",
+				"AGENT_CLIENT_MODEL":    "claude-3",
+				"QUEUE_MAX_SIZE":        "200",
 			},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
 				assert.Equal(t, "partial-agent", cfg.AgentName)
@@ -169,11 +169,11 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				assert.Equal(t, "1.0.0", cfg.AgentVersion)
 				assert.Equal(t, "8080", cfg.Port)
 
-				require.NotNil(t, cfg.LLMProviderClientConfig)
-				assert.Equal(t, "anthropic", cfg.LLMProviderClientConfig.Provider)
-				assert.Equal(t, "claude-3", cfg.LLMProviderClientConfig.Model)
-				assert.Equal(t, 30*time.Second, cfg.LLMProviderClientConfig.Timeout)
-				assert.Equal(t, 3, cfg.LLMProviderClientConfig.MaxRetries)
+				require.NotNil(t, cfg.AgentConfig)
+				assert.Equal(t, "anthropic", cfg.AgentConfig.Provider)
+				assert.Equal(t, "claude-3", cfg.AgentConfig.Model)
+				assert.Equal(t, 30*time.Second, cfg.AgentConfig.Timeout)
+				assert.Equal(t, 3, cfg.AgentConfig.MaxRetries)
 
 				require.NotNil(t, cfg.QueueConfig)
 				assert.Equal(t, 200, cfg.QueueConfig.MaxSize)
@@ -181,25 +181,18 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 			},
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lookuper := envconfig.MapLookuper(tt.envVars)
-
 			ctx := context.Background()
-			var cfg config.Config
-			err := envconfig.ProcessWith(ctx, &envconfig.Config{
-				Target:   &cfg,
-				Lookuper: lookuper,
-			})
+			lookuper := envconfig.MapLookuper(tt.envVars)
+			cfg, err := config.LoadWithLookuper(ctx, nil, lookuper)
 			require.NoError(t, err, "should process config without error")
-
-			tt.validateFunc(t, &cfg)
+			tt.validateFunc(t, cfg)
 		})
 	}
 }
 
-func TestConfig_LoadFromEnvironmentWithInvalidValues(t *testing.T) {
+func TestConfig_LoadWithLookuper_InvalidValues(t *testing.T) {
 	tests := []struct {
 		name        string
 		envVars     map[string]string
@@ -217,7 +210,7 @@ func TestConfig_LoadFromEnvironmentWithInvalidValues(t *testing.T) {
 		{
 			name: "invalid integer format",
 			envVars: map[string]string{
-				"LLM_CLIENT_MAX_RETRIES": "not-a-number",
+				"AGENT_CLIENT_MAX_RETRIES": "not-a-number",
 			},
 			expectError: true,
 			errorText:   "strconv",
@@ -233,7 +226,7 @@ func TestConfig_LoadFromEnvironmentWithInvalidValues(t *testing.T) {
 		{
 			name: "invalid float format",
 			envVars: map[string]string{
-				"LLM_CLIENT_TEMPERATURE": "not-a-float",
+				"AGENT_CLIENT_TEMPERATURE": "not-a-float",
 			},
 			expectError: true,
 			errorText:   "strconv",
@@ -242,14 +235,9 @@ func TestConfig_LoadFromEnvironmentWithInvalidValues(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lookuper := envconfig.MapLookuper(tt.envVars)
 			ctx := context.Background()
-			var cfg config.Config
-
-			err := envconfig.ProcessWith(ctx, &envconfig.Config{
-				Target:   &cfg,
-				Lookuper: lookuper,
-			})
+			lookuper := envconfig.MapLookuper(tt.envVars)
+			_, err := config.LoadWithLookuper(ctx, nil, lookuper)
 
 			if tt.expectError {
 				require.Error(t, err, "should return error for invalid input")
