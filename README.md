@@ -730,7 +730,6 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 - [ ] **Monitoring Dashboard**: Built-in monitoring and analytics
 - [ ] **Multi-language SDKs**: Additional language support beyond Go
 - [ ] **Performance Optimization**: Further reduce resource consumption
-- [ ] **Advanced Authentication**: Support for more auth providers
 
 ## 🔗 Resources
 
