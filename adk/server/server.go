@@ -117,11 +117,16 @@ var _ A2AServer = (*A2AServerImpl)(nil)
 
 // NewA2AServer creates a new A2A server with the provided configuration and logger
 func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
+	queueMaxSize := 100
+	if cfg.QueueConfig != nil {
+		queueMaxSize = cfg.QueueConfig.MaxSize
+	}
+
 	server := &A2AServerImpl{
 		cfg:       cfg,
 		logger:    logger,
 		otel:      otel,
-		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
+		taskQueue: make(chan *QueuedTask, queueMaxSize),
 	}
 
 	server.taskManager = NewDefaultTaskManager(logger)
@@ -281,12 +286,22 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 func (s *A2AServerImpl) Start(ctx context.Context) error {
 	router := s.setupRouter(s.cfg)
 
+	// Apply server config defaults if not set
+	readTimeout := 120 * time.Second
+	writeTimeout := 120 * time.Second
+	idleTimeout := 120 * time.Second
+	if s.cfg.ServerConfig != nil {
+		readTimeout = s.cfg.ServerConfig.ReadTimeout
+		writeTimeout = s.cfg.ServerConfig.WriteTimeout
+		idleTimeout = s.cfg.ServerConfig.IdleTimeout
+	}
+
 	s.httpServer = &http.Server{
 		Addr:         fmt.Sprintf(":%s", s.cfg.Port),
 		Handler:      router,
-		ReadTimeout:  s.cfg.ServerConfig.ReadTimeout,
-		WriteTimeout: s.cfg.ServerConfig.WriteTimeout,
-		IdleTimeout:  s.cfg.ServerConfig.IdleTimeout,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 
 	s.logger.Info("starting A2A server", zap.String("port", s.cfg.Port))
@@ -310,7 +325,8 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	go s.StartTaskProcessor(ctx)
 
-	if s.cfg.TLSConfig.Enable {
+	// Check TLS configuration safely
+	if s.cfg.TLSConfig != nil && s.cfg.TLSConfig.Enable {
 		return s.httpServer.ListenAndServeTLS(s.cfg.TLSConfig.CertPath, s.cfg.TLSConfig.KeyPath)
 	}
 
@@ -366,16 +382,30 @@ func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
 		return s.agentInfoProvider.GetAgentCard(s.cfg)
 	}
 
+	// Create default capabilities with safe defaults
+	capabilities := adk.AgentCapabilities{}
+
+	// Apply capabilities config if available
+	if s.cfg.CapabilitiesConfig != nil {
+		capabilities.Streaming = &s.cfg.CapabilitiesConfig.Streaming
+		capabilities.PushNotifications = &s.cfg.CapabilitiesConfig.PushNotifications
+		capabilities.StateTransitionHistory = &s.cfg.CapabilitiesConfig.StateTransitionHistory
+	} else {
+		// Set safe defaults when capabilities config is nil
+		defaultStreaming := true
+		defaultPushNotifications := true
+		defaultStateTransitionHistory := false
+		capabilities.Streaming = &defaultStreaming
+		capabilities.PushNotifications = &defaultPushNotifications
+		capabilities.StateTransitionHistory = &defaultStateTransitionHistory
+	}
+
 	return adk.AgentCard{
-		Name:        s.cfg.AgentName,
-		Description: s.cfg.AgentDescription,
-		URL:         s.cfg.AgentURL,
-		Version:     s.cfg.AgentVersion,
-		Capabilities: adk.AgentCapabilities{
-			Streaming:              &s.cfg.CapabilitiesConfig.Streaming,
-			PushNotifications:      &s.cfg.CapabilitiesConfig.PushNotifications,
-			StateTransitionHistory: &s.cfg.CapabilitiesConfig.StateTransitionHistory,
-		},
+		Name:               s.cfg.AgentName,
+		Description:        s.cfg.AgentDescription,
+		URL:                s.cfg.AgentURL,
+		Version:            s.cfg.AgentVersion,
+		Capabilities:       capabilities,
 		DefaultInputModes:  []string{"text/plain"},
 		DefaultOutputModes: []string{"text/plain"},
 		Skills:             []adk.AgentSkill{},
@@ -458,7 +488,13 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 // startTaskCleanup starts the background task cleanup process
 func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
-	ticker := time.NewTicker(s.cfg.QueueConfig.CleanupInterval)
+	// Apply safe defaults if queue config is nil
+	cleanupInterval := 30 * time.Second
+	if s.cfg.QueueConfig != nil {
+		cleanupInterval = s.cfg.QueueConfig.CleanupInterval
+	}
+
+	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
 	for {

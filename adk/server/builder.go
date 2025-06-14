@@ -1,68 +1,140 @@
 package server
 
 import (
+	"time"
+
 	config "github.com/inference-gateway/a2a/adk/server/config"
+	otel "github.com/inference-gateway/a2a/adk/server/otel"
 	zap "go.uber.org/zap"
 )
 
-// A2AServerBuilder provides a fluent interface for building A2A servers
-type A2AServerBuilder struct {
-	cfg                 config.Config
-	logger              *zap.Logger
-	taskHandler         TaskHandler
-	taskResultProcessor TaskResultProcessor
-	agentInfoProvider   AgentInfoProvider
-	agent               OpenAICompatibleAgent
+// A2AServerBuilder provides a fluent interface for building A2A servers with custom configurations.
+// This interface allows for flexible server construction with optional components and settings.
+// Use NewA2AServerBuilder to create an instance, then chain method calls to configure the server.
+//
+// Example:
+//
+//	server := NewA2AServerBuilder(config, logger).
+//	  WithAgent(agent).
+//	  Build()
+type A2AServerBuilder interface {
+	// WithTaskHandler sets a custom task handler for processing A2A tasks.
+	// If not set, a default task handler will be used.
+	WithTaskHandler(handler TaskHandler) A2AServerBuilder
+
+	// WithTaskResultProcessor sets a custom task result processor for handling tool call results.
+	// This allows custom business logic for determining when tasks should be completed.
+	WithTaskResultProcessor(processor TaskResultProcessor) A2AServerBuilder
+
+	// WithAgentInfoProvider sets a custom agent info provider for custom agent metadata.
+	// This allows overriding the default agent card information.
+	WithAgentInfoProvider(provider AgentInfoProvider) A2AServerBuilder
+
+	// WithAgent sets a pre-configured OpenAI-compatible agent for processing tasks.
+	// This is useful when you have already configured an agent with specific settings.
+	WithAgent(agent OpenAICompatibleAgent) A2AServerBuilder
+
+	// WithLogger sets a custom logger for the builder and resulting server.
+	// This allows using a logger configured with appropriate level based on the Debug config.
+	WithLogger(logger *zap.Logger) A2AServerBuilder
+
+	// Build creates and returns the configured A2A server.
+	// This method applies configuration defaults and initializes all components.
+	Build() A2AServer
 }
 
-// NewA2AServerBuilder creates a new server builder with required dependencies
-func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) *A2AServerBuilder {
-	return &A2AServerBuilder{
+var _ A2AServerBuilder = (*A2AServerBuilderImpl)(nil)
+
+// A2AServerBuilderImpl is the concrete implementation of the A2AServerBuilder interface.
+// It provides a fluent interface for building A2A servers with custom configurations.
+// This struct holds the configuration and optional components that will be used to create the server.
+type A2AServerBuilderImpl struct {
+	cfg                 config.Config         // Base configuration for the server
+	logger              *zap.Logger           // Logger instance for the server
+	taskHandler         TaskHandler           // Optional custom task handler
+	taskResultProcessor TaskResultProcessor   // Optional custom task result processor
+	agentInfoProvider   AgentInfoProvider     // Optional custom agent info provider
+	agent               OpenAICompatibleAgent // Optional pre-configured agent
+}
+
+// NewA2AServerBuilder creates a new server builder with required dependencies.
+// The configuration passed here will be used to configure the server.
+// Any nil nested configuration objects will be populated with sensible defaults when Build() is called.
+//
+// Parameters:
+//   - cfg: The base configuration for the server (agent name, port, etc.)
+//   - logger: Logger instance to use for the server (should match cfg.Debug level)
+//
+// Returns:
+//
+//	A2AServerBuilder interface that can be used to further configure the server before building.
+//
+// Example:
+//
+//	cfg := config.Config{
+//	  AgentName: "my-agent",
+//	  Port: "8080",
+//	  Debug: true,
+//	}
+//	logger, _ := zap.NewDevelopment() // Use development logger for debug
+//	server := NewA2AServerBuilder(cfg, logger).
+//	  WithAgent(myAgent).
+//	  Build()
+func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder {
+	return &A2AServerBuilderImpl{
 		cfg:    cfg,
 		logger: logger,
 	}
 }
 
 // WithTaskHandler sets a custom task handler
-func (b *A2AServerBuilder) WithTaskHandler(handler TaskHandler) *A2AServerBuilder {
+func (b *A2AServerBuilderImpl) WithTaskHandler(handler TaskHandler) A2AServerBuilder {
 	b.taskHandler = handler
 	return b
 }
 
 // WithTaskResultProcessor sets a custom task result processor
-func (b *A2AServerBuilder) WithTaskResultProcessor(processor TaskResultProcessor) *A2AServerBuilder {
+func (b *A2AServerBuilderImpl) WithTaskResultProcessor(processor TaskResultProcessor) A2AServerBuilder {
 	b.taskResultProcessor = processor
 	return b
 }
 
 // WithAgentInfoProvider sets a custom agent info provider
-func (b *A2AServerBuilder) WithAgentInfoProvider(provider AgentInfoProvider) *A2AServerBuilder {
+func (b *A2AServerBuilderImpl) WithAgentInfoProvider(provider AgentInfoProvider) A2AServerBuilder {
 	b.agentInfoProvider = provider
 	return b
 }
 
 // WithAgent sets a custom OpenAI-compatible agent
-func (b *A2AServerBuilder) WithAgent(agent OpenAICompatibleAgent) *A2AServerBuilder {
+func (b *A2AServerBuilderImpl) WithAgent(agent OpenAICompatibleAgent) A2AServerBuilder {
 	b.agent = agent
 	return b
 }
 
-// WithAgentAndTools creates an agent with LLM configuration and tools
-func (b *A2AServerBuilder) WithAgentAndTools(llmConfig *config.LLMProviderClientConfig, toolBox ToolBox) *A2AServerBuilder {
-	agent, err := NewOpenAICompatibleAgentWithConfig(b.logger, llmConfig)
-	if err != nil {
-		b.logger.Error("failed to create openai-compatible agent", zap.Error(err))
-	} else {
-		agent.SetToolBox(toolBox)
-		b.agent = agent
-	}
-
+// WithLogger sets a custom logger for the builder
+func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
+	b.logger = logger
 	return b
 }
 
-// Build creates and returns the configured A2A server
-func (b *A2AServerBuilder) Build() A2AServer {
-	server := NewDefaultA2AServer()
+// Build creates and returns the configured A2A server.
+func (b *A2AServerBuilderImpl) Build() A2AServer {
+	if err := b.applyConfigDefaults(); err != nil {
+		b.logger.Error("failed to apply configuration defaults", zap.Error(err))
+	}
+
+	var telemetryInstance otel.OpenTelemetry
+	if b.cfg.TelemetryConfig != nil && b.cfg.TelemetryConfig.Enable {
+		var err error
+		telemetryInstance, err = otel.NewOpenTelemetry(&b.cfg, b.logger)
+		if err != nil {
+			b.logger.Error("failed to initialize telemetry", zap.Error(err))
+		} else {
+			b.logger.Info("telemetry enabled - metrics will be available on :9090/metrics")
+		}
+	}
+
+	server := NewA2AServer(&b.cfg, b.logger, telemetryInstance)
 
 	if b.agent != nil {
 		server.SetAgent(b.agent)
@@ -90,9 +162,9 @@ func (b *A2AServerBuilder) Build() A2AServer {
 
 // SimpleA2AServerWithAgent creates a basic A2A server with an OpenAI-compatible agent
 // This is a convenience function for agent-based use cases
-func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, llmConfig *config.LLMProviderClientConfig, toolBox ToolBox) A2AServer {
+func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenAICompatibleAgent) A2AServer {
 	return NewA2AServerBuilder(cfg, logger).
-		WithAgentAndTools(llmConfig, toolBox).
+		WithAgent(agent).
 		Build()
 }
 
@@ -131,4 +203,63 @@ func CustomA2AServerWithAgent(
 		WithTaskResultProcessor(taskResultProcessor).
 		WithAgentInfoProvider(agentInfoProvider).
 		Build()
+}
+
+// applyConfigDefaults ensures all nested configuration objects have default values.
+// This method is called internally by Build() to prevent nil pointer exceptions
+// when accessing configuration objects. It applies sensible defaults for any
+// configuration section that is nil, allowing the consumer to only specify
+// the configuration they care about.
+//
+// Default values applied:
+//   - CapabilitiesConfig: Streaming=true, PushNotifications=true, StateTransitionHistory=false
+//   - TLSConfig: Enable=false
+//   - AuthConfig: Enable=false
+//   - QueueConfig: MaxSize=100, CleanupInterval=30s
+//   - ServerConfig: All timeouts=120s
+//   - TelemetryConfig: Enable=false
+func (b *A2AServerBuilderImpl) applyConfigDefaults() error {
+
+	if b.cfg.CapabilitiesConfig == nil {
+		b.cfg.CapabilitiesConfig = &config.CapabilitiesConfig{
+			Streaming:              true,
+			PushNotifications:      true,
+			StateTransitionHistory: false,
+		}
+	}
+
+	if b.cfg.TLSConfig == nil {
+		b.cfg.TLSConfig = &config.TLSConfig{
+			Enable: false,
+		}
+	}
+
+	if b.cfg.AuthConfig == nil {
+		b.cfg.AuthConfig = &config.AuthConfig{
+			Enable: false,
+		}
+	}
+
+	if b.cfg.QueueConfig == nil {
+		b.cfg.QueueConfig = &config.QueueConfig{
+			MaxSize:         100,
+			CleanupInterval: 30 * time.Second,
+		}
+	}
+
+	if b.cfg.ServerConfig == nil {
+		b.cfg.ServerConfig = &config.ServerConfig{
+			ReadTimeout:  120 * time.Second,
+			WriteTimeout: 120 * time.Second,
+			IdleTimeout:  120 * time.Second,
+		}
+	}
+
+	if b.cfg.TelemetryConfig == nil {
+		b.cfg.TelemetryConfig = &config.TelemetryConfig{
+			Enable: false,
+		}
+	}
+
+	return nil
 }

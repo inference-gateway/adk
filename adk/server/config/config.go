@@ -4,24 +4,24 @@ import "time"
 
 // Config holds all application configuration
 type Config struct {
-	AgentName                     string                   `env:"AGENT_NAME,default=helloworld-agent"`
-	AgentDescription              string                   `env:"AGENT_DESCRIPTION,default=A simple greeting agent that provides personalized greetings using the A2A protocol"`
-	AgentURL                      string                   `env:"AGENT_URL,default=http://helloworld-agent:8080"`
-	AgentVersion                  string                   `env:"AGENT_VERSION,default=1.0.0"`
-	Debug                         bool                     `env:"DEBUG,default=false"`
-	Port                          string                   `env:"PORT,default=8080"`
-	StreamingStatusUpdateInterval time.Duration            `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
-	LLMProviderClientConfig       *LLMProviderClientConfig `env:",prefix=LLM_CLIENT_"`
-	CapabilitiesConfig            *CapabilitiesConfig      `env:",prefix=CAPABILITIES_"`
-	TLSConfig                     *TLSConfig               `env:",prefix=TLS_"`
-	AuthConfig                    *AuthConfig              `env:",prefix=AUTH_"`
-	QueueConfig                   *QueueConfig             `env:",prefix=QUEUE_"`
-	ServerConfig                  *ServerConfig            `env:",prefix=SERVER_"`
-	TelemetryConfig               *TelemetryConfig         `env:",prefix=TELEMETRY_"`
+	AgentName                     string              `env:"AGENT_NAME,default=helloworld-agent"`
+	AgentDescription              string              `env:"AGENT_DESCRIPTION,default=A simple greeting agent that provides personalized greetings using the A2A protocol"`
+	AgentURL                      string              `env:"AGENT_URL,default=http://helloworld-agent:8080"`
+	AgentVersion                  string              `env:"AGENT_VERSION,default=1.0.0"`
+	Debug                         bool                `env:"DEBUG,default=false"`
+	Port                          string              `env:"PORT,default=8080"`
+	StreamingStatusUpdateInterval time.Duration       `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
+	AgentConfig                   *AgentConfig        `env:",prefix=AGENT_CLIENT"`
+	CapabilitiesConfig            *CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
+	TLSConfig                     *TLSConfig          `env:",prefix=TLS_"`
+	AuthConfig                    *AuthConfig         `env:",prefix=AUTH_"`
+	QueueConfig                   *QueueConfig        `env:",prefix=QUEUE_"`
+	ServerConfig                  *ServerConfig       `env:",prefix=SERVER_"`
+	TelemetryConfig               *TelemetryConfig    `env:",prefix=TELEMETRY_"`
 }
 
-// LLMProviderClientConfig holds LLM provider client configuration
-type LLMProviderClientConfig struct {
+// AgentConfig holds agent-specific configuration
+type AgentConfig struct {
 	Provider                    string            `env:"PROVIDER,default=deepseek" description:"LLM provider name"`
 	Model                       string            `env:"MODEL,default=deepseek-chat" description:"LLM model name"`
 	BaseURL                     string            `env:"BASE_URL" description:"Base URL for the LLM provider API"`

@@ -48,7 +48,7 @@ func TestTelemetryMiddleware_Enabled(t *testing.T) {
 		TelemetryConfig: &config.TelemetryConfig{
 			Enable: true,
 		},
-		LLMProviderClientConfig: &config.LLMProviderClientConfig{
+		AgentConfig: &config.AgentConfig{
 			Provider: "test-provider",
 			Model:    "test-model",
 		},

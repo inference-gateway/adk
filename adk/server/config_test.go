@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
+	server "github.com/inference-gateway/a2a/adk/server"
 	config "github.com/inference-gateway/a2a/adk/server/config"
 	envconfig "github.com/sethvargo/go-envconfig"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 )
 
 func TestConfig_LoadFromEnvironment(t *testing.T) {
@@ -29,16 +31,16 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				assert.Equal(t, "8080", cfg.Port)
 				assert.Equal(t, 1*time.Second, cfg.StreamingStatusUpdateInterval)
 
-				require.NotNil(t, cfg.LLMProviderClientConfig)
-				assert.Equal(t, "deepseek", cfg.LLMProviderClientConfig.Provider)
-				assert.Equal(t, "deepseek-chat", cfg.LLMProviderClientConfig.Model)
-				assert.Equal(t, 30*time.Second, cfg.LLMProviderClientConfig.Timeout)
-				assert.Equal(t, 3, cfg.LLMProviderClientConfig.MaxRetries)
-				assert.Equal(t, 10, cfg.LLMProviderClientConfig.MaxChatCompletionIterations)
-				assert.Equal(t, "a2a-agent/1.0", cfg.LLMProviderClientConfig.UserAgent)
-				assert.Equal(t, 4096, cfg.LLMProviderClientConfig.MaxTokens)
-				assert.Equal(t, 0.7, cfg.LLMProviderClientConfig.Temperature)
-				assert.Equal(t, 1.0, cfg.LLMProviderClientConfig.TopP)
+				require.NotNil(t, cfg.AgentConfig)
+				assert.Equal(t, "deepseek", cfg.AgentConfig.Provider)
+				assert.Equal(t, "deepseek-chat", cfg.AgentConfig.Model)
+				assert.Equal(t, 30*time.Second, cfg.AgentConfig.Timeout)
+				assert.Equal(t, 3, cfg.AgentConfig.MaxRetries)
+				assert.Equal(t, 10, cfg.AgentConfig.MaxChatCompletionIterations)
+				assert.Equal(t, "a2a-agent/1.0", cfg.AgentConfig.UserAgent)
+				assert.Equal(t, 4096, cfg.AgentConfig.MaxTokens)
+				assert.Equal(t, 0.7, cfg.AgentConfig.Temperature)
+				assert.Equal(t, 1.0, cfg.AgentConfig.TopP)
 
 				require.NotNil(t, cfg.CapabilitiesConfig)
 				assert.True(t, cfg.CapabilitiesConfig.Streaming)
@@ -108,18 +110,18 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				assert.Equal(t, 5*time.Second, cfg.StreamingStatusUpdateInterval)
 
 				// Test LLM config overrides
-				require.NotNil(t, cfg.LLMProviderClientConfig)
-				assert.Equal(t, "openai", cfg.LLMProviderClientConfig.Provider)
-				assert.Equal(t, "gpt-4", cfg.LLMProviderClientConfig.Model)
-				assert.Equal(t, "https://api.openai.com/v1", cfg.LLMProviderClientConfig.BaseURL)
-				assert.Equal(t, "test-key", cfg.LLMProviderClientConfig.APIKey)
-				assert.Equal(t, 45*time.Second, cfg.LLMProviderClientConfig.Timeout)
-				assert.Equal(t, 5, cfg.LLMProviderClientConfig.MaxRetries)
-				assert.Equal(t, 15, cfg.LLMProviderClientConfig.MaxChatCompletionIterations)
-				assert.Equal(t, "custom-agent/2.0", cfg.LLMProviderClientConfig.UserAgent)
-				assert.Equal(t, 8192, cfg.LLMProviderClientConfig.MaxTokens)
-				assert.Equal(t, 0.8, cfg.LLMProviderClientConfig.Temperature)
-				assert.Equal(t, 0.9, cfg.LLMProviderClientConfig.TopP)
+				require.NotNil(t, cfg.AgentConfig)
+				assert.Equal(t, "openai", cfg.AgentConfig.Provider)
+				assert.Equal(t, "gpt-4", cfg.AgentConfig.Model)
+				assert.Equal(t, "https://api.openai.com/v1", cfg.AgentConfig.BaseURL)
+				assert.Equal(t, "test-key", cfg.AgentConfig.APIKey)
+				assert.Equal(t, 45*time.Second, cfg.AgentConfig.Timeout)
+				assert.Equal(t, 5, cfg.AgentConfig.MaxRetries)
+				assert.Equal(t, 15, cfg.AgentConfig.MaxChatCompletionIterations)
+				assert.Equal(t, "custom-agent/2.0", cfg.AgentConfig.UserAgent)
+				assert.Equal(t, 8192, cfg.AgentConfig.MaxTokens)
+				assert.Equal(t, 0.8, cfg.AgentConfig.Temperature)
+				assert.Equal(t, 0.9, cfg.AgentConfig.TopP)
 
 				// Test Capabilities config overrides
 				require.NotNil(t, cfg.CapabilitiesConfig)
@@ -169,11 +171,11 @@ func TestConfig_LoadFromEnvironment(t *testing.T) {
 				assert.Equal(t, "1.0.0", cfg.AgentVersion)
 				assert.Equal(t, "8080", cfg.Port)
 
-				require.NotNil(t, cfg.LLMProviderClientConfig)
-				assert.Equal(t, "anthropic", cfg.LLMProviderClientConfig.Provider)
-				assert.Equal(t, "claude-3", cfg.LLMProviderClientConfig.Model)
-				assert.Equal(t, 30*time.Second, cfg.LLMProviderClientConfig.Timeout)
-				assert.Equal(t, 3, cfg.LLMProviderClientConfig.MaxRetries)
+				require.NotNil(t, cfg.AgentConfig)
+				assert.Equal(t, "anthropic", cfg.AgentConfig.Provider)
+				assert.Equal(t, "claude-3", cfg.AgentConfig.Model)
+				assert.Equal(t, 30*time.Second, cfg.AgentConfig.Timeout)
+				assert.Equal(t, 3, cfg.AgentConfig.MaxRetries)
 
 				require.NotNil(t, cfg.QueueConfig)
 				assert.Equal(t, 200, cfg.QueueConfig.MaxSize)
@@ -259,4 +261,97 @@ func TestConfig_LoadFromEnvironmentWithInvalidValues(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
+	cfg := config.Config{
+		AgentName:        "test-custom-agent",
+		AgentDescription: "A test agent with custom configuration",
+		AgentURL:         "http://test-agent:9999",
+		AgentVersion:     "2.0.0",
+		Port:             "9999",
+		Debug:            true,
+	}
+
+	logger := zap.NewNop()
+
+	server := server.NewA2AServerBuilder(cfg, logger).Build()
+
+	assert.NotNil(t, server)
+
+	agentCard := server.GetAgentCard()
+	assert.Equal(t, "test-custom-agent", agentCard.Name)
+	assert.Equal(t, "A test agent with custom configuration", agentCard.Description)
+	assert.Equal(t, "http://test-agent:9999", agentCard.URL)
+	assert.Equal(t, "2.0.0", agentCard.Version)
+
+	assert.NotNil(t, agentCard.Capabilities.Streaming)
+	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
+	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
+	assert.True(t, *agentCard.Capabilities.Streaming)
+	assert.True(t, *agentCard.Capabilities.PushNotifications)
+	assert.False(t, *agentCard.Capabilities.StateTransitionHistory)
+}
+
+func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
+	cfg := config.Config{
+		AgentName:        "test-agent",
+		AgentDescription: "A test agent",
+		AgentURL:         "http://test-agent:8080",
+		AgentVersion:     "1.0.0",
+		Port:             "8080",
+		CapabilitiesConfig: &config.CapabilitiesConfig{
+			Streaming:              false,
+			PushNotifications:      false,
+			StateTransitionHistory: true,
+		},
+	}
+
+	logger := zap.NewNop()
+
+	server := server.NewA2AServerBuilder(cfg, logger).Build()
+
+	assert.NotNil(t, server)
+
+	agentCard := server.GetAgentCard()
+	assert.Equal(t, "test-agent", agentCard.Name)
+
+	assert.NotNil(t, agentCard.Capabilities.Streaming)
+	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
+	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
+	assert.False(t, *agentCard.Capabilities.Streaming)
+	assert.False(t, *agentCard.Capabilities.PushNotifications)
+	assert.True(t, *agentCard.Capabilities.StateTransitionHistory)
+}
+
+func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
+	cfg := config.Config{
+		AgentName:          "test-agent",
+		AgentDescription:   "A test agent",
+		AgentURL:           "http://test-agent:8080",
+		AgentVersion:       "1.0.0",
+		Port:               "8080",
+		CapabilitiesConfig: nil,
+		QueueConfig:        nil,
+		ServerConfig:       nil,
+	}
+
+	logger := zap.NewNop()
+
+	server := server.NewA2AServerBuilder(cfg, logger).Build()
+
+	assert.NotNil(t, server)
+
+	agentCard := server.GetAgentCard()
+	assert.Equal(t, "test-agent", agentCard.Name)
+	assert.Equal(t, "A test agent", agentCard.Description)
+	assert.Equal(t, "http://test-agent:8080", agentCard.URL)
+	assert.Equal(t, "1.0.0", agentCard.Version)
+
+	assert.NotNil(t, agentCard.Capabilities.Streaming)
+	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
+	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
+	assert.True(t, *agentCard.Capabilities.Streaming)
+	assert.True(t, *agentCard.Capabilities.PushNotifications)
+	assert.False(t, *agentCard.Capabilities.StateTransitionHistory)
 }
