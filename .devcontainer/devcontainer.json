@@ -14,7 +14,6 @@
         "esbenp.prettier-vscode",
         "github.vscode-github-actions",
         "github.vscode-pull-request-github",
-        "yzhang.markdown-all-in-one",
         "golang.go",
         "ms-vscode.go"
       ],
@@ -23,9 +22,9 @@
         "editor.renderWhitespace": "all",
         "cSpell.enabled": true,
         "cSpell.files": ["**/*.md"],
-        "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "[go]": {
+          "editor.formatOnSave": true,
           "editor.defaultFormatter": "golang.go"
         },
         "git.enableCommitSigning": true,

@@ -1,4 +1,4 @@
-<h1 align="center">Agent Development Kit (ADK) for A2A-compatible Agents</h1>
+<h1 align="center">Agent Development Kit (ADK)</h1>
 
 <p align="center">
   <strong>Build powerful, interoperable AI agents with the Agent-to-Agent (A2A) protocol</strong>
@@ -44,7 +44,8 @@
     - [A2AServerBuilder](#a2aserverbuilder)
     - [A2AClient](#a2aclient)
   - [Configuration](#configuration)
-  - [Custom Task Processing](#custom-task-processing)
+- [🔧 Advanced Usage](#-advanced-usage)
+  - [Custom Tools](#custom-tools)
   - [Agent Metadata](#agent-metadata)
   - [Environment Configuration](#environment-configuration)
 - [🌐 A2A Ecosystem](#-a2a-ecosystem)
@@ -428,20 +429,10 @@ type AgentConfig struct {
     MaxTokens                   int               `env:"MAX_TOKENS,default=4096"`
     Temperature                 float64           `env:"TEMPERATURE,default=0.7"`
     SystemPrompt                string            `env:"SYSTEM_PROMPT"`
+    QueueConfig                 QueueConfig       `env:",prefix=QUEUE_"`
 }
+
 ```
-
-    QueueConfig  QueueConfig           `env:",prefix=QUEUE_"`
-
-}
-
-type AgentConfig struct {
-Name string `env:"NAME,required"`
-Description string `env:"DESCRIPTION,required"`
-Version string `env:"VERSION,default=1.0.0"`
-}
-
-````
 
 ## 🔧 Advanced Usage
 
@@ -483,7 +474,7 @@ toolBox.AddTool(weatherTool)
 
 // Set the toolbox on your agent
 agent.SetToolBox(toolBox)
-````
+```
 
 ### Custom Task Processing
 
@@ -757,5 +748,5 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 <p align="center">
   <a href="https://github.com/inference-gateway">GitHub</a> •
-  <a href="https://docs.inference-gateway.com">Documentation</a> •
+  <a href="https://docs.inference-gateway.com">Documentation</a>
 </p>
