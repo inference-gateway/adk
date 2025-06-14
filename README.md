@@ -23,6 +23,54 @@
 
 ---
 
+## 📑 Table of Contents
+
+- [📑 Table of Contents](#-table-of-contents)
+- [Overview](#overview)
+  - [What is A2A?](#what-is-a2a)
+- [🚀 Quick Start](#-quick-start)
+  - [Installation](#installation)
+  - [Basic Usage (Minimal Server)](#basic-usage-minimal-server)
+  - [AI-Powered Server](#ai-powered-server)
+  - [Examples](#examples)
+- [✨ Key Features](#-key-features)
+  - [Core Capabilities](#core-capabilities)
+  - [Developer Experience](#developer-experience)
+  - [Production Ready](#production-ready)
+- [🛠️ Development](#️-development)
+  - [Prerequisites](#prerequisites)
+  - [Development Workflow](#development-workflow)
+  - [Available Tasks](#available-tasks)
+- [📖 API Reference](#-api-reference)
+  - [Core Components](#core-components)
+    - [A2AServer](#a2aserver)
+    - [A2AServerBuilder](#a2aserverbuilder)
+    - [A2AClient](#a2aclient)
+  - [Configuration](#configuration)
+  - [Custom Task Processing](#custom-task-processing)
+  - [Agent Metadata](#agent-metadata)
+  - [Environment Configuration](#environment-configuration)
+- [🌐 A2A Ecosystem](#-a2a-ecosystem)
+  - [Related Projects](#related-projects)
+  - [A2A Agents](#a2a-agents)
+- [📋 Requirements](#-requirements)
+- [🐳 Docker Support](#-docker-support)
+- [🧪 Testing](#-testing)
+- [📄 License](#-license)
+- [🤝 Contributing](#-contributing)
+  - [Getting Started](#getting-started)
+  - [Development Guidelines](#development-guidelines)
+  - [Before Submitting](#before-submitting)
+  - [Pull Request Process](#pull-request-process)
+- [📞 Support](#-support)
+  - [Issues \& Questions](#issues--questions)
+  - [Community](#community)
+- [🗺️ Roadmap](#️-roadmap)
+- [🔗 Resources](#-resources)
+  - [Documentation](#documentation)
+
+---
+
 ## Overview
 
 The **A2A ADK (Agent Development Kit)** is a Go library that simplifies building [Agent-to-Agent (A2A) protocol](https://github.com/inference-gateway/schemas/tree/main/a2a) compatible agents. A2A enables seamless communication between AI agents, allowing them to collaborate, delegate tasks, and share capabilities across different systems and providers.
@@ -45,47 +93,138 @@ Agent-to-Agent (A2A) is a standardized protocol that enables AI agents to:
 go get github.com/inference-gateway/a2a
 ```
 
-### Basic Usage
+### Basic Usage (Minimal Server)
 
 ```go
 package main
 
 import (
+    "context"
     "log"
+    "os"
+    "os/signal"
+    "syscall"
 
-    "github.com/inference-gateway/a2a/adk"
-    "github.com/inference-gateway/sdk"
+    "github.com/inference-gateway/a2a/adk/server"
     "go.uber.org/zap"
 )
 
 func main() {
     // Initialize logger
-    logger, _ := zap.NewProduction()
+    logger, _ := zap.NewDevelopment()
     defer logger.Sync()
 
-    // Configure your agent
-    cfg := adk.Config{
-        Port: 8080,
-        AgentConfig: adk.AgentConfig{
-            Name:        "my-agent",
-            Description: "A helpful AI agent",
-            Version:     "1.0.0",
-        },
+    // Create the simplest A2A server
+    a2aServer := server.NewDefaultA2AServer(nil)
+
+    // Start server
+    ctx := context.Background()
+    go func() {
+        if err := a2aServer.Start(ctx); err != nil {
+            log.Fatal("Server failed to start:", err)
+        }
+    }()
+
+    logger.Info("Server running on port 8080")
+
+    // Wait for shutdown
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    <-quit
+
+    logger.Info("Shutting down server...")
+    a2aServer.Stop(ctx)
+}
+```
+
+### AI-Powered Server
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "os"
+
+    "github.com/inference-gateway/a2a/adk/server"
+    "github.com/inference-gateway/a2a/adk/server/config"
+    "github.com/sethvargo/go-envconfig"
+    "go.uber.org/zap"
+)
+
+func main() {
+    // Initialize logger
+    logger, _ := zap.NewDevelopment()
+    defer logger.Sync()
+
+    // Load configuration from environment
+    cfg := config.Config{
+        AgentName:        "AI Assistant",
+        AgentDescription: "An AI-powered A2A agent",
+        Port:             "8080",
     }
 
-    // Create SDK client (supports OpenAI, Ollama, Groq, etc.)
-    client := sdk.NewClient("your-api-key", "https://api.openai.com/v1")
+    ctx := context.Background()
+    if err := envconfig.Process(ctx, &cfg); err != nil {
+        log.Fatal("Failed to load config:", err)
+    }
 
-    // Initialize tools handler
-    toolsHandler := adk.NewToolsHandler()
-    // Register your custom tools here
+    // Create toolbox with custom tools
+    toolBox := server.NewDefaultToolBox()
 
-    // Create A2A agent
-    agent := adk.NewA2AAgent(cfg, logger, client, toolsHandler)
+    // Add a weather tool
+    weatherTool := server.NewBasicTool(
+        "get_weather",
+        "Get weather information",
+        map[string]interface{}{
+            "type": "object",
+            "properties": map[string]interface{}{
+                "location": map[string]interface{}{
+                    "type": "string",
+                    "description": "City name",
+                },
+            },
+            "required": []string{"location"},
+        },
+        func(ctx context.Context, args map[string]interface{}) (string, error) {
+            location := args["location"].(string)
+            return fmt.Sprintf(`{"location": "%s", "temperature": "22°C"}`, location), nil
+        },
+    )
+    toolBox.AddTool(weatherTool)
 
-    // Setup and start server
-    router := agent.SetupRouter(nil)
-    log.Fatal(router.Run(":8080"))
+    // Create LLM client (requires AGENT_CLIENT_API_KEY environment variable)
+    var a2aServer server.A2AServer
+    if cfg.AgentConfig != nil && cfg.AgentConfig.APIKey != "" {
+        llmClient, err := server.NewOpenAICompatibleLLMClient(cfg.AgentConfig, logger)
+        if err != nil {
+            log.Fatal("Failed to create LLM client:", err)
+        }
+        agent := server.NewOpenAICompatibleAgentWithLLM(logger, llmClient)
+        agent.SetToolBox(toolBox)
+        a2aServer = server.SimpleA2AServerWithAgent(cfg, logger, agent)
+    } else {
+        // Mock mode without actual LLM
+        agent := server.NewDefaultOpenAICompatibleAgent(logger)
+        agent.SetToolBox(toolBox)
+        a2aServer = server.NewA2AServerBuilder(cfg, logger).
+            WithAgent(agent).
+            Build()
+    }
+
+    // Start server
+    go func() {
+        if err := a2aServer.Start(ctx); err != nil {
+            log.Fatal("Server failed to start:", err)
+        }
+    }()
+
+    logger.Info("AI-powered A2A server running", zap.String("port", cfg.Port))
+
+    // Wait for shutdown signal
+    select {}
 }
 ```
 
@@ -93,8 +232,9 @@ func main() {
 
 For complete working examples, see the [examples](./examples/) directory:
 
-- **[Server Example](./examples/server/)** - Complete A2A server implementation
-- **[Client Example](./examples/client/)** - A2A client implementation (coming soon)
+- **[Minimal Server](./examples/server/cmd/minimal/)** - Basic A2A server without AI capabilities
+- **[AI-Powered Server](./examples/server/cmd/aipowered/)** - Full A2A server with LLM integration
+- **[Client Example](./examples/client/)** - A2A client implementation
 
 ## ✨ Key Features
 
@@ -126,7 +266,7 @@ For complete working examples, see the [examples](./examples/) directory:
 
 ### Prerequisites
 
-- Go 1.24.3 or later
+- Go 1.24 or later
 - [Task](https://taskfile.dev/) for build automation
 - [golangci-lint](https://golangci-lint.run/) for linting
 
@@ -167,72 +307,144 @@ For complete working examples, see the [examples](./examples/) directory:
 | -------------------------- | --------------------------------- |
 | `task a2a:download-schema` | Download the latest A2A schema    |
 | `task a2a:generate-types`  | Generate Go types from A2A schema |
+| `task generate:mocks`      | Generate all testing mocks        |
 | `task lint`                | Run static analysis and linting   |
 | `task build`               | Build the application binary      |
 | `task test`                | Run all tests                     |
 | `task tidy`                | Tidy Go modules                   |
+| `task clean`               | Clean up build artifacts          |
 
 ## 📖 API Reference
 
 ### Core Components
 
-#### A2AAgent
+#### A2AServer
 
-The main agent implementation that handles A2A protocol communication.
+The main server interface that handles A2A protocol communication.
 
 ```go
-type A2AAgent struct {
-    // Configuration and dependencies
+type A2AServer interface {
+    // Start starts the A2A server on the configured port
+    Start(ctx context.Context) error
+
+    // Stop gracefully stops the A2A server
+    Stop(ctx context.Context) error
+
+    // GetAgentCard returns the agent's capabilities and metadata
+    GetAgentCard() adk.AgentCard
+
+    // ProcessTask processes a task with the given message
+    ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error)
+
+    // SetTaskHandler sets the task handler for processing tasks
+    SetTaskHandler(handler TaskHandler)
+
+    // SetAgent sets the OpenAI-compatible agent for processing tasks
+    SetAgent(agent OpenAICompatibleAgent)
 }
 
-// Create a new agent
-func NewA2AAgent(cfg Config, logger *zap.Logger, client sdk.Client, toolsHandler *ToolsHandler) *A2AAgent
+// Create a default A2A server
+func NewDefaultA2AServer(cfg *config.Config) A2AServer
 
-// Set custom task result processor
-func (agent *A2AAgent) SetTaskResultProcessor(processor TaskResultProcessor)
-
-// Set custom agent info provider
-func (agent *A2AAgent) SetAgentInfoProvider(provider AgentInfoProvider)
-
-// Setup HTTP router with A2A endpoints
-func (agent *A2AAgent) SetupRouter(oidcAuthenticator OIDCAuthenticator) *gin.Engine
+// Create a server with agent integration
+func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenAICompatibleAgent) A2AServer
 ```
 
-#### ToolsHandler
+#### A2AServerBuilder
 
-Manages custom tools and capabilities for your agent.
+Provides a fluent interface for building A2A servers with custom configurations.
 
 ```go
-type ToolsHandler struct {
-    // Tool definitions and handlers
+type A2AServerBuilder interface {
+    // WithTaskHandler sets a custom task handler for processing A2A tasks
+    WithTaskHandler(handler TaskHandler) A2AServerBuilder
+
+    // WithTaskResultProcessor sets a custom task result processor
+    WithTaskResultProcessor(processor TaskResultProcessor) A2AServerBuilder
+
+    // WithAgent sets a pre-configured OpenAI-compatible agent
+    WithAgent(agent OpenAICompatibleAgent) A2AServerBuilder
+
+    // WithLogger sets a custom logger for the builder and resulting server
+    WithLogger(logger *zap.Logger) A2AServerBuilder
+
+    // Build creates and returns the configured A2A server
+    Build() A2AServer
 }
 
-// Create a new tools handler
-func NewToolsHandler() *ToolsHandler
+// Create a new server builder
+func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder
+```
 
-// Register a custom tool
-func (th *ToolsHandler) RegisterTool(toolDef sdk.ChatCompletionTool, handler ToolCallHandler)
+#### A2AClient
 
-// Get all registered tool definitions
-func (th *ToolsHandler) GetAllToolDefinitions() []sdk.ChatCompletionTool
+The client interface for communicating with A2A servers.
+
+```go
+type A2AClient interface {
+    // Agent discovery
+    GetAgentCard(ctx context.Context) (*adk.AgentCard, error)
+
+    // Task operations
+    SendTask(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
+    SendTaskStreaming(ctx context.Context, params adk.MessageSendParams, eventChan chan<- interface{}) error
+    GetTask(ctx context.Context, params adk.TaskQueryParams) (*adk.JSONRPCSuccessResponse, error)
+    CancelTask(ctx context.Context, params adk.TaskIdParams) (*adk.JSONRPCSuccessResponse, error)
+
+    // Configuration
+    SetTimeout(timeout time.Duration)
+    SetHTTPClient(client *http.Client)
+    GetBaseURL() string
+}
 ```
 
 ### Configuration
 
+The configuration is managed through environment variables and the config package:
+
 ```go
 type Config struct {
-    Port         int                    `env:"PORT,default=8080"`
-    AgentConfig  AgentConfig           `env:",prefix=AGENT_"`
-    AuthConfig   AuthConfig            `env:",prefix=AUTH_"`
-    QueueConfig  QueueConfig           `env:",prefix=QUEUE_"`
+    AgentName                     string              `env:"AGENT_NAME,default=helloworld-agent"`
+    AgentDescription              string              `env:"AGENT_DESCRIPTION,default=A simple greeting agent"`
+    AgentURL                      string              `env:"AGENT_URL,default=http://helloworld-agent:8080"`
+    AgentVersion                  string              `env:"AGENT_VERSION,default=1.0.0"`
+    Debug                         bool                `env:"DEBUG,default=false"`
+    Port                          string              `env:"PORT,default=8080"`
+    StreamingStatusUpdateInterval time.Duration       `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
+    AgentConfig                   *AgentConfig        `env:",prefix=AGENT_CLIENT_"`
+    CapabilitiesConfig            *CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
+    TLSConfig                     *TLSConfig          `env:",prefix=TLS_"`
+    AuthConfig                    *AuthConfig         `env:",prefix=AUTH_"`
+    QueueConfig                   *QueueConfig        `env:",prefix=QUEUE_"`
+    ServerConfig                  *ServerConfig       `env:",prefix=SERVER_"`
+    TelemetryConfig               *TelemetryConfig    `env:",prefix=TELEMETRY_"`
 }
 
 type AgentConfig struct {
-    Name         string `env:"NAME,required"`
-    Description  string `env:"DESCRIPTION,required"`
-    Version      string `env:"VERSION,default=1.0.0"`
+    Provider                    string            `env:"PROVIDER"`
+    Model                       string            `env:"MODEL"`
+    BaseURL                     string            `env:"BASE_URL"`
+    APIKey                      string            `env:"API_KEY"`
+    Timeout                     time.Duration     `env:"TIMEOUT,default=30s"`
+    MaxRetries                  int               `env:"MAX_RETRIES,default=3"`
+    MaxChatCompletionIterations int               `env:"MAX_CHAT_COMPLETION_ITERATIONS,default=10"`
+    MaxTokens                   int               `env:"MAX_TOKENS,default=4096"`
+    Temperature                 float64           `env:"TEMPERATURE,default=0.7"`
+    SystemPrompt                string            `env:"SYSTEM_PROMPT"`
 }
 ```
+
+    QueueConfig  QueueConfig           `env:",prefix=QUEUE_"`
+
+}
+
+type AgentConfig struct {
+Name string `env:"NAME,required"`
+Description string `env:"DESCRIPTION,required"`
+Version string `env:"VERSION,default=1.0.0"`
+}
+
+````
 
 ## 🔧 Advanced Usage
 
@@ -241,45 +453,40 @@ type AgentConfig struct {
 Create custom tools to extend your agent's capabilities:
 
 ```go
-// Define your tool
-toolDef := sdk.ChatCompletionTool{
-    Type: "function",
-    Function: &sdk.FunctionDefinition{
-        Name:        "get_weather",
-        Description: "Get current weather for a location",
-        Parameters: map[string]interface{}{
-            "type": "object",
-            "properties": map[string]interface{}{
-                "location": map[string]interface{}{
-                    "type":        "string",
-                    "description": "The city and state, e.g. San Francisco, CA",
-                },
+// Create a toolbox
+toolBox := server.NewDefaultToolBox()
+
+// Create a custom tool using NewBasicTool
+weatherTool := server.NewBasicTool(
+    "get_weather",
+    "Get current weather for a location",
+    map[string]interface{}{
+        "type": "object",
+        "properties": map[string]interface{}{
+            "location": map[string]interface{}{
+                "type":        "string",
+                "description": "The city and state, e.g. San Francisco, CA",
             },
-            "required": []string{"location"},
         },
+        "required": []string{"location"},
     },
-}
+    func(ctx context.Context, args map[string]interface{}) (string, error) {
+        location := args["location"].(string)
 
-// Implement the tool handler
-weatherHandler := func(ctx context.Context, arguments string) (string, error) {
-    var params struct {
-        Location string `json:"location"`
-    }
+        // Your weather API logic here
+        result := getWeather(location)
 
-    if err := json.Unmarshal([]byte(arguments), &params); err != nil {
-        return "", err
-    }
+        response, _ := json.Marshal(result)
+        return string(response), nil
+    },
+)
 
-    // Your weather API logic here
-    result := getWeather(params.Location)
+// Add the tool to the toolbox
+toolBox.AddTool(weatherTool)
 
-    response, _ := json.Marshal(result)
-    return string(response), nil
-}
-
-// Register the tool
-toolsHandler.RegisterTool(toolDef, weatherHandler)
-```
+// Set the toolbox on your agent
+agent.SetToolBox(toolBox)
+````
 
 ### Custom Task Processing
 
@@ -288,16 +495,21 @@ Implement custom business logic for task completion:
 ```go
 type CustomTaskProcessor struct{}
 
-func (ctp *CustomTaskProcessor) ProcessToolResult(toolCallResult string) *a2a.Message {
+func (ctp *CustomTaskProcessor) ProcessToolResult(toolCallResult string) *adk.Message {
     // Parse the tool result
     var result map[string]interface{}
     json.Unmarshal([]byte(toolCallResult), &result)
 
     // Apply your business logic
     if shouldCompleteTask(result) {
-        return &a2a.Message{
+        return &adk.Message{
             Role:    "assistant",
-            Content: "Task completed successfully!",
+            Parts: []adk.Part{
+                {
+                    Kind:    "text",
+                    Content: "Task completed successfully!",
+                },
+            },
         }
     }
 
@@ -305,37 +517,64 @@ func (ctp *CustomTaskProcessor) ProcessToolResult(toolCallResult string) *a2a.Me
     return nil
 }
 
-// Set the processor
-agent.SetTaskResultProcessor(&CustomTaskProcessor{})
+// Set the processor when building your server
+server := server.NewA2AServerBuilder(cfg, logger).
+    WithTaskResultProcessor(&CustomTaskProcessor{}).
+    Build()
 ```
 
 ### Agent Metadata
 
-Customize your agent's capabilities and metadata:
+Customize your agent's capabilities and metadata through configuration:
 
 ```go
-type CustomAgentInfo struct{}
-
-func (cai *CustomAgentInfo) GetAgentCard(baseConfig Config) a2a.AgentCard {
-    return a2a.AgentCard{
-        Name:        baseConfig.AgentConfig.Name,
-        Description: baseConfig.AgentConfig.Description,
-        Version:     baseConfig.AgentConfig.Version,
-        Capabilities: a2a.AgentCapabilities{
-            Streaming:         true,
-            TaskManagement:    true,
-            PushNotifications: false,
-        },
-        // Add custom metadata
-        Metadata: map[string]interface{}{
-            "specialization": "weather-analysis",
-            "supported_regions": []string{"US", "EU", "APAC"},
-        },
-    }
+cfg := config.Config{
+    AgentName:        "Weather Assistant",
+    AgentDescription: "Specialized weather analysis agent",
+    AgentVersion:     "2.0.0",
+    CapabilitiesConfig: &config.CapabilitiesConfig{
+        Streaming:              true,
+        PushNotifications:      true,
+        StateTransitionHistory: false,
+    },
 }
+```
 
-// Set the provider
-agent.SetAgentInfoProvider(&CustomAgentInfo{})
+### Environment Configuration
+
+Key environment variables for configuring your agent:
+
+```bash
+# Basic agent information
+AGENT_NAME="My Agent"
+AGENT_DESCRIPTION="A helpful AI assistant"
+AGENT_VERSION="1.0.0"
+PORT="8080"
+
+# LLM client configuration
+AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
+AGENT_CLIENT_MODEL="gpt-4"                  # Model name
+AGENT_CLIENT_API_KEY="your-api-key"         # Required for AI features
+AGENT_CLIENT_BASE_URL="https://api.openai.com/v1"  # Custom endpoint
+AGENT_CLIENT_MAX_TOKENS="4096"              # Max tokens for completion
+AGENT_CLIENT_TEMPERATURE="0.7"              # Temperature for completion
+AGENT_CLIENT_SYSTEM_PROMPT="You are a helpful assistant"
+
+# Capabilities
+CAPABILITIES_STREAMING="true"
+CAPABILITIES_PUSH_NOTIFICATIONS="true"
+CAPABILITIES_STATE_TRANSITION_HISTORY="false"
+
+# Authentication (optional)
+AUTH_ENABLE="false"
+AUTH_ISSUER_URL="http://keycloak:8080/realms/inference-gateway-realm"
+AUTH_CLIENT_ID="inference-gateway-client"
+AUTH_CLIENT_SECRET="your-secret"
+
+# TLS (optional)
+TLS_ENABLE="false"
+TLS_CERT_PATH="/path/to/cert.pem"
+TLS_KEY_PATH="/path/to/key.pem"
 ```
 
 ## 🌐 A2A Ecosystem
@@ -357,7 +596,7 @@ This ADK is part of the broader Inference Gateway ecosystem:
 
 ## 📋 Requirements
 
-- **Go**: 1.24.3 or later
+- **Go**: 1.24 or later
 - **Dependencies**: See [go.mod](./go.mod) for full dependency list
 
 ## 🐳 Docker Support
@@ -365,7 +604,7 @@ This ADK is part of the broader Inference Gateway ecosystem:
 Build and run your agent in a container:
 
 ```dockerfile
-FROM golang:1.24.3-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -384,10 +623,10 @@ CMD ["./agent"]
 
 ## 🧪 Testing
 
-The ADK follows table-driven testing patterns and provides utilities for testing A2A agents:
+The ADK follows table-driven testing patterns and provides comprehensive test coverage:
 
 ```go
-func TestAgentEndpoints(t *testing.T) {
+func TestA2AServerEndpoints(t *testing.T) {
     tests := []struct {
         name           string
         endpoint       string
@@ -406,14 +645,32 @@ func TestAgentEndpoints(t *testing.T) {
             method:         "GET",
             expectedStatus: http.StatusOK,
         },
+        {
+            name:           "a2a endpoint",
+            endpoint:       "/a2a",
+            method:         "POST",
+            expectedStatus: http.StatusOK,
+        },
     }
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // Test implementation
+            // Each test case has isolated mocks
+            server := setupTestServer(t)
+            defer server.Close()
+
+            // Test implementation with table-driven approach
+            resp := makeRequest(t, server, tt.method, tt.endpoint)
+            assert.Equal(t, tt.expectedStatus, resp.StatusCode)
         })
     }
 }
+```
+
+Run tests with:
+
+```bash
+task test
 ```
 
 ## 📄 License
@@ -428,10 +685,12 @@ We welcome contributions! Here's how you can help:
 
 1. **Fork the repository**
 2. **Clone your fork**:
+
    ```bash
    git clone https://github.com/your-username/a2a.git
    cd a2a
    ```
+
 3. **Create a feature branch**:
    ```bash
    git checkout -b feature/amazing-feature
@@ -450,9 +709,10 @@ We welcome contributions! Here's how you can help:
 
 1. **Download latest schema**: `task a2a:download-schema`
 2. **Generate types**: `task a2a:generate-types`
-3. **Run linting**: `task lint`
-4. **Build successfully**: `task build`
-5. **All tests pass**: `task test`
+3. **Generate mocks** (if interfaces changed): `task generate:mocks`
+4. **Run linting**: `task lint`
+5. **Build successfully**: `task build`
+6. **All tests pass**: `task test`
 
 ### Pull Request Process
 
@@ -477,7 +737,7 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## 🗺️ Roadmap
 
-- [ ] **Enhanced Tool System**: More built-in tools and better tool chaining
+- [x] **Enhanced Tool System**: More built-in tools and better tool chaining
 - [ ] **Agent Discovery**: Automatic discovery and registration of agents
 - [ ] **Monitoring Dashboard**: Built-in monitoring and analytics
 - [ ] **Multi-language SDKs**: Additional language support beyond Go
