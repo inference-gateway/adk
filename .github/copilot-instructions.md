@@ -21,9 +21,10 @@ Today is June 12, 2025.
 
 1. Run `task a2a:download-schema` to download the latest A2A schema - when working on A2A.
 2. Run `task a2a:generate-types` If added new Schemas to openapi.yaml, update internal/openapi/schemas.go to include the new schemas.
-3. Run `task lint` to ensure code quality.
-4. Run `task build` to verify successful compilation.
-5. Run `task test` to ensure all tests pass.
+3. Run `task generate:mocks` to generate testing mocks, when interfaces are adjusted.
+4. Run `task lint` to ensure code quality.
+5. Run `task build` to verify successful compilation.
+6. Run `task test` to ensure all tests pass.
 
 ## Available Tools and MCPs
 
