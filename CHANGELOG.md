@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3](https://github.com/inference-gateway/a2a/compare/v0.1.2...v0.1.3) (2025-06-14)
+
+### ♻️ Improvements
+
+* Improve the structure of the library ([#1](https://github.com/inference-gateway/a2a/issues/1)) ([b41c040](https://github.com/inference-gateway/a2a/commit/b41c0400710eae83a55e07b41067d5b0966a0fe9))
+
 ## [0.1.2](https://github.com/inference-gateway/a2a/compare/v0.1.1...v0.1.2) (2025-06-12)
 
 ### ♻️ Improvements
