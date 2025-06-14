@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4](https://github.com/inference-gateway/a2a/compare/v0.1.3...v0.1.4) (2025-06-14)
+
+### ♻️ Improvements
+
+* Cleanup - remove unintended usage of functions ([#2](https://github.com/inference-gateway/a2a/issues/2)) ([9275cb5](https://github.com/inference-gateway/a2a/commit/9275cb5208ccdf75503e2d8939e0bdd784cd7d25))
+
 ## [0.1.3](https://github.com/inference-gateway/a2a/compare/v0.1.2...v0.1.3) (2025-06-14)
 
 ### ♻️ Improvements
