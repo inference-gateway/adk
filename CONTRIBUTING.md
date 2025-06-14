@@ -47,15 +47,23 @@ task a2a:download-schema
 
 ### 2. Generate Types
 
-After downloading the schema or adding new schemas to `openapi.yaml`, generate the types:
+After downloading the schema, generate the types:
 
 ```bash
 task a2a:generate-types
 ```
 
-If you've added new schemas to `openapi.yaml`, update `internal/openapi/schemas.go` to include the new schemas.
+This will update the generated types in `adk/generated_types.go` based on the latest schema.
 
-### 3. Development Cycle
+### 3. Generate Mocks
+
+If you've modified interfaces, regenerate the testing mocks:
+
+```bash
+task generate:mocks
+```
+
+### 4. Development Cycle
 
 Follow this cycle for development:
 
@@ -76,15 +84,16 @@ task test
 task tidy
 ```
 
-### 4. Before Committing
+### 5. Before Committing
 
 **Always run these commands before committing:**
 
 1. `task a2a:download-schema` (if working on A2A features)
 2. `task a2a:generate-types` (if schema changes were made)
-3. `task lint` (ensure code quality)
-4. `task build` (verify compilation)
-5. `task test` (ensure all tests pass)
+3. `task generate:mocks` (if interfaces were modified)
+4. `task lint` (ensure code quality)
+5. `task build` (verify compilation)
+6. `task test` (ensure all tests pass)
 
 ## 🎯 Coding Guidelines
 
@@ -110,7 +119,17 @@ task tidy
 #### Example Table-Driven Test
 
 ```go
-func TestAgentEndpoints(t *testing.T) {
+import (
+    "net/http"
+    "net/http/httptest"
+    "strings"
+    "testing"
+    
+    "github.com/stretchr/testify/assert"
+    "github.com/inference-gateway/a2a/adk/server"
+)
+
+func TestAgentServer(t *testing.T) {
     tests := []struct {
         name           string
         endpoint       string
@@ -140,13 +159,14 @@ func TestAgentEndpoints(t *testing.T) {
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
             // Create isolated test environment
-            agent := setupTestAgent(t)
-            router := agent.SetupRouter(nil)
-
+            server := setupTestAgent(t)
+            
             // Make request
             req := httptest.NewRequest(tt.method, tt.endpoint, strings.NewReader(tt.body))
             rec := httptest.NewRecorder()
-            router.ServeHTTP(rec, req)
+            
+            // Use the server's HTTP handler
+            server.ServeHTTP(rec, req)
 
             // Assert results
             assert.Equal(t, tt.expectedStatus, rec.Code)
@@ -219,18 +239,23 @@ test(agent): Add table-driven tests for endpoint handlers
 
 ### Test Organization
 
+The project follows Go conventions for test organization:
+
 ```
-project/
-├── pkg/
-│   ├── agent/
+a2a/
+├── adk/
+│   ├── client/
+│   │   ├── client.go
+│   │   └── client_test.go
+│   ├── server/
 │   │   ├── agent.go
-│   │   └── agent_test.go
-│   └── tools/
-│       ├── handler.go
-│       └── handler_test.go
-└── test/
-    ├── integration/
-    └── e2e/
+│   │   ├── agent_test.go
+│   │   ├── server.go
+│   │   └── server_test.go
+│   └── generated_types.go
+└── examples/
+    ├── client/
+    └── server/
 ```
 
 ### Mock Guidelines
@@ -238,27 +263,53 @@ project/
 - Use interfaces for dependencies to enable easy mocking
 - Create isolated mocks for each test case
 - Prefer dependency injection for testability
+- Generate mocks using counterfeiter: `task generate:mocks`
+- Mock files are generated in `adk/server/mocks/` and `adk/client/mocks/`
 
 ### Test Utilities
 
 Create helper functions for common test setup:
 
 ```go
-func setupTestAgent(t *testing.T) *adk.A2AAgent {
+import (
+    "testing"
+    "github.com/inference-gateway/a2a/adk/server"
+    "github.com/inference-gateway/a2a/adk/server/config"
+    "github.com/inference-gateway/a2a/adk/server/mocks"
+    "github.com/stretchr/testify/require"
+    "go.uber.org/zap"
+)
+
+func setupTestAgent(t *testing.T) server.A2AServer {
     logger := zap.NewNop()
-    cfg := adk.Config{
-        Port: 0, // Use random port for tests
-        AgentConfig: adk.AgentConfig{
-            Name:        "test-agent",
-            Description: "Test agent",
-            Version:     "1.0.0",
-        },
+    cfg := &config.Config{
+        Port: "0", // Use random port for tests
+        AgentName: "test-agent",
+        AgentDescription: "Test agent",
+        AgentVersion: "1.0.0",
     }
 
-    client := &mockSDKClient{} // Your mock implementation
-    toolsHandler := adk.NewToolsHandler()
+    // Use mocks for dependencies
+    mockTaskHandler := &mocks.FakeTaskHandler{}
+    mockTaskResultProcessor := &mocks.FakeTaskResultProcessor{}
 
-    return adk.NewA2AAgent(cfg, logger, client, toolsHandler)
+    builder := &mocks.FakeA2AServerBuilder{}
+    builder.WithConfigReturns(builder)
+    builder.WithLoggerReturns(builder)
+    builder.WithTaskHandlerReturns(builder)
+    builder.WithTaskResultProcessorReturns(builder)
+
+    mockServer := &mocks.FakeA2AServer{}
+    builder.BuildReturns(mockServer)
+
+    server := builder.
+        WithConfig(cfg).
+        WithLogger(logger).
+        WithTaskHandler(mockTaskHandler).
+        WithTaskResultProcessor(mockTaskResultProcessor).
+        Build()
+    
+    return server
 }
 ```
 
@@ -295,6 +346,7 @@ When adding new features:
    ```bash
    task a2a:download-schema  # if needed
    task a2a:generate-types   # if needed
+   task generate:mocks       # if interfaces changed
    task lint
    task build
    task test
