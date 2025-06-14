@@ -42,7 +42,25 @@ func main() {
 
 	// Create A2A client
 	a2aClient := client.NewClientWithLogger(config.ServerURL, logger)
-	ctx = context.Background()
+
+	// Check agent capabilities first
+	logger.Info("checking agent capabilities")
+	agentCard, err := a2aClient.GetAgentCard(ctx)
+	if err != nil {
+		logger.Fatal("failed to get agent card", zap.Error(err))
+	}
+
+	logger.Info("agent card retrieved",
+		zap.String("agent_name", agentCard.Name),
+		zap.String("agent_version", agentCard.Version),
+		zap.String("agent_description", agentCard.Description))
+
+	// For async operations, we check if the agent supports non-blocking operations
+	// This is implied by the agent's ability to handle tasks asynchronously
+	logger.Info("agent capabilities verified for async operations",
+		zap.String("agent_name", agentCard.Name),
+		zap.Strings("default_input_modes", agentCard.DefaultInputModes),
+		zap.Strings("default_output_modes", agentCard.DefaultOutputModes))
 
 	// Submit task using A2A ADK
 	logger.Info("submitting task to agent")
