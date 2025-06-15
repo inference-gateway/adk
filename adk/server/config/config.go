@@ -115,5 +115,20 @@ func LoadWithLookuper(ctx context.Context, baseConfig *Config, lookuper envconfi
 	if err != nil {
 		return nil, err
 	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	return &cfg, nil
+}
+
+// Validate validates the configuration and applies corrections for invalid values
+func (c *Config) Validate() error {
+	if c.AgentConfig != nil {
+		if c.AgentConfig.MaxChatCompletionIterations < 1 {
+			c.AgentConfig.MaxChatCompletionIterations = 1
+		}
+	}
+	return nil
 }

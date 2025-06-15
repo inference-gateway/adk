@@ -52,7 +52,7 @@ func NewDefaultOpenAICompatibleAgent(logger *zap.Logger) *DefaultOpenAICompatibl
 		logger:                      logger,
 		systemPrompt:                "You are a helpful AI assistant.",
 		converter:                   utils.NewOptimizedMessageConverter(logger),
-		maxChatCompletionIterations: 10, // Default value
+		maxChatCompletionIterations: 10,
 	}
 }
 
