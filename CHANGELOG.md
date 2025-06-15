@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8](https://github.com/inference-gateway/a2a/compare/v0.1.7...v0.1.8) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* Empty message for tool processing - when pulling a task from the Queue we need to check the task.Status.Message which is where the task handler is storing the original message ([703dfba](https://github.com/inference-gateway/a2a/commit/703dfba8cf033a33385da66692bc70e49b61d531))
+
 ## [0.1.7](https://github.com/inference-gateway/a2a/compare/v0.1.6...v0.1.7) (2025-06-15)
 
 ### 🐛 Bug Fixes
