@@ -62,7 +62,6 @@
   - [Pull Request Process](#pull-request-process)
 - [📞 Support](#-support)
   - [Issues \& Questions](#issues--questions)
-  - [Community](#community)
 - [🗺️ Roadmap](#️-roadmap)
 - [🔗 Resources](#-resources)
   - [Documentation](#documentation)
