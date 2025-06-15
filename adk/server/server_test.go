@@ -370,3 +370,179 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 	assert.True(t, *agentCard.Capabilities.PushNotifications)
 	assert.False(t, *agentCard.Capabilities.StateTransitionHistory)
 }
+
+func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
+	logger := zap.NewNop()
+
+	mockTaskHandler := &mocks.FakeTaskHandler{}
+	mockTaskHandler.HandleTaskReturns(&adk.Task{
+		ID:        "test-task",
+		ContextID: "test-context",
+		Status: adk.TaskStatus{
+			State: adk.TaskStateCompleted,
+			Message: &adk.Message{
+				Kind:      "message",
+				MessageID: "response-msg",
+				Role:      "assistant",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": "Hello! I received your message.",
+					},
+				},
+			},
+		},
+	}, nil)
+
+	cfg := &config.Config{
+		AgentName:        "test-agent",
+		AgentDescription: "A test agent",
+		AgentURL:         "http://test-agent:8080",
+		AgentVersion:     "1.0.0",
+		Port:             "8080",
+		Debug:            false,
+		QueueConfig: &config.QueueConfig{
+			MaxSize:         10,
+			CleanupInterval: 1 * time.Second,
+		},
+	}
+
+	serverInstance := server.NewA2AServer(cfg, logger, nil)
+	serverInstance.SetTaskHandler(mockTaskHandler)
+
+	originalMessage := &adk.Message{
+		Kind:      "message",
+		MessageID: "original-msg",
+		Role:      "user",
+		Parts: []adk.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "What is the weather like today?",
+			},
+		},
+	}
+
+	task := &adk.Task{
+		ID:        "test-task",
+		ContextID: "test-context",
+		Status: adk.TaskStatus{
+			State:   adk.TaskStateSubmitted,
+			Message: originalMessage,
+		},
+	}
+
+	ctx := context.Background()
+	result, err := serverInstance.ProcessTask(ctx, task, originalMessage)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, adk.TaskStateCompleted, result.Status.State)
+	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
+
+	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
+	assert.NotNil(t, actualTask)
+	assert.NotNil(t, actualMessage)
+
+	assert.NotEmpty(t, actualMessage.Parts)
+	assert.Len(t, actualMessage.Parts, 1)
+
+	part := actualMessage.Parts[0]
+	partMap, ok := part.(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "text", partMap["kind"])
+	assert.Equal(t, "What is the weather like today?", partMap["text"])
+}
+
+func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
+	logger := zap.NewNop()
+
+	mockTaskHandler := &mocks.FakeTaskHandler{}
+	mockTaskHandler.HandleTaskReturns(&adk.Task{
+		ID:        "test-task",
+		ContextID: "test-context",
+		Status: adk.TaskStatus{
+			State: adk.TaskStateCompleted,
+			Message: &adk.Message{
+				Kind:      "message",
+				MessageID: "response-msg",
+				Role:      "assistant",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": "I received your weather question and here's the answer...",
+					},
+				},
+			},
+		},
+	}, nil)
+
+	cfg := &config.Config{
+		AgentName:        "weather-agent",
+		AgentDescription: "A weather agent",
+		AgentURL:         "http://weather-agent:8080",
+		AgentVersion:     "1.0.0",
+		Port:             "8080",
+		Debug:            false,
+		QueueConfig: &config.QueueConfig{
+			MaxSize:         10,
+			CleanupInterval: 1 * time.Second,
+		},
+	}
+
+	serverInstance := server.NewA2AServer(cfg, logger, nil)
+	serverInstance.SetTaskHandler(mockTaskHandler)
+
+	originalUserMessage := &adk.Message{
+		Kind:      "message",
+		MessageID: "user-msg-123",
+		Role:      "user",
+		Parts: []adk.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "What is the weather like today in San Francisco?",
+			},
+		},
+	}
+
+	task := &adk.Task{
+		ID:        "task-456",
+		ContextID: "context-789",
+		Status: adk.TaskStatus{
+			State:   adk.TaskStateSubmitted,
+			Message: originalUserMessage,
+		},
+		History: []adk.Message{},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go serverInstance.StartTaskProcessor(ctx)
+
+	time.Sleep(10 * time.Millisecond)
+
+	result, err := serverInstance.ProcessTask(ctx, task, originalUserMessage)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, adk.TaskStateCompleted, result.Status.State)
+
+	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
+
+	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
+
+	assert.NotNil(t, actualTask)
+	assert.NotNil(t, actualMessage)
+
+	assert.NotEmpty(t, actualMessage.Parts, "Message parts should not be empty - this was the reported bug")
+	assert.Len(t, actualMessage.Parts, 1, "Should have exactly one message part")
+
+	part := actualMessage.Parts[0]
+	partMap, ok := part.(map[string]interface{})
+	assert.True(t, ok, "Message part should be a map")
+	assert.Equal(t, "text", partMap["kind"], "Message part should be of kind 'text'")
+	assert.Equal(t, "What is the weather like today in San Francisco?", partMap["text"],
+		"Message content should be preserved exactly as sent by the client")
+
+	assert.Equal(t, "user", actualMessage.Role, "Message role should be 'user'")
+}

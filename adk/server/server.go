@@ -430,11 +430,17 @@ func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 // processQueuedTask processes a single queued task
 func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *QueuedTask) {
 	task := queuedTask.Task
-	message := &adk.Message{
-		Kind:      "message",
-		MessageID: uuid.New().String(),
-		Role:      "user",
-		Parts:     []adk.Part{},
+
+	var message *adk.Message
+	if task.Status.Message != nil {
+		message = task.Status.Message
+	} else {
+		message = &adk.Message{
+			Kind:      "message",
+			MessageID: uuid.New().String(),
+			Role:      "user",
+			Parts:     []adk.Part{},
+		}
 	}
 
 	s.logger.Info("processing task", zap.String("task_id", task.ID))

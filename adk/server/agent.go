@@ -143,7 +143,6 @@ func (a *DefaultOpenAICompatibleAgent) processWithoutToolCalling(ctx context.Con
 
 // processWithToolCalling processes the task with tool calling capability
 func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Context, task *adk.Task, messages []adk.Message) (*adk.Task, error) {
-	// Get available tools from toolbox
 	tools := a.toolBox.GetTools()
 
 	result, err := a.llmClient.CreateChatCompletion(ctx, messages, tools...)
@@ -165,7 +164,6 @@ func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Contex
 		return task, nil
 	}
 
-	// When tools are provided, we get the full SDK response
 	sdkResponse, ok := result.(*sdk.CreateChatCompletionResponse)
 	if !ok {
 		a.logger.Error("unexpected response type from llm client when using tools")
@@ -181,12 +179,10 @@ func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Contex
 
 	choice := sdkResponse.Choices[0]
 
-	// Check if the LLM wants to call tools
 	if choice.Message.ToolCalls != nil && len(*choice.Message.ToolCalls) > 0 {
 		return a.processToolCalls(ctx, task, messages, *choice.Message.ToolCalls)
 	}
 
-	// No tool calls, convert the response to A2A format and complete the task
 	response := &adk.Message{
 		Kind:      "message",
 		MessageID: fmt.Sprintf("msg-%d", len(task.History)+1),
