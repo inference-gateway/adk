@@ -276,6 +276,7 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 
 		var content string
 		var toolCallId *string
+		var toolCalls *[]sdk.ChatCompletionMessageToolCall
 
 		for _, part := range msg.Parts {
 			if partMap, ok := part.(map[string]interface{}); ok {
@@ -302,6 +303,19 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 									}
 								}
 							}
+
+							if role == "assistant" {
+								if calls, exists := dataMap["tool_calls"]; exists {
+									if callsSlice, ok := calls.([]sdk.ChatCompletionMessageToolCall); ok {
+										toolCalls = &callsSlice
+									}
+								}
+								if contentStr, exists := dataMap["content"]; exists {
+									if cStr, ok := contentStr.(string); ok {
+										content += cStr
+									}
+								}
+							}
 						}
 					}
 				}
@@ -315,6 +329,10 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 
 		if toolCallId != nil {
 			sdkMessage.ToolCallId = toolCallId
+		}
+
+		if toolCalls != nil {
+			sdkMessage.ToolCalls = toolCalls
 		}
 
 		sdkMessages = append(sdkMessages, sdkMessage)

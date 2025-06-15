@@ -180,7 +180,25 @@ func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Contex
 	choice := sdkResponse.Choices[0]
 
 	if choice.Message.ToolCalls != nil && len(*choice.Message.ToolCalls) > 0 {
-		return a.processToolCalls(ctx, task, messages, *choice.Message.ToolCalls)
+		assistantWithToolCalls := &adk.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("msg-%d", len(task.History)+1),
+			Role:      "assistant",
+			Parts: []adk.Part{
+				map[string]interface{}{
+					"kind": "data",
+					"data": map[string]interface{}{
+						"tool_calls": *choice.Message.ToolCalls,
+						"content":    choice.Message.Content,
+					},
+				},
+			},
+		}
+		task.History = append(task.History, *assistantWithToolCalls)
+
+		messagesWithToolCalls := append(messages, *assistantWithToolCalls)
+
+		return a.processToolCalls(ctx, task, messagesWithToolCalls, *choice.Message.ToolCalls)
 	}
 
 	response := &adk.Message{
