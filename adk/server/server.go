@@ -400,10 +400,10 @@ func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
 
 // ProcessTask processes a task with the given message
 func (s *A2AServerImpl) ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error) {
-	// Use agent if available, otherwise fall back to task handler
 	if s.agent != nil {
 		s.logger.Info("processing task with openai-compatible agent",
-			zap.String("task_id", task.ID))
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		return s.agent.ProcessTask(ctx, task, message)
 	}
 
@@ -443,7 +443,9 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		}
 	}
 
-	s.logger.Info("processing task", zap.String("task_id", task.ID))
+	s.logger.Info("processing task",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 
 	err := s.taskManager.UpdateTask(task.ID, adk.TaskStateWorking, nil)
 	if err != nil {
@@ -453,7 +455,10 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 	updatedTask, err := s.taskHandler.HandleTask(ctx, task, message)
 	if err != nil {
-		s.logger.Error("failed to process task", zap.Error(err), zap.String("task_id", task.ID))
+		s.logger.Error("failed to process task",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		updateErr := s.taskManager.UpdateTask(task.ID, adk.TaskStateFailed, &adk.Message{
 			Kind:      "message",
 			MessageID: uuid.New().String(),
@@ -466,16 +471,24 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 			},
 		})
 		if updateErr != nil {
-			s.logger.Error("failed to update task to failed state", zap.Error(updateErr), zap.String("task_id", task.ID))
+			s.logger.Error("failed to update task to failed state",
+				zap.Error(updateErr),
+				zap.String("task_id", task.ID),
+				zap.String("context_id", task.ContextID))
 		}
 		return
 	}
 
 	if err := s.taskManager.UpdateTask(updatedTask.ID, updatedTask.Status.State, nil); err != nil {
-		s.logger.Error("failed to update task status", zap.Error(err), zap.String("task_id", updatedTask.ID))
+		s.logger.Error("failed to update task status",
+			zap.Error(err),
+			zap.String("task_id", updatedTask.ID),
+			zap.String("context_id", updatedTask.ContextID))
 		return
 	}
-	s.logger.Info("task processed successfully", zap.String("task_id", task.ID))
+	s.logger.Info("task processed successfully",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 }
 
 // startTaskCleanup starts the background task cleanup process
@@ -573,7 +586,9 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req adk.JSONRPCRequest
 
 	select {
 	case s.taskQueue <- queuedTask:
-		s.logger.Info("task queued for processing", zap.String("task_id", task.ID))
+		s.logger.Info("task queued for processing",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 	default:
 		s.logger.Error("task queue is full")
 		err := s.taskManager.UpdateTask(task.ID, adk.TaskStateFailed, &adk.Message{
@@ -588,7 +603,10 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req adk.JSONRPCRequest
 			},
 		})
 		if err != nil {
-			s.logger.Error("failed to update task to failed state due to full queue", zap.Error(err), zap.String("task_id", task.ID))
+			s.logger.Error("failed to update task to failed state due to full queue",
+				zap.Error(err),
+				zap.String("task_id", task.ID),
+				zap.String("context_id", task.ContextID))
 		}
 	}
 
@@ -647,7 +665,10 @@ func (s *A2AServerImpl) handleTaskGet(c *gin.Context, req adk.JSONRPCRequest) {
 		return
 	}
 
-	s.logger.Info("task retrieved successfully", zap.String("task_id", params.ID), zap.String("status", string(task.Status.State)))
+	s.logger.Info("task retrieved successfully",
+		zap.String("task_id", params.ID),
+		zap.String("context_id", task.ContextID),
+		zap.String("status", string(task.Status.State)))
 	s.responseSender.SendSuccess(c, req.ID, *task)
 }
 
@@ -671,7 +692,9 @@ func (s *A2AServerImpl) handleTaskCancel(c *gin.Context, req adk.JSONRPCRequest)
 
 	err = s.taskManager.CancelTask(params.ID)
 	if err != nil {
-		s.logger.Error("failed to cancel task", zap.Error(err), zap.String("task_id", params.ID))
+		s.logger.Error("failed to cancel task",
+			zap.Error(err),
+			zap.String("task_id", params.ID))
 		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), err.Error())
 		return
 	}

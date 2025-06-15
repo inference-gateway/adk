@@ -63,7 +63,10 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state adk.TaskState, 
 	}
 
 	tm.tasks[task.ID] = task
-	tm.logger.Debug("task created", zap.String("task_id", task.ID), zap.String("state", string(state)))
+	tm.logger.Debug("task created",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID),
+		zap.String("state", string(state)))
 
 	return task
 }
@@ -84,7 +87,10 @@ func (tm *DefaultTaskManager) UpdateTask(taskID string, state adk.TaskState, mes
 	task.Status.Timestamp = &timestamp
 
 	tm.tasks[taskID] = task
-	tm.logger.Debug("task updated", zap.String("task_id", taskID), zap.String("state", string(state)))
+	tm.logger.Debug("task updated",
+		zap.String("task_id", taskID),
+		zap.String("context_id", task.ContextID),
+		zap.String("state", string(state)))
 
 	return nil
 }
@@ -110,7 +116,9 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 
 	task.Status.State = adk.TaskStateCanceled
 	tm.tasks[taskID] = task
-	tm.logger.Info("task canceled", zap.String("task_id", taskID))
+	tm.logger.Info("task canceled",
+		zap.String("task_id", taskID),
+		zap.String("context_id", task.ContextID))
 
 	return nil
 }

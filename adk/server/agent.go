@@ -108,7 +108,10 @@ func (a *DefaultOpenAICompatibleAgent) ProcessTask(ctx context.Context, task *ad
 func (a *DefaultOpenAICompatibleAgent) processWithoutToolCalling(ctx context.Context, task *adk.Task, messages []adk.Message) (*adk.Task, error) {
 	result, err := a.llmClient.CreateChatCompletion(ctx, messages)
 	if err != nil {
-		a.logger.Error("llm completion failed", zap.Error(err))
+		a.logger.Error("llm completion failed",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		task.Status.State = adk.TaskStateFailed
 		errorMessage := &adk.Message{
 			Kind:      "message",
@@ -128,7 +131,9 @@ func (a *DefaultOpenAICompatibleAgent) processWithoutToolCalling(ctx context.Con
 	// Cast to A2A message (should be the case when no tools are provided)
 	response, ok := result.(*adk.Message)
 	if !ok {
-		a.logger.Error("unexpected response type from llm client")
+		a.logger.Error("unexpected response type from llm client",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		task.Status.State = adk.TaskStateFailed
 		return task, fmt.Errorf("unexpected response type from llm client")
 	}
@@ -137,7 +142,9 @@ func (a *DefaultOpenAICompatibleAgent) processWithoutToolCalling(ctx context.Con
 	task.Status.State = adk.TaskStateCompleted
 	task.Status.Message = response
 
-	a.logger.Info("task completed with llm response")
+	a.logger.Info("task completed with llm response",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 	return task, nil
 }
 
@@ -147,7 +154,10 @@ func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Contex
 
 	result, err := a.llmClient.CreateChatCompletion(ctx, messages, tools...)
 	if err != nil {
-		a.logger.Error("llm completion failed", zap.Error(err))
+		a.logger.Error("llm completion failed",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		task.Status.State = adk.TaskStateFailed
 		errorMessage := &adk.Message{
 			Kind:      "message",
@@ -166,13 +176,17 @@ func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Contex
 
 	sdkResponse, ok := result.(*sdk.CreateChatCompletionResponse)
 	if !ok {
-		a.logger.Error("unexpected response type from llm client when using tools")
+		a.logger.Error("unexpected response type from llm client when using tools",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		task.Status.State = adk.TaskStateFailed
 		return task, fmt.Errorf("unexpected response type from llm client")
 	}
 
 	if len(sdkResponse.Choices) == 0 {
-		a.logger.Error("no choices in llm response")
+		a.logger.Error("no choices in llm response",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		task.Status.State = adk.TaskStateFailed
 		return task, fmt.Errorf("no choices in llm response")
 	}
@@ -217,7 +231,9 @@ func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Contex
 	task.Status.State = adk.TaskStateCompleted
 	task.Status.Message = response
 
-	a.logger.Info("task completed with llm response (no tools used)")
+	a.logger.Info("task completed with llm response (no tools used)",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 	return task, nil
 }
 
@@ -239,7 +255,9 @@ func (a *DefaultOpenAICompatibleAgent) processWithoutLLM(task *adk.Task, message
 	task.Status.State = adk.TaskStateCompleted
 	task.Status.Message = response
 
-	a.logger.Info("task completed without llm")
+	a.logger.Info("task completed without llm",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 	return task
 }
 
@@ -334,7 +352,10 @@ func (a *DefaultOpenAICompatibleAgent) processToolCalls(ctx context.Context, tas
 
 	finalResult, err := a.llmClient.CreateChatCompletion(ctx, finalMessages)
 	if err != nil {
-		a.logger.Error("final llm completion after tool calls failed", zap.Error(err))
+		a.logger.Error("final llm completion after tool calls failed",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		task.Status.State = adk.TaskStateFailed
 		errorMessage := &adk.Message{
 			Kind:      "message",
@@ -353,7 +374,9 @@ func (a *DefaultOpenAICompatibleAgent) processToolCalls(ctx context.Context, tas
 
 	finalResponse, ok := finalResult.(*adk.Message)
 	if !ok {
-		a.logger.Error("unexpected response type from final llm completion")
+		a.logger.Error("unexpected response type from final llm completion",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		task.Status.State = adk.TaskStateFailed
 		return task, fmt.Errorf("unexpected response type from final llm completion")
 	}
@@ -362,6 +385,8 @@ func (a *DefaultOpenAICompatibleAgent) processToolCalls(ctx context.Context, tas
 	task.Status.State = adk.TaskStateCompleted
 	task.Status.Message = finalResponse
 
-	a.logger.Info("task completed with tool calling workflow")
+	a.logger.Info("task completed with tool calling workflow",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 	return task, nil
 }
