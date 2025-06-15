@@ -718,11 +718,6 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 - **Bug Reports**: [GitHub Issues](https://github.com/inference-gateway/a2a/issues)
 - **Documentation**: [Official Docs](https://docs.inference-gateway.com)
 
-### Community
-
-- **Discord**: Join our [Discord community](https://discord.gg/inference-gateway)
-- **Twitter**: Follow [@InferenceGW](https://twitter.com/InferenceGW) for updates
-
 ## 🗺️ Roadmap
 
 - [x] **Enhanced Tool System**: More built-in tools and better tool chaining
