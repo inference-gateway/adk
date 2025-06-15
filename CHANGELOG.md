@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7](https://github.com/inference-gateway/a2a/compare/v0.1.6...v0.1.7) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* Update API key validation to be optional in NewOpenAICompatibleLLMClient ([ea0b1bd](https://github.com/inference-gateway/a2a/commit/ea0b1bd73111266da8c241ad51d38c7b82a2d5bd))
+
+### 📚 Documentation
+
+* Update CONTRIBUTING.md for clarity on type generation and mocks ([438fb91](https://github.com/inference-gateway/a2a/commit/438fb91254e0db9e5e8d8198ec619c0e4fa4c2cd))
+
 ## [0.1.6](https://github.com/inference-gateway/a2a/compare/v0.1.5...v0.1.6) (2025-06-14)
 
 ### 📚 Documentation
