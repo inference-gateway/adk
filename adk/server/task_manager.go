@@ -76,7 +76,8 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state adk.TaskState, 
 	}
 
 	task := &adk.Task{
-		ID: uuid.New().String(),
+		ID:   uuid.New().String(),
+		Kind: "task",
 		Status: adk.TaskStatus{
 			State:     state,
 			Message:   message,
