@@ -39,17 +39,6 @@ type FakeLLMClient struct {
 		result1 <-chan *sdk.CreateChatCompletionStreamResponse
 		result2 <-chan error
 	}
-	HealthCheckStub        func(context.Context) error
-	healthCheckMutex       sync.RWMutex
-	healthCheckArgsForCall []struct {
-		arg1 context.Context
-	}
-	healthCheckReturns struct {
-		result1 error
-	}
-	healthCheckReturnsOnCall map[int]struct {
-		result1 error
-	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -195,67 +184,6 @@ func (fake *FakeLLMClient) CreateStreamingChatCompletionReturnsOnCall(i int, res
 	}{result1, result2}
 }
 
-func (fake *FakeLLMClient) HealthCheck(arg1 context.Context) error {
-	fake.healthCheckMutex.Lock()
-	ret, specificReturn := fake.healthCheckReturnsOnCall[len(fake.healthCheckArgsForCall)]
-	fake.healthCheckArgsForCall = append(fake.healthCheckArgsForCall, struct {
-		arg1 context.Context
-	}{arg1})
-	stub := fake.HealthCheckStub
-	fakeReturns := fake.healthCheckReturns
-	fake.recordInvocation("HealthCheck", []interface{}{arg1})
-	fake.healthCheckMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *FakeLLMClient) HealthCheckCallCount() int {
-	fake.healthCheckMutex.RLock()
-	defer fake.healthCheckMutex.RUnlock()
-	return len(fake.healthCheckArgsForCall)
-}
-
-func (fake *FakeLLMClient) HealthCheckCalls(stub func(context.Context) error) {
-	fake.healthCheckMutex.Lock()
-	defer fake.healthCheckMutex.Unlock()
-	fake.HealthCheckStub = stub
-}
-
-func (fake *FakeLLMClient) HealthCheckArgsForCall(i int) context.Context {
-	fake.healthCheckMutex.RLock()
-	defer fake.healthCheckMutex.RUnlock()
-	argsForCall := fake.healthCheckArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *FakeLLMClient) HealthCheckReturns(result1 error) {
-	fake.healthCheckMutex.Lock()
-	defer fake.healthCheckMutex.Unlock()
-	fake.HealthCheckStub = nil
-	fake.healthCheckReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *FakeLLMClient) HealthCheckReturnsOnCall(i int, result1 error) {
-	fake.healthCheckMutex.Lock()
-	defer fake.healthCheckMutex.Unlock()
-	fake.HealthCheckStub = nil
-	if fake.healthCheckReturnsOnCall == nil {
-		fake.healthCheckReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.healthCheckReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
 func (fake *FakeLLMClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -263,8 +191,6 @@ func (fake *FakeLLMClient) Invocations() map[string][][]interface{} {
 	defer fake.createChatCompletionMutex.RUnlock()
 	fake.createStreamingChatCompletionMutex.RLock()
 	defer fake.createStreamingChatCompletionMutex.RUnlock()
-	fake.healthCheckMutex.RLock()
-	defer fake.healthCheckMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

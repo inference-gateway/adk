@@ -19,10 +19,9 @@ type LLMClient interface {
 
 	// CreateStreamingChatCompletion sends a streaming chat completion request using SDK messages
 	CreateStreamingChatCompletion(ctx context.Context, messages []sdk.Message) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error)
-
-	// HealthCheck verifies if the LLM client is healthy and can connect
-	HealthCheck(ctx context.Context) error
 }
+
+var _ LLMClient = (*OpenAICompatibleLLMClient)(nil)
 
 // OpenAICompatibleLLMClient implements LLMClient using an OpenAI-compatible API via the Inference Gateway SDK
 type OpenAICompatibleLLMClient struct {
@@ -214,11 +213,6 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 	}()
 
 	return responseChan, errorChan
-}
-
-// HealthCheck implements LLMClient.HealthCheck
-func (c *OpenAICompatibleLLMClient) HealthCheck(ctx context.Context) error {
-	return c.client.HealthCheck(ctx)
 }
 
 // parseProvider converts a provider string to SDK Provider type
