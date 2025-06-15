@@ -737,7 +737,6 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 - [A2A Protocol Specification](https://github.com/inference-gateway/schemas/tree/main/a2a)
 - [API Documentation](https://docs.inference-gateway.com/a2a)
-- [Examples Repository](https://github.com/inference-gateway/examples)
 
 ---
 
