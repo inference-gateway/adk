@@ -61,7 +61,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger)
+			taskManager := server.NewDefaultTaskManager(logger, 20)
 
 			task := taskManager.CreateTask(tt.contextID, tt.state, tt.message)
 
@@ -119,7 +119,7 @@ func TestA2AServer_TaskManager_UpdateTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger)
+			taskManager := server.NewDefaultTaskManager(logger, 20)
 
 			task := taskManager.CreateTask("test-context", adk.TaskStateSubmitted, &adk.Message{
 				Kind:      "message",
@@ -145,7 +145,7 @@ func TestA2AServer_TaskManager_UpdateTask(t *testing.T) {
 
 func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger)
+	taskManager := server.NewDefaultTaskManager(logger, 20)
 
 	message := &adk.Message{
 		Kind:      "message",
@@ -197,7 +197,7 @@ func TestA2AServer_ResponseSender_SendError(t *testing.T) {
 
 func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger)
+	taskManager := server.NewDefaultTaskManager(logger, 20)
 
 	messageHandler := server.NewDefaultMessageHandler(logger, taskManager)
 

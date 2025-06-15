@@ -117,7 +117,12 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	server.taskManager = NewDefaultTaskManager(logger)
+	maxConversationHistory := 20
+	if cfg.AgentConfig != nil {
+		maxConversationHistory = cfg.AgentConfig.MaxConversationHistory
+	}
+
+	server.taskManager = NewDefaultTaskManager(logger, maxConversationHistory)
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
@@ -186,7 +191,13 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	server.taskManager = NewDefaultTaskManager(logger)
+	// Safely get max conversation history from config
+	maxConversationHistory := 20 // default value
+	if cfg.AgentConfig != nil {
+		maxConversationHistory = cfg.AgentConfig.MaxConversationHistory
+	}
+
+	server.taskManager = NewDefaultTaskManager(logger, maxConversationHistory)
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
