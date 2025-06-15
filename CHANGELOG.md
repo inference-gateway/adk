@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.4](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.3...v0.2.0-rc.4) (2025-06-15)
+
+### ♻️ Improvements
+
+* Add validation for MaxChatCompletionIterations in Config to be at least 1 ([08bec29](https://github.com/inference-gateway/a2a/commit/08bec2960e0ef04369b919f19f5840eb6bbc44c1))
+
 ## [0.2.0-rc.3](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.2...v0.2.0-rc.3) (2025-06-15)
 
 ### ♻️ Improvements
