@@ -275,6 +275,8 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 		}
 
 		var content string
+		var toolCallId *string
+
 		for _, part := range msg.Parts {
 			if partMap, ok := part.(map[string]interface{}); ok {
 				switch partMap["kind"] {
@@ -292,16 +294,30 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 									content += resultStr
 								}
 							}
+
+							if role == "tool" {
+								if id, exists := dataMap["tool_call_id"]; exists {
+									if idStr, ok := id.(string); ok {
+										toolCallId = &idStr
+									}
+								}
+							}
 						}
 					}
 				}
 			}
 		}
 
-		sdkMessages = append(sdkMessages, sdk.Message{
+		sdkMessage := sdk.Message{
 			Role:    sdkRole,
 			Content: content,
-		})
+		}
+
+		if toolCallId != nil {
+			sdkMessage.ToolCallId = toolCallId
+		}
+
+		sdkMessages = append(sdkMessages, sdkMessage)
 	}
 
 	return sdkMessages, nil
