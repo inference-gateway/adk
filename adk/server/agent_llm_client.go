@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	adk "github.com/inference-gateway/a2a/adk"
 	config "github.com/inference-gateway/a2a/adk/server/config"
 	sdk "github.com/inference-gateway/sdk"
 	zap "go.uber.org/zap"
@@ -15,12 +14,11 @@ import (
 
 // LLMClient defines the interface for Language Model clients
 type LLMClient interface {
-	// CreateChatCompletion sends a chat completion request and returns the response
-	// If tools are provided, returns the raw SDK response for tool call handling
-	CreateChatCompletion(ctx context.Context, messages []adk.Message, tools ...sdk.ChatCompletionTool) (interface{}, error)
+	// CreateChatCompletion sends a chat completion request using SDK messages
+	CreateChatCompletion(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error)
 
-	// CreateStreamingChatCompletion sends a streaming chat completion request
-	CreateStreamingChatCompletion(ctx context.Context, messages []adk.Message) (<-chan *adk.Message, <-chan error)
+	// CreateStreamingChatCompletion sends a streaming chat completion request using SDK messages
+	CreateStreamingChatCompletion(ctx context.Context, messages []sdk.Message) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error)
 
 	// HealthCheck verifies if the LLM client is healthy and can connect
 	HealthCheck(ctx context.Context) error
@@ -85,13 +83,8 @@ func NewOpenAICompatibleLLMClient(cfg *config.AgentConfig, logger *zap.Logger) (
 	}, nil
 }
 
-// CreateChatCompletion implements LLMClient.CreateChatCompletion
-func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, messages []adk.Message, tools ...sdk.ChatCompletionTool) (interface{}, error) {
-	sdkMessages, err := c.convertToSDKMessages(messages)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert messages: %w", err)
-	}
-
+// CreateChatCompletion implements LLMClient.CreateChatCompletion using SDK messages
+func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
 	options := &sdk.CreateChatCompletionRequest{}
 
 	if c.config.MaxTokens > 0 {
@@ -121,14 +114,14 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 				ctx,
 				c.provider,
 				c.model,
-				sdkMessages,
+				messages,
 			)
 		} else {
 			response, lastErr = c.client.WithOptions(options).GenerateContent(
 				ctx,
 				c.provider,
 				c.model,
-				sdkMessages,
+				messages,
 			)
 		}
 
@@ -149,27 +142,21 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 		return nil, fmt.Errorf("no choices returned from llm")
 	}
 
-	if len(tools) > 0 {
-		return response, nil
-	}
+	c.logger.Info("llm chat completion successful",
+		zap.Int("choices", len(response.Choices)),
+		zap.Bool("has_tools", len(tools) > 0))
 
-	return c.convertFromSDKMessage(response.Choices[0].Message), nil
+	return response, nil
 }
 
-// CreateStreamingChatCompletion implements LLMClient.CreateStreamingChatCompletion
-func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Context, messages []adk.Message) (<-chan *adk.Message, <-chan error) {
-	messageChan := make(chan *adk.Message)
+// CreateStreamingChatCompletion implements LLMClient.CreateStreamingChatCompletion using SDK messages
+func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Context, messages []sdk.Message) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+	responseChan := make(chan *sdk.CreateChatCompletionStreamResponse)
 	errorChan := make(chan error, 1)
 
 	go func() {
-		defer close(messageChan)
+		defer close(responseChan)
 		defer close(errorChan)
-
-		sdkMessages, err := c.convertToSDKMessages(messages)
-		if err != nil {
-			errorChan <- fmt.Errorf("failed to convert messages: %w", err)
-			return
-		}
 
 		options := &sdk.CreateChatCompletionRequest{}
 
@@ -181,7 +168,7 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 			ctx,
 			c.provider,
 			c.model,
-			sdkMessages,
+			messages,
 		)
 		if err != nil {
 			errorChan <- fmt.Errorf("failed to create stream: %w", err)
@@ -202,26 +189,10 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 						continue
 					}
 
-					for _, choice := range streamResponse.Choices {
-						if choice.Delta.Content != "" {
-							message := &adk.Message{
-								Kind:      "message",
-								MessageID: streamResponse.ID,
-								Role:      "assistant",
-								Parts: []adk.Part{
-									map[string]interface{}{
-										"kind": "text",
-										"text": choice.Delta.Content,
-									},
-								},
-							}
-
-							select {
-							case messageChan <- message:
-							case <-ctx.Done():
-								return
-							}
-						}
+					select {
+					case responseChan <- &streamResponse:
+					case <-ctx.Done():
+						return
 					}
 				}
 
@@ -242,140 +213,12 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 		}
 	}()
 
-	return messageChan, errorChan
+	return responseChan, errorChan
 }
 
 // HealthCheck implements LLMClient.HealthCheck
 func (c *OpenAICompatibleLLMClient) HealthCheck(ctx context.Context) error {
 	return c.client.HealthCheck(ctx)
-}
-
-// convertToSDKMessages converts A2A messages to Inference Gateway SDK format
-func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message) ([]sdk.Message, error) {
-	var sdkMessages []sdk.Message
-
-	c.logger.Debug("converting messages to SDK format",
-		zap.Int("message_count", len(messages)))
-
-	for i, msg := range messages {
-		role := msg.Role
-		if role == "" {
-			role = "user"
-		}
-
-		c.logger.Debug("processing message",
-			zap.Int("index", i),
-			zap.String("role", role),
-			zap.String("message_id", msg.MessageID))
-
-		var sdkRole sdk.MessageRole
-		switch role {
-		case "user":
-			sdkRole = sdk.User
-		case "assistant":
-			sdkRole = sdk.Assistant
-		case "system":
-			sdkRole = sdk.System
-		case "tool":
-			sdkRole = sdk.Tool
-		default:
-			sdkRole = sdk.User
-		}
-
-		var content string
-		var toolCallId *string
-		var toolCalls *[]sdk.ChatCompletionMessageToolCall
-
-		for _, part := range msg.Parts {
-			if partMap, ok := part.(map[string]interface{}); ok {
-				switch partMap["kind"] {
-				case "text":
-					if text, exists := partMap["text"]; exists {
-						if textStr, ok := text.(string); ok {
-							content += textStr
-						}
-					}
-				case "data":
-					if data, exists := partMap["data"]; exists {
-						if dataMap, ok := data.(map[string]interface{}); ok {
-							if result, exists := dataMap["result"]; exists {
-								if resultStr, ok := result.(string); ok {
-									content += resultStr
-								}
-							}
-
-							if role == "tool" {
-								if id, exists := dataMap["tool_call_id"]; exists {
-									if idStr, ok := id.(string); ok {
-										toolCallId = &idStr
-									}
-								}
-							}
-
-							if role == "assistant" {
-								if calls, exists := dataMap["tool_calls"]; exists {
-									if callsSlice, ok := calls.([]sdk.ChatCompletionMessageToolCall); ok {
-										toolCalls = &callsSlice
-									}
-								}
-								if contentStr, exists := dataMap["content"]; exists {
-									if cStr, ok := contentStr.(string); ok {
-										content += cStr
-									}
-								}
-
-								if textStr, exists := dataMap["text"]; exists {
-									if tStr, ok := textStr.(string); ok {
-										content += tStr
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		sdkMessage := sdk.Message{
-			Role:    sdkRole,
-			Content: content,
-		}
-
-		if toolCallId != nil {
-			sdkMessage.ToolCallId = toolCallId
-		}
-
-		if toolCalls != nil {
-			sdkMessage.ToolCalls = toolCalls
-		}
-
-		sdkMessages = append(sdkMessages, sdkMessage)
-		c.logger.Debug("converted message",
-			zap.String("role", string(sdkRole)),
-			zap.String("content", content),
-			zap.Bool("has_tool_calls", toolCalls != nil))
-	}
-
-	c.logger.Info("message conversion completed",
-		zap.Int("input_messages", len(messages)),
-		zap.Int("output_messages", len(sdkMessages)))
-
-	return sdkMessages, nil
-}
-
-// convertFromSDKMessage converts SDK message to A2A format
-func (c *OpenAICompatibleLLMClient) convertFromSDKMessage(msg sdk.Message) *adk.Message {
-	return &adk.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("llm-response-%d", time.Now().UnixNano()),
-		Role:      string(msg.Role),
-		Parts: []adk.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": msg.Content,
-			},
-		},
-	}
 }
 
 // parseProvider converts a provider string to SDK Provider type

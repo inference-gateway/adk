@@ -665,14 +665,17 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 			name:        "simple text response without tools",
 			userMessage: "Hello, how are you?",
 			llmResponses: []interface{}{
-				&adk.Message{
-					Kind:      "message",
-					MessageID: "llm-response-1",
-					Role:      "assistant",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "Hello! I'm doing well, thank you for asking. How can I help you today?",
+				&sdk.CreateChatCompletionResponse{
+					Id:     "chatcmpl-simple-response",
+					Object: "chat.completion",
+					Choices: []sdk.ChatCompletionChoice{
+						{
+							Index: 0,
+							Message: sdk.Message{
+								Role:    sdk.Assistant,
+								Content: "Hello! I'm doing well, thank you for asking. How can I help you today?",
+							},
+							FinishReason: "stop",
 						},
 					},
 				},
@@ -705,14 +708,17 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 						},
 					},
 				},
-				&adk.Message{
-					Kind:      "message",
-					MessageID: "llm-response-final",
-					Role:      "assistant",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "Based on the weather data, it's currently sunny with a temperature of 72°F. Perfect weather for outdoor activities!",
+				&sdk.CreateChatCompletionResponse{
+					Id:     "chatcmpl-weather-final",
+					Object: "chat.completion",
+					Choices: []sdk.ChatCompletionChoice{
+						{
+							Index: 0,
+							Message: sdk.Message{
+								Role:    sdk.Assistant,
+								Content: "Based on the weather data, it's currently sunny with a temperature of 72°F. Perfect weather for outdoor activities!",
+							},
+							FinishReason: "stop",
 						},
 					},
 				},
@@ -753,14 +759,17 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 						},
 					},
 				},
-				&adk.Message{
-					Kind:      "message",
-					MessageID: "llm-response-final",
-					Role:      "assistant",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "I've checked your calendar and scheduled the meeting. You have 2 free slots today, and I've booked the Team Sync meeting for 1 hour.",
+				&sdk.CreateChatCompletionResponse{
+					Id:     "chatcmpl-calendar-final",
+					Object: "chat.completion",
+					Choices: []sdk.ChatCompletionChoice{
+						{
+							Index: 0,
+							Message: sdk.Message{
+								Role:    sdk.Assistant,
+								Content: "I've checked your calendar and scheduled the meeting. You have 2 free slots today, and I've booked the Team Sync meeting for 1 hour.",
+							},
+							FinishReason: "stop",
 						},
 					},
 				},
@@ -786,7 +795,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 			mockLLMClient := &mocks.FakeLLMClient{}
 			responseIndex := 0
 
-			mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []adk.Message, tools ...sdk.ChatCompletionTool) (interface{}, error) {
+			mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
 				if responseIndex >= len(tt.llmResponses) {
 					return nil, fmt.Errorf("unexpected additional LLM call")
 				}
@@ -798,7 +807,11 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 					return nil, err
 				}
 
-				return response, nil
+				if sdkResp, ok := response.(*sdk.CreateChatCompletionResponse); ok {
+					return sdkResp, nil
+				}
+
+				return nil, fmt.Errorf("unexpected response type in test")
 			}
 
 			mockToolBox := server.NewDefaultToolBox()
@@ -954,14 +967,17 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			name:        "openai_simple_text_completion",
 			userMessage: "Explain quantum computing in simple terms",
 			openAIResponses: []interface{}{
-				&adk.Message{
-					Kind:      "message",
-					MessageID: "openai-response-1",
-					Role:      "assistant",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "Quantum computing is a revolutionary approach to processing information...",
+				&sdk.CreateChatCompletionResponse{
+					Id:     "chatcmpl-simple-text",
+					Object: "chat.completion",
+					Choices: []sdk.ChatCompletionChoice{
+						{
+							Index: 0,
+							Message: sdk.Message{
+								Role:    sdk.Assistant,
+								Content: "Quantum computing is a revolutionary approach to processing information...",
+							},
+							FinishReason: "stop",
 						},
 					},
 				},
@@ -1001,14 +1017,17 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 						},
 					},
 				},
-				&adk.Message{
-					Kind:      "message",
-					MessageID: "openai-final-response",
-					Role:      "assistant",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "Based on the weather data, it's currently 68°F and sunny in San Francisco today. Perfect weather for outdoor activities!",
+				&sdk.CreateChatCompletionResponse{
+					Id:     "chatcmpl-final-response",
+					Object: "chat.completion",
+					Choices: []sdk.ChatCompletionChoice{
+						{
+							Index: 0,
+							Message: sdk.Message{
+								Role:    sdk.Assistant,
+								Content: "Based on the weather data, it's currently 68°F and sunny in San Francisco today. Perfect weather for outdoor activities!",
+							},
+							FinishReason: "stop",
 						},
 					},
 				},
@@ -1057,14 +1076,17 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 						},
 					},
 				},
-				&adk.Message{
-					Kind:      "message",
-					MessageID: "openai-multi-final",
-					Role:      "assistant",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "I've checked your calendar and successfully scheduled the team meeting for tomorrow at 2:00 PM. You have no conflicts at that time. The meeting has been added to your calendar.",
+				&sdk.CreateChatCompletionResponse{
+					Id:     "chatcmpl-multi-final",
+					Object: "chat.completion",
+					Choices: []sdk.ChatCompletionChoice{
+						{
+							Index: 0,
+							Message: sdk.Message{
+								Role:    sdk.Assistant,
+								Content: "I've checked your calendar and successfully scheduled the team meeting for tomorrow at 2:00 PM. You have no conflicts at that time. The meeting has been added to your calendar.",
+							},
+							FinishReason: "stop",
 						},
 					},
 				},
@@ -1087,14 +1109,17 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			name:        "openai_streaming_simulation",
 			userMessage: "Write a short poem about AI",
 			openAIResponses: []interface{}{
-				&adk.Message{
-					Kind:      "message",
-					MessageID: "openai-poem-response",
-					Role:      "assistant",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "In circuits deep and algorithms bright,\nAI awakens with digital sight.\nThrough data vast and logic clear,\nA future of wonder draws near.",
+				&sdk.CreateChatCompletionResponse{
+					Id:     "chatcmpl-poem-response",
+					Object: "chat.completion",
+					Choices: []sdk.ChatCompletionChoice{
+						{
+							Index: 0,
+							Message: sdk.Message{
+								Role:    sdk.Assistant,
+								Content: "In circuits deep and algorithms bright,\nAI awakens with digital sight.\nThrough data vast and logic clear,\nA future of wonder draws near.",
+							},
+							FinishReason: "stop",
 						},
 					},
 				},
@@ -1137,7 +1162,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			mockLLMClient := &mocks.FakeLLMClient{}
 			responseIndex := 0
 
-			mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []adk.Message, tools ...sdk.ChatCompletionTool) (interface{}, error) {
+			mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
 				if responseIndex >= len(tt.openAIResponses) {
 					return nil, fmt.Errorf("unexpected additional LLM call")
 				}
@@ -1149,7 +1174,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 					return nil, err
 				}
 
-				return response, nil
+				return response.(*sdk.CreateChatCompletionResponse), nil
 			}
 
 			mockToolBox := server.NewDefaultToolBox()
@@ -1277,19 +1302,22 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 	t.Run("openai_response_to_a2a_message_conversion", func(t *testing.T) {
 		mockLLMClient := &mocks.FakeLLMClient{}
 
-		mockResponse := &adk.Message{
-			Kind:      "message",
-			MessageID: "openai-converted-123",
-			Role:      "assistant",
-			Parts: []adk.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "This is a test response from OpenAI format",
+		mockResponse := &sdk.CreateChatCompletionResponse{
+			Id:     "chatcmpl-test",
+			Object: "chat.completion",
+			Choices: []sdk.ChatCompletionChoice{
+				{
+					Index: 0,
+					Message: sdk.Message{
+						Role:    sdk.Assistant,
+						Content: "This is a test response from OpenAI format",
+					},
+					FinishReason: "stop",
 				},
 			},
 		}
 
-		mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []adk.Message, tools ...sdk.ChatCompletionTool) (interface{}, error) {
+		mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
 			return mockResponse, nil
 		}
 
@@ -1333,7 +1361,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 		mockLLMClient := &mocks.FakeLLMClient{}
 		callCount := 0
 
-		mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []adk.Message, tools ...sdk.ChatCompletionTool) (interface{}, error) {
+		mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
 			callCount++
 
 			if callCount == 1 {
@@ -1370,14 +1398,17 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 				}, nil
 			}
 
-			return &adk.Message{
-				Kind:      "message",
-				MessageID: "tool-final-response",
-				Role:      "assistant",
-				Parts: []adk.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Function executed successfully with result: test_result",
+			return &sdk.CreateChatCompletionResponse{
+				Id:     "chatcmpl-final",
+				Object: "chat.completion",
+				Choices: []sdk.ChatCompletionChoice{
+					{
+						Index: 0,
+						Message: sdk.Message{
+							Role:    sdk.Assistant,
+							Content: "Function executed successfully with result: test_result",
+						},
+						FinishReason: "stop",
 					},
 				},
 			}, nil
