@@ -268,6 +268,8 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 			sdkRole = sdk.Assistant
 		case "system":
 			sdkRole = sdk.System
+		case "tool":
+			sdkRole = sdk.Tool
 		default:
 			sdkRole = sdk.User
 		}
@@ -275,9 +277,22 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 		var content string
 		for _, part := range msg.Parts {
 			if partMap, ok := part.(map[string]interface{}); ok {
-				if text, exists := partMap["text"]; exists {
-					if textStr, ok := text.(string); ok {
-						content += textStr
+				switch partMap["kind"] {
+				case "text":
+					if text, exists := partMap["text"]; exists {
+						if textStr, ok := text.(string); ok {
+							content += textStr
+						}
+					}
+				case "data":
+					if data, exists := partMap["data"]; exists {
+						if dataMap, ok := data.(map[string]interface{}); ok {
+							if result, exists := dataMap["result"]; exists {
+								if resultStr, ok := result.(string); ok {
+									content += resultStr
+								}
+							}
+						}
 					}
 				}
 			}

@@ -259,7 +259,6 @@ func (a *DefaultOpenAICompatibleAgent) GetLLMClient() LLMClient {
 func (a *DefaultOpenAICompatibleAgent) processToolCalls(ctx context.Context, task *adk.Task, messages []adk.Message, toolCalls []sdk.ChatCompletionMessageToolCall) (*adk.Task, error) {
 	a.logger.Info("processing tool calls", zap.Int("count", len(toolCalls)))
 
-	// Execute each tool call
 	toolResults := make([]adk.Message, 0, len(toolCalls))
 
 	for _, toolCall := range toolCalls {
@@ -272,7 +271,6 @@ func (a *DefaultOpenAICompatibleAgent) processToolCalls(ctx context.Context, tas
 			continue
 		}
 
-		// Parse tool arguments
 		var args map[string]interface{}
 		if function.Arguments != "" {
 			if err := json.Unmarshal([]byte(function.Arguments), &args); err != nil {
@@ -283,7 +281,6 @@ func (a *DefaultOpenAICompatibleAgent) processToolCalls(ctx context.Context, tas
 			}
 		}
 
-		// Execute tool
 		result, err := a.toolBox.ExecuteTool(ctx, function.Name, args)
 		if err != nil {
 			result = fmt.Sprintf("Error executing tool: %v", err)
@@ -295,17 +292,18 @@ func (a *DefaultOpenAICompatibleAgent) processToolCalls(ctx context.Context, tas
 				zap.String("tool", function.Name))
 		}
 
-		// Create tool result message
 		toolResultMessage := adk.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
 			Role:      "tool",
 			Parts: []adk.Part{
 				map[string]interface{}{
-					"kind":         "tool_result",
-					"tool_call_id": toolCall.Id,
-					"tool_name":    function.Name,
-					"result":       result,
+					"kind": "data",
+					"data": map[string]interface{}{
+						"tool_call_id": toolCall.Id,
+						"tool_name":    function.Name,
+						"result":       result,
+					},
 				},
 			},
 		}
@@ -314,7 +312,6 @@ func (a *DefaultOpenAICompatibleAgent) processToolCalls(ctx context.Context, tas
 		task.History = append(task.History, toolResultMessage)
 	}
 
-	// Get final response from LLM with tool results
 	finalMessages := append(messages, toolResults...)
 
 	finalResult, err := a.llmClient.CreateChatCompletion(ctx, finalMessages)
