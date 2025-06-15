@@ -443,9 +443,10 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 					require.True(t, ok, "Expected result part to be map[string]interface{}")
 					assert.Equal(t, partMap["kind"], resultPartMap["kind"])
 
-					if partMap["kind"] == "text" {
+					switch partMap["kind"] {
+					case "text":
 						assert.Equal(t, partMap["text"], resultPartMap["text"])
-					} else if partMap["kind"] == "data" {
+					case "data":
 						expectedData := partMap["data"].(map[string]interface{})
 						resultData := resultPartMap["data"].(map[string]interface{})
 						assert.Equal(t, expectedData, resultData)
