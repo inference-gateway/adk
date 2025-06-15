@@ -49,13 +49,13 @@ func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "missing API key",
+			name: "config without API key (optional)",
 			config: &config.AgentConfig{
 				Provider: "openai",
 				Model:    "gpt-4",
 				BaseURL:  "https://api.openai.com/v1",
 			},
-			expectError: true,
+			expectError: false,
 		},
 		{
 			name: "missing provider",

@@ -49,17 +49,15 @@ func NewOpenAICompatibleLLMClient(cfg *config.AgentConfig, logger *zap.Logger) (
 		return nil, fmt.Errorf("model is required")
 	}
 
-	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("api key is required")
-	}
-
 	clientOptions := &sdk.ClientOptions{}
 
 	if cfg.BaseURL != "" {
 		clientOptions.BaseURL = cfg.BaseURL
 	}
 
-	clientOptions.APIKey = cfg.APIKey
+	if cfg.APIKey != "" {
+		clientOptions.APIKey = cfg.APIKey
+	}
 
 	if cfg.Timeout > 0 {
 		clientOptions.Timeout = cfg.Timeout
