@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.3](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.2...v0.2.0-rc.3) (2025-06-15)
+
+### ♻️ Improvements
+
+* Enhance AI-Powered A2A Server example with improved configuration handling and error messages ([9a70637](https://github.com/inference-gateway/a2a/commit/9a706370c7a23a0530b735d1645b74d7bf1e732c))
+* Extract the logic of message conversions into a dedicated util ([f461c7f](https://github.com/inference-gateway/a2a/commit/f461c7f5810ba0903b460c7c8be15e55f3b553f6))
+* Remove Community section from README ([fd151fa](https://github.com/inference-gateway/a2a/commit/fd151fa5259a53d9a1b93a0b1386ecdf3744cdf1))
+* Remove Examples Repository link from README ([6a42c64](https://github.com/inference-gateway/a2a/commit/6a42c6476fe567ac54a0ff90a80283f981bf31b2))
+* Remove HealthCheck method and related stubs from LLMClient and FakeLLMClient ([d15538f](https://github.com/inference-gateway/a2a/commit/d15538f4e7f8d1c890b4240ee8a2287ebf685abb))
+* Remove unused A2AConversationManager and related types - I moved all to a utils package ([654bff8](https://github.com/inference-gateway/a2a/commit/654bff8abf60479ed6c6c0448db673e15b5ed952))
+* Simplify message part validation logic in ConvertFromSDK test ([928bd3c](https://github.com/inference-gateway/a2a/commit/928bd3cebe5ba0b26e622fdbef602a51d5a22a80))
+* Update README for A2A Server examples with clearer descriptions and improved structure ([ac8490c](https://github.com/inference-gateway/a2a/commit/ac8490c154bf2aff201d61d49c2b1d62f5487b26))
+
+### 🐛 Bug Fixes
+
+* Implement SimpleTaskHandler for basic task processing without AI and add kind Task to the tasks/get object instead of empty string ([dbc413a](https://github.com/inference-gateway/a2a/commit/dbc413a35489fde602fc7413a5c8079c3f265f9c))
+
+### 📚 Documentation
+
+* Remove community section from README ([bf6fd0b](https://github.com/inference-gateway/a2a/commit/bf6fd0b2a89a774214ee160329eb0f0d7d7db2b2))
+* Update date and add A2A official documentation link ([3991b6a](https://github.com/inference-gateway/a2a/commit/3991b6a666aacd823e4a7fb01f2cddbc38ed6e7a))
+
+### 🔧 Miscellaneous
+
+* Add MessagePartKind type and validation for A2A message parts ([fccf391](https://github.com/inference-gateway/a2a/commit/fccf3914e06dcded96158e03d3b07c0dfbb4ec31))
+
 ## [0.2.0-rc.2](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.1...v0.2.0-rc.2) (2025-06-15)
 
 ### ♻️ Improvements
