@@ -254,11 +254,19 @@ func (c *OpenAICompatibleLLMClient) HealthCheck(ctx context.Context) error {
 func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message) ([]sdk.Message, error) {
 	var sdkMessages []sdk.Message
 
-	for _, msg := range messages {
+	c.logger.Debug("converting messages to SDK format",
+		zap.Int("message_count", len(messages)))
+
+	for i, msg := range messages {
 		role := msg.Role
 		if role == "" {
 			role = "user"
 		}
+
+		c.logger.Debug("processing message",
+			zap.Int("index", i),
+			zap.String("role", role),
+			zap.String("message_id", msg.MessageID))
 
 		var sdkRole sdk.MessageRole
 		switch role {
@@ -315,6 +323,12 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 										content += cStr
 									}
 								}
+
+								if textStr, exists := dataMap["text"]; exists {
+									if tStr, ok := textStr.(string); ok {
+										content += tStr
+									}
+								}
 							}
 						}
 					}
@@ -336,7 +350,15 @@ func (c *OpenAICompatibleLLMClient) convertToSDKMessages(messages []adk.Message)
 		}
 
 		sdkMessages = append(sdkMessages, sdkMessage)
+		c.logger.Debug("converted message",
+			zap.String("role", string(sdkRole)),
+			zap.String("content", content),
+			zap.Bool("has_tool_calls", toolCalls != nil))
 	}
+
+	c.logger.Info("message conversion completed",
+		zap.Int("input_messages", len(messages)),
+		zap.Int("output_messages", len(sdkMessages)))
 
 	return sdkMessages, nil
 }
