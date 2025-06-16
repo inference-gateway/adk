@@ -32,7 +32,7 @@ func NewOptimizedMessageConverter(logger *zap.Logger) *OptimizedMessageConverter
 	}
 }
 
-// ConvertToSDK converts A2A messages to SDK format with caching support
+// ConvertToSDK converts A2A messages to SDK format with validation
 func (c *OptimizedMessageConverter) ConvertToSDK(messages []adk.Message) ([]sdk.Message, error) {
 	result := make([]sdk.Message, 0, len(messages))
 
@@ -45,6 +45,7 @@ func (c *OptimizedMessageConverter) ConvertToSDK(messages []adk.Message) ([]sdk.
 				zap.Error(err))
 			return nil, err
 		}
+
 		result = append(result, sdkMsg)
 	}
 
@@ -60,6 +61,7 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg adk.Message) (sdk.M
 
 	var content string
 	var toolCallId *string
+	var toolCalls *[]sdk.ChatCompletionMessageToolCall
 
 	for _, part := range msg.Parts {
 		if typedPart, ok := part.(adk.OptimizedMessagePart); ok {
@@ -73,6 +75,20 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg adk.Message) (sdk.M
 					if result, exists := typedPart.Data["result"]; exists {
 						if resultStr, ok := result.(string); ok {
 							content += resultStr
+						}
+					}
+
+					if role == "assistant" {
+						if toolCallsData, exists := typedPart.Data["tool_calls"]; exists {
+							if toolCallsSlice, ok := toolCallsData.([]sdk.ChatCompletionMessageToolCall); ok {
+								toolCalls = &toolCallsSlice
+							}
+						}
+
+						if contentData, exists := typedPart.Data["content"]; exists {
+							if contentStr, ok := contentData.(string); ok {
+								content += contentStr
+							}
 						}
 					}
 
@@ -114,7 +130,21 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg adk.Message) (sdk.M
 								content += resultStr
 							}
 						}
-						// Extract tool_call_id for tool messages
+
+						if role == "assistant" {
+							if toolCallsData, exists := dataMap["tool_calls"]; exists {
+								if toolCallsSlice, ok := toolCallsData.([]sdk.ChatCompletionMessageToolCall); ok {
+									toolCalls = &toolCallsSlice
+								}
+							}
+
+							if contentData, exists := dataMap["content"]; exists {
+								if contentStr, ok := contentData.(string); ok {
+									content += contentStr
+								}
+							}
+						}
+
 						if role == "tool" {
 							if id, exists := dataMap["tool_call_id"]; exists {
 								if idStr, ok := id.(string); ok {
@@ -146,6 +176,7 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg adk.Message) (sdk.M
 		Role:       sdkRole,
 		Content:    content,
 		ToolCallId: toolCallId,
+		ToolCalls:  toolCalls,
 	}, nil
 }
 
