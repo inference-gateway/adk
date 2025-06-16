@@ -1715,3 +1715,140 @@ func TestClient_GetAgentCard_WithCustomUserAgent(t *testing.T) {
 	assert.Equal(t, "test-agent", card.Name)
 	assert.Equal(t, "1.0.0", card.Version)
 }
+
+func TestClient_ListTasks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "/a2a", r.URL.Path)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		var req adk.JSONRPCRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		assert.NoError(t, err)
+		assert.Equal(t, "tasks/list", req.Method)
+
+		mockTaskList := adk.TaskList{
+			Tasks: []adk.Task{
+				{
+					ID:        "task-1",
+					ContextID: "context-1",
+					Status: adk.TaskStatus{
+						State: adk.TaskStateCompleted,
+					},
+					Kind: "task",
+				},
+				{
+					ID:        "task-2",
+					ContextID: "context-1",
+					Status: adk.TaskStatus{
+						State: adk.TaskStateWorking,
+					},
+					Kind: "task",
+				},
+			},
+			Total:  2,
+			Limit:  50,
+			Offset: 0,
+		}
+
+		response := adk.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  mockTaskList,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	logger := zap.NewNop()
+	a2aClient := client.NewClientWithLogger(server.URL, logger)
+
+	t.Run("successful_tasks_list", func(t *testing.T) {
+		params := adk.TaskListParams{
+			Limit:  50,
+			Offset: 0,
+		}
+
+		resp, err := a2aClient.ListTasks(context.Background(), params)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, "2.0", resp.JSONRPC)
+
+		resultBytes, err := json.Marshal(resp.Result)
+		assert.NoError(t, err)
+
+		var taskList adk.TaskList
+		err = json.Unmarshal(resultBytes, &taskList)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 2, len(taskList.Tasks))
+		assert.Equal(t, 2, taskList.Total)
+		assert.Equal(t, 50, taskList.Limit)
+		assert.Equal(t, 0, taskList.Offset)
+		assert.Equal(t, "task-1", taskList.Tasks[0].ID)
+		assert.Equal(t, adk.TaskStateCompleted, taskList.Tasks[0].Status.State)
+	})
+
+	t.Run("list_tasks_with_filtering", func(t *testing.T) {
+		completedState := adk.TaskStateCompleted
+		params := adk.TaskListParams{
+			State:  &completedState,
+			Limit:  10,
+			Offset: 0,
+		}
+
+		resp, err := a2aClient.ListTasks(context.Background(), params)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+	})
+
+	t.Run("list_tasks_with_context_filter", func(t *testing.T) {
+		contextID := "some-context"
+		params := adk.TaskListParams{
+			ContextID: &contextID,
+			Limit:     25,
+		}
+
+		resp, err := a2aClient.ListTasks(context.Background(), params)
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+	})
+}
+
+func TestClient_ListTasks_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req adk.JSONRPCRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Failed to decode request", http.StatusBadRequest)
+			return
+		}
+
+		response := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      req.ID,
+			"error": map[string]interface{}{
+				"code":    -32603,
+				"message": "Internal server error",
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
+	}))
+	defer server.Close()
+
+	logger := zap.NewNop()
+	a2aClient := client.NewClientWithLogger(server.URL, logger)
+
+	params := adk.TaskListParams{}
+	resp, err := a2aClient.ListTasks(context.Background(), params)
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "Internal server error")
+}
