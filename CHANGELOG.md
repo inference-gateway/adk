@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.7](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.6...v0.2.0-rc.7) (2025-06-16)
+
+### ✨ Features
+
+* Introduce fluent builder interfaces for A2A server and agent configurations ([93b95b8](https://github.com/inference-gateway/a2a/commit/93b95b81d150e95224f1d034dab85a2587f93065))
+
+### ♻️ Improvements
+
+* Enhance TestAgentWithConfig to validate LLM client creation and add default configuration ([42c52fb](https://github.com/inference-gateway/a2a/commit/42c52fbb1c0d981be07cbfc5ab0a01eb65d0ab6e))
+* Remove redundant comment in NewWithDefaults function ([b32dd9d](https://github.com/inference-gateway/a2a/commit/b32dd9d3aeacbfd7452c2ceae91618b423c492e9))
+
 ## [0.2.0-rc.6](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.5...v0.2.0-rc.6) (2025-06-16)
 
 ### ♻️ Improvements
