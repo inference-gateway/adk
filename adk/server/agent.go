@@ -16,53 +16,36 @@ import (
 type OpenAICompatibleAgent interface {
 	// ProcessTask processes a task with optional tool calling capabilities
 	ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error)
-
-	// SetSystemPrompt sets the system prompt for the agent
-	SetSystemPrompt(prompt string)
-
-	// GetSystemPrompt returns the current system prompt
-	GetSystemPrompt() string
-
-	// SetToolBox sets the toolbox for the agent
-	SetToolBox(toolBox ToolBox)
-
-	// GetToolBox returns the current toolbox
-	GetToolBox() ToolBox
-
-	// SetLLMClient sets the LLM client for the agent
-	SetLLMClient(client LLMClient)
-
-	// GetLLMClient returns the current LLM client
-	GetLLMClient() LLMClient
 }
 
 // DefaultOpenAICompatibleAgent is the default implementation of OpenAICompatibleAgent
 type DefaultOpenAICompatibleAgent struct {
-	logger                      *zap.Logger
-	llmClient                   LLMClient
-	toolBox                     ToolBox
-	systemPrompt                string
-	converter                   utils.MessageConverter
-	maxChatCompletionIterations int
+	logger    *zap.Logger
+	llmClient LLMClient
+	toolBox   ToolBox
+	converter utils.MessageConverter
+	config    *config.AgentConfig
 }
 
 // NewDefaultOpenAICompatibleAgent creates a new DefaultOpenAICompatibleAgent
 func NewDefaultOpenAICompatibleAgent(logger *zap.Logger) *DefaultOpenAICompatibleAgent {
+	defaultConfig := &config.AgentConfig{
+		MaxChatCompletionIterations: 10,
+		SystemPrompt:                "You are a helpful AI assistant.",
+	}
 	return &DefaultOpenAICompatibleAgent{
-		logger:                      logger,
-		systemPrompt:                "You are a helpful AI assistant.",
-		converter:                   utils.NewOptimizedMessageConverter(logger),
-		maxChatCompletionIterations: 10,
+		logger:    logger,
+		converter: utils.NewOptimizedMessageConverter(logger),
+		config:    defaultConfig,
 	}
 }
 
 // NewDefaultOpenAICompatibleAgentWithConfig creates a new DefaultOpenAICompatibleAgent with configuration
-func NewDefaultOpenAICompatibleAgentWithConfig(logger *zap.Logger, maxIterations int) *DefaultOpenAICompatibleAgent {
+func NewDefaultOpenAICompatibleAgentWithConfig(logger *zap.Logger, cfg *config.AgentConfig) *DefaultOpenAICompatibleAgent {
 	return &DefaultOpenAICompatibleAgent{
-		logger:                      logger,
-		systemPrompt:                "You are a helpful AI assistant.",
-		converter:                   utils.NewOptimizedMessageConverter(logger),
-		maxChatCompletionIterations: maxIterations,
+		logger:    logger,
+		converter: utils.NewOptimizedMessageConverter(logger),
+		config:    cfg,
 	}
 }
 
@@ -80,9 +63,8 @@ func NewOpenAICompatibleAgentWithConfig(logger *zap.Logger, config *config.Agent
 		return nil, fmt.Errorf("failed to create llm client: %w", err)
 	}
 
-	agent := NewDefaultOpenAICompatibleAgent(logger)
+	agent := NewDefaultOpenAICompatibleAgentWithConfig(logger, config)
 	agent.llmClient = client
-	agent.maxChatCompletionIterations = config.MaxChatCompletionIterations
 	return agent, nil
 }
 
@@ -94,7 +76,7 @@ func (a *DefaultOpenAICompatibleAgent) ProcessTask(ctx context.Context, task *ad
 
 	messages := make([]adk.Message, 0)
 
-	if a.systemPrompt != "" {
+	if a.config.SystemPrompt != "" {
 		systemMessage := adk.Message{
 			Kind:      "message",
 			MessageID: "system-prompt",
@@ -102,7 +84,7 @@ func (a *DefaultOpenAICompatibleAgent) ProcessTask(ctx context.Context, task *ad
 			Parts: []adk.Part{
 				map[string]interface{}{
 					"kind": "text",
-					"text": a.systemPrompt,
+					"text": a.config.SystemPrompt,
 				},
 			},
 		}
@@ -225,11 +207,11 @@ func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Contex
 	currentMessages := messages
 	iteration := 0
 
-	for iteration < a.maxChatCompletionIterations {
+	for iteration < a.config.MaxChatCompletionIterations {
 		iteration++
 		a.logger.Debug("starting chat completion iteration",
 			zap.Int("iteration", iteration),
-			zap.Int("max_iterations", a.maxChatCompletionIterations))
+			zap.Int("max_iterations", a.config.MaxChatCompletionIterations))
 
 		sdkMessages, err := a.converter.ConvertToSDK(currentMessages)
 		if err != nil {
@@ -314,8 +296,8 @@ func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Contex
 
 	a.logger.Warn("max chat completion iterations reached",
 		zap.String("task_id", task.ID),
-		zap.Int("max_iterations", a.maxChatCompletionIterations))
-	return a.createErrorTask(task, fmt.Sprintf("Maximum iterations (%d) reached without completion", a.maxChatCompletionIterations)), nil
+		zap.Int("max_iterations", a.config.MaxChatCompletionIterations))
+	return a.createErrorTask(task, fmt.Sprintf("Maximum iterations (%d) reached without completion", a.config.MaxChatCompletionIterations)), nil
 }
 
 // processWithoutLLM processes the task without LLM when no client is available
@@ -340,36 +322,6 @@ func (a *DefaultOpenAICompatibleAgent) processWithoutLLM(task *adk.Task, message
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
 	return task
-}
-
-// SetSystemPrompt sets the system prompt for the agent
-func (a *DefaultOpenAICompatibleAgent) SetSystemPrompt(prompt string) {
-	a.systemPrompt = prompt
-}
-
-// GetSystemPrompt returns the current system prompt
-func (a *DefaultOpenAICompatibleAgent) GetSystemPrompt() string {
-	return a.systemPrompt
-}
-
-// SetToolBox sets the toolbox for the agent
-func (a *DefaultOpenAICompatibleAgent) SetToolBox(toolBox ToolBox) {
-	a.toolBox = toolBox
-}
-
-// GetToolBox returns the current toolbox
-func (a *DefaultOpenAICompatibleAgent) GetToolBox() ToolBox {
-	return a.toolBox
-}
-
-// SetLLMClient sets the LLM client for the agent
-func (a *DefaultOpenAICompatibleAgent) SetLLMClient(client LLMClient) {
-	a.llmClient = client
-}
-
-// GetLLMClient returns the current LLM client
-func (a *DefaultOpenAICompatibleAgent) GetLLMClient() LLMClient {
-	return a.llmClient
 }
 
 // createErrorTask creates a task with error state and message

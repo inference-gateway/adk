@@ -185,7 +185,9 @@ func CustomA2AServerWithAgent(
 	taskResultProcessor TaskResultProcessor,
 ) A2AServer {
 	if toolBox != nil {
-		agent.SetToolBox(toolBox)
+		if defaultAgent, ok := agent.(*DefaultOpenAICompatibleAgent); ok {
+			defaultAgent.toolBox = toolBox
+		}
 	}
 
 	return NewA2AServerBuilder(cfg, logger).

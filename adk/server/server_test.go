@@ -887,11 +887,13 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 			mockToolBox.AddTool(calendarTool)
 			mockToolBox.AddTool(meetingTool)
 
-			agent := server.NewDefaultOpenAICompatibleAgent(logger)
-			agent.SetLLMClient(mockLLMClient)
+			agentBuilder := server.NewAgentBuilder(logger).
+				WithLLMClient(mockLLMClient)
 			if tt.toolCallsCount > 0 {
-				agent.SetToolBox(mockToolBox)
+				agentBuilder = agentBuilder.WithToolBox(mockToolBox)
 			}
+			agent, err := agentBuilder.Build()
+			require.NoError(t, err)
 
 			task := &adk.Task{
 				ID:      fmt.Sprintf("test-task-%s", tt.name),
@@ -1249,11 +1251,13 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			mockToolBox.AddTool(calendarTool)
 			mockToolBox.AddTool(scheduleTool)
 
-			agent := server.NewDefaultOpenAICompatibleAgent(logger)
-			agent.SetLLMClient(mockLLMClient)
+			agentBuilder := server.NewAgentBuilder(logger).
+				WithLLMClient(mockLLMClient)
 			if tt.expectedToolCalls > 0 {
-				agent.SetToolBox(mockToolBox)
+				agentBuilder = agentBuilder.WithToolBox(mockToolBox)
 			}
+			agent, err := agentBuilder.Build()
+			require.NoError(t, err)
 
 			task := &adk.Task{
 				ID:      fmt.Sprintf("openai-test-%s", tt.name),
@@ -1330,8 +1334,10 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			return mockResponse, nil
 		}
 
-		agent := server.NewDefaultOpenAICompatibleAgent(logger)
-		agent.SetLLMClient(mockLLMClient)
+		agent, err := server.NewAgentBuilder(logger).
+			WithLLMClient(mockLLMClient).
+			Build()
+		require.NoError(t, err)
 
 		task := &adk.Task{
 			ID:      "format-validation-test",
@@ -1443,9 +1449,11 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 		)
 		mockToolBox.AddTool(testTool)
 
-		agent := server.NewDefaultOpenAICompatibleAgent(logger)
-		agent.SetLLMClient(mockLLMClient)
-		agent.SetToolBox(mockToolBox)
+		agent, err := server.NewAgentBuilder(logger).
+			WithLLMClient(mockLLMClient).
+			WithToolBox(mockToolBox).
+			Build()
+		require.NoError(t, err)
 
 		task := &adk.Task{
 			ID:      "tool-format-test",

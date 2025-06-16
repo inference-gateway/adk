@@ -7,6 +7,7 @@ import (
 	"github.com/inference-gateway/a2a/adk/server/config"
 	"github.com/inference-gateway/a2a/adk/server/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -94,8 +95,10 @@ func TestA2AServerBuilder_WithAgent(t *testing.T) {
 	logger := zap.NewNop()
 	systemPrompt := "You are a helpful assistant"
 
-	agent := server.NewDefaultOpenAICompatibleAgent(logger)
-	agent.SetSystemPrompt(systemPrompt)
+	agent, err := server.NewAgentBuilder(logger).
+		WithSystemPrompt(systemPrompt).
+		Build()
+	require.NoError(t, err)
 
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
@@ -138,8 +141,10 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 
-	agent := server.NewDefaultOpenAICompatibleAgent(logger)
-	agent.SetSystemPrompt("Test prompt")
+	agent, err := server.NewAgentBuilder(logger).
+		WithSystemPrompt("Test prompt").
+		Build()
+	require.NoError(t, err)
 
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(mockTaskHandler).
