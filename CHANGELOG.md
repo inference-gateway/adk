@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.5](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.4...v0.2.0-rc.5) (2025-06-16)
+
+### ♻️ Improvements
+
+* Enhance configuration handling by applying defaults and simplifying server builder initialization ([e255420](https://github.com/inference-gateway/a2a/commit/e25542087620acda55ada43cf0191f90ec770ce7))
+
 ## [0.2.0-rc.4](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.3...v0.2.0-rc.4) (2025-06-15)
 
 ### ♻️ Improvements
