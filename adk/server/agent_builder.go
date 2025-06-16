@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+
 	config "github.com/inference-gateway/a2a/adk/server/config"
 	zap "go.uber.org/zap"
 )
@@ -26,9 +28,15 @@ type AgentBuilder interface {
 	WithSystemPrompt(prompt string) AgentBuilder
 	// WithMaxChatCompletion sets the maximum chat completion iterations for the agent
 	WithMaxChatCompletion(max int) AgentBuilder
+	// WithMaxConversationHistory sets the maximum conversation history for the agent
+	WithMaxConversationHistory(max int) AgentBuilder
+	// GetConfig returns the current agent configuration (for testing purposes)
+	GetConfig() *config.AgentConfig
 	// Build creates and returns the configured agent
 	Build() (*DefaultOpenAICompatibleAgent, error)
 }
+
+var _ AgentBuilder = (*AgentBuilderImpl)(nil)
 
 // AgentBuilderImpl is the concrete implementation of the AgentBuilder interface.
 // It provides a fluent interface for building OpenAI-compatible agents with custom configurations.
@@ -56,14 +64,45 @@ type AgentBuilderImpl struct {
 //	  WithConfig(agentConfig).
 //	  Build()
 func NewAgentBuilder(logger *zap.Logger) AgentBuilder {
+	defaultCfg, err := config.NewWithDefaults(context.Background(), nil)
+	var agentConfig *config.AgentConfig
+	if err == nil && defaultCfg != nil {
+		agentConfig = &defaultCfg.AgentConfig
+
+		if agentConfig.Provider == "" {
+			agentConfig.Provider = "openai"
+		}
+		if agentConfig.Model == "" {
+			agentConfig.Model = "gpt-3.5-turbo"
+		}
+	} else {
+		agentConfig = &config.AgentConfig{
+			Provider:                    "openai",
+			Model:                       "gpt-3.5-turbo",
+			MaxChatCompletionIterations: 10,
+			MaxConversationHistory:      20,
+			SystemPrompt:                "You are a helpful AI assistant.",
+		}
+	}
+
 	return &AgentBuilderImpl{
 		logger: logger,
+		config: agentConfig,
 	}
 }
 
 // WithConfig sets the agent configuration
-func (b *AgentBuilderImpl) WithConfig(config *config.AgentConfig) AgentBuilder {
-	b.config = config
+func (b *AgentBuilderImpl) WithConfig(userConfig *config.AgentConfig) AgentBuilder {
+	if userConfig != nil {
+		tempConfig := &config.Config{AgentConfig: *userConfig}
+
+		mergedConfig, err := config.NewWithDefaults(context.Background(), tempConfig)
+		if err == nil && mergedConfig != nil {
+			b.config = &mergedConfig.AgentConfig
+		} else {
+			b.config = userConfig
+		}
+	}
 	return b
 }
 
@@ -87,22 +126,24 @@ func (b *AgentBuilderImpl) WithSystemPrompt(prompt string) AgentBuilder {
 
 // WithMaxChatCompletion sets the maximum chat completion iterations for the agent
 func (b *AgentBuilderImpl) WithMaxChatCompletion(max int) AgentBuilder {
-	if b.config == nil {
-		b.config = &config.AgentConfig{}
-	}
 	b.config.MaxChatCompletionIterations = max
 	return b
+}
+
+// WithMaxConversationHistory sets the maximum conversation history for the agent
+func (b *AgentBuilderImpl) WithMaxConversationHistory(max int) AgentBuilder {
+	b.config.MaxConversationHistory = max
+	return b
+}
+
+// GetConfig returns the current agent configuration (for testing purposes)
+func (b *AgentBuilderImpl) GetConfig() *config.AgentConfig {
+	return b.config
 }
 
 // Build creates and returns the configured agent
 func (b *AgentBuilderImpl) Build() (*DefaultOpenAICompatibleAgent, error) {
 	agentConfig := b.config
-	if agentConfig == nil {
-		agentConfig = &config.AgentConfig{
-			MaxChatCompletionIterations: 10,
-			SystemPrompt:                "You are a helpful AI assistant.",
-		}
-	}
 
 	if b.systemPrompt != nil {
 		agentConfig.SystemPrompt = *b.systemPrompt

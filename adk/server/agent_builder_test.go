@@ -211,6 +211,59 @@ func TestAgentBuilder_WithMaxChatCompletion(t *testing.T) {
 	}
 }
 
+func TestAgentBuilder_WithMaxConversationHistory(t *testing.T) {
+	tests := []struct {
+		name          string
+		maxHistory    int
+		shouldSucceed bool
+	}{
+		{
+			name:          "valid_history",
+			maxHistory:    10,
+			shouldSucceed: true,
+		},
+		{
+			name:          "high_history",
+			maxHistory:    100,
+			shouldSucceed: true,
+		},
+		{
+			name:          "zero_history",
+			maxHistory:    0,
+			shouldSucceed: true,
+		},
+		{
+			name:          "negative_history",
+			maxHistory:    -5,
+			shouldSucceed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := zap.NewNop()
+			mockLLMClient := &mocks.FakeLLMClient{}
+
+			builder := server.NewAgentBuilder(logger).
+				WithMaxConversationHistory(tt.maxHistory).
+				WithLLMClient(mockLLMClient)
+
+			config := builder.GetConfig()
+			assert.NotNil(t, config, "Config should not be nil after setting MaxConversationHistory")
+			assert.Equal(t, tt.maxHistory, config.MaxConversationHistory, "MaxConversationHistory should be set to the expected value")
+
+			agent, err := builder.Build()
+
+			if tt.shouldSucceed {
+				require.NoError(t, err)
+				assert.NotNil(t, agent)
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
 func TestAgentBuilder_ChainedCalls(t *testing.T) {
 	logger := zap.NewNop()
 	mockLLMClient := &mocks.FakeLLMClient{}
@@ -228,6 +281,7 @@ func TestAgentBuilder_ChainedCalls(t *testing.T) {
 		WithToolBox(mockToolBox).
 		WithSystemPrompt("Overridden prompt").
 		WithMaxChatCompletion(15).
+		WithMaxConversationHistory(25).
 		Build()
 
 	require.NoError(t, err)
@@ -441,16 +495,78 @@ func TestAgentBuilder_FluentInterface(t *testing.T) {
 	result1 := builder.WithConfig(&config.AgentConfig{})
 	result2 := result1.WithSystemPrompt("test")
 	result3 := result2.WithMaxChatCompletion(5)
-	result4 := result3.WithLLMClient(&mocks.FakeLLMClient{})
-	result5 := result4.WithToolBox(server.NewDefaultToolBox())
+	result4 := result3.WithMaxConversationHistory(15)
+	result5 := result4.WithLLMClient(&mocks.FakeLLMClient{})
+	result6 := result5.WithToolBox(server.NewDefaultToolBox())
 
 	assert.Implements(t, (*server.AgentBuilder)(nil), result1)
 	assert.Implements(t, (*server.AgentBuilder)(nil), result2)
 	assert.Implements(t, (*server.AgentBuilder)(nil), result3)
 	assert.Implements(t, (*server.AgentBuilder)(nil), result4)
 	assert.Implements(t, (*server.AgentBuilder)(nil), result5)
+	assert.Implements(t, (*server.AgentBuilder)(nil), result6)
 
-	agent, err := result5.Build()
+	agent, err := result6.Build()
 	require.NoError(t, err)
 	assert.NotNil(t, agent)
+}
+
+func TestAgentBuilder_GetConfig(t *testing.T) {
+	tests := []struct {
+		name                         string
+		setupBuilder                 func(builder server.AgentBuilder) server.AgentBuilder
+		expectedMaxHistory           int
+		expectedMaxIterations        int
+		expectedSystemPromptInConfig string // This is what's in the config, not the systemPrompt override
+	}{
+		{
+			name: "default_config_applied",
+			setupBuilder: func(builder server.AgentBuilder) server.AgentBuilder {
+				return builder
+			},
+			expectedMaxHistory:           20,                                                                                                                       // From struct tag default
+			expectedMaxIterations:        10,                                                                                                                       // From struct tag default
+			expectedSystemPromptInConfig: "You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses.", // From struct tag default
+		},
+		{
+			name: "config_set_via_WithConfig",
+			setupBuilder: func(builder server.AgentBuilder) server.AgentBuilder {
+				cfg := &config.AgentConfig{
+					MaxConversationHistory:      15,
+					SystemPrompt:                "Test prompt",
+					MaxChatCompletionIterations: 5,
+				}
+				return builder.WithConfig(cfg)
+			},
+			expectedMaxHistory:           15,
+			expectedMaxIterations:        5,
+			expectedSystemPromptInConfig: "Test prompt",
+		},
+		{
+			name: "config_set_via_individual_methods",
+			setupBuilder: func(builder server.AgentBuilder) server.AgentBuilder {
+				return builder.
+					WithMaxConversationHistory(25).
+					WithMaxChatCompletion(8)
+			},
+			expectedMaxHistory:           25,
+			expectedMaxIterations:        8,
+			expectedSystemPromptInConfig: "You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses.", // Default remains
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := zap.NewNop()
+			builder := server.NewAgentBuilder(logger)
+			builder = tt.setupBuilder(builder)
+
+			config := builder.GetConfig()
+
+			require.NotNil(t, config, "Config should never be nil with LoadWithLookuper approach")
+			assert.Equal(t, tt.expectedMaxHistory, config.MaxConversationHistory)
+			assert.Equal(t, tt.expectedMaxIterations, config.MaxChatCompletionIterations)
+			assert.Equal(t, tt.expectedSystemPromptInConfig, config.SystemPrompt)
+		})
+	}
 }
