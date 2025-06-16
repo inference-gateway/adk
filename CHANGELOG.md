@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.8](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.7...v0.2.0-rc.8) (2025-06-16)
+
+### ✨ Features
+
+* Add tool_call_id support in message conversion and update tests ([dff354f](https://github.com/inference-gateway/a2a/commit/dff354f4e7484318bab86a3e239b1bef78450720))
+
 ## [0.2.0-rc.7](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.6...v0.2.0-rc.7) (2025-06-16)
 
 ### ✨ Features
