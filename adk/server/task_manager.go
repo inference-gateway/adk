@@ -218,11 +218,9 @@ func (tm *DefaultTaskManager) UpdateConversationHistory(contextID string, messag
 	tm.conversationMu.Lock()
 	defer tm.conversationMu.Unlock()
 
-	// Store a copy to avoid external modification
 	history := make([]adk.Message, len(messages))
 	copy(history, messages)
 
-	// Trim history to respect the maximum size limit
 	trimmedHistory := tm.trimConversationHistory(history)
 	tm.conversationHistory[contextID] = trimmedHistory
 
