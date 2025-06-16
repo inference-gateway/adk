@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.9](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.8...v0.2.0-rc.9) (2025-06-16)
+
+### 🐛 Bug Fixes
+
+* Add missing ToolCalls to the conversion from Google's ADK ([6494c50](https://github.com/inference-gateway/a2a/commit/6494c508353f3ccddd355b9d0681af7a4afe8a74))
+
+### ✅ Miscellaneous
+
+* Add tests for tool_calls handling in message conversion ([f5ba845](https://github.com/inference-gateway/a2a/commit/f5ba8458bba46fd46bc9609ff619183be270dfa5))
+
 ## [0.2.0-rc.8](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.7...v0.2.0-rc.8) (2025-06-16)
 
 ### ✨ Features
