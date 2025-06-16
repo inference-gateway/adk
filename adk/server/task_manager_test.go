@@ -765,13 +765,13 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	assert.Equal(t, "msg-3", task3.History[len(task3.History)-1].MessageID)
 }
 
-func TestDefaultTaskManager_ConversationHistoryLimitZeroDefault(t *testing.T) {
+func TestDefaultTaskManager_ConversationHistoryLimitZeroDirectInstantiation(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 0)
 
 	contextID := "test-context"
-	messages := make([]adk.Message, 25)
-	for i := 0; i < 25; i++ {
+	messages := make([]adk.Message, 5)
+	for i := 0; i < 5; i++ {
 		messages[i] = adk.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("msg-%d", i),
@@ -788,6 +788,5 @@ func TestDefaultTaskManager_ConversationHistoryLimitZeroDefault(t *testing.T) {
 	taskManager.UpdateConversationHistory(contextID, messages)
 	history := taskManager.GetConversationHistory(contextID)
 
-	// When maxConversationHistory is 0, no messages should be kept
 	assert.Len(t, history, 0)
 }

@@ -861,6 +861,206 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) 
 	assert.Equal(t, "call_0_2e5a532f-06e2-4ced-8434-31e25019e144", *toolMsg.ToolCallId)
 }
 
+func TestConversationHistoryPreservationIssue(t *testing.T) {
+	logger := zap.NewNop()
+	converter := NewOptimizedMessageConverter(logger)
+
+	tests := []struct {
+		name                    string
+		maxConversationHistory  int
+		conversationHistory     []adk.Message
+		systemPrompt            string
+		newUserMessage          adk.Message
+		expectedMessageCount    int
+		expectedSystemPrompt    bool
+		expectedHistoryMessages int
+		expectContextPreserved  bool
+	}{
+		{
+			name:                   "context preserved with proper max history",
+			maxConversationHistory: 20,
+			conversationHistory: []adk.Message{
+				{
+					MessageID: "msg-1",
+					Role:      "user",
+					Kind:      "message",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": "Can you move my meeting tomorrow from 14:00 to 15:00?",
+						},
+					},
+				},
+				{
+					MessageID: "assistant-1",
+					Role:      "assistant",
+					Kind:      "message",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": "I found a scheduled meeting with John Doe at 2:00 PM to 3:00 PM. Let me know if you'd like to modify it!",
+						},
+					},
+				},
+			},
+			systemPrompt: "You are a helpful Google Calendar assistant.",
+			newUserMessage: adk.Message{
+				MessageID: "msg-2",
+				Role:      "user",
+				Kind:      "message",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": "Just move it to 15:00?",
+					},
+				},
+			},
+			expectedMessageCount:    4,
+			expectedSystemPrompt:    true,
+			expectedHistoryMessages: 2,
+			expectContextPreserved:  true,
+		},
+		{
+			name:                   "context lost with zero max history (current bug)",
+			maxConversationHistory: 0,
+			conversationHistory: []adk.Message{
+				{
+					MessageID: "msg-1",
+					Role:      "user",
+					Kind:      "message",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": "Can you move my meeting tomorrow from 14:00 to 15:00?",
+						},
+					},
+				},
+				{
+					MessageID: "assistant-1",
+					Role:      "assistant",
+					Kind:      "message",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": "I found a scheduled meeting with John Doe at 2:00 PM to 3:00 PM. Let me know if you'd like to modify it!",
+						},
+					},
+				},
+			},
+			systemPrompt: "You are a helpful Google Calendar assistant.",
+			newUserMessage: adk.Message{
+				MessageID: "msg-2",
+				Role:      "user",
+				Kind:      "message",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": "Just move it to 15:00?",
+					},
+				},
+			},
+			expectedMessageCount:    2,
+			expectedSystemPrompt:    true,
+			expectedHistoryMessages: 0,
+			expectContextPreserved:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			messages := make([]adk.Message, 0)
+
+			if tt.systemPrompt != "" {
+				systemMessage := adk.Message{
+					Kind:      "message",
+					MessageID: "system-prompt",
+					Role:      "system",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": tt.systemPrompt,
+						},
+					},
+				}
+				messages = append(messages, systemMessage)
+			}
+
+			trimmedHistory := tt.conversationHistory
+			if tt.maxConversationHistory <= 0 {
+				trimmedHistory = []adk.Message{}
+			} else if len(tt.conversationHistory) > tt.maxConversationHistory {
+				startIndex := len(tt.conversationHistory) - tt.maxConversationHistory
+				trimmedHistory = tt.conversationHistory[startIndex:]
+			}
+
+			messages = append(messages, trimmedHistory...)
+
+			messages = append(messages, tt.newUserMessage)
+
+			sdkMessages, err := converter.ConvertToSDK(messages)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expectedMessageCount, len(sdkMessages),
+				"Expected %d messages but got %d", tt.expectedMessageCount, len(sdkMessages))
+
+			if tt.expectedSystemPrompt {
+				assert.Equal(t, sdk.System, sdkMessages[0].Role, "First message should be system prompt")
+				assert.Contains(t, sdkMessages[0].Content, "Google Calendar assistant",
+					"System prompt content should be preserved")
+			}
+
+			actualHistoryMessages := len(sdkMessages) - 1
+			if tt.expectedSystemPrompt {
+				actualHistoryMessages--
+			}
+			assert.Equal(t, tt.expectedHistoryMessages, actualHistoryMessages,
+				"Expected %d history messages but got %d", tt.expectedHistoryMessages, actualHistoryMessages)
+
+			if tt.expectContextPreserved {
+				foundContext := false
+				for _, msg := range sdkMessages {
+					if msg.Role == sdk.Assistant && (contains(msg.Content, "John Doe") ||
+						contains(msg.Content, "2:00 PM") ||
+						contains(msg.Content, "scheduled meeting")) {
+						foundContext = true
+						break
+					}
+				}
+				assert.True(t, foundContext, "Previous conversation context should be preserved")
+			} else {
+				foundContext := false
+				for _, msg := range sdkMessages {
+					if msg.Role == sdk.Assistant && (contains(msg.Content, "John Doe") ||
+						contains(msg.Content, "2:00 PM") ||
+						contains(msg.Content, "scheduled meeting")) {
+						foundContext = true
+						break
+					}
+				}
+				assert.False(t, foundContext, "Previous conversation context should be lost when maxHistory=0")
+			}
+		})
+	}
+}
+
+// Helper function to check if string contains substring (case-insensitive)
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr ||
+		(len(s) > len(substr) &&
+			(s[:len(substr)] == substr ||
+				s[len(s)-len(substr):] == substr ||
+				findSubstring(s, substr))))
+}
+
+func findSubstring(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
 func stringPtr(s string) *string {
 	return &s
 }

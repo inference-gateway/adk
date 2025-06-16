@@ -76,10 +76,17 @@ type A2AServerBuilderImpl struct {
 //	  WithAgent(myAgent).
 //	  Build()
 func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder {
-	if isCapabilitiesConfigEmpty(cfg.CapabilitiesConfig) {
+	needsDefaults := isCapabilitiesConfigEmpty(cfg.CapabilitiesConfig) || isAgentConfigEmpty(cfg.AgentConfig)
+
+	if needsDefaults {
 		defaultCfg, err := config.NewWithDefaults(context.Background(), nil)
 		if err == nil {
-			cfg.CapabilitiesConfig = defaultCfg.CapabilitiesConfig
+			if isCapabilitiesConfigEmpty(cfg.CapabilitiesConfig) {
+				cfg.CapabilitiesConfig = defaultCfg.CapabilitiesConfig
+			}
+			if isAgentConfigEmpty(cfg.AgentConfig) {
+				cfg.AgentConfig = defaultCfg.AgentConfig
+			}
 		}
 	}
 
@@ -92,6 +99,20 @@ func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder
 // isCapabilitiesConfigEmpty checks if the capabilities config has all zero values
 func isCapabilitiesConfigEmpty(capabilities config.CapabilitiesConfig) bool {
 	return !capabilities.Streaming && !capabilities.PushNotifications && !capabilities.StateTransitionHistory
+}
+
+// isAgentConfigEmpty checks if the agent config has all zero values (needs defaults)
+func isAgentConfigEmpty(agentConfig config.AgentConfig) bool {
+	return agentConfig.Provider == "" &&
+		agentConfig.Model == "" &&
+		agentConfig.MaxConversationHistory == 0 &&
+		agentConfig.MaxChatCompletionIterations == 0 &&
+		agentConfig.Timeout == 0 &&
+		agentConfig.MaxRetries == 0 &&
+		agentConfig.MaxTokens == 0 &&
+		agentConfig.Temperature == 0 &&
+		agentConfig.TopP == 0 &&
+		agentConfig.SystemPrompt == ""
 }
 
 // WithTaskHandler sets a custom task handler

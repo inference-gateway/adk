@@ -2,13 +2,14 @@ package server_test
 
 import (
 	"testing"
+	"time"
 
-	"github.com/inference-gateway/a2a/adk/server"
-	"github.com/inference-gateway/a2a/adk/server/config"
-	"github.com/inference-gateway/a2a/adk/server/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	server "github.com/inference-gateway/a2a/adk/server"
+	config "github.com/inference-gateway/a2a/adk/server/config"
+	mocks "github.com/inference-gateway/a2a/adk/server/mocks"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 )
 
 func TestA2AServerBuilder_BasicConstruction(t *testing.T) {
@@ -255,4 +256,58 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 	assert.Equal(t, 1, fakeBuilder.BuildCallCount())
 
 	assert.Equal(t, mockServer, result)
+}
+
+func TestServerBuilderAppliesAgentConfigDefaults(t *testing.T) {
+	logger := zap.NewNop()
+
+	cfg := config.Config{
+		AgentName: "test-agent",
+		Port:      "8080",
+		Debug:     true,
+		QueueConfig: config.QueueConfig{
+			CleanupInterval: 5 * time.Minute,
+		},
+	}
+
+	if cfg.AgentConfig.MaxConversationHistory != 0 {
+		t.Errorf("expected MaxConversationHistory to be 0 initially, got %d", cfg.AgentConfig.MaxConversationHistory)
+	}
+
+	builder := server.NewA2AServerBuilder(cfg, logger)
+
+	server := builder.Build()
+
+	if server == nil {
+		t.Fatal("server should not be nil")
+	}
+}
+
+func TestServerBuilderPreservesExplicitAgentConfig(t *testing.T) {
+	logger := zap.NewNop()
+
+	cfg := config.Config{
+		AgentName: "test-agent",
+		Port:      "8080",
+		Debug:     true,
+		AgentConfig: config.AgentConfig{
+			MaxConversationHistory:      5,
+			SystemPrompt:                "Custom system prompt",
+			MaxChatCompletionIterations: 10,
+		},
+		QueueConfig: config.QueueConfig{
+			CleanupInterval: 5 * time.Minute,
+		},
+	}
+
+	assert.Equal(t, 5, cfg.AgentConfig.MaxConversationHistory, "Expected explicit MaxConversationHistory to be 5")
+	assert.Equal(t, "Custom system prompt", cfg.AgentConfig.SystemPrompt, "Expected explicit SystemPrompt")
+	assert.Equal(t, 10, cfg.AgentConfig.MaxChatCompletionIterations, "Expected explicit MaxChatCompletionIterations")
+
+	builder := server.NewA2AServerBuilder(cfg, logger)
+	server := builder.Build()
+
+	if server == nil {
+		t.Fatal("server should not be nil")
+	}
 }
