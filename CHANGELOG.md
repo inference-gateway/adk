@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0](https://github.com/inference-gateway/a2a/compare/v0.1.9...v0.2.0) (2025-06-16)
+
+### ✨ Features
+
+* Add ListTasks functionality to retrieve and paginate tasks ([#5](https://github.com/inference-gateway/a2a/issues/5)) ([1d3ee38](https://github.com/inference-gateway/a2a/commit/1d3ee380fd1c6f31ec73987640f43f460d935d0c))
+* Add push notification configuration management for tasks ([#6](https://github.com/inference-gateway/a2a/issues/6)) ([4d3b998](https://github.com/inference-gateway/a2a/commit/4d3b998addb3c4dad1bf8c2196e9a7a33eb83075))
+
 ## [0.1.9](https://github.com/inference-gateway/a2a/compare/v0.1.8...v0.1.9) (2025-06-16)
 
 ### ♻️ Improvements
