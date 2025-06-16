@@ -74,6 +74,20 @@ type FakeA2AClient struct {
 		result1 *adk.JSONRPCSuccessResponse
 		result2 error
 	}
+	ListTasksStub        func(context.Context, adk.TaskListParams) (*adk.JSONRPCSuccessResponse, error)
+	listTasksMutex       sync.RWMutex
+	listTasksArgsForCall []struct {
+		arg1 context.Context
+		arg2 adk.TaskListParams
+	}
+	listTasksReturns struct {
+		result1 *adk.JSONRPCSuccessResponse
+		result2 error
+	}
+	listTasksReturnsOnCall map[int]struct {
+		result1 *adk.JSONRPCSuccessResponse
+		result2 error
+	}
 	SendTaskStub        func(context.Context, adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
 	sendTaskMutex       sync.RWMutex
 	sendTaskArgsForCall []struct {
@@ -420,6 +434,71 @@ func (fake *FakeA2AClient) GetTaskReturnsOnCall(i int, result1 *adk.JSONRPCSucce
 	}{result1, result2}
 }
 
+func (fake *FakeA2AClient) ListTasks(arg1 context.Context, arg2 adk.TaskListParams) (*adk.JSONRPCSuccessResponse, error) {
+	fake.listTasksMutex.Lock()
+	ret, specificReturn := fake.listTasksReturnsOnCall[len(fake.listTasksArgsForCall)]
+	fake.listTasksArgsForCall = append(fake.listTasksArgsForCall, struct {
+		arg1 context.Context
+		arg2 adk.TaskListParams
+	}{arg1, arg2})
+	stub := fake.ListTasksStub
+	fakeReturns := fake.listTasksReturns
+	fake.recordInvocation("ListTasks", []interface{}{arg1, arg2})
+	fake.listTasksMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeA2AClient) ListTasksCallCount() int {
+	fake.listTasksMutex.RLock()
+	defer fake.listTasksMutex.RUnlock()
+	return len(fake.listTasksArgsForCall)
+}
+
+func (fake *FakeA2AClient) ListTasksCalls(stub func(context.Context, adk.TaskListParams) (*adk.JSONRPCSuccessResponse, error)) {
+	fake.listTasksMutex.Lock()
+	defer fake.listTasksMutex.Unlock()
+	fake.ListTasksStub = stub
+}
+
+func (fake *FakeA2AClient) ListTasksArgsForCall(i int) (context.Context, adk.TaskListParams) {
+	fake.listTasksMutex.RLock()
+	defer fake.listTasksMutex.RUnlock()
+	argsForCall := fake.listTasksArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeA2AClient) ListTasksReturns(result1 *adk.JSONRPCSuccessResponse, result2 error) {
+	fake.listTasksMutex.Lock()
+	defer fake.listTasksMutex.Unlock()
+	fake.ListTasksStub = nil
+	fake.listTasksReturns = struct {
+		result1 *adk.JSONRPCSuccessResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeA2AClient) ListTasksReturnsOnCall(i int, result1 *adk.JSONRPCSuccessResponse, result2 error) {
+	fake.listTasksMutex.Lock()
+	defer fake.listTasksMutex.Unlock()
+	fake.ListTasksStub = nil
+	if fake.listTasksReturnsOnCall == nil {
+		fake.listTasksReturnsOnCall = make(map[int]struct {
+			result1 *adk.JSONRPCSuccessResponse
+			result2 error
+		})
+	}
+	fake.listTasksReturnsOnCall[i] = struct {
+		result1 *adk.JSONRPCSuccessResponse
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeA2AClient) SendTask(arg1 context.Context, arg2 adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error) {
 	fake.sendTaskMutex.Lock()
 	ret, specificReturn := fake.sendTaskReturnsOnCall[len(fake.sendTaskArgsForCall)]
@@ -657,6 +736,8 @@ func (fake *FakeA2AClient) Invocations() map[string][][]interface{} {
 	defer fake.getLoggerMutex.RUnlock()
 	fake.getTaskMutex.RLock()
 	defer fake.getTaskMutex.RUnlock()
+	fake.listTasksMutex.RLock()
+	defer fake.listTasksMutex.RUnlock()
 	fake.sendTaskMutex.RLock()
 	defer fake.sendTaskMutex.RUnlock()
 	fake.sendTaskStreamingMutex.RLock()
