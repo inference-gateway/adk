@@ -2,6 +2,133 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.11](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.10...v0.2.0-rc.11) (2025-06-16)
+
+### ♻️ Improvements
+
+* Add MaxConversationHistory to AgentBuilder and corresponding tests ([4f6cce2](https://github.com/inference-gateway/a2a/commit/4f6cce27a7ed9e0837cd8e23036546cc7cb35748))
+* Cleanup - removing comments ([d26b280](https://github.com/inference-gateway/a2a/commit/d26b2805cdb5945c3b8e5814e3788417c8476de8))
+
+## [0.2.0-rc.10](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.9...v0.2.0-rc.10) (2025-06-16)
+
+### ♻️ Improvements
+
+* **example:** Simplify AI agent creation process and enhance configuration handling ([6ad219f](https://github.com/inference-gateway/a2a/commit/6ad219f1a61cd95508f5bbd0982107cc9e5d91cf))
+* Handle default struct tags config, if the user passes in a config the other non-set configurations will be populated with default values ([0f2198b](https://github.com/inference-gateway/a2a/commit/0f2198b5fed36825f4310410204531145e4a263b))
+
+## [0.2.0-rc.9](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.8...v0.2.0-rc.9) (2025-06-16)
+
+### 🐛 Bug Fixes
+
+* Add missing ToolCalls to the conversion from Google's ADK ([6494c50](https://github.com/inference-gateway/a2a/commit/6494c508353f3ccddd355b9d0681af7a4afe8a74))
+
+### ✅ Miscellaneous
+
+* Add tests for tool_calls handling in message conversion ([f5ba845](https://github.com/inference-gateway/a2a/commit/f5ba8458bba46fd46bc9609ff619183be270dfa5))
+
+## [0.2.0-rc.8](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.7...v0.2.0-rc.8) (2025-06-16)
+
+### ✨ Features
+
+* Add tool_call_id support in message conversion and update tests ([dff354f](https://github.com/inference-gateway/a2a/commit/dff354f4e7484318bab86a3e239b1bef78450720))
+
+## [0.2.0-rc.7](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.6...v0.2.0-rc.7) (2025-06-16)
+
+### ✨ Features
+
+* Introduce fluent builder interfaces for A2A server and agent configurations ([93b95b8](https://github.com/inference-gateway/a2a/commit/93b95b81d150e95224f1d034dab85a2587f93065))
+
+### ♻️ Improvements
+
+* Enhance TestAgentWithConfig to validate LLM client creation and add default configuration ([42c52fb](https://github.com/inference-gateway/a2a/commit/42c52fbb1c0d981be07cbfc5ab0a01eb65d0ab6e))
+* Remove redundant comment in NewWithDefaults function ([b32dd9d](https://github.com/inference-gateway/a2a/commit/b32dd9d3aeacbfd7452c2ceae91618b423c492e9))
+
+## [0.2.0-rc.6](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.5...v0.2.0-rc.6) (2025-06-16)
+
+### ♻️ Improvements
+
+* Simplify configuration handling and improve defaults application ([da67dee](https://github.com/inference-gateway/a2a/commit/da67deefe9006d52c82442a3f24f055c8054e2bf))
+
+## [0.2.0-rc.5](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.4...v0.2.0-rc.5) (2025-06-16)
+
+### ♻️ Improvements
+
+* Enhance configuration handling by applying defaults and simplifying server builder initialization ([e255420](https://github.com/inference-gateway/a2a/commit/e25542087620acda55ada43cf0191f90ec770ce7))
+
+## [0.2.0-rc.4](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.3...v0.2.0-rc.4) (2025-06-15)
+
+### ♻️ Improvements
+
+* Add validation for MaxChatCompletionIterations in Config to be at least 1 ([08bec29](https://github.com/inference-gateway/a2a/commit/08bec2960e0ef04369b919f19f5840eb6bbc44c1))
+
+## [0.2.0-rc.3](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.2...v0.2.0-rc.3) (2025-06-15)
+
+### ♻️ Improvements
+
+* Enhance AI-Powered A2A Server example with improved configuration handling and error messages ([9a70637](https://github.com/inference-gateway/a2a/commit/9a706370c7a23a0530b735d1645b74d7bf1e732c))
+* Extract the logic of message conversions into a dedicated util ([f461c7f](https://github.com/inference-gateway/a2a/commit/f461c7f5810ba0903b460c7c8be15e55f3b553f6))
+* Remove Community section from README ([fd151fa](https://github.com/inference-gateway/a2a/commit/fd151fa5259a53d9a1b93a0b1386ecdf3744cdf1))
+* Remove Examples Repository link from README ([6a42c64](https://github.com/inference-gateway/a2a/commit/6a42c6476fe567ac54a0ff90a80283f981bf31b2))
+* Remove HealthCheck method and related stubs from LLMClient and FakeLLMClient ([d15538f](https://github.com/inference-gateway/a2a/commit/d15538f4e7f8d1c890b4240ee8a2287ebf685abb))
+* Remove unused A2AConversationManager and related types - I moved all to a utils package ([654bff8](https://github.com/inference-gateway/a2a/commit/654bff8abf60479ed6c6c0448db673e15b5ed952))
+* Simplify message part validation logic in ConvertFromSDK test ([928bd3c](https://github.com/inference-gateway/a2a/commit/928bd3cebe5ba0b26e622fdbef602a51d5a22a80))
+* Update README for A2A Server examples with clearer descriptions and improved structure ([ac8490c](https://github.com/inference-gateway/a2a/commit/ac8490c154bf2aff201d61d49c2b1d62f5487b26))
+
+### 🐛 Bug Fixes
+
+* Implement SimpleTaskHandler for basic task processing without AI and add kind Task to the tasks/get object instead of empty string ([dbc413a](https://github.com/inference-gateway/a2a/commit/dbc413a35489fde602fc7413a5c8079c3f265f9c))
+
+### 📚 Documentation
+
+* Remove community section from README ([bf6fd0b](https://github.com/inference-gateway/a2a/commit/bf6fd0b2a89a774214ee160329eb0f0d7d7db2b2))
+* Update date and add A2A official documentation link ([3991b6a](https://github.com/inference-gateway/a2a/commit/3991b6a666aacd823e4a7fb01f2cddbc38ed6e7a))
+
+### 🔧 Miscellaneous
+
+* Add MessagePartKind type and validation for A2A message parts ([fccf391](https://github.com/inference-gateway/a2a/commit/fccf3914e06dcded96158e03d3b07c0dfbb4ec31))
+
+## [0.2.0-rc.2](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.1...v0.2.0-rc.2) (2025-06-15)
+
+### ♻️ Improvements
+
+* Enhance message conversion logging in convertToSDKMessages ([e6b0bd8](https://github.com/inference-gateway/a2a/commit/e6b0bd8c4456d5f6aa5af3e4761ec8ec9a8471e0))
+
+## [0.2.0-rc.1](https://github.com/inference-gateway/a2a/compare/v0.1.9-rc.5...v0.2.0-rc.1) (2025-06-15)
+
+### ✨ Features
+
+* Implement conversation history management in TaskManager ([ce299e5](https://github.com/inference-gateway/a2a/commit/ce299e531a87bfcfdea1ef3cb459371a040e791c))
+
+## [0.1.9-rc.5](https://github.com/inference-gateway/a2a/compare/v0.1.9-rc.4...v0.1.9-rc.5) (2025-06-15)
+
+### ♻️ Improvements
+
+* Add context_id to logging for better traceability in task processing ([fbe1e4e](https://github.com/inference-gateway/a2a/commit/fbe1e4e6bcb9f18504fd32aa473c90c19e241098))
+
+## [0.1.9-rc.4](https://github.com/inference-gateway/a2a/compare/v0.1.9-rc.3...v0.1.9-rc.4) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* Update SendTask and SendTaskStreaming to use getA2AEndpointURL for constructing the endpoint URL ([fa58951](https://github.com/inference-gateway/a2a/commit/fa589512bf89f7b55c0fa6c2ce6322ecd17dd06c))
+
+## [0.1.9-rc.3](https://github.com/inference-gateway/a2a/compare/v0.1.9-rc.2...v0.1.9-rc.3) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* Have to ensure the assistant message is first appended with the tool_calls before I can add a message of role tool with the results ([1b679f5](https://github.com/inference-gateway/a2a/commit/1b679f5309db415f530d71101fca27a49d50b005))
+
+## [0.1.9-rc.2](https://github.com/inference-gateway/a2a/compare/v0.1.9-rc.1...v0.1.9-rc.2) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* Add toolCallId handling in convertToSDKMessages for messages with the role tool ([87b4d64](https://github.com/inference-gateway/a2a/commit/87b4d64840a21b5a973d6bfcba2cdea24d521307))
+
+## [0.1.9-rc.1](https://github.com/inference-gateway/a2a/compare/v0.1.8...v0.1.9-rc.1) (2025-06-15)
+
+### 🐛 Bug Fixes
+
+* Update tool result message structure and enhance test coverage for tool processing ([2937e0f](https://github.com/inference-gateway/a2a/commit/2937e0fbdb114ba80eb6406b607525452befbb36))
+
 ## [0.1.8](https://github.com/inference-gateway/a2a/compare/v0.1.7...v0.1.8) (2025-06-15)
 
 ### 🐛 Bug Fixes

@@ -53,6 +53,7 @@ tasks:
       - task: generate:mock:a2a-client
       - task: generate:mock:a2a-server
       - task: generate:mock:a2a-server-builder
+      - task: generate:mock:agent-builder
       - task: generate:mock:task-handler
       - task: generate:mock:message-handler
       - task: generate:mock:task-manager
@@ -133,3 +134,8 @@ tasks:
     desc: 'Generate mock for LLMClient interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_llm_client.go adk/server LLMClient
+
+  generate:mock:agent-builder:
+    desc: 'Generate mock for AgentBuilder interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_agent_builder.go adk/server AgentBuilder

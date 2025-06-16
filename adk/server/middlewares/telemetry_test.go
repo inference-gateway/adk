@@ -15,7 +15,7 @@ import (
 
 func TestTelemetryMiddleware_Disabled(t *testing.T) {
 	cfg := config.Config{
-		TelemetryConfig: &config.TelemetryConfig{
+		TelemetryConfig: config.TelemetryConfig{
 			Enable: false,
 		},
 	}
@@ -45,10 +45,10 @@ func TestTelemetryMiddleware_Disabled(t *testing.T) {
 
 func TestTelemetryMiddleware_Enabled(t *testing.T) {
 	cfg := config.Config{
-		TelemetryConfig: &config.TelemetryConfig{
+		TelemetryConfig: config.TelemetryConfig{
 			Enable: true,
 		},
-		AgentConfig: &config.AgentConfig{
+		AgentConfig: config.AgentConfig{
 			Provider: "test-provider",
 			Model:    "test-model",
 		},
@@ -79,7 +79,7 @@ func TestTelemetryMiddleware_Enabled(t *testing.T) {
 
 func TestTelemetryMiddleware_NonA2APath(t *testing.T) {
 	cfg := config.Config{
-		TelemetryConfig: &config.TelemetryConfig{
+		TelemetryConfig: config.TelemetryConfig{
 			Enable: true,
 		},
 	}

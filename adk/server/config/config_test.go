@@ -248,3 +248,45 @@ func TestConfig_LoadWithLookuper_InvalidValues(t *testing.T) {
 		})
 	}
 }
+
+func TestConfig_Validate(t *testing.T) {
+	tests := []struct {
+		name               string
+		envVars            map[string]string
+		expectedIterations int
+	}{
+		{
+			name:               "corrects zero max chat completion iterations to 1",
+			envVars:            map[string]string{"AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS": "0"},
+			expectedIterations: 1,
+		},
+		{
+			name:               "corrects negative max chat completion iterations to 1",
+			envVars:            map[string]string{"AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS": "-5"},
+			expectedIterations: 1,
+		},
+		{
+			name:               "preserves valid max chat completion iterations",
+			envVars:            map[string]string{"AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS": "15"},
+			expectedIterations: 15,
+		},
+		{
+			name:               "uses default when not specified",
+			envVars:            map[string]string{},
+			expectedIterations: 10,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			lookuper := envconfig.MapLookuper(tt.envVars)
+
+			cfg, err := config.LoadWithLookuper(ctx, nil, lookuper)
+
+			require.NoError(t, err)
+			require.NotNil(t, cfg.AgentConfig)
+			assert.Equal(t, tt.expectedIterations, cfg.AgentConfig.MaxChatCompletionIterations)
+		})
+	}
+}

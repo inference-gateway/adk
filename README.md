@@ -44,6 +44,7 @@
     - [A2AServerBuilder](#a2aserverbuilder)
     - [A2AClient](#a2aclient)
   - [Configuration](#configuration)
+  - [LLM Client](#llm-client)
 - [🔧 Advanced Usage](#-advanced-usage)
   - [Custom Tools](#custom-tools)
   - [Agent Metadata](#agent-metadata)
@@ -62,7 +63,6 @@
   - [Pull Request Process](#pull-request-process)
 - [📞 Support](#-support)
   - [Issues \& Questions](#issues--questions)
-  - [Community](#community)
 - [🗺️ Roadmap](#️-roadmap)
 - [🔗 Resources](#-resources)
   - [Documentation](#documentation)
@@ -196,17 +196,27 @@ func main() {
     // Create LLM client (requires AGENT_CLIENT_API_KEY environment variable)
     var a2aServer server.A2AServer
     if cfg.AgentConfig != nil && cfg.AgentConfig.APIKey != "" {
-        llmClient, err := server.NewOpenAICompatibleLLMClient(cfg.AgentConfig, logger)
+        // Modern approach using AgentBuilder
+        agent, err := server.NewAgentBuilder(logger).
+            WithConfig(cfg.AgentConfig).
+            WithToolBox(toolBox).
+            Build()
         if err != nil {
-            log.Fatal("Failed to create LLM client:", err)
+            log.Fatal("Failed to create agent:", err)
         }
-        agent := server.NewOpenAICompatibleAgentWithLLM(logger, llmClient)
-        agent.SetToolBox(toolBox)
-        a2aServer = server.SimpleA2AServerWithAgent(cfg, logger, agent)
+        
+        a2aServer = server.NewA2AServerBuilder(cfg, logger).
+            WithAgent(agent).
+            Build()
     } else {
         // Mock mode without actual LLM
-        agent := server.NewDefaultOpenAICompatibleAgent(logger)
-        agent.SetToolBox(toolBox)
+        agent, err := server.NewAgentBuilder(logger).
+            WithToolBox(toolBox).
+            Build()
+        if err != nil {
+            log.Fatal("Failed to create agent:", err)
+        }
+        
         a2aServer = server.NewA2AServerBuilder(cfg, logger).
             WithAgent(agent).
             Build()
@@ -321,79 +331,102 @@ For complete working examples, see the [examples](./examples/) directory:
 The main server interface that handles A2A protocol communication.
 
 ```go
-type A2AServer interface {
-    // Start starts the A2A server on the configured port
-    Start(ctx context.Context) error
-
-    // Stop gracefully stops the A2A server
-    Stop(ctx context.Context) error
-
-    // GetAgentCard returns the agent's capabilities and metadata
-    GetAgentCard() adk.AgentCard
-
-    // ProcessTask processes a task with the given message
-    ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error)
-
-    // SetTaskHandler sets the task handler for processing tasks
-    SetTaskHandler(handler TaskHandler)
-
-    // SetAgent sets the OpenAI-compatible agent for processing tasks
-    SetAgent(agent OpenAICompatibleAgent)
-}
-
 // Create a default A2A server
 func NewDefaultA2AServer(cfg *config.Config) A2AServer
 
 // Create a server with agent integration
 func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenAICompatibleAgent) A2AServer
+
+// Create a server with custom components
+func CustomA2AServer(cfg config.Config, logger *zap.Logger, taskHandler TaskHandler, processor TaskResultProcessor) A2AServer
+
+// Create a server with full customization
+func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl
 ```
 
 #### A2AServerBuilder
 
-Provides a fluent interface for building A2A servers with custom configurations.
+Build A2A servers with custom configurations using a fluent interface:
 
 ```go
-type A2AServerBuilder interface {
-    // WithTaskHandler sets a custom task handler for processing A2A tasks
-    WithTaskHandler(handler TaskHandler) A2AServerBuilder
+// Basic server with agent
+server := server.NewA2AServerBuilder(config, logger).
+    WithAgent(agent).
+    Build()
 
-    // WithTaskResultProcessor sets a custom task result processor
-    WithTaskResultProcessor(processor TaskResultProcessor) A2AServerBuilder
+// Server with custom task handler
+server := server.NewA2AServerBuilder(config, logger).
+    WithTaskHandler(customTaskHandler).
+    WithTaskResultProcessor(customProcessor).
+    Build()
 
-    // WithAgent sets a pre-configured OpenAI-compatible agent
-    WithAgent(agent OpenAICompatibleAgent) A2AServerBuilder
+// Server with custom logger
+server := server.NewA2AServerBuilder(config, logger).
+    WithLogger(customLogger).
+    WithAgent(agent).
+    Build()
+```
 
-    // WithLogger sets a custom logger for the builder and resulting server
-    WithLogger(logger *zap.Logger) A2AServerBuilder
+#### AgentBuilder
 
-    // Build creates and returns the configured A2A server
-    Build() A2AServer
-}
+Build OpenAI-compatible agents that live inside the A2A server using a fluent interface:
 
-// Create a new server builder
-func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder
+```go
+// Basic agent with custom LLM
+agent, err := server.NewAgentBuilder(logger).
+    WithLLMClient(customLLMClient).
+    WithToolBox(toolBox).
+    Build()
+
+// Agent with system prompt
+agent, err := server.NewAgentBuilder(logger).
+    WithSystemPrompt("You are a helpful assistant").
+    WithMaxChatCompletion(10).
+    Build()
+
+// Use with A2A server builder
+server := server.NewA2AServerBuilder(config, logger).
+    WithAgent(agent).
+    Build()
 ```
 
 #### A2AClient
 
-The client interface for communicating with A2A servers.
+The client interface for communicating with A2A servers:
 
 ```go
-type A2AClient interface {
-    // Agent discovery
-    GetAgentCard(ctx context.Context) (*adk.AgentCard, error)
+// Basic client creation
+client := client.NewClient("http://localhost:8080")
 
-    // Task operations
-    SendTask(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
-    SendTaskStreaming(ctx context.Context, params adk.MessageSendParams, eventChan chan<- interface{}) error
-    GetTask(ctx context.Context, params adk.TaskQueryParams) (*adk.JSONRPCSuccessResponse, error)
-    CancelTask(ctx context.Context, params adk.TaskIdParams) (*adk.JSONRPCSuccessResponse, error)
+// Client with custom logger
+client := client.NewClientWithLogger("http://localhost:8080", logger)
 
-    // Configuration
-    SetTimeout(timeout time.Duration)
-    SetHTTPClient(client *http.Client)
-    GetBaseURL() string
+// Client with custom configuration
+config := &client.Config{
+    BaseURL:    "http://localhost:8080",
+    Timeout:    45 * time.Second,
+    MaxRetries: 5,
 }
+client := client.NewClientWithConfig(config)
+
+// Using the client
+agentCard, err := client.GetAgentCard(ctx)
+response, err := client.SendTask(ctx, params)
+err = client.SendTaskStreaming(ctx, params, eventChan)
+```
+
+#### LLM Client
+
+Create OpenAI-compatible LLM clients for agents:
+
+```go
+// Create LLM client with configuration
+llmClient, err := server.NewOpenAICompatibleLLMClient(agentConfig, logger)
+
+// Use with agent builder
+agent, err := server.NewAgentBuilder(logger).
+    WithLLMClient(llmClient).
+    Build()
 ```
 
 ### Configuration
@@ -431,10 +464,93 @@ type AgentConfig struct {
     SystemPrompt                string            `env:"SYSTEM_PROMPT"`
     QueueConfig                 QueueConfig       `env:",prefix=QUEUE_"`
 }
-
 ```
 
 ## 🔧 Advanced Usage
+
+### Building Custom Agents with AgentBuilder
+
+The `AgentBuilder` provides a fluent interface for creating highly customized agents with specific configurations, LLM clients, and toolboxes.
+
+#### Basic Agent Creation
+
+```go
+logger := zap.NewDevelopment()
+
+// Create a simple agent with defaults
+agent, err := server.SimpleAgent(logger)
+if err != nil {
+    log.Fatal("Failed to create agent:", err)
+}
+
+// Or use the builder pattern for more control
+agent, err = server.NewAgentBuilder(logger).
+    WithSystemPrompt("You are a helpful AI assistant specialized in customer support.").
+    WithMaxChatCompletion(15).
+    WithMaxConversationHistory(30).
+    Build()
+```
+
+#### Agent with Custom Configuration
+
+```go
+cfg := &config.AgentConfig{
+    Provider:                    "openai",
+    Model:                       "gpt-4",
+    APIKey:                      "your-api-key",
+    MaxTokens:                   4096,
+    Temperature:                 0.7,
+    MaxChatCompletionIterations: 10,
+    MaxConversationHistory:      20,
+    SystemPrompt:                "You are a travel planning assistant.",
+}
+
+agent, err := server.NewAgentBuilder(logger).
+    WithConfig(cfg).
+    Build()
+```
+
+#### Agent with Custom LLM Client
+
+```go
+// Create a custom LLM client
+llmClient, err := server.NewOpenAICompatibleLLMClient(cfg, logger)
+if err != nil {
+    log.Fatal("Failed to create LLM client:", err)
+}
+
+// Build agent with the custom client
+agent, err := server.NewAgentBuilder(logger).
+    WithLLMClient(llmClient).
+    WithSystemPrompt("You are a coding assistant.").
+    Build()
+```
+
+#### Fully Configured Agent
+
+```go
+// Create toolbox with custom tools
+toolBox := server.NewDefaultToolBox()
+
+// Add custom tools (see Custom Tools section below)
+weatherTool := server.NewBasicTool(/* ... */)
+toolBox.AddTool(weatherTool)
+
+// Build a fully configured agent
+agent, err := server.NewAgentBuilder(logger).
+    WithConfig(cfg).
+    WithLLMClient(llmClient).
+    WithToolBox(toolBox).
+    WithSystemPrompt("You are a comprehensive AI assistant with weather capabilities.").
+    WithMaxChatCompletion(20).
+    WithMaxConversationHistory(50).
+    Build()
+
+// Use the agent in your server
+a2aServer := server.NewA2AServerBuilder(serverCfg, logger).
+    WithAgent(agent).
+    Build()
+```
 
 ### Custom Tools
 
@@ -718,16 +834,11 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 - **Bug Reports**: [GitHub Issues](https://github.com/inference-gateway/a2a/issues)
 - **Documentation**: [Official Docs](https://docs.inference-gateway.com)
 
-### Community
-
-- **Discord**: Join our [Discord community](https://discord.gg/inference-gateway)
-- **Twitter**: Follow [@InferenceGW](https://twitter.com/InferenceGW) for updates
-
 ## 🗺️ Roadmap
 
 - [x] **Enhanced Tool System**: More built-in tools and better tool chaining
 - [ ] **Agent Discovery**: Automatic discovery and registration of agents
-- [ ] **Monitoring Dashboard**: Built-in monitoring and analytics
+- [x] **Monitoring Dashboard**: Built-in monitoring and analytics
 - [ ] **Multi-language SDKs**: Additional language support beyond Go
 - [ ] **Performance Optimization**: Further reduce resource consumption
 
@@ -737,7 +848,6 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 - [A2A Protocol Specification](https://github.com/inference-gateway/schemas/tree/main/a2a)
 - [API Documentation](https://docs.inference-gateway.com/a2a)
-- [Examples Repository](https://github.com/inference-gateway/examples)
 
 ---
 

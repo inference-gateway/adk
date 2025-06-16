@@ -43,49 +43,34 @@ func (w *responseBodyWriter) Write(b []byte) (int, error) {
 
 func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Skip telemetry collection if not enabled or if not an A2A request
-		if t.cfg.TelemetryConfig == nil || !t.cfg.TelemetryConfig.Enable || !strings.Contains(c.Request.URL.Path, "/a2a") {
+		if !t.cfg.TelemetryConfig.Enable || !strings.Contains(c.Request.URL.Path, "/a2a") {
 			c.Next()
 			return
 		}
 
-		// Record start time for duration calculation
 		startTime := time.Now()
 
-		// Create telemetry attributes with safe null checks
-		var provider, model string
-		if t.cfg.AgentConfig != nil {
-			provider = t.cfg.AgentConfig.Provider
-			model = t.cfg.AgentConfig.Model
-		}
-
 		attrs := otel.TelemetryAttributes{
-			Provider: provider,
-			Model:    model,
-			TaskID:   "", // Task ID will be set later if available from context
+			Provider: t.cfg.AgentConfig.Provider,
+			Model:    t.cfg.AgentConfig.Model,
+			TaskID:   "",
 		}
 
-		// Wrap response writer to capture response body and status code
 		responseWriter := &responseBodyWriter{
 			ResponseWriter: c.Writer,
 			body:           bytes.NewBuffer(nil),
 		}
 		c.Writer = responseWriter
 
-		// Record request count
 		t.telemetry.RecordRequestCount(c.Request.Context(), attrs, c.Request.Method)
 
-		// Continue processing
 		c.Next()
 
-		// Calculate request duration
 		duration := time.Since(startTime)
 		durationMs := float64(duration.Nanoseconds()) / float64(time.Millisecond)
 
-		// Record metrics after request completion
 		statusCode := responseWriter.Status()
 
-		// Record response status
 		t.telemetry.RecordResponseStatus(
 			c.Request.Context(),
 			attrs,
@@ -94,7 +79,6 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 			statusCode,
 		)
 
-		// Record request duration
 		t.telemetry.RecordRequestDuration(
 			c.Request.Context(),
 			attrs,
@@ -103,7 +87,6 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 			durationMs,
 		)
 
-		// Log telemetry information
 		t.logger.Debug("request telemetry recorded",
 			zap.String("method", c.Request.Method),
 			zap.String("path", c.Request.URL.Path),

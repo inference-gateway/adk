@@ -117,7 +117,8 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	server.taskManager = NewDefaultTaskManager(logger)
+	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
+	server.taskManager = NewDefaultTaskManager(logger, maxConversationHistory)
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
@@ -158,7 +159,7 @@ func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl {
 	}
 
 	var telemetryInstance otel.OpenTelemetry
-	if finalCfg.TelemetryConfig != nil && finalCfg.TelemetryConfig.Enable {
+	if finalCfg.TelemetryConfig.Enable {
 		telemetryInstance, err = otel.NewOpenTelemetry(finalCfg, logger)
 		if err != nil {
 			logger.Fatal("failed to initialize telemetry", zap.Error(err))
@@ -186,7 +187,7 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	server.taskManager = NewDefaultTaskManager(logger)
+	server.taskManager = NewDefaultTaskManager(logger, cfg.AgentConfig.MaxConversationHistory)
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
@@ -255,7 +256,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	r.GET("/.well-known/agent.json", s.handleAgentInfo)
 
 	var telemetryMiddleware gin.HandlerFunc
-	if s.cfg.TelemetryConfig != nil && s.cfg.TelemetryConfig.Enable && s.otel != nil {
+	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
 		telemetryMw, err := middlewares.NewTelemetryMiddleware(*s.cfg, s.otel, s.logger)
 		if err != nil {
 			s.logger.Error("failed to create telemetry middleware", zap.Error(err))
@@ -264,7 +265,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		}
 	}
 
-	if s.cfg.AuthConfig == nil || !s.cfg.AuthConfig.Enable {
+	if !cfg.AuthConfig.Enable {
 		if telemetryMiddleware != nil {
 			r.POST("/a2a", telemetryMiddleware, s.handleA2ARequest)
 		} else {
@@ -303,7 +304,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	s.logger.Info("starting A2A server", zap.String("port", s.cfg.Port))
 
-	if s.cfg.TelemetryConfig != nil && s.cfg.TelemetryConfig.Enable && s.otel != nil {
+	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
 		go func() {
 			metricsRouter := gin.Default()
 			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -322,7 +323,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	go s.StartTaskProcessor(ctx)
 
-	if s.cfg.TLSConfig != nil && s.cfg.TLSConfig.Enable {
+	if s.cfg.TLSConfig.Enable {
 		return s.httpServer.ListenAndServeTLS(s.cfg.TLSConfig.CertPath, s.cfg.TLSConfig.KeyPath)
 	}
 
@@ -371,19 +372,10 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 
 // GetAgentCard returns the agent's capabilities and metadata
 func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
-	capabilities := adk.AgentCapabilities{}
-
-	if s.cfg.CapabilitiesConfig != nil {
-		capabilities.Streaming = &s.cfg.CapabilitiesConfig.Streaming
-		capabilities.PushNotifications = &s.cfg.CapabilitiesConfig.PushNotifications
-		capabilities.StateTransitionHistory = &s.cfg.CapabilitiesConfig.StateTransitionHistory
-	} else {
-		defaultStreaming := true
-		defaultPushNotifications := true
-		defaultStateTransitionHistory := false
-		capabilities.Streaming = &defaultStreaming
-		capabilities.PushNotifications = &defaultPushNotifications
-		capabilities.StateTransitionHistory = &defaultStateTransitionHistory
+	capabilities := adk.AgentCapabilities{
+		Streaming:              &s.cfg.CapabilitiesConfig.Streaming,
+		PushNotifications:      &s.cfg.CapabilitiesConfig.PushNotifications,
+		StateTransitionHistory: &s.cfg.CapabilitiesConfig.StateTransitionHistory,
 	}
 
 	return adk.AgentCard{
@@ -400,10 +392,10 @@ func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
 
 // ProcessTask processes a task with the given message
 func (s *A2AServerImpl) ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error) {
-	// Use agent if available, otherwise fall back to task handler
 	if s.agent != nil {
 		s.logger.Info("processing task with openai-compatible agent",
-			zap.String("task_id", task.ID))
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		return s.agent.ProcessTask(ctx, task, message)
 	}
 
@@ -443,7 +435,9 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		}
 	}
 
-	s.logger.Info("processing task", zap.String("task_id", task.ID))
+	s.logger.Info("processing task",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 
 	err := s.taskManager.UpdateTask(task.ID, adk.TaskStateWorking, nil)
 	if err != nil {
@@ -453,7 +447,10 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 	updatedTask, err := s.taskHandler.HandleTask(ctx, task, message)
 	if err != nil {
-		s.logger.Error("failed to process task", zap.Error(err), zap.String("task_id", task.ID))
+		s.logger.Error("failed to process task",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 		updateErr := s.taskManager.UpdateTask(task.ID, adk.TaskStateFailed, &adk.Message{
 			Kind:      "message",
 			MessageID: uuid.New().String(),
@@ -466,25 +463,30 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 			},
 		})
 		if updateErr != nil {
-			s.logger.Error("failed to update task to failed state", zap.Error(updateErr), zap.String("task_id", task.ID))
+			s.logger.Error("failed to update task to failed state",
+				zap.Error(updateErr),
+				zap.String("task_id", task.ID),
+				zap.String("context_id", task.ContextID))
 		}
 		return
 	}
 
 	if err := s.taskManager.UpdateTask(updatedTask.ID, updatedTask.Status.State, nil); err != nil {
-		s.logger.Error("failed to update task status", zap.Error(err), zap.String("task_id", updatedTask.ID))
+		s.logger.Error("failed to update task status",
+			zap.Error(err),
+			zap.String("task_id", updatedTask.ID),
+			zap.String("context_id", updatedTask.ContextID))
 		return
 	}
-	s.logger.Info("task processed successfully", zap.String("task_id", task.ID))
+	s.logger.Info("task processed successfully",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 }
 
 // startTaskCleanup starts the background task cleanup process
 func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
-	// Apply safe defaults if queue config is nil
-	cleanupInterval := 30 * time.Second
-	if s.cfg.QueueConfig != nil {
-		cleanupInterval = s.cfg.QueueConfig.CleanupInterval
-	}
+	// Get cleanup interval from config (defaults applied in NewWithDefaults)
+	cleanupInterval := s.cfg.QueueConfig.CleanupInterval
 
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
@@ -573,7 +575,9 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req adk.JSONRPCRequest
 
 	select {
 	case s.taskQueue <- queuedTask:
-		s.logger.Info("task queued for processing", zap.String("task_id", task.ID))
+		s.logger.Info("task queued for processing",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 	default:
 		s.logger.Error("task queue is full")
 		err := s.taskManager.UpdateTask(task.ID, adk.TaskStateFailed, &adk.Message{
@@ -588,7 +592,10 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req adk.JSONRPCRequest
 			},
 		})
 		if err != nil {
-			s.logger.Error("failed to update task to failed state due to full queue", zap.Error(err), zap.String("task_id", task.ID))
+			s.logger.Error("failed to update task to failed state due to full queue",
+				zap.Error(err),
+				zap.String("task_id", task.ID),
+				zap.String("context_id", task.ContextID))
 		}
 	}
 
@@ -647,7 +654,10 @@ func (s *A2AServerImpl) handleTaskGet(c *gin.Context, req adk.JSONRPCRequest) {
 		return
 	}
 
-	s.logger.Info("task retrieved successfully", zap.String("task_id", params.ID), zap.String("status", string(task.Status.State)))
+	s.logger.Info("task retrieved successfully",
+		zap.String("task_id", params.ID),
+		zap.String("context_id", task.ContextID),
+		zap.String("status", string(task.Status.State)))
 	s.responseSender.SendSuccess(c, req.ID, *task)
 }
 
@@ -671,7 +681,9 @@ func (s *A2AServerImpl) handleTaskCancel(c *gin.Context, req adk.JSONRPCRequest)
 
 	err = s.taskManager.CancelTask(params.ID)
 	if err != nil {
-		s.logger.Error("failed to cancel task", zap.Error(err), zap.String("task_id", params.ID))
+		s.logger.Error("failed to cancel task",
+			zap.Error(err),
+			zap.String("task_id", params.ID))
 		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), err.Error())
 		return
 	}

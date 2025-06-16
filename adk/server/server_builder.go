@@ -1,7 +1,7 @@
 package server
 
 import (
-	"time"
+	"context"
 
 	config "github.com/inference-gateway/a2a/adk/server/config"
 	otel "github.com/inference-gateway/a2a/adk/server/otel"
@@ -76,10 +76,43 @@ type A2AServerBuilderImpl struct {
 //	  WithAgent(myAgent).
 //	  Build()
 func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder {
+	needsDefaults := isCapabilitiesConfigEmpty(cfg.CapabilitiesConfig) || isAgentConfigEmpty(cfg.AgentConfig)
+
+	if needsDefaults {
+		defaultCfg, err := config.NewWithDefaults(context.Background(), nil)
+		if err == nil {
+			if isCapabilitiesConfigEmpty(cfg.CapabilitiesConfig) {
+				cfg.CapabilitiesConfig = defaultCfg.CapabilitiesConfig
+			}
+			if isAgentConfigEmpty(cfg.AgentConfig) {
+				cfg.AgentConfig = defaultCfg.AgentConfig
+			}
+		}
+	}
+
 	return &A2AServerBuilderImpl{
 		cfg:    cfg,
 		logger: logger,
 	}
+}
+
+// isCapabilitiesConfigEmpty checks if the capabilities config has all zero values
+func isCapabilitiesConfigEmpty(capabilities config.CapabilitiesConfig) bool {
+	return !capabilities.Streaming && !capabilities.PushNotifications && !capabilities.StateTransitionHistory
+}
+
+// isAgentConfigEmpty checks if the agent config has all zero values (needs defaults)
+func isAgentConfigEmpty(agentConfig config.AgentConfig) bool {
+	return agentConfig.Provider == "" &&
+		agentConfig.Model == "" &&
+		agentConfig.MaxConversationHistory == 0 &&
+		agentConfig.MaxChatCompletionIterations == 0 &&
+		agentConfig.Timeout == 0 &&
+		agentConfig.MaxRetries == 0 &&
+		agentConfig.MaxTokens == 0 &&
+		agentConfig.Temperature == 0 &&
+		agentConfig.TopP == 0 &&
+		agentConfig.SystemPrompt == ""
 }
 
 // WithTaskHandler sets a custom task handler
@@ -108,12 +141,8 @@ func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 
 // Build creates and returns the configured A2A server.
 func (b *A2AServerBuilderImpl) Build() A2AServer {
-	if err := b.applyConfigDefaults(); err != nil {
-		b.logger.Error("failed to apply configuration defaults", zap.Error(err))
-	}
-
 	var telemetryInstance otel.OpenTelemetry
-	if b.cfg.TelemetryConfig != nil && b.cfg.TelemetryConfig.Enable {
+	if b.cfg.TelemetryConfig.Enable {
 		var err error
 		telemetryInstance, err = otel.NewOpenTelemetry(&b.cfg, b.logger)
 		if err != nil {
@@ -177,70 +206,13 @@ func CustomA2AServerWithAgent(
 	taskResultProcessor TaskResultProcessor,
 ) A2AServer {
 	if toolBox != nil {
-		agent.SetToolBox(toolBox)
+		if defaultAgent, ok := agent.(*DefaultOpenAICompatibleAgent); ok {
+			defaultAgent.toolBox = toolBox
+		}
 	}
 
 	return NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
 		WithTaskResultProcessor(taskResultProcessor).
 		Build()
-}
-
-// applyConfigDefaults ensures all nested configuration objects have default values.
-// This method is called internally by Build() to prevent nil pointer exceptions
-// when accessing configuration objects. It applies sensible defaults for any
-// configuration section that is nil, allowing the consumer to only specify
-// the configuration they care about.
-//
-// Default values applied:
-//   - CapabilitiesConfig: Streaming=true, PushNotifications=true, StateTransitionHistory=false
-//   - TLSConfig: Enable=false
-//   - AuthConfig: Enable=false
-//   - QueueConfig: MaxSize=100, CleanupInterval=30s
-//   - ServerConfig: All timeouts=120s
-//   - TelemetryConfig: Enable=false
-func (b *A2AServerBuilderImpl) applyConfigDefaults() error {
-
-	if b.cfg.CapabilitiesConfig == nil {
-		b.cfg.CapabilitiesConfig = &config.CapabilitiesConfig{
-			Streaming:              true,
-			PushNotifications:      true,
-			StateTransitionHistory: false,
-		}
-	}
-
-	if b.cfg.TLSConfig == nil {
-		b.cfg.TLSConfig = &config.TLSConfig{
-			Enable: false,
-		}
-	}
-
-	if b.cfg.AuthConfig == nil {
-		b.cfg.AuthConfig = &config.AuthConfig{
-			Enable: false,
-		}
-	}
-
-	if b.cfg.QueueConfig == nil {
-		b.cfg.QueueConfig = &config.QueueConfig{
-			MaxSize:         100,
-			CleanupInterval: 30 * time.Second,
-		}
-	}
-
-	if b.cfg.ServerConfig == nil {
-		b.cfg.ServerConfig = &config.ServerConfig{
-			ReadTimeout:  120 * time.Second,
-			WriteTimeout: 120 * time.Second,
-			IdleTimeout:  120 * time.Second,
-		}
-	}
-
-	if b.cfg.TelemetryConfig == nil {
-		b.cfg.TelemetryConfig = &config.TelemetryConfig{
-			Enable: false,
-		}
-	}
-
-	return nil
 }
