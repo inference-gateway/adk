@@ -9,20 +9,20 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	AgentName                     string              `env:"AGENT_NAME,default=helloworld-agent"`
-	AgentDescription              string              `env:"AGENT_DESCRIPTION,default=A simple greeting agent that provides personalized greetings using the A2A protocol"`
-	AgentURL                      string              `env:"AGENT_URL,default=http://helloworld-agent:8080"`
-	AgentVersion                  string              `env:"AGENT_VERSION,default=1.0.0"`
-	Debug                         bool                `env:"DEBUG,default=false"`
-	Port                          string              `env:"PORT,default=8080"`
-	StreamingStatusUpdateInterval time.Duration       `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
-	AgentConfig                   *AgentConfig        `env:",prefix=AGENT_CLIENT_"`
-	CapabilitiesConfig            *CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
-	TLSConfig                     *TLSConfig          `env:",prefix=TLS_"`
-	AuthConfig                    *AuthConfig         `env:",prefix=AUTH_"`
-	QueueConfig                   *QueueConfig        `env:",prefix=QUEUE_"`
-	ServerConfig                  *ServerConfig       `env:",prefix=SERVER_"`
-	TelemetryConfig               *TelemetryConfig    `env:",prefix=TELEMETRY_"`
+	AgentName                     string             `env:"AGENT_NAME,default=helloworld-agent"`
+	AgentDescription              string             `env:"AGENT_DESCRIPTION,default=A simple greeting agent that provides personalized greetings using the A2A protocol"`
+	AgentURL                      string             `env:"AGENT_URL,default=http://helloworld-agent:8080"`
+	AgentVersion                  string             `env:"AGENT_VERSION,default=1.0.0"`
+	Debug                         bool               `env:"DEBUG,default=false"`
+	Port                          string             `env:"PORT,default=8080"`
+	StreamingStatusUpdateInterval time.Duration      `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
+	AgentConfig                   AgentConfig        `env:",prefix=AGENT_CLIENT_"`
+	CapabilitiesConfig            CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
+	TLSConfig                     TLSConfig          `env:",prefix=TLS_"`
+	AuthConfig                    AuthConfig         `env:",prefix=AUTH_"`
+	QueueConfig                   QueueConfig        `env:",prefix=QUEUE_"`
+	ServerConfig                  ServerConfig       `env:",prefix=SERVER_"`
+	TelemetryConfig               TelemetryConfig    `env:",prefix=TELEMETRY_"`
 }
 
 // AgentConfig holds agent-specific configuration
@@ -35,7 +35,7 @@ type AgentConfig struct {
 	MaxRetries                  int               `env:"MAX_RETRIES,default=3" description:"Maximum number of retries"`
 	MaxChatCompletionIterations int               `env:"MAX_CHAT_COMPLETION_ITERATIONS,default=10" description:"Maximum chat completion iterations"`
 	CustomHeaders               map[string]string `env:"CUSTOM_HEADERS" description:"Custom headers to include in requests"`
-	TLSConfig                   *ClientTLSConfig  `env:",prefix=TLS_" description:"TLS configuration for client"`
+	TLSConfig                   ClientTLSConfig   `env:",prefix=TLS_" description:"TLS configuration for client"`
 	ProxyURL                    string            `env:"PROXY_URL" description:"Proxy URL for requests"`
 	UserAgent                   string            `env:"USER_AGENT,default=a2a-agent/1.0" description:"User agent string"`
 	MaxTokens                   int               `env:"MAX_TOKENS,default=4096" description:"Maximum tokens for completion"`
@@ -107,30 +107,6 @@ func LoadWithLookuper(ctx context.Context, baseConfig *Config, lookuper envconfi
 	if baseConfig != nil {
 		cfg = *baseConfig
 	}
-	if cfg.AgentConfig == nil {
-		cfg.AgentConfig = &AgentConfig{}
-	}
-	if cfg.CapabilitiesConfig == nil {
-		cfg.CapabilitiesConfig = &CapabilitiesConfig{}
-	}
-	if cfg.TLSConfig == nil {
-		cfg.TLSConfig = &TLSConfig{}
-	}
-	if cfg.AuthConfig == nil {
-		cfg.AuthConfig = &AuthConfig{}
-	}
-	if cfg.QueueConfig == nil {
-		cfg.QueueConfig = &QueueConfig{}
-	}
-	if cfg.ServerConfig == nil {
-		cfg.ServerConfig = &ServerConfig{}
-	}
-	if cfg.TelemetryConfig == nil {
-		cfg.TelemetryConfig = &TelemetryConfig{}
-	}
-	if cfg.AgentConfig.TLSConfig == nil {
-		cfg.AgentConfig.TLSConfig = &ClientTLSConfig{}
-	}
 
 	err := envconfig.ProcessWith(ctx, &envconfig.Config{
 		Target:   &cfg,
@@ -148,118 +124,9 @@ func LoadWithLookuper(ctx context.Context, baseConfig *Config, lookuper envconfi
 }
 
 // NewWithDefaults creates a new config with defaults applied from struct tags.
-// Only uninitialized (nil) pointer fields get default values applied.
-// Explicitly set fields in baseConfig are preserved.
 func NewWithDefaults(ctx context.Context, baseConfig *Config) (*Config, error) {
-	var cfg Config
-
-	if baseConfig != nil {
-		cfg = *baseConfig
-	}
-	defaultCfg := &Config{}
-	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-		Target:   defaultCfg,
-		Lookuper: &emptyLookuper{},
-	}); err != nil {
-		return nil, err
-	}
-
-	if cfg.AgentName == "" {
-		cfg.AgentName = defaultCfg.AgentName
-	}
-	if cfg.AgentDescription == "" {
-		cfg.AgentDescription = defaultCfg.AgentDescription
-	}
-	if cfg.AgentURL == "" {
-		cfg.AgentURL = defaultCfg.AgentURL
-	}
-	if cfg.AgentVersion == "" {
-		cfg.AgentVersion = defaultCfg.AgentVersion
-	}
-	if cfg.Port == "" {
-		cfg.Port = defaultCfg.Port
-	}
-	if cfg.StreamingStatusUpdateInterval == 0 {
-		cfg.StreamingStatusUpdateInterval = defaultCfg.StreamingStatusUpdateInterval
-	}
-	if cfg.AgentConfig == nil {
-		cfg.AgentConfig = &AgentConfig{}
-		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg.AgentConfig,
-			Lookuper: &emptyLookuper{},
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if cfg.AgentConfig != nil && cfg.AgentConfig.TLSConfig == nil {
-		cfg.AgentConfig.TLSConfig = &ClientTLSConfig{}
-		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg.AgentConfig.TLSConfig,
-			Lookuper: &emptyLookuper{},
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if cfg.CapabilitiesConfig == nil {
-		cfg.CapabilitiesConfig = &CapabilitiesConfig{}
-		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg.CapabilitiesConfig,
-			Lookuper: &emptyLookuper{},
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if cfg.TLSConfig == nil {
-		cfg.TLSConfig = &TLSConfig{}
-		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg.TLSConfig,
-			Lookuper: &emptyLookuper{},
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if cfg.AuthConfig == nil {
-		cfg.AuthConfig = &AuthConfig{}
-		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg.AuthConfig,
-			Lookuper: &emptyLookuper{},
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if cfg.QueueConfig == nil {
-		cfg.QueueConfig = &QueueConfig{}
-		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg.QueueConfig,
-			Lookuper: &emptyLookuper{},
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if cfg.ServerConfig == nil {
-		cfg.ServerConfig = &ServerConfig{}
-		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg.ServerConfig,
-			Lookuper: &emptyLookuper{},
-		}); err != nil {
-			return nil, err
-		}
-	}
-	if cfg.TelemetryConfig == nil {
-		cfg.TelemetryConfig = &TelemetryConfig{}
-		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
-			Target:   cfg.TelemetryConfig,
-			Lookuper: &emptyLookuper{},
-		}); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-
-	return &cfg, nil
+	// Use LoadWithLookuper with emptyLookuper to apply only struct tag defaults
+	return LoadWithLookuper(ctx, baseConfig, &emptyLookuper{})
 }
 
 // emptyLookuper ensures that only default values from struct tags are used
@@ -271,10 +138,8 @@ func (e *emptyLookuper) Lookup(key string) (string, bool) {
 
 // Validate validates the configuration and applies corrections for invalid values
 func (c *Config) Validate() error {
-	if c.AgentConfig != nil {
-		if c.AgentConfig.MaxChatCompletionIterations < 1 {
-			c.AgentConfig.MaxChatCompletionIterations = 1
-		}
+	if c.AgentConfig.MaxChatCompletionIterations < 1 {
+		c.AgentConfig.MaxChatCompletionIterations = 1
 	}
 	return nil
 }

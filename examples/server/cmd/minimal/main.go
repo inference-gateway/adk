@@ -138,7 +138,7 @@ func main() {
 		AgentName: "minimal-a2a-server",
 		Port:      port,
 		Debug:     true,
-		QueueConfig: &config.QueueConfig{
+		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
 	}

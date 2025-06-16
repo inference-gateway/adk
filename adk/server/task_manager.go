@@ -49,9 +49,6 @@ type DefaultTaskManager struct {
 
 // NewDefaultTaskManager creates a new default task manager
 func NewDefaultTaskManager(logger *zap.Logger, maxConversationHistory int) *DefaultTaskManager {
-	if maxConversationHistory <= 0 {
-		maxConversationHistory = 20 // default value
-	}
 	return &DefaultTaskManager{
 		logger:                 logger,
 		tasks:                  make(map[string]*adk.Task),
@@ -208,7 +205,6 @@ func (tm *DefaultTaskManager) GetConversationHistory(contextID string) []adk.Mes
 	defer tm.conversationMu.RUnlock()
 
 	if history, exists := tm.conversationHistory[contextID]; exists {
-		// Return a copy to avoid external modification
 		result := make([]adk.Message, len(history))
 		copy(result, history)
 		return result
@@ -239,11 +235,14 @@ func (tm *DefaultTaskManager) UpdateConversationHistory(contextID string, messag
 // trimConversationHistory ensures conversation history doesn't exceed the maximum allowed size
 // It keeps the most recent messages and removes the oldest ones
 func (tm *DefaultTaskManager) trimConversationHistory(history []adk.Message) []adk.Message {
+	if tm.maxConversationHistory <= 0 {
+		return []adk.Message{}
+	}
+
 	if len(history) <= tm.maxConversationHistory {
 		return history
 	}
 
-	// Keep the most recent messages, remove the oldest ones
 	startIndex := len(history) - tm.maxConversationHistory
 	trimmed := make([]adk.Message, tm.maxConversationHistory)
 	copy(trimmed, history[startIndex:])

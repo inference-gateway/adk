@@ -14,6 +14,7 @@ import (
 	"github.com/inference-gateway/a2a/adk/server/mocks"
 	sdk "github.com/inference-gateway/sdk"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
 
@@ -227,23 +228,27 @@ func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 }
 
 func TestA2AServer_TaskProcessing_Background(t *testing.T) {
-	cfg := config.Config{
-		QueueConfig: &config.QueueConfig{
+	baseConfig := config.Config{
+		QueueConfig: config.QueueConfig{
 			MaxSize:         10,
 			CleanupInterval: 50 * time.Millisecond,
 		},
-		CapabilitiesConfig: &config.CapabilitiesConfig{
+		CapabilitiesConfig: config.CapabilitiesConfig{
 			Streaming:              true,
 			PushNotifications:      false,
 			StateTransitionHistory: true,
 		},
-		AuthConfig: &config.AuthConfig{
+		AuthConfig: config.AuthConfig{
 			Enable: false,
 		},
 	}
+
+	cfg, err := config.NewWithDefaults(context.Background(), &baseConfig)
+	require.NoError(t, err)
+
 	logger := zap.NewNop()
 
-	a2aServer := server.NewA2AServer(&cfg, logger, nil)
+	a2aServer := server.NewA2AServer(cfg, logger, nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
@@ -317,7 +322,7 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 		AgentURL:         "http://test-agent:8080",
 		AgentVersion:     "1.0.0",
 		Port:             "8080",
-		CapabilitiesConfig: &config.CapabilitiesConfig{
+		CapabilitiesConfig: config.CapabilitiesConfig{
 			Streaming:              false,
 			PushNotifications:      false,
 			StateTransitionHistory: true,
@@ -393,18 +398,21 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		},
 	}, nil)
 
-	cfg := &config.Config{
+	baseCfg := &config.Config{
 		AgentName:        "test-agent",
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
 		AgentVersion:     "1.0.0",
 		Port:             "8080",
 		Debug:            false,
-		QueueConfig: &config.QueueConfig{
+		QueueConfig: config.QueueConfig{
 			MaxSize:         10,
 			CleanupInterval: 1 * time.Second,
 		},
 	}
+
+	cfg, err := config.NewWithDefaults(context.Background(), baseCfg)
+	require.NoError(t, err)
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
 	serverInstance.SetTaskHandler(mockTaskHandler)
@@ -475,18 +483,22 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		},
 	}, nil)
 
-	cfg := &config.Config{
+	baseCfg := &config.Config{
 		AgentName:        "weather-agent",
 		AgentDescription: "A weather agent",
 		AgentURL:         "http://weather-agent:8080",
 		AgentVersion:     "1.0.0",
 		Port:             "8080",
 		Debug:            false,
-		QueueConfig: &config.QueueConfig{
+		QueueConfig: config.QueueConfig{
 			MaxSize:         10,
 			CleanupInterval: 1 * time.Second,
 		},
 	}
+
+	// Apply defaults to the config
+	cfg, err := config.NewWithDefaults(context.Background(), baseCfg)
+	require.NoError(t, err)
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
 	serverInstance.SetTaskHandler(mockTaskHandler)

@@ -117,11 +117,7 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	maxConversationHistory := 20
-	if cfg.AgentConfig != nil {
-		maxConversationHistory = cfg.AgentConfig.MaxConversationHistory
-	}
-
+	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
 	server.taskManager = NewDefaultTaskManager(logger, maxConversationHistory)
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
@@ -163,7 +159,7 @@ func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl {
 	}
 
 	var telemetryInstance otel.OpenTelemetry
-	if finalCfg.TelemetryConfig != nil && finalCfg.TelemetryConfig.Enable {
+	if finalCfg.TelemetryConfig.Enable {
 		telemetryInstance, err = otel.NewOpenTelemetry(finalCfg, logger)
 		if err != nil {
 			logger.Fatal("failed to initialize telemetry", zap.Error(err))
@@ -191,13 +187,7 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	// Safely get max conversation history from config
-	maxConversationHistory := 20 // default value
-	if cfg.AgentConfig != nil {
-		maxConversationHistory = cfg.AgentConfig.MaxConversationHistory
-	}
-
-	server.taskManager = NewDefaultTaskManager(logger, maxConversationHistory)
+	server.taskManager = NewDefaultTaskManager(logger, cfg.AgentConfig.MaxConversationHistory)
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
@@ -266,7 +256,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	r.GET("/.well-known/agent.json", s.handleAgentInfo)
 
 	var telemetryMiddleware gin.HandlerFunc
-	if s.cfg.TelemetryConfig != nil && s.cfg.TelemetryConfig.Enable && s.otel != nil {
+	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
 		telemetryMw, err := middlewares.NewTelemetryMiddleware(*s.cfg, s.otel, s.logger)
 		if err != nil {
 			s.logger.Error("failed to create telemetry middleware", zap.Error(err))
@@ -275,7 +265,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		}
 	}
 
-	if s.cfg.AuthConfig == nil || !s.cfg.AuthConfig.Enable {
+	if !cfg.AuthConfig.Enable {
 		if telemetryMiddleware != nil {
 			r.POST("/a2a", telemetryMiddleware, s.handleA2ARequest)
 		} else {
@@ -314,7 +304,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	s.logger.Info("starting A2A server", zap.String("port", s.cfg.Port))
 
-	if s.cfg.TelemetryConfig != nil && s.cfg.TelemetryConfig.Enable && s.otel != nil {
+	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
 		go func() {
 			metricsRouter := gin.Default()
 			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -333,7 +323,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	go s.StartTaskProcessor(ctx)
 
-	if s.cfg.TLSConfig != nil && s.cfg.TLSConfig.Enable {
+	if s.cfg.TLSConfig.Enable {
 		return s.httpServer.ListenAndServeTLS(s.cfg.TLSConfig.CertPath, s.cfg.TLSConfig.KeyPath)
 	}
 
@@ -495,11 +485,8 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 // startTaskCleanup starts the background task cleanup process
 func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
-	// Apply safe defaults if queue config is nil
-	cleanupInterval := 30 * time.Second
-	if s.cfg.QueueConfig != nil {
-		cleanupInterval = s.cfg.QueueConfig.CleanupInterval
-	}
+	// Get cleanup interval from config (defaults applied in NewWithDefaults)
+	cleanupInterval := s.cfg.QueueConfig.CleanupInterval
 
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()

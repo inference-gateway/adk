@@ -788,7 +788,6 @@ func TestDefaultTaskManager_ConversationHistoryLimitZeroDefault(t *testing.T) {
 	taskManager.UpdateConversationHistory(contextID, messages)
 	history := taskManager.GetConversationHistory(contextID)
 
-	assert.Len(t, history, 20)
-	assert.Equal(t, "msg-5", history[0].MessageID)
-	assert.Equal(t, "msg-24", history[19].MessageID)
+	// When maxConversationHistory is 0, no messages should be kept
+	assert.Len(t, history, 0)
 }

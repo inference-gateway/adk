@@ -76,21 +76,22 @@ type A2AServerBuilderImpl struct {
 //	  WithAgent(myAgent).
 //	  Build()
 func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder {
-	// Apply defaults to the provided config to ensure all pointer fields are initialized
-	cfgPtr, err := config.NewWithDefaults(context.Background(), &cfg)
-	if err != nil {
-		logger.Error("failed to apply config defaults", zap.Error(err))
-		// Fallback to original config if there's an error
-		return &A2AServerBuilderImpl{
-			cfg:    cfg,
-			logger: logger,
+	if isCapabilitiesConfigEmpty(cfg.CapabilitiesConfig) {
+		defaultCfg, err := config.NewWithDefaults(context.Background(), nil)
+		if err == nil {
+			cfg.CapabilitiesConfig = defaultCfg.CapabilitiesConfig
 		}
 	}
 
 	return &A2AServerBuilderImpl{
-		cfg:    *cfgPtr,
+		cfg:    cfg,
 		logger: logger,
 	}
+}
+
+// isCapabilitiesConfigEmpty checks if the capabilities config has all zero values
+func isCapabilitiesConfigEmpty(capabilities config.CapabilitiesConfig) bool {
+	return !capabilities.Streaming && !capabilities.PushNotifications && !capabilities.StateTransitionHistory
 }
 
 // WithTaskHandler sets a custom task handler
@@ -120,7 +121,7 @@ func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 // Build creates and returns the configured A2A server.
 func (b *A2AServerBuilderImpl) Build() A2AServer {
 	var telemetryInstance otel.OpenTelemetry
-	if b.cfg.TelemetryConfig != nil && b.cfg.TelemetryConfig.Enable {
+	if b.cfg.TelemetryConfig.Enable {
 		var err error
 		telemetryInstance, err = otel.NewOpenTelemetry(&b.cfg, b.logger)
 		if err != nil {

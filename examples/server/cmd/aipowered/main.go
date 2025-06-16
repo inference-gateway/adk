@@ -77,7 +77,7 @@ func main() {
 		AgentName:        "AI-Powered Assistant",
 		AgentDescription: "An AI assistant with weather and time tools",
 		Port:             "8080",
-		QueueConfig: &config.QueueConfig{
+		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
 	}
@@ -88,7 +88,7 @@ func main() {
 	}
 
 	// Step 4: Create AI agent with LLM client
-	llmClient, err := server.NewOpenAICompatibleLLMClient(cfg.AgentConfig, logger)
+	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
 	if err != nil {
 		logger.Fatal("failed to create LLM client", zap.Error(err))
 	}
