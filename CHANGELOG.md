@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.11](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.10...v0.2.0-rc.11) (2025-06-16)
+
+### ♻️ Improvements
+
+* Add MaxConversationHistory to AgentBuilder and corresponding tests ([4f6cce2](https://github.com/inference-gateway/a2a/commit/4f6cce27a7ed9e0837cd8e23036546cc7cb35748))
+* Cleanup - removing comments ([d26b280](https://github.com/inference-gateway/a2a/commit/d26b2805cdb5945c3b8e5814e3788417c8476de8))
+
 ## [0.2.0-rc.10](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.9...v0.2.0-rc.10) (2025-06-16)
 
 ### ♻️ Improvements
