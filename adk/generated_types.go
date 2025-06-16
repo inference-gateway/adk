@@ -44,6 +44,7 @@ type AgentCapabilities struct {
 // - Default modalities/content types supported by the agent.
 // - Authentication requirements
 type AgentCard struct {
+	AdditionalInterfaces              []AgentInterface          `json:"additionalInterfaces,omitempty"`
 	Capabilities                      AgentCapabilities         `json:"capabilities"`
 	DefaultInputModes                 []string                  `json:"defaultInputModes"`
 	DefaultOutputModes                []string                  `json:"defaultOutputModes"`
@@ -51,6 +52,7 @@ type AgentCard struct {
 	DocumentationURL                  *string                   `json:"documentationUrl,omitempty"`
 	IconURL                           *string                   `json:"iconUrl,omitempty"`
 	Name                              string                    `json:"name"`
+	PreferredTransport                *string                   `json:"preferredTransport,omitempty"`
 	Provider                          *AgentProvider            `json:"provider,omitempty"`
 	Security                          []map[string][]string     `json:"security,omitempty"`
 	SecuritySchemes                   map[string]SecurityScheme `json:"securitySchemes,omitempty"`
@@ -66,6 +68,13 @@ type AgentExtension struct {
 	Params      map[string]interface{} `json:"params,omitempty"`
 	Required    *bool                  `json:"required,omitempty"`
 	URI         string                 `json:"uri"`
+}
+
+// AgentInterface provides a declaration of a combination of the
+// target url and the supported transport to interact with the agent.
+type AgentInterface struct {
+	Transport string `json:"transport"`
+	URL       string `json:"url"`
 }
 
 // Represents the service provider of an agent.
@@ -142,6 +151,31 @@ type DataPart struct {
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
+// Parameters for removing pushNotificationConfiguration associated with a Task
+type DeleteTaskPushNotificationConfigParams struct {
+	ID                       string                 `json:"id"`
+	Metadata                 map[string]interface{} `json:"metadata,omitempty"`
+	PushNotificationConfigID string                 `json:"pushNotificationConfigId"`
+}
+
+// JSON-RPC request model for the 'tasks/pushNotificationConfig/delete' method.
+type DeleteTaskPushNotificationConfigRequest struct {
+	ID      interface{}                            `json:"id"`
+	JSONRPC string                                 `json:"jsonrpc"`
+	Method  string                                 `json:"method"`
+	Params  DeleteTaskPushNotificationConfigParams `json:"params"`
+}
+
+// JSON-RPC response for the 'tasks/pushNotificationConfig/delete' method.
+type DeleteTaskPushNotificationConfigResponse interface{}
+
+// JSON-RPC success response model for the 'tasks/pushNotificationConfig/delete' method.
+type DeleteTaskPushNotificationConfigSuccessResponse struct {
+	ID      interface{} `json:"id"`
+	JSONRPC string      `json:"jsonrpc"`
+	Result  interface{} `json:"result"`
+}
+
 // Represents the base entity for FileParts
 type FileBase struct {
 	MIMEType *string `json:"mimeType,omitempty"`
@@ -169,12 +203,19 @@ type FileWithUri struct {
 	URI      string  `json:"uri"`
 }
 
+// Parameters for fetching a pushNotificationConfiguration associated with a Task
+type GetTaskPushNotificationConfigParams struct {
+	ID                       string                 `json:"id"`
+	Metadata                 map[string]interface{} `json:"metadata,omitempty"`
+	PushNotificationConfigID *string                `json:"pushNotificationConfigId,omitempty"`
+}
+
 // JSON-RPC request model for the 'tasks/pushNotificationConfig/get' method.
 type GetTaskPushNotificationConfigRequest struct {
-	ID      interface{}  `json:"id"`
-	JSONRPC string       `json:"jsonrpc"`
-	Method  string       `json:"method"`
-	Params  TaskIdParams `json:"params"`
+	ID      interface{} `json:"id"`
+	JSONRPC string      `json:"jsonrpc"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"`
 }
 
 // JSON-RPC response for the 'tasks/pushNotificationConfig/set' method.
@@ -292,6 +333,30 @@ type JSONRPCSuccessResponse struct {
 	ID      interface{} `json:"id"`
 	JSONRPC string      `json:"jsonrpc"`
 	Result  interface{} `json:"result"`
+}
+
+// Parameters for getting list of pushNotificationConfigurations associated with a Task
+type ListTaskPushNotificationConfigParams struct {
+	ID       string                 `json:"id"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// JSON-RPC request model for the 'tasks/pushNotificationConfig/list' method.
+type ListTaskPushNotificationConfigRequest struct {
+	ID      interface{}                          `json:"id"`
+	JSONRPC string                               `json:"jsonrpc"`
+	Method  string                               `json:"method"`
+	Params  ListTaskPushNotificationConfigParams `json:"params"`
+}
+
+// JSON-RPC response for the 'tasks/pushNotificationConfig/list' method.
+type ListTaskPushNotificationConfigResponse interface{}
+
+// JSON-RPC success response model for the 'tasks/pushNotificationConfig/list' method.
+type ListTaskPushNotificationConfigSuccessResponse struct {
+	ID      interface{}                  `json:"id"`
+	JSONRPC string                       `json:"jsonrpc"`
+	Result  []TaskPushNotificationConfig `json:"result"`
 }
 
 // JSON-RPC request model for the 'tasks/list' method.

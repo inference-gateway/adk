@@ -38,6 +38,17 @@ type FakeTaskManager struct {
 	createTaskReturnsOnCall map[int]struct {
 		result1 *adk.Task
 	}
+	DeleteTaskPushNotificationConfigStub        func(adk.DeleteTaskPushNotificationConfigParams) error
+	deleteTaskPushNotificationConfigMutex       sync.RWMutex
+	deleteTaskPushNotificationConfigArgsForCall []struct {
+		arg1 adk.DeleteTaskPushNotificationConfigParams
+	}
+	deleteTaskPushNotificationConfigReturns struct {
+		result1 error
+	}
+	deleteTaskPushNotificationConfigReturnsOnCall map[int]struct {
+		result1 error
+	}
 	GetConversationHistoryStub        func(string) []adk.Message
 	getConversationHistoryMutex       sync.RWMutex
 	getConversationHistoryArgsForCall []struct {
@@ -61,6 +72,32 @@ type FakeTaskManager struct {
 	getTaskReturnsOnCall map[int]struct {
 		result1 *adk.Task
 		result2 bool
+	}
+	GetTaskPushNotificationConfigStub        func(adk.GetTaskPushNotificationConfigParams) (*adk.TaskPushNotificationConfig, error)
+	getTaskPushNotificationConfigMutex       sync.RWMutex
+	getTaskPushNotificationConfigArgsForCall []struct {
+		arg1 adk.GetTaskPushNotificationConfigParams
+	}
+	getTaskPushNotificationConfigReturns struct {
+		result1 *adk.TaskPushNotificationConfig
+		result2 error
+	}
+	getTaskPushNotificationConfigReturnsOnCall map[int]struct {
+		result1 *adk.TaskPushNotificationConfig
+		result2 error
+	}
+	ListTaskPushNotificationConfigsStub        func(adk.ListTaskPushNotificationConfigParams) ([]adk.TaskPushNotificationConfig, error)
+	listTaskPushNotificationConfigsMutex       sync.RWMutex
+	listTaskPushNotificationConfigsArgsForCall []struct {
+		arg1 adk.ListTaskPushNotificationConfigParams
+	}
+	listTaskPushNotificationConfigsReturns struct {
+		result1 []adk.TaskPushNotificationConfig
+		result2 error
+	}
+	listTaskPushNotificationConfigsReturnsOnCall map[int]struct {
+		result1 []adk.TaskPushNotificationConfig
+		result2 error
 	}
 	ListTasksStub        func(adk.TaskListParams) (*adk.TaskList, error)
 	listTasksMutex       sync.RWMutex
@@ -88,6 +125,19 @@ type FakeTaskManager struct {
 	}
 	pollTaskStatusReturnsOnCall map[int]struct {
 		result1 *adk.Task
+		result2 error
+	}
+	SetTaskPushNotificationConfigStub        func(adk.TaskPushNotificationConfig) (*adk.TaskPushNotificationConfig, error)
+	setTaskPushNotificationConfigMutex       sync.RWMutex
+	setTaskPushNotificationConfigArgsForCall []struct {
+		arg1 adk.TaskPushNotificationConfig
+	}
+	setTaskPushNotificationConfigReturns struct {
+		result1 *adk.TaskPushNotificationConfig
+		result2 error
+	}
+	setTaskPushNotificationConfigReturnsOnCall map[int]struct {
+		result1 *adk.TaskPushNotificationConfig
 		result2 error
 	}
 	UpdateConversationHistoryStub        func(string, []adk.Message)
@@ -261,6 +311,67 @@ func (fake *FakeTaskManager) CreateTaskReturnsOnCall(i int, result1 *adk.Task) {
 	}{result1}
 }
 
+func (fake *FakeTaskManager) DeleteTaskPushNotificationConfig(arg1 adk.DeleteTaskPushNotificationConfigParams) error {
+	fake.deleteTaskPushNotificationConfigMutex.Lock()
+	ret, specificReturn := fake.deleteTaskPushNotificationConfigReturnsOnCall[len(fake.deleteTaskPushNotificationConfigArgsForCall)]
+	fake.deleteTaskPushNotificationConfigArgsForCall = append(fake.deleteTaskPushNotificationConfigArgsForCall, struct {
+		arg1 adk.DeleteTaskPushNotificationConfigParams
+	}{arg1})
+	stub := fake.DeleteTaskPushNotificationConfigStub
+	fakeReturns := fake.deleteTaskPushNotificationConfigReturns
+	fake.recordInvocation("DeleteTaskPushNotificationConfig", []interface{}{arg1})
+	fake.deleteTaskPushNotificationConfigMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeTaskManager) DeleteTaskPushNotificationConfigCallCount() int {
+	fake.deleteTaskPushNotificationConfigMutex.RLock()
+	defer fake.deleteTaskPushNotificationConfigMutex.RUnlock()
+	return len(fake.deleteTaskPushNotificationConfigArgsForCall)
+}
+
+func (fake *FakeTaskManager) DeleteTaskPushNotificationConfigCalls(stub func(adk.DeleteTaskPushNotificationConfigParams) error) {
+	fake.deleteTaskPushNotificationConfigMutex.Lock()
+	defer fake.deleteTaskPushNotificationConfigMutex.Unlock()
+	fake.DeleteTaskPushNotificationConfigStub = stub
+}
+
+func (fake *FakeTaskManager) DeleteTaskPushNotificationConfigArgsForCall(i int) adk.DeleteTaskPushNotificationConfigParams {
+	fake.deleteTaskPushNotificationConfigMutex.RLock()
+	defer fake.deleteTaskPushNotificationConfigMutex.RUnlock()
+	argsForCall := fake.deleteTaskPushNotificationConfigArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskManager) DeleteTaskPushNotificationConfigReturns(result1 error) {
+	fake.deleteTaskPushNotificationConfigMutex.Lock()
+	defer fake.deleteTaskPushNotificationConfigMutex.Unlock()
+	fake.DeleteTaskPushNotificationConfigStub = nil
+	fake.deleteTaskPushNotificationConfigReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeTaskManager) DeleteTaskPushNotificationConfigReturnsOnCall(i int, result1 error) {
+	fake.deleteTaskPushNotificationConfigMutex.Lock()
+	defer fake.deleteTaskPushNotificationConfigMutex.Unlock()
+	fake.DeleteTaskPushNotificationConfigStub = nil
+	if fake.deleteTaskPushNotificationConfigReturnsOnCall == nil {
+		fake.deleteTaskPushNotificationConfigReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteTaskPushNotificationConfigReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeTaskManager) GetConversationHistory(arg1 string) []adk.Message {
 	fake.getConversationHistoryMutex.Lock()
 	ret, specificReturn := fake.getConversationHistoryReturnsOnCall[len(fake.getConversationHistoryArgsForCall)]
@@ -383,6 +494,134 @@ func (fake *FakeTaskManager) GetTaskReturnsOnCall(i int, result1 *adk.Task, resu
 	fake.getTaskReturnsOnCall[i] = struct {
 		result1 *adk.Task
 		result2 bool
+	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) GetTaskPushNotificationConfig(arg1 adk.GetTaskPushNotificationConfigParams) (*adk.TaskPushNotificationConfig, error) {
+	fake.getTaskPushNotificationConfigMutex.Lock()
+	ret, specificReturn := fake.getTaskPushNotificationConfigReturnsOnCall[len(fake.getTaskPushNotificationConfigArgsForCall)]
+	fake.getTaskPushNotificationConfigArgsForCall = append(fake.getTaskPushNotificationConfigArgsForCall, struct {
+		arg1 adk.GetTaskPushNotificationConfigParams
+	}{arg1})
+	stub := fake.GetTaskPushNotificationConfigStub
+	fakeReturns := fake.getTaskPushNotificationConfigReturns
+	fake.recordInvocation("GetTaskPushNotificationConfig", []interface{}{arg1})
+	fake.getTaskPushNotificationConfigMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeTaskManager) GetTaskPushNotificationConfigCallCount() int {
+	fake.getTaskPushNotificationConfigMutex.RLock()
+	defer fake.getTaskPushNotificationConfigMutex.RUnlock()
+	return len(fake.getTaskPushNotificationConfigArgsForCall)
+}
+
+func (fake *FakeTaskManager) GetTaskPushNotificationConfigCalls(stub func(adk.GetTaskPushNotificationConfigParams) (*adk.TaskPushNotificationConfig, error)) {
+	fake.getTaskPushNotificationConfigMutex.Lock()
+	defer fake.getTaskPushNotificationConfigMutex.Unlock()
+	fake.GetTaskPushNotificationConfigStub = stub
+}
+
+func (fake *FakeTaskManager) GetTaskPushNotificationConfigArgsForCall(i int) adk.GetTaskPushNotificationConfigParams {
+	fake.getTaskPushNotificationConfigMutex.RLock()
+	defer fake.getTaskPushNotificationConfigMutex.RUnlock()
+	argsForCall := fake.getTaskPushNotificationConfigArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskManager) GetTaskPushNotificationConfigReturns(result1 *adk.TaskPushNotificationConfig, result2 error) {
+	fake.getTaskPushNotificationConfigMutex.Lock()
+	defer fake.getTaskPushNotificationConfigMutex.Unlock()
+	fake.GetTaskPushNotificationConfigStub = nil
+	fake.getTaskPushNotificationConfigReturns = struct {
+		result1 *adk.TaskPushNotificationConfig
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) GetTaskPushNotificationConfigReturnsOnCall(i int, result1 *adk.TaskPushNotificationConfig, result2 error) {
+	fake.getTaskPushNotificationConfigMutex.Lock()
+	defer fake.getTaskPushNotificationConfigMutex.Unlock()
+	fake.GetTaskPushNotificationConfigStub = nil
+	if fake.getTaskPushNotificationConfigReturnsOnCall == nil {
+		fake.getTaskPushNotificationConfigReturnsOnCall = make(map[int]struct {
+			result1 *adk.TaskPushNotificationConfig
+			result2 error
+		})
+	}
+	fake.getTaskPushNotificationConfigReturnsOnCall[i] = struct {
+		result1 *adk.TaskPushNotificationConfig
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) ListTaskPushNotificationConfigs(arg1 adk.ListTaskPushNotificationConfigParams) ([]adk.TaskPushNotificationConfig, error) {
+	fake.listTaskPushNotificationConfigsMutex.Lock()
+	ret, specificReturn := fake.listTaskPushNotificationConfigsReturnsOnCall[len(fake.listTaskPushNotificationConfigsArgsForCall)]
+	fake.listTaskPushNotificationConfigsArgsForCall = append(fake.listTaskPushNotificationConfigsArgsForCall, struct {
+		arg1 adk.ListTaskPushNotificationConfigParams
+	}{arg1})
+	stub := fake.ListTaskPushNotificationConfigsStub
+	fakeReturns := fake.listTaskPushNotificationConfigsReturns
+	fake.recordInvocation("ListTaskPushNotificationConfigs", []interface{}{arg1})
+	fake.listTaskPushNotificationConfigsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeTaskManager) ListTaskPushNotificationConfigsCallCount() int {
+	fake.listTaskPushNotificationConfigsMutex.RLock()
+	defer fake.listTaskPushNotificationConfigsMutex.RUnlock()
+	return len(fake.listTaskPushNotificationConfigsArgsForCall)
+}
+
+func (fake *FakeTaskManager) ListTaskPushNotificationConfigsCalls(stub func(adk.ListTaskPushNotificationConfigParams) ([]adk.TaskPushNotificationConfig, error)) {
+	fake.listTaskPushNotificationConfigsMutex.Lock()
+	defer fake.listTaskPushNotificationConfigsMutex.Unlock()
+	fake.ListTaskPushNotificationConfigsStub = stub
+}
+
+func (fake *FakeTaskManager) ListTaskPushNotificationConfigsArgsForCall(i int) adk.ListTaskPushNotificationConfigParams {
+	fake.listTaskPushNotificationConfigsMutex.RLock()
+	defer fake.listTaskPushNotificationConfigsMutex.RUnlock()
+	argsForCall := fake.listTaskPushNotificationConfigsArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskManager) ListTaskPushNotificationConfigsReturns(result1 []adk.TaskPushNotificationConfig, result2 error) {
+	fake.listTaskPushNotificationConfigsMutex.Lock()
+	defer fake.listTaskPushNotificationConfigsMutex.Unlock()
+	fake.ListTaskPushNotificationConfigsStub = nil
+	fake.listTaskPushNotificationConfigsReturns = struct {
+		result1 []adk.TaskPushNotificationConfig
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) ListTaskPushNotificationConfigsReturnsOnCall(i int, result1 []adk.TaskPushNotificationConfig, result2 error) {
+	fake.listTaskPushNotificationConfigsMutex.Lock()
+	defer fake.listTaskPushNotificationConfigsMutex.Unlock()
+	fake.ListTaskPushNotificationConfigsStub = nil
+	if fake.listTaskPushNotificationConfigsReturnsOnCall == nil {
+		fake.listTaskPushNotificationConfigsReturnsOnCall = make(map[int]struct {
+			result1 []adk.TaskPushNotificationConfig
+			result2 error
+		})
+	}
+	fake.listTaskPushNotificationConfigsReturnsOnCall[i] = struct {
+		result1 []adk.TaskPushNotificationConfig
+		result2 error
 	}{result1, result2}
 }
 
@@ -516,6 +755,70 @@ func (fake *FakeTaskManager) PollTaskStatusReturnsOnCall(i int, result1 *adk.Tas
 	}{result1, result2}
 }
 
+func (fake *FakeTaskManager) SetTaskPushNotificationConfig(arg1 adk.TaskPushNotificationConfig) (*adk.TaskPushNotificationConfig, error) {
+	fake.setTaskPushNotificationConfigMutex.Lock()
+	ret, specificReturn := fake.setTaskPushNotificationConfigReturnsOnCall[len(fake.setTaskPushNotificationConfigArgsForCall)]
+	fake.setTaskPushNotificationConfigArgsForCall = append(fake.setTaskPushNotificationConfigArgsForCall, struct {
+		arg1 adk.TaskPushNotificationConfig
+	}{arg1})
+	stub := fake.SetTaskPushNotificationConfigStub
+	fakeReturns := fake.setTaskPushNotificationConfigReturns
+	fake.recordInvocation("SetTaskPushNotificationConfig", []interface{}{arg1})
+	fake.setTaskPushNotificationConfigMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeTaskManager) SetTaskPushNotificationConfigCallCount() int {
+	fake.setTaskPushNotificationConfigMutex.RLock()
+	defer fake.setTaskPushNotificationConfigMutex.RUnlock()
+	return len(fake.setTaskPushNotificationConfigArgsForCall)
+}
+
+func (fake *FakeTaskManager) SetTaskPushNotificationConfigCalls(stub func(adk.TaskPushNotificationConfig) (*adk.TaskPushNotificationConfig, error)) {
+	fake.setTaskPushNotificationConfigMutex.Lock()
+	defer fake.setTaskPushNotificationConfigMutex.Unlock()
+	fake.SetTaskPushNotificationConfigStub = stub
+}
+
+func (fake *FakeTaskManager) SetTaskPushNotificationConfigArgsForCall(i int) adk.TaskPushNotificationConfig {
+	fake.setTaskPushNotificationConfigMutex.RLock()
+	defer fake.setTaskPushNotificationConfigMutex.RUnlock()
+	argsForCall := fake.setTaskPushNotificationConfigArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskManager) SetTaskPushNotificationConfigReturns(result1 *adk.TaskPushNotificationConfig, result2 error) {
+	fake.setTaskPushNotificationConfigMutex.Lock()
+	defer fake.setTaskPushNotificationConfigMutex.Unlock()
+	fake.SetTaskPushNotificationConfigStub = nil
+	fake.setTaskPushNotificationConfigReturns = struct {
+		result1 *adk.TaskPushNotificationConfig
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) SetTaskPushNotificationConfigReturnsOnCall(i int, result1 *adk.TaskPushNotificationConfig, result2 error) {
+	fake.setTaskPushNotificationConfigMutex.Lock()
+	defer fake.setTaskPushNotificationConfigMutex.Unlock()
+	fake.SetTaskPushNotificationConfigStub = nil
+	if fake.setTaskPushNotificationConfigReturnsOnCall == nil {
+		fake.setTaskPushNotificationConfigReturnsOnCall = make(map[int]struct {
+			result1 *adk.TaskPushNotificationConfig
+			result2 error
+		})
+	}
+	fake.setTaskPushNotificationConfigReturnsOnCall[i] = struct {
+		result1 *adk.TaskPushNotificationConfig
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeTaskManager) UpdateConversationHistory(arg1 string, arg2 []adk.Message) {
 	var arg2Copy []adk.Message
 	if arg2 != nil {
@@ -626,14 +929,22 @@ func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	defer fake.cleanupCompletedTasksMutex.RUnlock()
 	fake.createTaskMutex.RLock()
 	defer fake.createTaskMutex.RUnlock()
+	fake.deleteTaskPushNotificationConfigMutex.RLock()
+	defer fake.deleteTaskPushNotificationConfigMutex.RUnlock()
 	fake.getConversationHistoryMutex.RLock()
 	defer fake.getConversationHistoryMutex.RUnlock()
 	fake.getTaskMutex.RLock()
 	defer fake.getTaskMutex.RUnlock()
+	fake.getTaskPushNotificationConfigMutex.RLock()
+	defer fake.getTaskPushNotificationConfigMutex.RUnlock()
+	fake.listTaskPushNotificationConfigsMutex.RLock()
+	defer fake.listTaskPushNotificationConfigsMutex.RUnlock()
 	fake.listTasksMutex.RLock()
 	defer fake.listTasksMutex.RUnlock()
 	fake.pollTaskStatusMutex.RLock()
 	defer fake.pollTaskStatusMutex.RUnlock()
+	fake.setTaskPushNotificationConfigMutex.RLock()
+	defer fake.setTaskPushNotificationConfigMutex.RUnlock()
 	fake.updateConversationHistoryMutex.RLock()
 	defer fake.updateConversationHistoryMutex.RUnlock()
 	fake.updateTaskMutex.RLock()
