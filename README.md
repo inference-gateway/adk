@@ -47,6 +47,7 @@
   - [LLM Client](#llm-client)
 - [🔧 Advanced Usage](#-advanced-usage)
   - [Custom Tools](#custom-tools)
+  - [Push Notifications](#push-notifications)
   - [Agent Metadata](#agent-metadata)
   - [Environment Configuration](#environment-configuration)
 - [🌐 A2A Ecosystem](#-a2a-ecosystem)
@@ -253,6 +254,7 @@ For complete working examples, see the [examples](./examples/) directory:
 - 🌊 **Real-time Streaming**: Stream responses as they're generated from language models
 - 🔧 **Custom Tools**: Easy integration of custom tools and capabilities
 - 🔐 **Secure Authentication**: Built-in OIDC/OAuth2 authentication support
+- 📨 **Push Notifications**: Webhook notifications for real-time task state updates
 
 ### Developer Experience
 
@@ -626,6 +628,115 @@ func (ctp *CustomTaskProcessor) ProcessToolResult(toolCallResult string) *adk.Me
 server := server.NewA2AServerBuilder(cfg, logger).
     WithTaskResultProcessor(&CustomTaskProcessor{}).
     Build()
+```
+
+### Push Notifications
+
+Configure webhook notifications to receive real-time updates when task states change:
+
+```go
+// Create an HTTP push notification sender
+notificationSender := server.NewHTTPPushNotificationSender(logger)
+
+// Create a task manager with push notification support
+taskManager := server.NewDefaultTaskManagerWithNotifications(
+    logger,
+    100, // max conversation history
+    notificationSender,
+)
+
+// Or set it on an existing task manager
+taskManager.SetNotificationSender(notificationSender)
+
+// Configure push notification webhooks for a task
+config := adk.TaskPushNotificationConfig{
+    TaskID: "task-123",
+    PushNotificationConfig: adk.PushNotificationConfig{
+        URL:   "https://your-app.com/webhooks/task-updates",
+        Token: &token, // Optional Bearer token
+        Authentication: &adk.PushNotificationAuthenticationInfo{
+            Schemes:     []string{"bearer"},
+            Credentials: &bearerToken,
+        },
+    },
+}
+
+// Set the configuration
+_, err := taskManager.SetTaskPushNotificationConfig(config)
+if err != nil {
+    log.Printf("Failed to set push notification config: %v", err)
+}
+```
+
+#### Webhook Payload
+
+When a task state changes, your webhook will receive a POST request with this payload:
+
+```json
+{
+  "type": "task_update",
+  "taskId": "task-123",
+  "state": "completed",
+  "timestamp": "2025-06-16T10:30:00Z",
+  "task": {
+    "id": "task-123",
+    "kind": "task",
+    "status": {
+      "state": "completed",
+      "message": {
+        "role": "assistant",
+        "parts": [{"kind": "text", "text": "Task completed successfully"}]
+      },
+      "timestamp": "2025-06-16T10:30:00Z"
+    },
+    "contextId": "context-456",
+    "history": [...]
+  }
+}
+```
+
+#### Authentication Options
+
+Push notifications support multiple authentication schemes:
+
+```go
+// Bearer token authentication
+config := adk.TaskPushNotificationConfig{
+    PushNotificationConfig: adk.PushNotificationConfig{
+        URL:   "https://your-app.com/webhook",
+        Token: &bearerToken, // Simple token field
+    },
+}
+
+// Advanced authentication with custom schemes
+config := adk.TaskPushNotificationConfig{
+    PushNotificationConfig: adk.PushNotificationConfig{
+        URL: "https://your-app.com/webhook",
+        Authentication: &adk.PushNotificationAuthenticationInfo{
+            Schemes:     []string{"bearer", "basic"},
+            Credentials: &credentials,
+        },
+    },
+}
+```
+
+#### Managing Push Notification Configs
+
+```go
+// List all configs for a task
+configs, err := taskManager.ListTaskPushNotificationConfigs(
+    adk.ListTaskPushNotificationConfigParams{ID: "task-123"},
+)
+
+// Get a specific config
+config, err := taskManager.GetTaskPushNotificationConfig(
+    adk.GetTaskPushNotificationConfigParams{ID: "config-id"},
+)
+
+// Delete a config
+err := taskManager.DeleteTaskPushNotificationConfig(
+    adk.DeleteTaskPushNotificationConfigParams{ID: "config-id"},
+)
 ```
 
 ### Agent Metadata

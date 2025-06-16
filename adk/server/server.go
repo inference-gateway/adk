@@ -541,6 +541,14 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		s.handleTaskList(c, req)
 	case "tasks/cancel":
 		s.handleTaskCancel(c, req)
+	case "tasks/pushNotificationConfig/set":
+		s.handleTaskPushNotificationConfigSet(c, req)
+	case "tasks/pushNotificationConfig/get":
+		s.handleTaskPushNotificationConfigGet(c, req)
+	case "tasks/pushNotificationConfig/list":
+		s.handleTaskPushNotificationConfigList(c, req)
+	case "tasks/pushNotificationConfig/delete":
+		s.handleTaskPushNotificationConfigDelete(c, req)
 	default:
 		s.logger.Warn("unknown method requested", zap.String("method", req.Method))
 		s.responseSender.SendError(c, req.ID, int(ErrMethodNotFound), "method not found")
@@ -721,4 +729,128 @@ func (s *A2AServerImpl) handleTaskList(c *gin.Context, req adk.JSONRPCRequest) {
 
 	s.logger.Info("tasks listed successfully", zap.Int("count", len(taskList.Tasks)), zap.Int("total", taskList.Total))
 	s.responseSender.SendSuccess(c, req.ID, taskList)
+}
+
+// handleTaskPushNotificationConfigSet processes tasks/pushNotificationConfig/set requests
+func (s *A2AServerImpl) handleTaskPushNotificationConfigSet(c *gin.Context, req adk.JSONRPCRequest) {
+	var params adk.TaskPushNotificationConfig
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		s.logger.Error("failed to marshal params", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		s.logger.Error("failed to parse tasks/pushNotificationConfig/set request", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	s.logger.Info("setting push notification config for task",
+		zap.String("task_id", params.TaskID),
+		zap.String("url", params.PushNotificationConfig.URL))
+
+	config, err := s.taskManager.SetTaskPushNotificationConfig(params)
+	if err != nil {
+		s.logger.Error("failed to set push notification config", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	s.logger.Info("push notification config set successfully", zap.String("task_id", params.TaskID))
+	s.responseSender.SendSuccess(c, req.ID, config)
+}
+
+// handleTaskPushNotificationConfigGet processes tasks/pushNotificationConfig/get requests
+func (s *A2AServerImpl) handleTaskPushNotificationConfigGet(c *gin.Context, req adk.JSONRPCRequest) {
+	var params adk.GetTaskPushNotificationConfigParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		s.logger.Error("failed to marshal params", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		s.logger.Error("failed to parse tasks/pushNotificationConfig/get request", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	s.logger.Info("getting push notification config for task", zap.String("task_id", params.ID))
+
+	config, err := s.taskManager.GetTaskPushNotificationConfig(params)
+	if err != nil {
+		s.logger.Error("failed to get push notification config", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	s.logger.Info("push notification config retrieved successfully", zap.String("task_id", params.ID))
+	s.responseSender.SendSuccess(c, req.ID, config)
+}
+
+// handleTaskPushNotificationConfigList processes tasks/pushNotificationConfig/list requests
+func (s *A2AServerImpl) handleTaskPushNotificationConfigList(c *gin.Context, req adk.JSONRPCRequest) {
+	var params adk.ListTaskPushNotificationConfigParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		s.logger.Error("failed to marshal params", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		s.logger.Error("failed to parse tasks/pushNotificationConfig/list request", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	s.logger.Info("listing push notification configs for task", zap.String("task_id", params.ID))
+
+	configs, err := s.taskManager.ListTaskPushNotificationConfigs(params)
+	if err != nil {
+		s.logger.Error("failed to list push notification configs", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	s.logger.Info("push notification configs listed successfully",
+		zap.String("task_id", params.ID),
+		zap.Int("count", len(configs)))
+	s.responseSender.SendSuccess(c, req.ID, configs)
+}
+
+// handleTaskPushNotificationConfigDelete processes tasks/pushNotificationConfig/delete requests
+func (s *A2AServerImpl) handleTaskPushNotificationConfigDelete(c *gin.Context, req adk.JSONRPCRequest) {
+	var params adk.DeleteTaskPushNotificationConfigParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		s.logger.Error("failed to marshal params", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		s.logger.Error("failed to parse tasks/pushNotificationConfig/delete request", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	s.logger.Info("deleting push notification config",
+		zap.String("task_id", params.ID),
+		zap.String("config_id", params.PushNotificationConfigID))
+
+	err = s.taskManager.DeleteTaskPushNotificationConfig(params)
+	if err != nil {
+		s.logger.Error("failed to delete push notification config", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	s.logger.Info("push notification config deleted successfully",
+		zap.String("task_id", params.ID),
+		zap.String("config_id", params.PushNotificationConfigID))
+	s.responseSender.SendSuccess(c, req.ID, nil)
 }
