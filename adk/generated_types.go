@@ -294,6 +294,24 @@ type JSONRPCSuccessResponse struct {
 	Result  interface{} `json:"result"`
 }
 
+// JSON-RPC request model for the 'tasks/list' method.
+type ListTasksRequest struct {
+	ID      interface{}     `json:"id"`
+	JSONRPC string          `json:"jsonrpc"`
+	Method  string          `json:"method"`
+	Params  *TaskListParams `json:"params,omitempty"`
+}
+
+// JSON-RPC response for the 'tasks/list' method.
+type ListTasksResponse interface{}
+
+// JSON-RPC success response for the 'tasks/list' method.
+type ListTasksSuccessResponse struct {
+	ID      interface{} `json:"id"`
+	JSONRPC string      `json:"jsonrpc"`
+	Result  TaskList    `json:"result"`
+}
+
 // Represents a single message exchanged between user and agent.
 type Message struct {
 	ContextID        *string                `json:"contextId,omitempty"`
@@ -475,6 +493,23 @@ type TaskArtifactUpdateEvent struct {
 type TaskIdParams struct {
 	ID       string                 `json:"id"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
+}
+
+// List of tasks with pagination information.
+type TaskList struct {
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
+	Tasks  []Task `json:"tasks"`
+	Total  int    `json:"total"`
+}
+
+// Parameters for listing tasks with optional filtering and pagination.
+type TaskListParams struct {
+	ContextID *string                `json:"contextId,omitempty"`
+	Limit     int                    `json:"limit,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Offset    int                    `json:"offset,omitempty"`
+	State     *TaskState             `json:"state,omitempty"`
 }
 
 // A2A specific error indicating the task is in a state where it cannot be canceled.

@@ -537,6 +537,8 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		s.handleMessageStream(c, req)
 	case "tasks/get":
 		s.handleTaskGet(c, req)
+	case "tasks/list":
+		s.handleTaskList(c, req)
 	case "tasks/cancel":
 		s.handleTaskCancel(c, req)
 	default:
@@ -690,4 +692,33 @@ func (s *A2AServerImpl) handleTaskCancel(c *gin.Context, req adk.JSONRPCRequest)
 
 	task, _ := s.taskManager.GetTask(params.ID)
 	s.responseSender.SendSuccess(c, req.ID, *task)
+}
+
+// handleTaskList processes tasks/list requests
+func (s *A2AServerImpl) handleTaskList(c *gin.Context, req adk.JSONRPCRequest) {
+	var params adk.TaskListParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		s.logger.Error("failed to marshal params", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		s.logger.Error("failed to parse tasks/list request", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	s.logger.Info("listing tasks")
+
+	taskList, err := s.taskManager.ListTasks(params)
+	if err != nil {
+		s.logger.Error("failed to list tasks", zap.Error(err))
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	s.logger.Info("tasks listed successfully", zap.Int("count", len(taskList.Tasks)), zap.Int("total", taskList.Total))
+	s.responseSender.SendSuccess(c, req.ID, taskList)
 }

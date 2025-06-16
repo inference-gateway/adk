@@ -258,6 +258,7 @@ For complete working examples, see the [examples](./examples/) directory:
 
 - ⚙️ **Environment Configuration**: Simple setup through environment variables
 - 📊 **Task Management**: Built-in task queuing, polling, and lifecycle management
+- 📋 **Task Listing**: Listing with filtering and pagination (`tasks/list`)
 - 🏗️ **Extensible Architecture**: Pluggable components for custom business logic
 - 📚 **Type-Safe**: Generated types from A2A schema for compile-time safety
 - 🧪 **Well Tested**: Comprehensive test coverage with table-driven tests

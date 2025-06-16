@@ -23,6 +23,7 @@ type A2AClient interface {
 	SendTask(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
 	SendTaskStreaming(ctx context.Context, params adk.MessageSendParams, eventChan chan<- interface{}) error
 	GetTask(ctx context.Context, params adk.TaskQueryParams) (*adk.JSONRPCSuccessResponse, error)
+	ListTasks(ctx context.Context, params adk.TaskListParams) (*adk.JSONRPCSuccessResponse, error)
 	CancelTask(ctx context.Context, params adk.TaskIdParams) (*adk.JSONRPCSuccessResponse, error)
 
 	// Configuration
@@ -301,6 +302,39 @@ func (c *Client) CancelTask(ctx context.Context, params adk.TaskIdParams) (*adk.
 	}
 
 	c.logger.Debug("task cancelled successfully", zap.String("task_id", params.ID))
+	return &resp, nil
+}
+
+// ListTasks retrieves a list of tasks from the agent
+func (c *Client) ListTasks(ctx context.Context, params adk.TaskListParams) (*adk.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("listing tasks", zap.String("method", "tasks/list"))
+
+	req := adk.JSONRPCRequest{
+		JSONRPC: "2.0",
+		Method:  "tasks/list",
+		Params:  make(map[string]interface{}),
+	}
+
+	paramsBytes, err := json.Marshal(params)
+	if err != nil {
+		c.logger.Error("failed to marshal params", zap.Error(err))
+		return nil, fmt.Errorf("failed to marshal params: %w", err)
+	}
+
+	var paramsMap map[string]interface{}
+	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
+		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
+		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
+	}
+	req.Params = paramsMap
+
+	var resp adk.JSONRPCSuccessResponse
+	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
+		c.logger.Error("failed to list tasks", zap.Error(err))
+		return nil, err
+	}
+
+	c.logger.Debug("tasks listed successfully")
 	return &resp, nil
 }
 

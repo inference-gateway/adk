@@ -21,6 +21,9 @@ type TaskManager interface {
 	// GetTask retrieves a task by ID
 	GetTask(taskID string) (*adk.Task, bool)
 
+	// ListTasks retrieves a list of tasks based on the provided parameters
+	ListTasks(params adk.TaskListParams) (*adk.TaskList, error)
+
 	// CancelTask cancels a task
 	CancelTask(taskID string) error
 
@@ -131,6 +134,83 @@ func (tm *DefaultTaskManager) GetTask(taskID string) (*adk.Task, bool) {
 
 	task, exists := tm.tasks[taskID]
 	return task, exists
+}
+
+// ListTasks retrieves a list of tasks based on the provided parameters
+func (tm *DefaultTaskManager) ListTasks(params adk.TaskListParams) (*adk.TaskList, error) {
+	tm.tasksMu.RLock()
+	defer tm.tasksMu.RUnlock()
+
+	var allTasks []*adk.Task
+
+	// Apply filters and collect matching tasks
+	for _, task := range tm.tasks {
+		// Filter by state if specified
+		if params.State != nil && task.Status.State != *params.State {
+			continue
+		}
+
+		// Filter by context ID if specified
+		if params.ContextID != nil && task.ContextID != *params.ContextID {
+			continue
+		}
+
+		// Create a copy of the task to avoid returning pointer to internal state
+		taskCopy := *task
+
+		// Always include basic task info, history can be added if needed
+		allTasks = append(allTasks, &taskCopy)
+	}
+
+	// Set defaults for pagination
+	limit := 50
+	if params.Limit > 0 {
+		if params.Limit > 100 {
+			limit = 100 // Max limit
+		} else {
+			limit = params.Limit
+		}
+	}
+
+	offset := 0
+	if params.Offset > 0 {
+		offset = params.Offset
+	}
+
+	// Calculate total count after filtering
+	total := len(allTasks)
+
+	// Apply pagination
+	var paginatedTasks []*adk.Task
+	if offset < total {
+		end := offset + limit
+		if end > total {
+			end = total
+		}
+		paginatedTasks = allTasks[offset:end]
+	}
+
+	// Convert to the expected Task type (not pointer)
+	var resultTasks []adk.Task
+	for _, taskPtr := range paginatedTasks {
+		resultTasks = append(resultTasks, *taskPtr)
+	}
+
+	result := &adk.TaskList{
+		Tasks:  resultTasks,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	tm.logger.Debug("listed tasks",
+		zap.Int("total_count", len(tm.tasks)),
+		zap.Int("filtered_count", total),
+		zap.Int("returned_count", len(resultTasks)),
+		zap.Int("offset", offset),
+		zap.Int("limit", limit))
+
+	return result, nil
 }
 
 // CancelTask cancels a task

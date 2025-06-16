@@ -18,6 +18,7 @@ definitions:
       - $ref: '#/definitions/SendMessageRequest'
       - $ref: '#/definitions/SendStreamingMessageRequest'
       - $ref: '#/definitions/GetTaskRequest'
+      - $ref: '#/definitions/ListTasksRequest'
       - $ref: '#/definitions/CancelTaskRequest'
       - $ref: '#/definitions/SetTaskPushNotificationConfigRequest'
       - $ref: '#/definitions/GetTaskPushNotificationConfigRequest'
@@ -1345,6 +1346,54 @@ definitions:
     required:
       - id
     type: object
+  TaskListParams:
+    description: Parameters for listing tasks with optional filtering and pagination.
+    properties:
+      limit:
+        description: Maximum number of tasks to return (default 50, max 100).
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+      offset:
+        description: Number of tasks to skip for pagination (default 0).
+        type: integer
+        minimum: 0
+        default: 0
+      state:
+        description: Filter tasks by state (optional).
+        $ref: '#/definitions/TaskState'
+      contextId:
+        description: Filter tasks by context ID (optional).
+        type: string
+      metadata:
+        additionalProperties: {}
+        description: Request-specific metadata.
+        type: object
+    type: object
+  TaskList:
+    description: List of tasks with pagination information.
+    properties:
+      tasks:
+        description: Array of tasks matching the query.
+        items:
+          $ref: '#/definitions/Task'
+        type: array
+      total:
+        description: Total number of tasks available (for pagination).
+        type: integer
+      limit:
+        description: Maximum number of tasks returned in this response.
+        type: integer
+      offset:
+        description: Number of tasks skipped for this response.
+        type: integer
+    required:
+      - tasks
+      - total
+      - limit
+      - offset
+    type: object
   TaskNotCancelableError:
     description: A2A specific error indicating the task is in a state where it cannot be canceled.
     properties:
@@ -1531,4 +1580,58 @@ definitions:
     required:
       - code
       - message
+    type: object
+  ListTasksRequest:
+    description: JSON-RPC request model for the 'tasks/list' method.
+    properties:
+      id:
+        description: |-
+          An identifier established by the Client that MUST contain a String, Number.
+          Numbers SHOULD NOT contain fractional parts.
+        type:
+          - string
+          - integer
+      jsonrpc:
+        const: '2.0'
+        description: Specifies the version of the JSON-RPC protocol. MUST be exactly "2.0".
+        type: string
+      method:
+        const: tasks/list
+        description: A String containing the name of the method to be invoked.
+        type: string
+      params:
+        $ref: '#/definitions/TaskListParams'
+        description: A Structured value that holds the parameter values to be used during the invocation of the method.
+    required:
+      - id
+      - jsonrpc
+      - method
+    type: object
+  ListTasksResponse:
+    anyOf:
+      - $ref: '#/definitions/JSONRPCErrorResponse'
+      - $ref: '#/definitions/ListTasksSuccessResponse'
+    description: JSON-RPC response for the 'tasks/list' method.
+  ListTasksSuccessResponse:
+    description: JSON-RPC success response for the 'tasks/list' method.
+    properties:
+      id:
+        description: |-
+          An identifier established by the Client that MUST contain a String, Number.
+          Numbers SHOULD NOT contain fractional parts.
+        type:
+          - string
+          - integer
+          - 'null'
+      jsonrpc:
+        const: '2.0'
+        description: Specifies the version of the JSON-RPC protocol. MUST be exactly "2.0".
+        type: string
+      result:
+        $ref: '#/definitions/TaskList'
+        description: The result object on success.
+    required:
+      - id
+      - jsonrpc
+      - result
     type: object

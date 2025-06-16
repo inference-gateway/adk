@@ -62,6 +62,19 @@ type FakeTaskManager struct {
 		result1 *adk.Task
 		result2 bool
 	}
+	ListTasksStub        func(adk.TaskListParams) (*adk.TaskList, error)
+	listTasksMutex       sync.RWMutex
+	listTasksArgsForCall []struct {
+		arg1 adk.TaskListParams
+	}
+	listTasksReturns struct {
+		result1 *adk.TaskList
+		result2 error
+	}
+	listTasksReturnsOnCall map[int]struct {
+		result1 *adk.TaskList
+		result2 error
+	}
 	PollTaskStatusStub        func(string, time.Duration, time.Duration) (*adk.Task, error)
 	pollTaskStatusMutex       sync.RWMutex
 	pollTaskStatusArgsForCall []struct {
@@ -373,6 +386,70 @@ func (fake *FakeTaskManager) GetTaskReturnsOnCall(i int, result1 *adk.Task, resu
 	}{result1, result2}
 }
 
+func (fake *FakeTaskManager) ListTasks(arg1 adk.TaskListParams) (*adk.TaskList, error) {
+	fake.listTasksMutex.Lock()
+	ret, specificReturn := fake.listTasksReturnsOnCall[len(fake.listTasksArgsForCall)]
+	fake.listTasksArgsForCall = append(fake.listTasksArgsForCall, struct {
+		arg1 adk.TaskListParams
+	}{arg1})
+	stub := fake.ListTasksStub
+	fakeReturns := fake.listTasksReturns
+	fake.recordInvocation("ListTasks", []interface{}{arg1})
+	fake.listTasksMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeTaskManager) ListTasksCallCount() int {
+	fake.listTasksMutex.RLock()
+	defer fake.listTasksMutex.RUnlock()
+	return len(fake.listTasksArgsForCall)
+}
+
+func (fake *FakeTaskManager) ListTasksCalls(stub func(adk.TaskListParams) (*adk.TaskList, error)) {
+	fake.listTasksMutex.Lock()
+	defer fake.listTasksMutex.Unlock()
+	fake.ListTasksStub = stub
+}
+
+func (fake *FakeTaskManager) ListTasksArgsForCall(i int) adk.TaskListParams {
+	fake.listTasksMutex.RLock()
+	defer fake.listTasksMutex.RUnlock()
+	argsForCall := fake.listTasksArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskManager) ListTasksReturns(result1 *adk.TaskList, result2 error) {
+	fake.listTasksMutex.Lock()
+	defer fake.listTasksMutex.Unlock()
+	fake.ListTasksStub = nil
+	fake.listTasksReturns = struct {
+		result1 *adk.TaskList
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) ListTasksReturnsOnCall(i int, result1 *adk.TaskList, result2 error) {
+	fake.listTasksMutex.Lock()
+	defer fake.listTasksMutex.Unlock()
+	fake.ListTasksStub = nil
+	if fake.listTasksReturnsOnCall == nil {
+		fake.listTasksReturnsOnCall = make(map[int]struct {
+			result1 *adk.TaskList
+			result2 error
+		})
+	}
+	fake.listTasksReturnsOnCall[i] = struct {
+		result1 *adk.TaskList
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeTaskManager) PollTaskStatus(arg1 string, arg2 time.Duration, arg3 time.Duration) (*adk.Task, error) {
 	fake.pollTaskStatusMutex.Lock()
 	ret, specificReturn := fake.pollTaskStatusReturnsOnCall[len(fake.pollTaskStatusArgsForCall)]
@@ -553,6 +630,8 @@ func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	defer fake.getConversationHistoryMutex.RUnlock()
 	fake.getTaskMutex.RLock()
 	defer fake.getTaskMutex.RUnlock()
+	fake.listTasksMutex.RLock()
+	defer fake.listTasksMutex.RUnlock()
 	fake.pollTaskStatusMutex.RLock()
 	defer fake.pollTaskStatusMutex.RUnlock()
 	fake.updateConversationHistoryMutex.RLock()
