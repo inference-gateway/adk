@@ -5,8 +5,8 @@ import (
 
 	adk "github.com/inference-gateway/a2a/adk"
 	sdk "github.com/inference-gateway/sdk"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 	zap "go.uber.org/zap"
 )
 
@@ -665,6 +665,200 @@ func TestOptimizedMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 		assert.Equal(t, sdk.User, sdkMsg.Role)
 		assert.Contains(t, sdkMsg.Content, "Performance test message")
 	}
+}
+
+func TestOptimizedMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
+	logger := zap.NewNop()
+	converter := NewOptimizedMessageConverter(logger)
+
+	tests := []struct {
+		name              string
+		inputMessage      adk.Message
+		expectedToolCalls *[]sdk.ChatCompletionMessageToolCall
+		expectedContent   string
+	}{
+		{
+			name: "assistant message with tool_calls in data part",
+			inputMessage: adk.Message{
+				MessageID: "test-assistant-msg",
+				Role:      "assistant",
+				Kind:      "message",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "data",
+						"data": map[string]interface{}{
+							"tool_calls": []sdk.ChatCompletionMessageToolCall{
+								{
+									Id:   "call_123",
+									Type: sdk.ChatCompletionToolType("function"),
+									Function: sdk.ChatCompletionMessageToolCallFunction{
+										Name:      "test_tool",
+										Arguments: `{"param":"value"}`,
+									},
+								},
+							},
+							"content": "I'll help you with that.",
+						},
+					},
+				},
+			},
+			expectedToolCalls: &[]sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "call_123",
+					Type: sdk.ChatCompletionToolType("function"),
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "test_tool",
+						Arguments: `{"param":"value"}`,
+					},
+				},
+			},
+			expectedContent: "I'll help you with that.",
+		},
+		{
+			name: "assistant message with only content, no tool_calls",
+			inputMessage: adk.Message{
+				MessageID: "test-assistant-msg-2",
+				Role:      "assistant",
+				Kind:      "message",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": "Hello, how can I help you?",
+					},
+				},
+			},
+			expectedToolCalls: nil,
+			expectedContent:   "Hello, how can I help you?",
+		},
+		{
+			name: "user message with text (should not extract tool_calls)",
+			inputMessage: adk.Message{
+				MessageID: "test-user-msg",
+				Role:      "user",
+				Kind:      "message",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "data",
+						"data": map[string]interface{}{
+							"tool_calls": []sdk.ChatCompletionMessageToolCall{
+								{
+									Id:   "call_456",
+									Type: sdk.ChatCompletionToolType("function"),
+								},
+							},
+							"result": "User content",
+						},
+					},
+				},
+			},
+			expectedToolCalls: nil,
+			expectedContent:   "User content",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := converter.ConvertToSDK([]adk.Message{tt.inputMessage})
+			require.NoError(t, err)
+			require.Len(t, result, 1)
+
+			sdkMsg := result[0]
+			assert.Equal(t, tt.expectedContent, sdkMsg.Content)
+
+			if tt.expectedToolCalls == nil {
+				assert.Nil(t, sdkMsg.ToolCalls)
+			} else {
+				require.NotNil(t, sdkMsg.ToolCalls)
+				assert.Equal(t, *tt.expectedToolCalls, *sdkMsg.ToolCalls)
+			}
+		})
+	}
+}
+
+func TestOptimizedMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
+	logger := zap.NewNop()
+	converter := NewOptimizedMessageConverter(logger)
+
+	messages := []adk.Message{
+		{
+			MessageID: "user-msg",
+			Role:      "user",
+			Kind:      "message",
+			Parts: []adk.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "What's on my calendar today?",
+				},
+			},
+		},
+		{
+			MessageID: "assistant-msg",
+			Role:      "assistant",
+			Kind:      "message",
+			Parts: []adk.Part{
+				map[string]interface{}{
+					"kind": "data",
+					"data": map[string]interface{}{
+						"tool_calls": []sdk.ChatCompletionMessageToolCall{
+							{
+								Id:   "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
+								Type: sdk.ChatCompletionToolType("function"),
+								Function: sdk.ChatCompletionMessageToolCallFunction{
+									Name:      "list_calendar_events",
+									Arguments: `{"start_date":"2025-06-16","end_date":"2025-06-16"}`,
+								},
+							},
+						},
+						"content": "",
+					},
+				},
+			},
+		},
+		{
+			MessageID: "tool-result-msg",
+			Role:      "tool",
+			Kind:      "message",
+			Parts: []adk.Part{
+				map[string]interface{}{
+					"kind": "data",
+					"data": map[string]interface{}{
+						"tool_call_id": "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
+						"tool_name":    "list_calendar_events",
+						"result":       `{"message":"Found 0 events between 2025-06-16 00:00 and 2025-06-16 23:59","success":true}`,
+					},
+				},
+			},
+		},
+	}
+
+	result, err := converter.ConvertToSDK(messages)
+	require.NoError(t, err)
+	require.Len(t, result, 3)
+
+	userMsg := result[0]
+	assert.Equal(t, sdk.User, userMsg.Role)
+	assert.Equal(t, "What's on my calendar today?", userMsg.Content)
+	assert.Nil(t, userMsg.ToolCalls)
+	assert.Nil(t, userMsg.ToolCallId)
+
+	assistantMsg := result[1]
+	assert.Equal(t, sdk.Assistant, assistantMsg.Role)
+	assert.Equal(t, "", assistantMsg.Content)
+	require.NotNil(t, assistantMsg.ToolCalls)
+	require.Len(t, *assistantMsg.ToolCalls, 1)
+
+	toolCall := (*assistantMsg.ToolCalls)[0]
+	assert.Equal(t, "call_0_2e5a532f-06e2-4ced-8434-31e25019e144", toolCall.Id)
+	assert.Equal(t, sdk.ChatCompletionToolType("function"), toolCall.Type)
+	assert.Equal(t, "list_calendar_events", toolCall.Function.Name)
+	assert.Equal(t, `{"start_date":"2025-06-16","end_date":"2025-06-16"}`, toolCall.Function.Arguments)
+
+	toolMsg := result[2]
+	assert.Equal(t, sdk.Tool, toolMsg.Role)
+	assert.Contains(t, toolMsg.Content, "Found 0 events between 2025-06-16 00:00 and 2025-06-16 23:59")
+	assert.Nil(t, toolMsg.ToolCalls)
+	require.NotNil(t, toolMsg.ToolCallId)
+	assert.Equal(t, "call_0_2e5a532f-06e2-4ced-8434-31e25019e144", *toolMsg.ToolCallId)
 }
 
 func stringPtr(s string) *string {
