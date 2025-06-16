@@ -281,7 +281,7 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 }
 
 func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
-	cfg := config.Config{
+	partialCfg := &config.Config{
 		AgentName:        "test-custom-agent",
 		AgentDescription: "A test agent with custom configuration",
 		AgentURL:         "http://test-agent:9999",
@@ -292,7 +292,7 @@ func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
 
 	logger := zap.NewNop()
 
-	serverInstance := server.NewA2AServerBuilder(cfg, logger).Build()
+	serverInstance := server.NewA2AServerBuilder(*partialCfg, logger).Build()
 
 	assert.NotNil(t, serverInstance)
 
@@ -342,20 +342,17 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 }
 
 func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
-	cfg := config.Config{
-		AgentName:          "test-agent",
-		AgentDescription:   "A test agent",
-		AgentURL:           "http://test-agent:8080",
-		AgentVersion:       "1.0.0",
-		Port:               "8080",
-		CapabilitiesConfig: nil,
-		QueueConfig:        nil,
-		ServerConfig:       nil,
+	partialCfg := &config.Config{
+		AgentName:        "test-agent",
+		AgentDescription: "A test agent",
+		AgentURL:         "http://test-agent:8080",
+		AgentVersion:     "1.0.0",
+		Port:             "8080",
 	}
 
 	logger := zap.NewNop()
 
-	serverInstance := server.NewA2AServerBuilder(cfg, logger).Build()
+	serverInstance := server.NewA2AServerBuilder(*partialCfg, logger).Build()
 
 	assert.NotNil(t, serverInstance)
 

@@ -65,8 +65,8 @@ type CapabilitiesConfig struct {
 // TLSConfig holds TLS configuration
 type TLSConfig struct {
 	Enable   bool   `env:"ENABLE,default=false"`
-	CertPath string `env:"CERT_PATH,default=" description:"TLS certificate path"`
-	KeyPath  string `env:"KEY_PATH,default=" description:"TLS key path"`
+	CertPath string `env:"CERT_PATH" description:"TLS certificate path"`
+	KeyPath  string `env:"KEY_PATH" description:"TLS key path"`
 }
 
 // AuthConfig holds authentication configuration
@@ -107,6 +107,30 @@ func LoadWithLookuper(ctx context.Context, baseConfig *Config, lookuper envconfi
 	if baseConfig != nil {
 		cfg = *baseConfig
 	}
+	if cfg.AgentConfig == nil {
+		cfg.AgentConfig = &AgentConfig{}
+	}
+	if cfg.CapabilitiesConfig == nil {
+		cfg.CapabilitiesConfig = &CapabilitiesConfig{}
+	}
+	if cfg.TLSConfig == nil {
+		cfg.TLSConfig = &TLSConfig{}
+	}
+	if cfg.AuthConfig == nil {
+		cfg.AuthConfig = &AuthConfig{}
+	}
+	if cfg.QueueConfig == nil {
+		cfg.QueueConfig = &QueueConfig{}
+	}
+	if cfg.ServerConfig == nil {
+		cfg.ServerConfig = &ServerConfig{}
+	}
+	if cfg.TelemetryConfig == nil {
+		cfg.TelemetryConfig = &TelemetryConfig{}
+	}
+	if cfg.AgentConfig.TLSConfig == nil {
+		cfg.AgentConfig.TLSConfig = &ClientTLSConfig{}
+	}
 
 	err := envconfig.ProcessWith(ctx, &envconfig.Config{
 		Target:   &cfg,
@@ -121,6 +145,128 @@ func LoadWithLookuper(ctx context.Context, baseConfig *Config, lookuper envconfi
 	}
 
 	return &cfg, nil
+}
+
+// NewWithDefaults creates a new config with defaults applied from struct tags.
+// Only uninitialized (nil) pointer fields get default values applied.
+// Explicitly set fields in baseConfig are preserved.
+func NewWithDefaults(ctx context.Context, baseConfig *Config) (*Config, error) {
+	var cfg Config
+
+	if baseConfig != nil {
+		cfg = *baseConfig
+	}
+	defaultCfg := &Config{}
+	if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+		Target:   defaultCfg,
+		Lookuper: &emptyLookuper{},
+	}); err != nil {
+		return nil, err
+	}
+
+	if cfg.AgentName == "" {
+		cfg.AgentName = defaultCfg.AgentName
+	}
+	if cfg.AgentDescription == "" {
+		cfg.AgentDescription = defaultCfg.AgentDescription
+	}
+	if cfg.AgentURL == "" {
+		cfg.AgentURL = defaultCfg.AgentURL
+	}
+	if cfg.AgentVersion == "" {
+		cfg.AgentVersion = defaultCfg.AgentVersion
+	}
+	if cfg.Port == "" {
+		cfg.Port = defaultCfg.Port
+	}
+	if cfg.StreamingStatusUpdateInterval == 0 {
+		cfg.StreamingStatusUpdateInterval = defaultCfg.StreamingStatusUpdateInterval
+	}
+	if cfg.AgentConfig == nil {
+		cfg.AgentConfig = &AgentConfig{}
+		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+			Target:   cfg.AgentConfig,
+			Lookuper: &emptyLookuper{},
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.AgentConfig != nil && cfg.AgentConfig.TLSConfig == nil {
+		cfg.AgentConfig.TLSConfig = &ClientTLSConfig{}
+		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+			Target:   cfg.AgentConfig.TLSConfig,
+			Lookuper: &emptyLookuper{},
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.CapabilitiesConfig == nil {
+		cfg.CapabilitiesConfig = &CapabilitiesConfig{}
+		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+			Target:   cfg.CapabilitiesConfig,
+			Lookuper: &emptyLookuper{},
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.TLSConfig == nil {
+		cfg.TLSConfig = &TLSConfig{}
+		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+			Target:   cfg.TLSConfig,
+			Lookuper: &emptyLookuper{},
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.AuthConfig == nil {
+		cfg.AuthConfig = &AuthConfig{}
+		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+			Target:   cfg.AuthConfig,
+			Lookuper: &emptyLookuper{},
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.QueueConfig == nil {
+		cfg.QueueConfig = &QueueConfig{}
+		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+			Target:   cfg.QueueConfig,
+			Lookuper: &emptyLookuper{},
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.ServerConfig == nil {
+		cfg.ServerConfig = &ServerConfig{}
+		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+			Target:   cfg.ServerConfig,
+			Lookuper: &emptyLookuper{},
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.TelemetryConfig == nil {
+		cfg.TelemetryConfig = &TelemetryConfig{}
+		if err := envconfig.ProcessWith(ctx, &envconfig.Config{
+			Target:   cfg.TelemetryConfig,
+			Lookuper: &emptyLookuper{},
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+// emptyLookuper ensures that only default values from struct tags are used
+type emptyLookuper struct{}
+
+func (e *emptyLookuper) Lookup(key string) (string, bool) {
+	return "", false
 }
 
 // Validate validates the configuration and applies corrections for invalid values

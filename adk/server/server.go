@@ -382,19 +382,10 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 
 // GetAgentCard returns the agent's capabilities and metadata
 func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
-	capabilities := adk.AgentCapabilities{}
-
-	if s.cfg.CapabilitiesConfig != nil {
-		capabilities.Streaming = &s.cfg.CapabilitiesConfig.Streaming
-		capabilities.PushNotifications = &s.cfg.CapabilitiesConfig.PushNotifications
-		capabilities.StateTransitionHistory = &s.cfg.CapabilitiesConfig.StateTransitionHistory
-	} else {
-		defaultStreaming := true
-		defaultPushNotifications := true
-		defaultStateTransitionHistory := false
-		capabilities.Streaming = &defaultStreaming
-		capabilities.PushNotifications = &defaultPushNotifications
-		capabilities.StateTransitionHistory = &defaultStateTransitionHistory
+	capabilities := adk.AgentCapabilities{
+		Streaming:              &s.cfg.CapabilitiesConfig.Streaming,
+		PushNotifications:      &s.cfg.CapabilitiesConfig.PushNotifications,
+		StateTransitionHistory: &s.cfg.CapabilitiesConfig.StateTransitionHistory,
 	}
 
 	return adk.AgentCard{

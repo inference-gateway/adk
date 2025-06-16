@@ -1,7 +1,7 @@
 package server
 
 import (
-	"time"
+	"context"
 
 	config "github.com/inference-gateway/a2a/adk/server/config"
 	otel "github.com/inference-gateway/a2a/adk/server/otel"
@@ -76,8 +76,19 @@ type A2AServerBuilderImpl struct {
 //	  WithAgent(myAgent).
 //	  Build()
 func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder {
+	// Apply defaults to the provided config to ensure all pointer fields are initialized
+	cfgPtr, err := config.NewWithDefaults(context.Background(), &cfg)
+	if err != nil {
+		logger.Error("failed to apply config defaults", zap.Error(err))
+		// Fallback to original config if there's an error
+		return &A2AServerBuilderImpl{
+			cfg:    cfg,
+			logger: logger,
+		}
+	}
+
 	return &A2AServerBuilderImpl{
-		cfg:    cfg,
+		cfg:    *cfgPtr,
 		logger: logger,
 	}
 }
@@ -108,10 +119,6 @@ func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 
 // Build creates and returns the configured A2A server.
 func (b *A2AServerBuilderImpl) Build() A2AServer {
-	if err := b.applyConfigDefaults(); err != nil {
-		b.logger.Error("failed to apply configuration defaults", zap.Error(err))
-	}
-
 	var telemetryInstance otel.OpenTelemetry
 	if b.cfg.TelemetryConfig != nil && b.cfg.TelemetryConfig.Enable {
 		var err error
@@ -184,63 +191,4 @@ func CustomA2AServerWithAgent(
 		WithAgent(agent).
 		WithTaskResultProcessor(taskResultProcessor).
 		Build()
-}
-
-// applyConfigDefaults ensures all nested configuration objects have default values.
-// This method is called internally by Build() to prevent nil pointer exceptions
-// when accessing configuration objects. It applies sensible defaults for any
-// configuration section that is nil, allowing the consumer to only specify
-// the configuration they care about.
-//
-// Default values applied:
-//   - CapabilitiesConfig: Streaming=true, PushNotifications=true, StateTransitionHistory=false
-//   - TLSConfig: Enable=false
-//   - AuthConfig: Enable=false
-//   - QueueConfig: MaxSize=100, CleanupInterval=30s
-//   - ServerConfig: All timeouts=120s
-//   - TelemetryConfig: Enable=false
-func (b *A2AServerBuilderImpl) applyConfigDefaults() error {
-
-	if b.cfg.CapabilitiesConfig == nil {
-		b.cfg.CapabilitiesConfig = &config.CapabilitiesConfig{
-			Streaming:              true,
-			PushNotifications:      true,
-			StateTransitionHistory: false,
-		}
-	}
-
-	if b.cfg.TLSConfig == nil {
-		b.cfg.TLSConfig = &config.TLSConfig{
-			Enable: false,
-		}
-	}
-
-	if b.cfg.AuthConfig == nil {
-		b.cfg.AuthConfig = &config.AuthConfig{
-			Enable: false,
-		}
-	}
-
-	if b.cfg.QueueConfig == nil {
-		b.cfg.QueueConfig = &config.QueueConfig{
-			MaxSize:         100,
-			CleanupInterval: 30 * time.Second,
-		}
-	}
-
-	if b.cfg.ServerConfig == nil {
-		b.cfg.ServerConfig = &config.ServerConfig{
-			ReadTimeout:  120 * time.Second,
-			WriteTimeout: 120 * time.Second,
-			IdleTimeout:  120 * time.Second,
-		}
-	}
-
-	if b.cfg.TelemetryConfig == nil {
-		b.cfg.TelemetryConfig = &config.TelemetryConfig{
-			Enable: false,
-		}
-	}
-
-	return nil
 }
