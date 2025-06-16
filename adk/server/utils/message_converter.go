@@ -59,6 +59,7 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg adk.Message) (sdk.M
 	}
 
 	var content string
+	var toolCallId *string
 
 	for _, part := range msg.Parts {
 		if typedPart, ok := part.(adk.OptimizedMessagePart); ok {
@@ -72,6 +73,14 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg adk.Message) (sdk.M
 					if result, exists := typedPart.Data["result"]; exists {
 						if resultStr, ok := result.(string); ok {
 							content += resultStr
+						}
+					}
+
+					if role == "tool" {
+						if id, exists := typedPart.Data["tool_call_id"]; exists {
+							if idStr, ok := id.(string); ok {
+								toolCallId = &idStr
+							}
 						}
 					}
 				}
@@ -105,6 +114,14 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg adk.Message) (sdk.M
 								content += resultStr
 							}
 						}
+						// Extract tool_call_id for tool messages
+						if role == "tool" {
+							if id, exists := dataMap["tool_call_id"]; exists {
+								if idStr, ok := id.(string); ok {
+									toolCallId = &idStr
+								}
+							}
+						}
 					}
 				}
 			}
@@ -126,8 +143,9 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg adk.Message) (sdk.M
 	}
 
 	return sdk.Message{
-		Role:    sdkRole,
-		Content: content,
+		Role:       sdkRole,
+		Content:    content,
+		ToolCallId: toolCallId,
 	}, nil
 }
 

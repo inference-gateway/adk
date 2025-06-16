@@ -150,7 +150,9 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 						map[string]interface{}{
 							"kind": "data",
 							"data": map[string]interface{}{
-								"result": "Tool execution result",
+								"tool_call_id": "call_test_function",
+								"tool_name":    "test_function",
+								"result":       "Tool execution result",
 							},
 						},
 					},
@@ -158,8 +160,9 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 			},
 			expectedOutput: []sdk.Message{
 				{
-					Role:    sdk.Tool,
-					Content: "Tool execution result",
+					Role:       sdk.Tool,
+					Content:    "Tool execution result",
+					ToolCallId: stringPtr("call_test_function"),
 				},
 			},
 			expectError: false,
