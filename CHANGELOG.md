@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9](https://github.com/inference-gateway/a2a/compare/v0.1.8...v0.1.9) (2025-06-16)
+
+### ♻️ Improvements
+
+* Improve type-safety and overall code structure with fluent interfaces ([#4](https://github.com/inference-gateway/a2a/issues/4)) ([dc53a58](https://github.com/inference-gateway/a2a/commit/dc53a589c00722140aed9fa3f86aa7e8e0cf78ea))
+
 ## [0.2.0-rc.11](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.10...v0.2.0-rc.11) (2025-06-16)
 
 ### ♻️ Improvements
