@@ -87,16 +87,7 @@ func main() {
 		logger.Fatal("failed to process environment config", zap.Error(err))
 	}
 
-	// Step 4: Create AI agent with LLM client
-	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
-	if err != nil {
-		logger.Fatal("failed to create LLM client", zap.Error(err))
-	}
-
-	agent := server.NewOpenAICompatibleAgentWithLLM(logger, llmClient)
-	agent.SetSystemPrompt("You are a helpful AI assistant. Be concise and friendly in your responses.")
-
-	// Step 5: Create toolbox with sample tools
+	// Step 4: Create toolbox with sample tools
 	toolBox := server.NewDefaultToolBox()
 
 	// Add weather tool
@@ -136,7 +127,22 @@ func main() {
 	)
 	toolBox.AddTool(timeTool)
 
-	agent.SetToolBox(toolBox)
+	// Step 5: Create AI agent with LLM client
+	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
+	if err != nil {
+		logger.Fatal("failed to create LLM client", zap.Error(err))
+	}
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithConfig(&cfg.AgentConfig).
+		WithLLMClient(llmClient).
+		WithSystemPrompt("You are a helpful AI assistant. Be concise and friendly in your responses.").
+		WithMaxChatCompletion(10).
+		WithToolBox(toolBox).
+		Build()
+	if err != nil {
+		logger.Fatal("failed to create AI agent", zap.Error(err))
+	}
 
 	// Step 6: Create and start server
 	a2aServer := server.SimpleA2AServerWithAgent(cfg, logger, agent)
