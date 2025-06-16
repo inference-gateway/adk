@@ -125,7 +125,6 @@ func LoadWithLookuper(ctx context.Context, baseConfig *Config, lookuper envconfi
 
 // NewWithDefaults creates a new config with defaults applied from struct tags.
 func NewWithDefaults(ctx context.Context, baseConfig *Config) (*Config, error) {
-	// Use LoadWithLookuper with emptyLookuper to apply only struct tag defaults
 	return LoadWithLookuper(ctx, baseConfig, &emptyLookuper{})
 }
 
