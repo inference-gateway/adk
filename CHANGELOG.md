@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0-rc.10](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.9...v0.2.0-rc.10) (2025-06-16)
+
+### ♻️ Improvements
+
+* **example:** Simplify AI agent creation process and enhance configuration handling ([6ad219f](https://github.com/inference-gateway/a2a/commit/6ad219f1a61cd95508f5bbd0982107cc9e5d91cf))
+* Handle default struct tags config, if the user passes in a config the other non-set configurations will be populated with default values ([0f2198b](https://github.com/inference-gateway/a2a/commit/0f2198b5fed36825f4310410204531145e4a263b))
+
 ## [0.2.0-rc.9](https://github.com/inference-gateway/a2a/compare/v0.2.0-rc.8...v0.2.0-rc.9) (2025-06-16)
 
 ### 🐛 Bug Fixes
