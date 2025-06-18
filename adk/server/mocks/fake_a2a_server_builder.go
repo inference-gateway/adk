@@ -4,6 +4,7 @@ package mocks
 import (
 	"sync"
 
+	"github.com/inference-gateway/a2a/adk"
 	"github.com/inference-gateway/a2a/adk/server"
 	"go.uber.org/zap"
 )
@@ -28,6 +29,17 @@ type FakeA2AServerBuilder struct {
 		result1 server.A2AServerBuilder
 	}
 	withAgentReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
+	WithAgentCardStub        func(adk.AgentCard) server.A2AServerBuilder
+	withAgentCardMutex       sync.RWMutex
+	withAgentCardArgsForCall []struct {
+		arg1 adk.AgentCard
+	}
+	withAgentCardReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withAgentCardReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
 	WithLoggerStub        func(*zap.Logger) server.A2AServerBuilder
@@ -177,6 +189,67 @@ func (fake *FakeA2AServerBuilder) WithAgentReturnsOnCall(i int, result1 server.A
 		})
 	}
 	fake.withAgentReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCard(arg1 adk.AgentCard) server.A2AServerBuilder {
+	fake.withAgentCardMutex.Lock()
+	ret, specificReturn := fake.withAgentCardReturnsOnCall[len(fake.withAgentCardArgsForCall)]
+	fake.withAgentCardArgsForCall = append(fake.withAgentCardArgsForCall, struct {
+		arg1 adk.AgentCard
+	}{arg1})
+	stub := fake.WithAgentCardStub
+	fakeReturns := fake.withAgentCardReturns
+	fake.recordInvocation("WithAgentCard", []interface{}{arg1})
+	fake.withAgentCardMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardCallCount() int {
+	fake.withAgentCardMutex.RLock()
+	defer fake.withAgentCardMutex.RUnlock()
+	return len(fake.withAgentCardArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardCalls(stub func(adk.AgentCard) server.A2AServerBuilder) {
+	fake.withAgentCardMutex.Lock()
+	defer fake.withAgentCardMutex.Unlock()
+	fake.WithAgentCardStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardArgsForCall(i int) adk.AgentCard {
+	fake.withAgentCardMutex.RLock()
+	defer fake.withAgentCardMutex.RUnlock()
+	argsForCall := fake.withAgentCardArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardReturns(result1 server.A2AServerBuilder) {
+	fake.withAgentCardMutex.Lock()
+	defer fake.withAgentCardMutex.Unlock()
+	fake.WithAgentCardStub = nil
+	fake.withAgentCardReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withAgentCardMutex.Lock()
+	defer fake.withAgentCardMutex.Unlock()
+	fake.WithAgentCardStub = nil
+	if fake.withAgentCardReturnsOnCall == nil {
+		fake.withAgentCardReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withAgentCardReturnsOnCall[i] = struct {
 		result1 server.A2AServerBuilder
 	}{result1}
 }
@@ -371,6 +444,8 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.buildMutex.RUnlock()
 	fake.withAgentMutex.RLock()
 	defer fake.withAgentMutex.RUnlock()
+	fake.withAgentCardMutex.RLock()
+	defer fake.withAgentCardMutex.RUnlock()
 	fake.withLoggerMutex.RLock()
 	defer fake.withLoggerMutex.RUnlock()
 	fake.withTaskHandlerMutex.RLock()

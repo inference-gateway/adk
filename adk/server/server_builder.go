@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 
+	adk "github.com/inference-gateway/a2a/adk"
 	config "github.com/inference-gateway/a2a/adk/server/config"
 	otel "github.com/inference-gateway/a2a/adk/server/otel"
 	zap "go.uber.org/zap"
@@ -30,6 +31,10 @@ type A2AServerBuilder interface {
 	// This is useful when you have already configured an agent with specific settings.
 	WithAgent(agent OpenAICompatibleAgent) A2AServerBuilder
 
+	// WithAgentCard sets a custom agent card that overrides the default card generation.
+	// This gives full control over the agent's advertised capabilities and metadata.
+	WithAgentCard(agentCard adk.AgentCard) A2AServerBuilder
+
 	// WithLogger sets a custom logger for the builder and resulting server.
 	// This allows using a logger configured with appropriate level based on the Debug config.
 	WithLogger(logger *zap.Logger) A2AServerBuilder
@@ -50,6 +55,7 @@ type A2AServerBuilderImpl struct {
 	taskHandler         TaskHandler           // Optional custom task handler
 	taskResultProcessor TaskResultProcessor   // Optional custom task result processor
 	agent               OpenAICompatibleAgent // Optional pre-configured agent
+	agentCard           *adk.AgentCard        // Optional custom agent card
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies.
@@ -133,6 +139,12 @@ func (b *A2AServerBuilderImpl) WithAgent(agent OpenAICompatibleAgent) A2AServerB
 	return b
 }
 
+// WithAgentCard sets a custom agent card that overrides the default card generation
+func (b *A2AServerBuilderImpl) WithAgentCard(agentCard adk.AgentCard) A2AServerBuilder {
+	b.agentCard = &agentCard
+	return b
+}
+
 // WithLogger sets a custom logger for the builder
 func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 	b.logger = logger
@@ -169,6 +181,10 @@ func (b *A2AServerBuilderImpl) Build() A2AServer {
 
 	if b.taskResultProcessor != nil {
 		server.SetTaskResultProcessor(b.taskResultProcessor)
+	}
+
+	if b.agentCard != nil {
+		server.SetAgentCard(*b.agentCard)
 	}
 
 	return server

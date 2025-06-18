@@ -60,6 +60,11 @@ type FakeA2AServer struct {
 	setAgentArgsForCall []struct {
 		arg1 server.OpenAICompatibleAgent
 	}
+	SetAgentCardStub        func(adk.AgentCard)
+	setAgentCardMutex       sync.RWMutex
+	setAgentCardArgsForCall []struct {
+		arg1 adk.AgentCard
+	}
 	SetAgentDescriptionStub        func(string)
 	setAgentDescriptionMutex       sync.RWMutex
 	setAgentDescriptionArgsForCall []struct {
@@ -370,6 +375,38 @@ func (fake *FakeA2AServer) SetAgentArgsForCall(i int) server.OpenAICompatibleAge
 	fake.setAgentMutex.RLock()
 	defer fake.setAgentMutex.RUnlock()
 	argsForCall := fake.setAgentArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServer) SetAgentCard(arg1 adk.AgentCard) {
+	fake.setAgentCardMutex.Lock()
+	fake.setAgentCardArgsForCall = append(fake.setAgentCardArgsForCall, struct {
+		arg1 adk.AgentCard
+	}{arg1})
+	stub := fake.SetAgentCardStub
+	fake.recordInvocation("SetAgentCard", []interface{}{arg1})
+	fake.setAgentCardMutex.Unlock()
+	if stub != nil {
+		fake.SetAgentCardStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetAgentCardCallCount() int {
+	fake.setAgentCardMutex.RLock()
+	defer fake.setAgentCardMutex.RUnlock()
+	return len(fake.setAgentCardArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetAgentCardCalls(stub func(adk.AgentCard)) {
+	fake.setAgentCardMutex.Lock()
+	defer fake.setAgentCardMutex.Unlock()
+	fake.SetAgentCardStub = stub
+}
+
+func (fake *FakeA2AServer) SetAgentCardArgsForCall(i int) adk.AgentCard {
+	fake.setAgentCardMutex.RLock()
+	defer fake.setAgentCardMutex.RUnlock()
+	argsForCall := fake.setAgentCardArgsForCall[i]
 	return argsForCall.arg1
 }
 
@@ -700,6 +737,8 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.processTaskMutex.RUnlock()
 	fake.setAgentMutex.RLock()
 	defer fake.setAgentMutex.RUnlock()
+	fake.setAgentCardMutex.RLock()
+	defer fake.setAgentCardMutex.RUnlock()
 	fake.setAgentDescriptionMutex.RLock()
 	defer fake.setAgentDescriptionMutex.RUnlock()
 	fake.setAgentNameMutex.RLock()

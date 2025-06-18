@@ -60,6 +60,9 @@ type A2AServer interface {
 
 	// SetAgentVersion sets the agent's version dynamically
 	SetAgentVersion(version string)
+
+	// SetAgentCard sets a custom agent card that overrides the default card generation
+	SetAgentCard(agentCard adk.AgentCard)
 }
 
 // TaskResultProcessor defines how to process tool call results for task completion
@@ -104,6 +107,9 @@ type A2AServerImpl struct {
 	// Optional processors
 	taskResultProcessor TaskResultProcessor
 	agent               OpenAICompatibleAgent
+
+	// Custom agent card
+	customAgentCard *adk.AgentCard
 }
 
 var _ A2AServer = (*A2AServerImpl)(nil)
@@ -240,6 +246,11 @@ func (s *A2AServerImpl) SetAgentVersion(version string) {
 	s.cfg.AgentVersion = version
 }
 
+// SetAgentCard sets a custom agent card that overrides the default card generation
+func (s *A2AServerImpl) SetAgentCard(agentCard adk.AgentCard) {
+	s.customAgentCard = &agentCard
+}
+
 // SetupRouter configures the HTTP router with A2A endpoints
 func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
@@ -372,6 +383,10 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 
 // GetAgentCard returns the agent's capabilities and metadata
 func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
+	if s.customAgentCard != nil {
+		return *s.customAgentCard
+	}
+
 	capabilities := adk.AgentCapabilities{
 		Streaming:              &s.cfg.CapabilitiesConfig.Streaming,
 		PushNotifications:      &s.cfg.CapabilitiesConfig.PushNotifications,
