@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0](https://github.com/inference-gateway/a2a/compare/v0.2.0...v0.3.0) (2025-06-18)
+
+### ✨ Features
+
+* Add SetAgentCard and WithAgentCard methods for custom agent card management ([dde3560](https://github.com/inference-gateway/a2a/commit/dde356014bcef1f20761b616944ae27924f932ef))
+
 ## [0.2.0](https://github.com/inference-gateway/a2a/compare/v0.1.9...v0.2.0) (2025-06-16)
 
 ### ✨ Features
