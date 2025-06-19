@@ -7,15 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/inference-gateway/a2a/adk"
-	"github.com/inference-gateway/a2a/adk/server"
-	"github.com/inference-gateway/a2a/adk/server/config"
-	"github.com/inference-gateway/a2a/adk/server/mocks"
+	gin "github.com/gin-gonic/gin"
+	adk "github.com/inference-gateway/a2a/adk"
+	server "github.com/inference-gateway/a2a/adk/server"
+	config "github.com/inference-gateway/a2a/adk/server/config"
+	mocks "github.com/inference-gateway/a2a/adk/server/mocks"
 	sdk "github.com/inference-gateway/sdk"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 )
 
 func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
@@ -200,7 +200,7 @@ func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 20)
 
-	messageHandler := server.NewDefaultMessageHandler(logger, taskManager)
+	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, nil)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{

@@ -8,6 +8,7 @@ import (
 
 	uuid "github.com/google/uuid"
 	adk "github.com/inference-gateway/a2a/adk"
+	config "github.com/inference-gateway/a2a/adk/server/config"
 	utils "github.com/inference-gateway/a2a/adk/server/utils"
 	sdk "github.com/inference-gateway/sdk"
 	zap "go.uber.org/zap"
@@ -38,23 +39,26 @@ type DefaultMessageHandler struct {
 	logger      *zap.Logger
 	taskManager TaskManager
 	agent       OpenAICompatibleAgent
+	config      *config.Config
 }
 
 // NewDefaultMessageHandler creates a new default message handler
-func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager) *DefaultMessageHandler {
+func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, cfg *config.Config) *DefaultMessageHandler {
 	return &DefaultMessageHandler{
 		logger:      logger,
 		taskManager: taskManager,
 		agent:       nil,
+		config:      cfg,
 	}
 }
 
 // NewDefaultMessageHandlerWithAgent creates a new default message handler with an agent for streaming
-func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManager, agent OpenAICompatibleAgent) *DefaultMessageHandler {
+func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManager, agent OpenAICompatibleAgent, cfg *config.Config) *DefaultMessageHandler {
 	return &DefaultMessageHandler{
 		logger:      logger,
 		taskManager: taskManager,
 		agent:       agent,
+		config:      cfg,
 	}
 }
 
@@ -179,15 +183,37 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 			zap.Int("max_iterations", maxIterations),
 			zap.String("task_id", task.ID))
 
+		timestamp := mh.getCurrentTimestamp()
+		statusUpdate := adk.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    task.ID,
+			ContextID: task.ContextID,
+			Status: adk.TaskStatus{
+				State: adk.TaskStateWorking,
+				Message: &adk.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("status-%s-%d", task.ID, iteration),
+					Role:      "agent",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": fmt.Sprintf("Starting iteration %d of %d", iteration, maxIterations),
+						},
+					},
+					TaskID:    &task.ID,
+					ContextID: &task.ContextID,
+				},
+				Timestamp: &timestamp,
+			},
+			Final: false,
+		}
+
 		select {
 		case responseChan <- StreamResponse{
-			Kind:    "iteration_started",
+			Kind:    "status-update",
 			TaskID:  task.ID,
 			ChunkID: chunkID,
-			Data: map[string]interface{}{
-				"iteration":      iteration,
-				"max_iterations": maxIterations,
-			},
+			Data:    statusUpdate,
 		}:
 			chunkID++
 		case <-ctx.Done():
@@ -475,6 +501,24 @@ func (mh *DefaultMessageHandler) getMaxIterationsFromAgent(agent OpenAICompatibl
 	}
 
 	return 10
+}
+
+// getCurrentTimestamp returns the current timestamp in the configured timezone
+func (h *DefaultMessageHandler) getCurrentTimestamp() string {
+	if h.config == nil {
+		// Fallback to UTC if config is not available
+		return time.Now().UTC().Format(time.RFC3339)
+	}
+
+	currentTime, err := h.config.GetCurrentTime()
+	if err != nil {
+		h.logger.Warn("failed to get current time with configured timezone, falling back to UTC",
+			zap.String("timezone", h.config.Timezone),
+			zap.Error(err))
+		return time.Now().UTC().Format(time.RFC3339)
+	}
+
+	return currentTime.Format(time.RFC3339)
 }
 
 // processStreamIteration processes a single streaming iteration and returns content, tool calls, and completion status

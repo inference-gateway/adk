@@ -78,7 +78,7 @@ func TestDefaultMessageHandler_HandleMessageSend(t *testing.T) {
 			mockTaskManager := &mocks.FakeTaskManager{}
 			tt.setupMocks(mockTaskManager)
 
-			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager)
+			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, nil)
 			ctx := context.Background()
 
 			task, err := messageHandler.HandleMessageSend(ctx, tt.params)
@@ -110,7 +110,7 @@ func TestDefaultMessageHandler_HandleMessageStream(t *testing.T) {
 	mockTaskManager.CreateTaskReturns(expectedTask)
 	mockTaskManager.UpdateTaskReturns(nil)
 
-	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager)
+	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, nil)
 
 	params := adk.MessageSendParams{
 		Message: adk.Message{
@@ -228,7 +228,7 @@ func TestDefaultMessageHandler_ValidateMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
 			mockTaskManager := &mocks.FakeTaskManager{}
-			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager)
+			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, nil)
 
 			params := adk.MessageSendParams{Message: tt.message}
 			ctx := context.Background()
@@ -311,7 +311,7 @@ func TestMessageHandler_HandleMessageStream_WithLLM(t *testing.T) {
 
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
-	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent)
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent, nil)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{
@@ -379,7 +379,7 @@ func TestMessageHandler_HandleMessageStream_WithoutAgent(t *testing.T) {
 
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
-	messageHandler := server.NewDefaultMessageHandler(logger, taskManager)
+	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, nil)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{
@@ -541,7 +541,7 @@ func TestMessageHandler_HandleMessageStream_WithToolCalls(t *testing.T) {
 
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
-	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent)
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent, nil)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{

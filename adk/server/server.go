@@ -125,7 +125,7 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 
 	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
 	server.taskManager = NewDefaultTaskManager(logger, maxConversationHistory)
-	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
+	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
@@ -194,7 +194,7 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 	}
 
 	server.taskManager = NewDefaultTaskManager(logger, cfg.AgentConfig.MaxConversationHistory)
-	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager)
+	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 

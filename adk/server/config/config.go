@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/sethvargo/go-envconfig"
@@ -15,6 +16,7 @@ type Config struct {
 	AgentVersion                  string             `env:"AGENT_VERSION,default=1.0.0"`
 	Debug                         bool               `env:"DEBUG,default=false"`
 	Port                          string             `env:"PORT,default=8080"`
+	Timezone                      string             `env:"TIMEZONE,default=UTC" description:"Timezone for timestamps (e.g., UTC, America/New_York, Europe/London)"`
 	StreamingStatusUpdateInterval time.Duration      `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
 	AgentConfig                   AgentConfig        `env:",prefix=AGENT_CLIENT_"`
 	CapabilitiesConfig            CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
@@ -140,5 +142,24 @@ func (c *Config) Validate() error {
 	if c.AgentConfig.MaxChatCompletionIterations < 1 {
 		c.AgentConfig.MaxChatCompletionIterations = 1
 	}
+
+	if _, err := time.LoadLocation(c.Timezone); err != nil {
+		return fmt.Errorf("invalid timezone '%s': %w", c.Timezone, err)
+	}
+
 	return nil
+}
+
+// GetTimezone returns the timezone location for timestamps
+func (c *Config) GetTimezone() (*time.Location, error) {
+	return time.LoadLocation(c.Timezone)
+}
+
+// GetCurrentTime returns the current time in the configured timezone
+func (c *Config) GetCurrentTime() (time.Time, error) {
+	loc, err := c.GetTimezone()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Now().In(loc), nil
 }
