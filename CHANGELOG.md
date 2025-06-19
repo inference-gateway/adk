@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.6](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.5...v0.4.0-rc.6) (2025-06-19)
+
+### 🐛 Bug Fixes
+
+* Update processIterativeStreaming to include tools in CreateStreamingChatCompletion ([102c252](https://github.com/inference-gateway/a2a/commit/102c252d12e6d7daa2c4c37dfef14e7ee4abed15))
+
 ## [0.4.0-rc.5](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.4...v0.4.0-rc.5) (2025-06-19)
 
 ### ♻️ Improvements
