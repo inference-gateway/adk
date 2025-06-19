@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.4](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.3...v0.4.0-rc.4) (2025-06-19)
+
+### 🐛 Bug Fixes
+
+* Initialize message handler with agent in NewA2AServer and SetAgent methods ([9ffb752](https://github.com/inference-gateway/a2a/commit/9ffb752163185eced68ca5318f0b7732cb70ab3e))
+
 ## [0.4.0-rc.3](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.2...v0.4.0-rc.3) (2025-06-19)
 
 ### 🐛 Bug Fixes
