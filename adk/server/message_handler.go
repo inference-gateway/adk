@@ -14,24 +14,13 @@ import (
 	zap "go.uber.org/zap"
 )
 
-// StreamResponse represents a streaming response chunk
-type StreamResponse struct {
-	Kind    string      `json:"kind"`
-	TaskID  string      `json:"task_id,omitempty"`
-	ChunkID int         `json:"chunk_id,omitempty"`
-	Content string      `json:"content,omitempty"`
-	Partial bool        `json:"partial,omitempty"`
-	Status  string      `json:"status,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
 // MessageHandler defines how to handle different types of A2A messages
 type MessageHandler interface {
 	// HandleMessageSend processes message/send requests
 	HandleMessageSend(ctx context.Context, params adk.MessageSendParams) (*adk.Task, error)
 
 	// HandleMessageStream processes message/stream requests (for streaming responses)
-	HandleMessageStream(ctx context.Context, params adk.MessageSendParams, responseChan chan<- StreamResponse) error
+	HandleMessageStream(ctx context.Context, params adk.MessageSendParams, responseChan chan<- adk.SendStreamingMessageResponse) error
 }
 
 // DefaultMessageHandler implements the MessageHandler interface
@@ -88,7 +77,7 @@ func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params a
 }
 
 // HandleMessageStream processes message/stream requests (for streaming responses)
-func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params adk.MessageSendParams, responseChan chan<- StreamResponse) error {
+func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params adk.MessageSendParams, responseChan chan<- adk.SendStreamingMessageResponse) error {
 	if len(params.Message.Parts) == 0 {
 		return NewEmptyMessagePartsError()
 	}
@@ -109,11 +98,14 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
 
+	// Send initial task status update event
 	select {
-	case responseChan <- StreamResponse{
-		Kind:   "task_started",
-		TaskID: task.ID,
-		Data:   task,
+	case responseChan <- adk.TaskStatusUpdateEvent{
+		Kind:      "status-update",
+		TaskID:    task.ID,
+		ContextID: task.ContextID,
+		Status:    task.Status,
+		Final:     false,
 	}:
 	case <-ctx.Done():
 		return ctx.Err()
@@ -144,7 +136,7 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 }
 
 // handleLLMStreaming processes the message using actual LLM streaming with iterative approach and tool calling
-func (mh *DefaultMessageHandler) handleLLMStreaming(ctx context.Context, task *adk.Task, message *adk.Message, responseChan chan<- StreamResponse) {
+func (mh *DefaultMessageHandler) handleLLMStreaming(ctx context.Context, task *adk.Task, message *adk.Message, responseChan chan<- adk.SendStreamingMessageResponse) {
 	agent := mh.getAgentFromHandler()
 	if agent == nil {
 		mh.logger.Error("no agent available for streaming")
@@ -170,7 +162,7 @@ func (mh *DefaultMessageHandler) handleLLMStreaming(ctx context.Context, task *a
 // processIterativeStreaming handles the iterative streaming process with tool calling support
 func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, task *adk.Task,
 	messages []adk.Message, llmClient LLMClient, converter *utils.OptimizedMessageConverter,
-	tools []sdk.ChatCompletionTool, maxIterations int, responseChan chan<- StreamResponse) {
+	tools []sdk.ChatCompletionTool, maxIterations int, responseChan chan<- adk.SendStreamingMessageResponse) {
 
 	currentMessages := messages
 	iteration := 0
@@ -209,13 +201,7 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 		}
 
 		select {
-		case responseChan <- StreamResponse{
-			Kind:    "status-update",
-			TaskID:  task.ID,
-			ChunkID: chunkID,
-			Data:    statusUpdate,
-		}:
-			chunkID++
+		case responseChan <- statusUpdate:
 		case <-ctx.Done():
 			return
 		}
@@ -249,16 +235,31 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 				zap.Int("iteration", iteration))
 
 			select {
-			case responseChan <- StreamResponse{
-				Kind:    "tool_calls_started",
-				TaskID:  task.ID,
-				ChunkID: chunkID,
-				Data: map[string]interface{}{
-					"tool_calls": toolCalls,
-					"count":      len(toolCalls),
+			case responseChan <- adk.TaskStatusUpdateEvent{
+				Kind:      "status-update",
+				TaskID:    task.ID,
+				ContextID: task.ContextID,
+				Status: adk.TaskStatus{
+					State: adk.TaskStateWorking,
+					Message: &adk.Message{
+						Kind:      "message",
+						MessageID: fmt.Sprintf("tool-calls-%s-%d", task.ID, iteration),
+						Role:      "agent",
+						Parts: []adk.Part{
+							map[string]interface{}{
+								"kind": "data",
+								"data": map[string]interface{}{
+									"tool_calls": toolCalls,
+									"count":      len(toolCalls),
+								},
+							},
+						},
+						TaskID:    &task.ID,
+						ContextID: &task.ContextID,
+					},
 				},
+				Final: false,
 			}:
-				chunkID++
 			case <-ctx.Done():
 				return
 			}
@@ -311,14 +312,15 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 			zap.Int("iterations", iteration))
 
 		select {
-		case responseChan <- StreamResponse{
-			Kind:   "task_completed",
-			TaskID: task.ID,
-			Status: "completed",
-			Data: map[string]interface{}{
-				"iterations": iteration,
-				"message":    finalMessage,
+		case responseChan <- adk.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    task.ID,
+			ContextID: task.ContextID,
+			Status: adk.TaskStatus{
+				State:   adk.TaskStateCompleted,
+				Message: finalMessage,
 			},
+			Final: true,
 		}:
 		case <-ctx.Done():
 		}
@@ -332,7 +334,7 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 }
 
 // handleMockStreaming provides fallback mock streaming for backward compatibility
-func (mh *DefaultMessageHandler) handleMockStreaming(ctx context.Context, task *adk.Task, responseChan chan<- StreamResponse) {
+func (mh *DefaultMessageHandler) handleMockStreaming(ctx context.Context, task *adk.Task, responseChan chan<- adk.SendStreamingMessageResponse) {
 	mh.logger.Debug("using mock streaming - no LLM agent configured",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
@@ -352,12 +354,27 @@ func (mh *DefaultMessageHandler) handleMockStreaming(ctx context.Context, task *
 			return
 		default:
 			select {
-			case responseChan <- StreamResponse{
-				Kind:    "message_chunk",
-				TaskID:  task.ID,
-				ChunkID: i + 1,
-				Content: chunk,
-				Partial: i < len(chunks)-1,
+			case responseChan <- adk.TaskStatusUpdateEvent{
+				Kind:      "status-update",
+				TaskID:    task.ID,
+				ContextID: task.ContextID,
+				Status: adk.TaskStatus{
+					State: adk.TaskStateWorking,
+					Message: &adk.Message{
+						Kind:      "message",
+						MessageID: fmt.Sprintf("mock-progress-%s-%d", task.ID, i+1),
+						Role:      "agent",
+						Parts: []adk.Part{
+							map[string]interface{}{
+								"kind": "text",
+								"text": chunk,
+							},
+						},
+						TaskID:    &task.ID,
+						ContextID: &task.ContextID,
+					},
+				},
+				Final: false,
 			}:
 				mh.logger.Debug("mock streaming chunk sent",
 					zap.String("task_id", task.ID),
@@ -375,10 +392,14 @@ func (mh *DefaultMessageHandler) handleMockStreaming(ctx context.Context, task *
 		return
 	default:
 		select {
-		case responseChan <- StreamResponse{
-			Kind:   "task_completed",
-			TaskID: task.ID,
-			Status: "completed",
+		case responseChan <- adk.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    task.ID,
+			ContextID: task.ContextID,
+			Status: adk.TaskStatus{
+				State: adk.TaskStateCompleted,
+			},
+			Final: true,
 		}:
 		case <-ctx.Done():
 			return
@@ -387,24 +408,29 @@ func (mh *DefaultMessageHandler) handleMockStreaming(ctx context.Context, task *
 }
 
 // sendErrorResponse sends an error response through the stream
-func (mh *DefaultMessageHandler) sendErrorResponse(ctx context.Context, task *adk.Task, errorMsg string, responseChan chan<- StreamResponse) {
+func (mh *DefaultMessageHandler) sendErrorResponse(ctx context.Context, task *adk.Task, errorMsg string, responseChan chan<- adk.SendStreamingMessageResponse) {
 	select {
-	case responseChan <- StreamResponse{
-		Kind:    "message_chunk",
-		TaskID:  task.ID,
-		ChunkID: 1,
-		Content: errorMsg,
-		Partial: false,
-	}:
-	case <-ctx.Done():
-		return
-	}
-
-	select {
-	case responseChan <- StreamResponse{
-		Kind:   "task_completed",
-		TaskID: task.ID,
-		Status: "failed",
+	case responseChan <- adk.TaskStatusUpdateEvent{
+		Kind:      "status-update",
+		TaskID:    task.ID,
+		ContextID: task.ContextID,
+		Status: adk.TaskStatus{
+			State: adk.TaskStateFailed,
+			Message: &adk.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("error-%s", task.ID),
+				Role:      "assistant",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": errorMsg,
+					},
+				},
+				TaskID:    &task.ID,
+				ContextID: &task.ContextID,
+			},
+		},
+		Final: true,
 	}:
 	case <-ctx.Done():
 		return
@@ -529,7 +555,7 @@ func (mh *DefaultMessageHandler) processStreamIteration(
 	streamErrorChan <-chan error,
 	iteration int,
 	chunkID *int,
-	responseChan chan<- StreamResponse,
+	responseChan chan<- adk.SendStreamingMessageResponse,
 ) (string, []sdk.ChatCompletionMessageToolCall, bool, error) {
 
 	var fullContent string
@@ -556,12 +582,27 @@ func (mh *DefaultMessageHandler) processStreamIteration(
 					fullContent += content
 
 					select {
-					case responseChan <- StreamResponse{
-						Kind:    "message_chunk",
-						TaskID:  task.ID,
-						ChunkID: *chunkID,
-						Content: content,
-						Partial: true,
+					case responseChan <- adk.TaskStatusUpdateEvent{
+						Kind:      "status-update",
+						TaskID:    task.ID,
+						ContextID: task.ContextID,
+						Status: adk.TaskStatus{
+							State: adk.TaskStateWorking,
+							Message: &adk.Message{
+								Kind:      "message",
+								MessageID: fmt.Sprintf("content-chunk-%s-%d", task.ID, *chunkID),
+								Role:      "assistant",
+								Parts: []adk.Part{
+									map[string]interface{}{
+										"kind": "text",
+										"text": content,
+									},
+								},
+								TaskID:    &task.ID,
+								ContextID: &task.ContextID,
+							},
+						},
+						Final: false,
 					}:
 						*chunkID++
 					case <-ctx.Done():
@@ -587,12 +628,27 @@ func (mh *DefaultMessageHandler) processStreamIteration(
 
 				if choice.FinishReason != "" {
 					select {
-					case responseChan <- StreamResponse{
-						Kind:    "message_chunk",
-						TaskID:  task.ID,
-						ChunkID: *chunkID,
-						Content: fullContent,
-						Partial: false,
+					case responseChan <- adk.TaskStatusUpdateEvent{
+						Kind:      "status-update",
+						TaskID:    task.ID,
+						ContextID: task.ContextID,
+						Status: adk.TaskStatus{
+							State: adk.TaskStateWorking,
+							Message: &adk.Message{
+								Kind:      "message",
+								MessageID: fmt.Sprintf("final-content-%s-%d", task.ID, *chunkID),
+								Role:      "assistant",
+								Parts: []adk.Part{
+									map[string]interface{}{
+										"kind": "text",
+										"text": fullContent,
+									},
+								},
+								TaskID:    &task.ID,
+								ContextID: &task.ContextID,
+							},
+						},
+						Final: false,
 					}:
 						*chunkID++
 					case <-ctx.Done():
@@ -608,7 +664,7 @@ func (mh *DefaultMessageHandler) processStreamIteration(
 
 // executeToolsForStreaming executes tools and sends streaming updates
 func (mh *DefaultMessageHandler) executeToolsForStreaming(ctx context.Context, task *adk.Task,
-	toolCalls []sdk.ChatCompletionMessageToolCall, chunkID *int, responseChan chan<- StreamResponse) ([]adk.Message, error) {
+	toolCalls []sdk.ChatCompletionMessageToolCall, chunkID *int, responseChan chan<- adk.SendStreamingMessageResponse) ([]adk.Message, error) {
 
 	agent := mh.getAgentFromHandler()
 	if agent == nil {
@@ -633,14 +689,31 @@ func (mh *DefaultMessageHandler) executeToolsForStreaming(ctx context.Context, t
 		}
 
 		select {
-		case responseChan <- StreamResponse{
-			Kind:    "tool_execution_started",
-			TaskID:  task.ID,
-			ChunkID: *chunkID,
-			Data: map[string]interface{}{
-				"tool_name": function.Name,
-				"tool_id":   toolCall.Id,
+		case responseChan <- adk.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    task.ID,
+			ContextID: task.ContextID,
+			Status: adk.TaskStatus{
+				State: adk.TaskStateWorking,
+				Message: &adk.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-start-%s-%d", task.ID, *chunkID),
+					Role:      "agent",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_name": function.Name,
+								"tool_id":   toolCall.Id,
+								"status":    "started",
+							},
+						},
+					},
+					TaskID:    &task.ID,
+					ContextID: &task.ContextID,
+				},
 			},
+			Final: false,
 		}:
 			*chunkID++
 		case <-ctx.Done():
@@ -669,15 +742,32 @@ func (mh *DefaultMessageHandler) executeToolsForStreaming(ctx context.Context, t
 		}
 
 		select {
-		case responseChan <- StreamResponse{
-			Kind:    "tool_execution_completed",
-			TaskID:  task.ID,
-			ChunkID: *chunkID,
-			Data: map[string]interface{}{
-				"tool_name": function.Name,
-				"tool_id":   toolCall.Id,
-				"result":    result,
+		case responseChan <- adk.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    task.ID,
+			ContextID: task.ContextID,
+			Status: adk.TaskStatus{
+				State: adk.TaskStateWorking,
+				Message: &adk.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-completed-%s-%d", task.ID, *chunkID),
+					Role:      "agent",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_name": function.Name,
+								"tool_id":   toolCall.Id,
+								"result":    result,
+								"status":    "completed",
+							},
+						},
+					},
+					TaskID:    &task.ID,
+					ContextID: &task.ContextID,
+				},
 			},
+			Final: false,
 		}:
 			*chunkID++
 		case <-ctx.Done():

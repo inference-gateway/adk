@@ -126,12 +126,12 @@ func TestDefaultMessageHandler_HandleMessageStream(t *testing.T) {
 		},
 	}
 
-	responseChan := make(chan server.StreamResponse, 10)
+	responseChan := make(chan adk.SendStreamingMessageResponse, 10)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	var responses []server.StreamResponse
+	var responses []adk.SendStreamingMessageResponse
 	done := make(chan bool)
 	go func() {
 		defer close(done)
@@ -164,12 +164,13 @@ func TestDefaultMessageHandler_HandleMessageStream(t *testing.T) {
 	assert.GreaterOrEqual(t, len(responses), 1)
 
 	if len(responses) > 0 {
-		firstResponse := responses[0]
-		assert.Equal(t, "task_started", firstResponse.Kind)
-		assert.Equal(t, expectedTask.ID, firstResponse.TaskID)
-
-		if task, ok := firstResponse.Data.(*adk.Task); ok {
-			assert.Equal(t, expectedTask.ID, task.ID)
+		if statusEvent, ok := responses[0].(adk.TaskStatusUpdateEvent); ok {
+			assert.Equal(t, "status-update", statusEvent.Kind)
+			assert.Equal(t, expectedTask.ID, statusEvent.TaskID)
+			assert.Equal(t, expectedTask.ContextID, statusEvent.ContextID)
+			assert.Equal(t, adk.TaskStateWorking, statusEvent.Status.State)
+		} else {
+			t.Errorf("Expected first response to be TaskStatusUpdateEvent, got %T", responses[0])
 		}
 	}
 
@@ -329,7 +330,7 @@ func TestMessageHandler_HandleMessageStream_WithLLM(t *testing.T) {
 		},
 	}
 
-	responseChan := make(chan server.StreamResponse, 10)
+	responseChan := make(chan adk.SendStreamingMessageResponse, 10)
 	defer close(responseChan)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -338,7 +339,7 @@ func TestMessageHandler_HandleMessageStream_WithLLM(t *testing.T) {
 	err := messageHandler.HandleMessageStream(ctx, params, responseChan)
 	require.NoError(t, err)
 
-	var responses []server.StreamResponse
+	var responses []adk.SendStreamingMessageResponse
 	timeout := time.After(500 * time.Millisecond)
 
 responseLoop:
@@ -346,7 +347,7 @@ responseLoop:
 		select {
 		case response := <-responseChan:
 			responses = append(responses, response)
-			if response.Kind == "task_completed" {
+			if statusUpdate, ok := response.(adk.TaskStatusUpdateEvent); ok && statusUpdate.Final {
 				break responseLoop
 			}
 		case <-timeout:
@@ -354,22 +355,32 @@ responseLoop:
 		}
 	}
 
-	assert.GreaterOrEqual(t, len(responses), 3, "Should have at least task_started, message chunks, and task_completed")
+	assert.GreaterOrEqual(t, len(responses), 2, "Should have at least initial status and final completion")
 
-	assert.Equal(t, "task_started", responses[0].Kind)
+	if statusUpdate, ok := responses[0].(adk.TaskStatusUpdateEvent); ok {
+		assert.Equal(t, "status-update", statusUpdate.Kind)
+		assert.False(t, statusUpdate.Final)
+	} else {
+		t.Fatalf("First response should be TaskStatusUpdateEvent, got %T", responses[0])
+	}
 
-	var messageChunks []server.StreamResponse
+	var statusUpdates []adk.TaskStatusUpdateEvent
 	for _, resp := range responses {
-		if resp.Kind == "message_chunk" {
-			messageChunks = append(messageChunks, resp)
+		if statusUpdate, ok := resp.(adk.TaskStatusUpdateEvent); ok {
+			statusUpdates = append(statusUpdates, statusUpdate)
 		}
 	}
 
-	assert.GreaterOrEqual(t, len(messageChunks), 1, "Should have at least one message chunk")
+	assert.GreaterOrEqual(t, len(statusUpdates), 1, "Should have at least one status update")
 
 	lastResponse := responses[len(responses)-1]
-	assert.Equal(t, "task_completed", lastResponse.Kind)
-	assert.Equal(t, "completed", lastResponse.Status)
+	if statusUpdate, ok := lastResponse.(adk.TaskStatusUpdateEvent); ok {
+		assert.Equal(t, "status-update", statusUpdate.Kind)
+		assert.True(t, statusUpdate.Final)
+		assert.Equal(t, adk.TaskStateCompleted, statusUpdate.Status.State)
+	} else {
+		t.Fatalf("Last response should be TaskStatusUpdateEvent, got %T", lastResponse)
+	}
 
 	assert.Equal(t, 1, mockLLMClient.CreateStreamingChatCompletionCallCount())
 }
@@ -397,7 +408,7 @@ func TestMessageHandler_HandleMessageStream_WithoutAgent(t *testing.T) {
 		},
 	}
 
-	responseChan := make(chan server.StreamResponse, 10)
+	responseChan := make(chan adk.SendStreamingMessageResponse, 10)
 	defer close(responseChan)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -406,7 +417,7 @@ func TestMessageHandler_HandleMessageStream_WithoutAgent(t *testing.T) {
 	err := messageHandler.HandleMessageStream(ctx, params, responseChan)
 	require.NoError(t, err)
 
-	var responses []server.StreamResponse
+	var responses []adk.SendStreamingMessageResponse
 	timeout := time.After(500 * time.Millisecond)
 
 responseLoop:
@@ -414,7 +425,7 @@ responseLoop:
 		select {
 		case response := <-responseChan:
 			responses = append(responses, response)
-			if response.Kind == "task_completed" {
+			if statusUpdate, ok := response.(adk.TaskStatusUpdateEvent); ok && statusUpdate.Final {
 				break responseLoop
 			}
 		case <-timeout:
@@ -422,24 +433,47 @@ responseLoop:
 		}
 	}
 
-	assert.GreaterOrEqual(t, len(responses), 5, "Should have task_started + 4 mock chunks + task_completed")
+	assert.GreaterOrEqual(t, len(responses), 5, "Should have initial status + 4 mock chunks + final completion")
 
-	assert.Equal(t, "task_started", responses[0].Kind)
+	if statusUpdate, ok := responses[0].(adk.TaskStatusUpdateEvent); ok {
+		assert.Equal(t, "status-update", statusUpdate.Kind)
+		assert.False(t, statusUpdate.Final)
+	} else {
+		t.Fatalf("First response should be TaskStatusUpdateEvent, got %T", responses[0])
+	}
 
-	var messageChunks []server.StreamResponse
+	var statusUpdates []adk.TaskStatusUpdateEvent
 	for _, resp := range responses {
-		if resp.Kind == "message_chunk" {
-			messageChunks = append(messageChunks, resp)
+		if statusUpdate, ok := resp.(adk.TaskStatusUpdateEvent); ok && !statusUpdate.Final {
+			statusUpdates = append(statusUpdates, statusUpdate)
 		}
 	}
 
-	assert.Equal(t, 4, len(messageChunks), "Should have 4 mock message chunks")
-	assert.Contains(t, messageChunks[0].Content, "Starting to process")
-	assert.Contains(t, messageChunks[3].Content, "Response completed")
+	assert.GreaterOrEqual(t, len(statusUpdates), 4, "Should have at least 4 mock status updates")
+
+	foundMockText := false
+	for _, update := range statusUpdates {
+		if update.Status.Message != nil && len(update.Status.Message.Parts) > 0 {
+			if textPart, ok := update.Status.Message.Parts[0].(map[string]interface{}); ok {
+				if text, exists := textPart["text"]; exists {
+					if textStr, ok := text.(string); ok && textStr == "Starting to process your request..." {
+						foundMockText = true
+						break
+					}
+				}
+			}
+		}
+	}
+	assert.True(t, foundMockText, "Should find mock text in status updates")
 
 	lastResponse := responses[len(responses)-1]
-	assert.Equal(t, "task_completed", lastResponse.Kind)
-	assert.Equal(t, "completed", lastResponse.Status)
+	if statusUpdate, ok := lastResponse.(adk.TaskStatusUpdateEvent); ok {
+		assert.Equal(t, "status-update", statusUpdate.Kind)
+		assert.True(t, statusUpdate.Final)
+		assert.Equal(t, adk.TaskStateCompleted, statusUpdate.Status.State)
+	} else {
+		t.Fatalf("Last response should be TaskStatusUpdateEvent, got %T", lastResponse)
+	}
 }
 
 func TestMessageHandler_HandleMessageStream_WithToolCalls(t *testing.T) {
@@ -559,7 +593,7 @@ func TestMessageHandler_HandleMessageStream_WithToolCalls(t *testing.T) {
 		},
 	}
 
-	responseChan := make(chan server.StreamResponse, 20)
+	responseChan := make(chan adk.SendStreamingMessageResponse, 20)
 	defer close(responseChan)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -568,7 +602,7 @@ func TestMessageHandler_HandleMessageStream_WithToolCalls(t *testing.T) {
 	err = messageHandler.HandleMessageStream(ctx, params, responseChan)
 	require.NoError(t, err)
 
-	var responses []server.StreamResponse
+	var responses []adk.SendStreamingMessageResponse
 	timeout := time.After(1 * time.Second)
 
 responseLoop:
@@ -576,7 +610,8 @@ responseLoop:
 		select {
 		case response := <-responseChan:
 			responses = append(responses, response)
-			if response.Kind == "task_completed" {
+
+			if statusUpdate, ok := response.(adk.TaskStatusUpdateEvent); ok && statusUpdate.Final {
 				break responseLoop
 			}
 		case <-timeout:
@@ -584,35 +619,65 @@ responseLoop:
 		}
 	}
 
-	assert.GreaterOrEqual(t, len(responses), 4, "Should have task_started, tool execution events, message chunks, and task_completed")
+	assert.GreaterOrEqual(t, len(responses), 4, "Should have initial status, tool execution events, content chunks, and final completion")
 
-	assert.Equal(t, "task_started", responses[0].Kind)
+	if statusUpdate, ok := responses[0].(adk.TaskStatusUpdateEvent); ok {
+		assert.Equal(t, "status-update", statusUpdate.Kind)
+		assert.False(t, statusUpdate.Final)
+	} else {
+		t.Fatalf("First response should be TaskStatusUpdateEvent, got %T", responses[0])
+	}
 
 	var toolStarted, toolCompleted bool
 	for _, resp := range responses {
-		if resp.Kind == "tool_execution_started" {
-			toolStarted = true
-		}
-		if resp.Kind == "tool_execution_completed" {
-			toolCompleted = true
+		if statusUpdate, ok := resp.(adk.TaskStatusUpdateEvent); ok {
+			if statusUpdate.Status.Message != nil && len(statusUpdate.Status.Message.Parts) > 0 {
+				if dataPart, ok := statusUpdate.Status.Message.Parts[0].(map[string]interface{}); ok {
+					if data, exists := dataPart["data"]; exists {
+						if dataMap, ok := data.(map[string]interface{}); ok {
+							if status, exists := dataMap["status"]; exists {
+								if status == "started" {
+									toolStarted = true
+								}
+								if status == "completed" {
+									toolCompleted = true
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
-	assert.True(t, toolStarted, "Should have tool_execution_started event")
-	assert.True(t, toolCompleted, "Should have tool_execution_completed event")
+	assert.True(t, toolStarted, "Should have tool execution started event")
+	assert.True(t, toolCompleted, "Should have tool execution completed event")
 
 	lastResponse := responses[len(responses)-1]
-	assert.Equal(t, "task_completed", lastResponse.Kind)
-	assert.Equal(t, "completed", lastResponse.Status)
+	if statusUpdate, ok := lastResponse.(adk.TaskStatusUpdateEvent); ok {
+		assert.Equal(t, "status-update", statusUpdate.Kind)
+		assert.True(t, statusUpdate.Final)
+		assert.Equal(t, adk.TaskStateCompleted, statusUpdate.Status.State)
+	} else {
+		t.Fatalf("Last response should be TaskStatusUpdateEvent, got %T", lastResponse)
+	}
 
 	assert.GreaterOrEqual(t, mockLLMClient.CreateStreamingChatCompletionCallCount(), 1)
 
 	var toolExecutionCompleted bool
 	for _, resp := range responses {
-		if resp.Kind == "tool_execution_completed" {
-			if data, ok := resp.Data.(map[string]interface{}); ok {
-				if toolName, ok := data["tool_name"].(string); ok && toolName == "test_tool" {
-					toolExecutionCompleted = true
-					break
+		if statusUpdate, ok := resp.(adk.TaskStatusUpdateEvent); ok {
+			if statusUpdate.Status.Message != nil && len(statusUpdate.Status.Message.Parts) > 0 {
+				if dataPart, ok := statusUpdate.Status.Message.Parts[0].(map[string]interface{}); ok {
+					if data, exists := dataPart["data"]; exists {
+						if dataMap, ok := data.(map[string]interface{}); ok {
+							if toolName, exists := dataMap["tool_name"]; exists {
+								if toolName == "test_tool" && dataMap["status"] == "completed" {
+									toolExecutionCompleted = true
+									break
+								}
+							}
+						}
+					}
 				}
 			}
 		}

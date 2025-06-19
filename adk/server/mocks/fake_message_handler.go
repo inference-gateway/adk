@@ -24,12 +24,12 @@ type FakeMessageHandler struct {
 		result1 *adk.Task
 		result2 error
 	}
-	HandleMessageStreamStub        func(context.Context, adk.MessageSendParams, chan<- server.StreamResponse) error
+	HandleMessageStreamStub        func(context.Context, adk.MessageSendParams, chan<- adk.SendStreamingMessageResponse) error
 	handleMessageStreamMutex       sync.RWMutex
 	handleMessageStreamArgsForCall []struct {
 		arg1 context.Context
 		arg2 adk.MessageSendParams
-		arg3 chan<- server.StreamResponse
+		arg3 chan<- adk.SendStreamingMessageResponse
 	}
 	handleMessageStreamReturns struct {
 		result1 error
@@ -106,13 +106,13 @@ func (fake *FakeMessageHandler) HandleMessageSendReturnsOnCall(i int, result1 *a
 	}{result1, result2}
 }
 
-func (fake *FakeMessageHandler) HandleMessageStream(arg1 context.Context, arg2 adk.MessageSendParams, arg3 chan<- server.StreamResponse) error {
+func (fake *FakeMessageHandler) HandleMessageStream(arg1 context.Context, arg2 adk.MessageSendParams, arg3 chan<- adk.SendStreamingMessageResponse) error {
 	fake.handleMessageStreamMutex.Lock()
 	ret, specificReturn := fake.handleMessageStreamReturnsOnCall[len(fake.handleMessageStreamArgsForCall)]
 	fake.handleMessageStreamArgsForCall = append(fake.handleMessageStreamArgsForCall, struct {
 		arg1 context.Context
 		arg2 adk.MessageSendParams
-		arg3 chan<- server.StreamResponse
+		arg3 chan<- adk.SendStreamingMessageResponse
 	}{arg1, arg2, arg3})
 	stub := fake.HandleMessageStreamStub
 	fakeReturns := fake.handleMessageStreamReturns
@@ -133,13 +133,13 @@ func (fake *FakeMessageHandler) HandleMessageStreamCallCount() int {
 	return len(fake.handleMessageStreamArgsForCall)
 }
 
-func (fake *FakeMessageHandler) HandleMessageStreamCalls(stub func(context.Context, adk.MessageSendParams, chan<- server.StreamResponse) error) {
+func (fake *FakeMessageHandler) HandleMessageStreamCalls(stub func(context.Context, adk.MessageSendParams, chan<- adk.SendStreamingMessageResponse) error) {
 	fake.handleMessageStreamMutex.Lock()
 	defer fake.handleMessageStreamMutex.Unlock()
 	fake.HandleMessageStreamStub = stub
 }
 
-func (fake *FakeMessageHandler) HandleMessageStreamArgsForCall(i int) (context.Context, adk.MessageSendParams, chan<- server.StreamResponse) {
+func (fake *FakeMessageHandler) HandleMessageStreamArgsForCall(i int) (context.Context, adk.MessageSendParams, chan<- adk.SendStreamingMessageResponse) {
 	fake.handleMessageStreamMutex.RLock()
 	defer fake.handleMessageStreamMutex.RUnlock()
 	argsForCall := fake.handleMessageStreamArgsForCall[i]
