@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.1](https://github.com/inference-gateway/a2a/compare/v0.3.0...v0.4.0-rc.1) (2025-06-19)
+
+### ✨ Features
+
+* Add message handling and streaming capabilities ([2e5a2c6](https://github.com/inference-gateway/a2a/commit/2e5a2c6be32e35cf5a59ceb1c59d19c8733a9f89))
+* Enhance message handler with timezone support and current timestamp retrieval ([62ec9e9](https://github.com/inference-gateway/a2a/commit/62ec9e9b236d44926c323e6629f9c07fdeb3280e))
+
 ## [0.3.0](https://github.com/inference-gateway/a2a/compare/v0.2.0...v0.3.0) (2025-06-18)
 
 ### ✨ Features
