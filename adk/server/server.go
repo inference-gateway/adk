@@ -643,15 +643,135 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req adk.JSONRPCReque
 		return
 	}
 
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Headers", "Cache-Control")
+
 	ctx := c.Request.Context()
-	err = s.messageHandler.HandleMessageStream(ctx, params)
+
+	responseChan := make(chan StreamResponse, 10)
+
+	done := make(chan error, 1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error("panic in streaming response handler", zap.Any("panic", r))
+				done <- fmt.Errorf("panic in streaming response handler: %v", r)
+			}
+		}()
+
+		for {
+			select {
+			case <-ctx.Done():
+				done <- ctx.Err()
+				return
+			case response, ok := <-responseChan:
+				if !ok {
+					done <- nil
+					return
+				}
+
+				jsonRPCResponse := adk.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  response,
+				}
+
+				if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+					s.logger.Error("failed to write streaming response", zap.Error(err))
+					done <- err
+					return
+				}
+			}
+		}
+	}()
+
+	err = s.messageHandler.HandleMessageStream(ctx, params, responseChan)
+
+	close(responseChan)
 	if err != nil {
 		s.logger.Error("failed to handle message stream", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+
+		errorResponse := adk.JSONRPCErrorResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &adk.JSONRPCError{
+				Code:    int(ErrInternalError),
+				Message: err.Error(),
+			},
+		}
+		if writeErr := s.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+			s.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+		}
 		return
 	}
 
-	s.responseSender.SendSuccess(c, req.ID, "streaming started successfully")
+	select {
+	case <-ctx.Done():
+		s.logger.Warn("streaming context cancelled")
+	case streamErr := <-done:
+		if streamErr != nil {
+			s.logger.Error("streaming completed with error", zap.Error(streamErr))
+		} else {
+			s.logger.Info("streaming completed successfully")
+		}
+	}
+
+	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+		s.logger.Error("failed to write stream termination signal", zap.Error(err))
+	} else {
+		c.Writer.Flush()
+		s.logger.Debug("sent stream termination signal [DONE]")
+	}
+}
+
+// writeStreamingResponse writes a JSON-RPC response to the streaming connection in SSE format
+func (s *A2AServerImpl) writeStreamingResponse(c *gin.Context, response *adk.JSONRPCSuccessResponse) error {
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
+		return fmt.Errorf("failed to write data prefix: %w", err)
+	}
+
+	if _, err := c.Writer.Write(responseBytes); err != nil {
+		return fmt.Errorf("failed to write response: %w", err)
+	}
+
+	if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
+		return fmt.Errorf("failed to write SSE terminator: %w", err)
+	}
+
+	c.Writer.Flush()
+	return nil
+}
+
+// writeStreamingErrorResponse writes a JSON-RPC error response to the streaming connection in SSE format
+func (s *A2AServerImpl) writeStreamingErrorResponse(c *gin.Context, response *adk.JSONRPCErrorResponse) error {
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("failed to marshal error response: %w", err)
+	}
+
+	// Write in SSE format: "data: <json>\n\n"
+	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
+		return fmt.Errorf("failed to write data prefix: %w", err)
+	}
+
+	if _, err := c.Writer.Write(responseBytes); err != nil {
+		return fmt.Errorf("failed to write error response: %w", err)
+	}
+
+	if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
+		return fmt.Errorf("failed to write SSE terminator: %w", err)
+	}
+
+	c.Writer.Flush()
+	return nil
 }
 
 // handleTaskGet processes tasks/get requests

@@ -398,3 +398,8 @@ func (a *DefaultOpenAICompatibleAgent) executeTools(ctx context.Context, task *a
 
 	return toolResults, nil
 }
+
+// GetLLMClient returns the LLM client for external use (e.g., streaming)
+func (a *DefaultOpenAICompatibleAgent) GetLLMClient() LLMClient {
+	return a.llmClient
+}

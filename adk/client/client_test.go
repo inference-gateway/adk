@@ -875,7 +875,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 				assert.NoError(t, err)
 
 				eventCount := 0
-				timeout := time.After(1 * time.Second)
+				timeout := time.After(200 * time.Millisecond)
 
 			eventLoop:
 				for {
@@ -1045,7 +1045,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 			name: "context cancelled during request",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					time.Sleep(200 * time.Millisecond)
+					time.Sleep(50 * time.Millisecond)
 
 					response := adk.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
@@ -1061,7 +1061,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 				}))
 			},
 			setupContext: func() (context.Context, context.CancelFunc) {
-				ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+				ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
 				return ctx, cancel
 			},
 			expectError:   true,
@@ -1624,7 +1624,7 @@ func TestClient_GetAgentCard_NetworkErrors(t *testing.T) {
 
 func TestClient_GetAgentCard_ContextCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(2 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 

@@ -920,50 +920,6 @@ func TestConversationHistoryPreservationIssue(t *testing.T) {
 			expectedHistoryMessages: 2,
 			expectContextPreserved:  true,
 		},
-		{
-			name:                   "context lost with zero max history (current bug)",
-			maxConversationHistory: 0,
-			conversationHistory: []adk.Message{
-				{
-					MessageID: "msg-1",
-					Role:      "user",
-					Kind:      "message",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "Can you move my meeting tomorrow from 14:00 to 15:00?",
-						},
-					},
-				},
-				{
-					MessageID: "assistant-1",
-					Role:      "assistant",
-					Kind:      "message",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": "I found a scheduled meeting with John Doe at 2:00 PM to 3:00 PM. Let me know if you'd like to modify it!",
-						},
-					},
-				},
-			},
-			systemPrompt: "You are a helpful Google Calendar assistant.",
-			newUserMessage: adk.Message{
-				MessageID: "msg-2",
-				Role:      "user",
-				Kind:      "message",
-				Parts: []adk.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Just move it to 15:00?",
-					},
-				},
-			},
-			expectedMessageCount:    2,
-			expectedSystemPrompt:    true,
-			expectedHistoryMessages: 0,
-			expectContextPreserved:  false,
-		},
 	}
 
 	for _, tt := range tests {

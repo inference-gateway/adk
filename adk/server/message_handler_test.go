@@ -3,12 +3,15 @@ package server_test
 import (
 	"context"
 	"testing"
+	"time"
 
-	"github.com/inference-gateway/a2a/adk"
-	"github.com/inference-gateway/a2a/adk/server"
-	"github.com/inference-gateway/a2a/adk/server/mocks"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
+	adk "github.com/inference-gateway/a2a/adk"
+	server "github.com/inference-gateway/a2a/adk/server"
+	mocks "github.com/inference-gateway/a2a/adk/server/mocks"
+	sdk "github.com/inference-gateway/sdk"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 )
 
 func TestDefaultMessageHandler_HandleMessageSend(t *testing.T) {
@@ -95,6 +98,18 @@ func TestDefaultMessageHandler_HandleMessageSend(t *testing.T) {
 func TestDefaultMessageHandler_HandleMessageStream(t *testing.T) {
 	logger := zap.NewNop()
 	mockTaskManager := &mocks.FakeTaskManager{}
+
+	expectedTask := &adk.Task{
+		ID:        "test-task-123",
+		Kind:      "task",
+		ContextID: "test-context",
+		Status: adk.TaskStatus{
+			State: adk.TaskStateWorking,
+		},
+	}
+	mockTaskManager.CreateTaskReturns(expectedTask)
+	mockTaskManager.UpdateTaskReturns(nil)
+
 	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager)
 
 	params := adk.MessageSendParams{
@@ -111,11 +126,56 @@ func TestDefaultMessageHandler_HandleMessageStream(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
-	err := messageHandler.HandleMessageStream(ctx, params)
+	responseChan := make(chan server.StreamResponse, 10)
 
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "streaming not implemented")
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	var responses []server.StreamResponse
+	done := make(chan bool)
+	go func() {
+		defer close(done)
+		for {
+			select {
+			case response, ok := <-responseChan:
+				if !ok {
+					return
+				}
+				responses = append(responses, response)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	err := messageHandler.HandleMessageStream(ctx, params, responseChan)
+	assert.NoError(t, err)
+
+	close(responseChan)
+
+	select {
+	case <-done:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("test timed out waiting for response collection")
+	}
+
+	assert.Equal(t, 1, mockTaskManager.CreateTaskCallCount())
+
+	assert.GreaterOrEqual(t, len(responses), 1)
+
+	if len(responses) > 0 {
+		firstResponse := responses[0]
+		assert.Equal(t, "task_started", firstResponse.Kind)
+		assert.Equal(t, expectedTask.ID, firstResponse.TaskID)
+
+		if task, ok := firstResponse.Data.(*adk.Task); ok {
+			assert.Equal(t, expectedTask.ID, task.ID)
+		}
+	}
+
+	assert.Eventually(t, func() bool {
+		return mockTaskManager.UpdateTaskCallCount() > 0
+	}, 200*time.Millisecond, 10*time.Millisecond)
 }
 
 func TestDefaultMessageHandler_ValidateMessage(t *testing.T) {
@@ -197,4 +257,365 @@ func TestDefaultMessageHandler_ValidateMessage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMessageHandler_HandleMessageStream_WithLLM(t *testing.T) {
+	logger := zap.NewNop()
+
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	streamResponseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 3)
+	streamErrorChan := make(chan error, 1)
+
+	go func() {
+		defer close(streamResponseChan)
+		defer close(streamErrorChan)
+
+		streamResponseChan <- &sdk.CreateChatCompletionStreamResponse{
+			Choices: []sdk.ChatCompletionStreamChoice{
+				{
+					Delta: sdk.ChatCompletionStreamResponseDelta{
+						Content: "Hello",
+					},
+					FinishReason: "",
+				},
+			},
+		}
+
+		streamResponseChan <- &sdk.CreateChatCompletionStreamResponse{
+			Choices: []sdk.ChatCompletionStreamChoice{
+				{
+					Delta: sdk.ChatCompletionStreamResponseDelta{
+						Content: " world!",
+					},
+					FinishReason: "",
+				},
+			},
+		}
+
+		streamResponseChan <- &sdk.CreateChatCompletionStreamResponse{
+			Choices: []sdk.ChatCompletionStreamChoice{
+				{
+					Delta: sdk.ChatCompletionStreamResponseDelta{
+						Content: "",
+					},
+					FinishReason: "stop",
+				},
+			},
+		}
+	}()
+
+	mockLLMClient.CreateStreamingChatCompletionReturns(streamResponseChan, streamErrorChan)
+
+	agent := server.NewOpenAICompatibleAgentWithLLM(logger, mockLLMClient)
+
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent)
+
+	contextID := "test-context"
+	params := adk.MessageSendParams{
+		Message: adk.Message{
+			ContextID: &contextID,
+			Kind:      "message",
+			MessageID: "test-message",
+			Role:      "user",
+			Parts: []adk.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "Hello, how are you?",
+				},
+			},
+		},
+	}
+
+	responseChan := make(chan server.StreamResponse, 10)
+	defer close(responseChan)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	err := messageHandler.HandleMessageStream(ctx, params, responseChan)
+	require.NoError(t, err)
+
+	var responses []server.StreamResponse
+	timeout := time.After(500 * time.Millisecond)
+
+responseLoop:
+	for {
+		select {
+		case response := <-responseChan:
+			responses = append(responses, response)
+			if response.Kind == "task_completed" {
+				break responseLoop
+			}
+		case <-timeout:
+			t.Fatal("Timeout waiting for streaming responses")
+		}
+	}
+
+	assert.GreaterOrEqual(t, len(responses), 3, "Should have at least task_started, message chunks, and task_completed")
+
+	assert.Equal(t, "task_started", responses[0].Kind)
+
+	var messageChunks []server.StreamResponse
+	for _, resp := range responses {
+		if resp.Kind == "message_chunk" {
+			messageChunks = append(messageChunks, resp)
+		}
+	}
+
+	assert.GreaterOrEqual(t, len(messageChunks), 1, "Should have at least one message chunk")
+
+	lastResponse := responses[len(responses)-1]
+	assert.Equal(t, "task_completed", lastResponse.Kind)
+	assert.Equal(t, "completed", lastResponse.Status)
+
+	assert.Equal(t, 1, mockLLMClient.CreateStreamingChatCompletionCallCount())
+}
+
+func TestMessageHandler_HandleMessageStream_WithoutAgent(t *testing.T) {
+	logger := zap.NewNop()
+
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	messageHandler := server.NewDefaultMessageHandler(logger, taskManager)
+
+	contextID := "test-context"
+	params := adk.MessageSendParams{
+		Message: adk.Message{
+			ContextID: &contextID,
+			Kind:      "message",
+			MessageID: "test-message",
+			Role:      "user",
+			Parts: []adk.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "Hello, how are you?",
+				},
+			},
+		},
+	}
+
+	responseChan := make(chan server.StreamResponse, 10)
+	defer close(responseChan)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
+	err := messageHandler.HandleMessageStream(ctx, params, responseChan)
+	require.NoError(t, err)
+
+	var responses []server.StreamResponse
+	timeout := time.After(500 * time.Millisecond)
+
+responseLoop:
+	for {
+		select {
+		case response := <-responseChan:
+			responses = append(responses, response)
+			if response.Kind == "task_completed" {
+				break responseLoop
+			}
+		case <-timeout:
+			t.Fatal("Timeout waiting for streaming responses")
+		}
+	}
+
+	assert.GreaterOrEqual(t, len(responses), 5, "Should have task_started + 4 mock chunks + task_completed")
+
+	assert.Equal(t, "task_started", responses[0].Kind)
+
+	var messageChunks []server.StreamResponse
+	for _, resp := range responses {
+		if resp.Kind == "message_chunk" {
+			messageChunks = append(messageChunks, resp)
+		}
+	}
+
+	assert.Equal(t, 4, len(messageChunks), "Should have 4 mock message chunks")
+	assert.Contains(t, messageChunks[0].Content, "Starting to process")
+	assert.Contains(t, messageChunks[3].Content, "Response completed")
+
+	lastResponse := responses[len(responses)-1]
+	assert.Equal(t, "task_completed", lastResponse.Kind)
+	assert.Equal(t, "completed", lastResponse.Status)
+}
+
+func TestMessageHandler_HandleMessageStream_WithToolCalls(t *testing.T) {
+	logger := zap.NewNop()
+
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	streamResponseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 5)
+	streamErrorChan := make(chan error, 1)
+
+	go func() {
+		defer close(streamResponseChan)
+		defer close(streamErrorChan)
+
+		streamResponseChan <- &sdk.CreateChatCompletionStreamResponse{
+			Choices: []sdk.ChatCompletionStreamChoice{
+				{
+					Delta: sdk.ChatCompletionStreamResponseDelta{
+						ToolCalls: []sdk.ChatCompletionMessageToolCallChunk{
+							{
+								Index: 0,
+								ID:    "call_123",
+								Type:  "function",
+								Function: struct {
+									Name      string `json:"name,omitempty"`
+									Arguments string `json:"arguments,omitempty"`
+								}{
+									Name:      "test_tool",
+									Arguments: `{"param": "value"}`,
+								},
+							},
+						},
+					},
+					FinishReason: "",
+				},
+			},
+		}
+
+		streamResponseChan <- &sdk.CreateChatCompletionStreamResponse{
+			Choices: []sdk.ChatCompletionStreamChoice{
+				{
+					Delta: sdk.ChatCompletionStreamResponseDelta{
+						Content: "",
+					},
+					FinishReason: "tool_calls",
+				},
+			},
+		}
+
+		streamResponseChan <- &sdk.CreateChatCompletionStreamResponse{
+			Choices: []sdk.ChatCompletionStreamChoice{
+				{
+					Delta: sdk.ChatCompletionStreamResponseDelta{
+						Content: "Based on the tool result, here's my response.",
+					},
+					FinishReason: "",
+				},
+			},
+		}
+
+		streamResponseChan <- &sdk.CreateChatCompletionStreamResponse{
+			Choices: []sdk.ChatCompletionStreamChoice{
+				{
+					Delta: sdk.ChatCompletionStreamResponseDelta{
+						Content: "",
+					},
+					FinishReason: "stop",
+				},
+			},
+		}
+	}()
+
+	mockLLMClient.CreateStreamingChatCompletionReturns(streamResponseChan, streamErrorChan)
+
+	testTool := server.NewBasicTool(
+		"test_tool",
+		"A test tool",
+		map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"param": map[string]interface{}{
+					"type": "string",
+				},
+			},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			return "Tool executed successfully", nil
+		},
+	)
+
+	toolBox := server.NewDefaultToolBox()
+	toolBox.AddTool(testTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		Build()
+	require.NoError(t, err)
+
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent)
+
+	contextID := "test-context"
+	params := adk.MessageSendParams{
+		Message: adk.Message{
+			ContextID: &contextID,
+			Kind:      "message",
+			MessageID: "test-message",
+			Role:      "user",
+			Parts: []adk.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "Please use the test tool.",
+				},
+			},
+		},
+	}
+
+	responseChan := make(chan server.StreamResponse, 20)
+	defer close(responseChan)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	err = messageHandler.HandleMessageStream(ctx, params, responseChan)
+	require.NoError(t, err)
+
+	var responses []server.StreamResponse
+	timeout := time.After(1 * time.Second)
+
+responseLoop:
+	for {
+		select {
+		case response := <-responseChan:
+			responses = append(responses, response)
+			if response.Kind == "task_completed" {
+				break responseLoop
+			}
+		case <-timeout:
+			t.Fatal("Timeout waiting for streaming responses with tool calls")
+		}
+	}
+
+	assert.GreaterOrEqual(t, len(responses), 4, "Should have task_started, tool execution events, message chunks, and task_completed")
+
+	assert.Equal(t, "task_started", responses[0].Kind)
+
+	var toolStarted, toolCompleted bool
+	for _, resp := range responses {
+		if resp.Kind == "tool_execution_started" {
+			toolStarted = true
+		}
+		if resp.Kind == "tool_execution_completed" {
+			toolCompleted = true
+		}
+	}
+	assert.True(t, toolStarted, "Should have tool_execution_started event")
+	assert.True(t, toolCompleted, "Should have tool_execution_completed event")
+
+	lastResponse := responses[len(responses)-1]
+	assert.Equal(t, "task_completed", lastResponse.Kind)
+	assert.Equal(t, "completed", lastResponse.Status)
+
+	assert.GreaterOrEqual(t, mockLLMClient.CreateStreamingChatCompletionCallCount(), 1)
+
+	var toolExecutionCompleted bool
+	for _, resp := range responses {
+		if resp.Kind == "tool_execution_completed" {
+			if data, ok := resp.Data.(map[string]interface{}); ok {
+				if toolName, ok := data["tool_name"].(string); ok && toolName == "test_tool" {
+					toolExecutionCompleted = true
+					break
+				}
+			}
+		}
+	}
+	assert.True(t, toolExecutionCompleted, "Tool should have been executed")
 }
