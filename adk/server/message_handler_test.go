@@ -7,6 +7,7 @@ import (
 
 	adk "github.com/inference-gateway/a2a/adk"
 	server "github.com/inference-gateway/a2a/adk/server"
+	config "github.com/inference-gateway/a2a/adk/server/config"
 	mocks "github.com/inference-gateway/a2a/adk/server/mocks"
 	sdk "github.com/inference-gateway/sdk"
 	assert "github.com/stretchr/testify/assert"
@@ -78,7 +79,13 @@ func TestDefaultMessageHandler_HandleMessageSend(t *testing.T) {
 			mockTaskManager := &mocks.FakeTaskManager{}
 			tt.setupMocks(mockTaskManager)
 
-			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, nil)
+			cfg := &config.Config{
+				AgentConfig: config.AgentConfig{
+					MaxChatCompletionIterations: 10,
+				},
+			}
+
+			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
 			ctx := context.Background()
 
 			task, err := messageHandler.HandleMessageSend(ctx, tt.params)
@@ -110,7 +117,13 @@ func TestDefaultMessageHandler_HandleMessageStream(t *testing.T) {
 	mockTaskManager.CreateTaskReturns(expectedTask)
 	mockTaskManager.UpdateTaskReturns(nil)
 
-	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, nil)
+	cfg := &config.Config{
+		AgentConfig: config.AgentConfig{
+			MaxChatCompletionIterations: 10,
+		},
+	}
+
+	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
 
 	params := adk.MessageSendParams{
 		Message: adk.Message{
@@ -229,7 +242,15 @@ func TestDefaultMessageHandler_ValidateMessage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
 			mockTaskManager := &mocks.FakeTaskManager{}
-			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, nil)
+
+			cfg := &config.Config{
+				AgentConfig: config.AgentConfig{
+					MaxChatCompletionIterations: 10,
+					SystemPrompt:                "You are a helpful AI assistant.",
+				},
+			}
+
+			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
 
 			params := adk.MessageSendParams{Message: tt.message}
 			ctx := context.Background()
@@ -312,7 +333,13 @@ func TestMessageHandler_HandleMessageStream_WithLLM(t *testing.T) {
 
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
-	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent, nil)
+	cfg := &config.Config{
+		AgentConfig: config.AgentConfig{
+			MaxChatCompletionIterations: 10,
+		},
+	}
+
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent, cfg)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{
@@ -390,7 +417,14 @@ func TestMessageHandler_HandleMessageStream_WithoutAgent(t *testing.T) {
 
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
-	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, nil)
+	cfg := &config.Config{
+		AgentConfig: config.AgentConfig{
+			MaxChatCompletionIterations: 10,
+			SystemPrompt:                "You are a helpful AI assistant.",
+		},
+	}
+
+	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, cfg)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{
@@ -575,7 +609,13 @@ func TestMessageHandler_HandleMessageStream_WithToolCalls(t *testing.T) {
 
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
-	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent, nil)
+	cfg := &config.Config{
+		AgentConfig: config.AgentConfig{
+			MaxChatCompletionIterations: 10,
+		},
+	}
+
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, taskManager, agent, cfg)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{

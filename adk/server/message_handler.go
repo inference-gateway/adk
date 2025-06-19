@@ -25,29 +25,57 @@ type MessageHandler interface {
 
 // DefaultMessageHandler implements the MessageHandler interface
 type DefaultMessageHandler struct {
-	logger      *zap.Logger
-	taskManager TaskManager
-	agent       OpenAICompatibleAgent
-	config      *config.Config
+	logger        *zap.Logger
+	taskManager   TaskManager
+	agent         OpenAICompatibleAgent
+	config        *config.Config
+	llmClient     LLMClient
+	converter     *utils.OptimizedMessageConverter
+	toolBox       ToolBox
+	maxIterations int
 }
 
 // NewDefaultMessageHandler creates a new default message handler
 func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, cfg *config.Config) *DefaultMessageHandler {
+	if cfg == nil {
+		logger.Fatal("config is required but was nil")
+	}
+
 	return &DefaultMessageHandler{
-		logger:      logger,
-		taskManager: taskManager,
-		agent:       nil,
-		config:      cfg,
+		logger:        logger,
+		taskManager:   taskManager,
+		agent:         nil,
+		config:        cfg,
+		llmClient:     nil,
+		converter:     utils.NewOptimizedMessageConverter(logger),
+		toolBox:       nil,
+		maxIterations: cfg.AgentConfig.MaxChatCompletionIterations,
 	}
 }
 
 // NewDefaultMessageHandlerWithAgent creates a new default message handler with an agent for streaming
 func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManager, agent OpenAICompatibleAgent, cfg *config.Config) *DefaultMessageHandler {
+	if cfg == nil {
+		logger.Fatal("config is required but was nil")
+	}
+
+	var llmClient LLMClient
+	var toolBox ToolBox
+
+	if agent != nil {
+		llmClient = agent.GetLLMClient()
+		toolBox = agent.GetToolBox()
+	}
+
 	return &DefaultMessageHandler{
-		logger:      logger,
-		taskManager: taskManager,
-		agent:       agent,
-		config:      cfg,
+		logger:        logger,
+		taskManager:   taskManager,
+		agent:         agent,
+		config:        cfg,
+		llmClient:     llmClient,
+		converter:     utils.NewOptimizedMessageConverter(logger),
+		toolBox:       toolBox,
+		maxIterations: cfg.AgentConfig.MaxChatCompletionIterations,
 	}
 }
 
@@ -98,7 +126,6 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
 
-	// Send initial task status update event
 	select {
 	case responseChan <- adk.TaskStatusUpdateEvent{
 		Kind:      "status-update",
@@ -115,16 +142,24 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 	go func() {
 		defer close(done)
 		defer func() {
-			if err := mh.taskManager.UpdateTask(task.ID, adk.TaskStateCompleted, &params.Message); err != nil {
+			if err := mh.taskManager.UpdateTask(task.ID, adk.TaskStateCompleted, nil); err != nil {
 				mh.logger.Error("failed to update streaming task", zap.Error(err))
 			}
 		}()
 
-		if mh.agent != nil {
-			mh.handleLLMStreaming(ctx, task, &params.Message, responseChan)
-		} else {
+		if mh.llmClient == nil {
+			mh.logger.Error("no LLM client available for streaming")
 			mh.handleMockStreaming(ctx, task, responseChan)
+			return
 		}
+
+		if mh.agent == nil {
+			mh.logger.Error("no agent available for streaming")
+			mh.handleMockStreaming(ctx, task, responseChan)
+			return
+		}
+
+		mh.handleLLMStreaming(ctx, task, &params.Message, responseChan)
 	}()
 
 	select {
@@ -137,26 +172,39 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 
 // handleLLMStreaming processes the message using actual LLM streaming with iterative approach and tool calling
 func (mh *DefaultMessageHandler) handleLLMStreaming(ctx context.Context, task *adk.Task, message *adk.Message, responseChan chan<- adk.SendStreamingMessageResponse) {
-	agent := mh.getAgentFromHandler()
-	if agent == nil {
-		mh.logger.Error("no agent available for streaming")
-		mh.handleMockStreaming(ctx, task, responseChan)
-		return
+	messages := make([]adk.Message, 0)
+
+	var systemPrompt string
+	if mh.agent != nil {
+		systemPrompt = mh.agent.GetSystemPrompt()
+	}
+	if systemPrompt == "" && mh.config != nil {
+		systemPrompt = mh.config.AgentConfig.SystemPrompt
 	}
 
-	messages := mh.prepareMessages(agent, task, message)
-	llmClient := mh.getLLMClientFromAgent()
-	if llmClient == nil {
-		mh.logger.Error("no LLM client available for streaming")
-		mh.handleMockStreaming(ctx, task, responseChan)
-		return
+	if systemPrompt != "" {
+		systemMessage := adk.Message{
+			Kind:      "message",
+			MessageID: "system-prompt",
+			Role:      "system",
+			Parts: []adk.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": systemPrompt,
+				},
+			},
+		}
+		messages = append(messages, systemMessage)
 	}
 
-	converter := mh.getMessageConverter()
-	tools := mh.getToolsFromAgent(agent)
-	maxIterations := mh.getMaxIterationsFromAgent(agent)
+	messages = append(messages, task.History...)
 
-	mh.processIterativeStreaming(ctx, task, messages, llmClient, converter, tools, maxIterations, responseChan)
+	var tools []sdk.ChatCompletionTool
+	if mh.toolBox != nil {
+		tools = mh.toolBox.GetTools()
+	}
+
+	mh.processIterativeStreaming(ctx, task, messages, mh.llmClient, mh.converter, tools, mh.maxIterations, responseChan)
 }
 
 // processIterativeStreaming handles the iterative streaming process with tool calling support
@@ -281,12 +329,17 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 			task.History = append(task.History, *assistantMessage)
 			currentMessages = append(currentMessages, *assistantMessage)
 
+			mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
+
 			toolResults, err := mh.executeToolsForStreaming(ctx, task, toolCalls, &chunkID, responseChan)
 			if err != nil {
 				mh.logger.Error("tool execution failed in streaming", zap.Error(err))
 				mh.sendErrorResponse(ctx, task, fmt.Sprintf("Tool execution failed: %v", err), responseChan)
 				return
 			}
+
+			task.History = append(task.History, toolResults...)
+			mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
 
 			currentMessages = append(currentMessages, toolResults...)
 			continue
@@ -306,6 +359,8 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 
 		task.History = append(task.History, *finalMessage)
 		task.Status.Message = finalMessage
+
+		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
 
 		mh.logger.Info("streaming task completed successfully",
 			zap.String("task_id", task.ID),
@@ -437,102 +492,9 @@ func (mh *DefaultMessageHandler) sendErrorResponse(ctx context.Context, task *ad
 	}
 }
 
-// getLLMClientFromAgent extracts LLM client from agent (helper method)
-func (mh *DefaultMessageHandler) getLLMClientFromAgent() LLMClient {
-	if mh.agent == nil {
-		return nil
-	}
-
-	// Use the getter method to access the LLM client
-	if defaultAgent, ok := mh.agent.(*DefaultOpenAICompatibleAgent); ok {
-		return defaultAgent.GetLLMClient()
-	}
-
-	return nil
-}
-
-// getMessageConverter gets the message converter for A2A to SDK conversion
-func (mh *DefaultMessageHandler) getMessageConverter() *utils.OptimizedMessageConverter {
-	return utils.NewOptimizedMessageConverter(mh.logger)
-}
-
-// getAgentFromHandler extracts agent from message handler
-func (mh *DefaultMessageHandler) getAgentFromHandler() OpenAICompatibleAgent {
-	return mh.agent
-}
-
-// prepareMessages prepares the message chain for LLM processing
-func (mh *DefaultMessageHandler) prepareMessages(agent OpenAICompatibleAgent, task *adk.Task, message *adk.Message) []adk.Message {
-	messages := make([]adk.Message, 0)
-
-	if agent != nil {
-		if defaultAgent, ok := agent.(*DefaultOpenAICompatibleAgent); ok && defaultAgent.config.SystemPrompt != "" {
-			systemMessage := adk.Message{
-				Kind:      "message",
-				MessageID: "system-prompt",
-				Role:      "system",
-				Parts: []adk.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": defaultAgent.config.SystemPrompt,
-					},
-				},
-			}
-			messages = append(messages, systemMessage)
-		}
-	}
-
-	if len(messages) == 0 {
-		systemMessage := adk.Message{
-			Kind:      "message",
-			MessageID: "system-prompt",
-			Role:      "system",
-			Parts: []adk.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "You are a helpful AI assistant. Provide clear and concise responses.",
-				},
-			},
-		}
-		messages = append(messages, systemMessage)
-	}
-
-	messages = append(messages, task.History...)
-	messages = append(messages, *message)
-
-	return messages
-}
-
-// getToolsFromAgent extracts tools from agent
-func (mh *DefaultMessageHandler) getToolsFromAgent(agent OpenAICompatibleAgent) []sdk.ChatCompletionTool {
-	if agent == nil {
-		return nil
-	}
-
-	if defaultAgent, ok := agent.(*DefaultOpenAICompatibleAgent); ok && defaultAgent.toolBox != nil {
-		return defaultAgent.toolBox.GetTools()
-	}
-
-	return nil
-}
-
-// getMaxIterationsFromAgent extracts max iterations from agent config
-func (mh *DefaultMessageHandler) getMaxIterationsFromAgent(agent OpenAICompatibleAgent) int {
-	if agent == nil {
-		return 10
-	}
-
-	if defaultAgent, ok := agent.(*DefaultOpenAICompatibleAgent); ok {
-		return defaultAgent.config.MaxChatCompletionIterations
-	}
-
-	return 10
-}
-
 // getCurrentTimestamp returns the current timestamp in the configured timezone
 func (h *DefaultMessageHandler) getCurrentTimestamp() string {
 	if h.config == nil {
-		// Fallback to UTC if config is not available
 		return time.Now().UTC().Format(time.RFC3339)
 	}
 
@@ -666,14 +628,8 @@ func (mh *DefaultMessageHandler) processStreamIteration(
 func (mh *DefaultMessageHandler) executeToolsForStreaming(ctx context.Context, task *adk.Task,
 	toolCalls []sdk.ChatCompletionMessageToolCall, chunkID *int, responseChan chan<- adk.SendStreamingMessageResponse) ([]adk.Message, error) {
 
-	agent := mh.getAgentFromHandler()
-	if agent == nil {
-		return nil, fmt.Errorf("no agent available for tool execution")
-	}
-
-	defaultAgent, ok := agent.(*DefaultOpenAICompatibleAgent)
-	if !ok || defaultAgent.toolBox == nil {
-		return nil, fmt.Errorf("agent does not support tool execution")
+	if mh.toolBox == nil {
+		return nil, fmt.Errorf("no tool box available for tool execution")
 	}
 
 	toolResults := make([]adk.Message, 0, len(toolCalls))
@@ -730,7 +686,7 @@ func (mh *DefaultMessageHandler) executeToolsForStreaming(ctx context.Context, t
 			}
 		}
 
-		result, err := defaultAgent.toolBox.ExecuteTool(ctx, function.Name, args)
+		result, err := mh.toolBox.ExecuteTool(ctx, function.Name, args)
 		if err != nil {
 			result = fmt.Sprintf("Error executing tool: %v", err)
 			mh.logger.Error("tool execution failed",
@@ -791,7 +747,6 @@ func (mh *DefaultMessageHandler) executeToolsForStreaming(ctx context.Context, t
 		}
 
 		toolResults = append(toolResults, toolResultMessage)
-		task.History = append(task.History, toolResultMessage)
 	}
 
 	return toolResults, nil
