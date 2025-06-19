@@ -264,7 +264,7 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 		var streamResponseChan <-chan *sdk.CreateChatCompletionStreamResponse
 		var streamErrorChan <-chan error
 
-		streamResponseChan, streamErrorChan = llmClient.CreateStreamingChatCompletion(ctx, sdkMessages)
+		streamResponseChan, streamErrorChan = llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
 
 		fullContent, toolCalls, finished, err := mh.processStreamIteration(ctx, task, streamResponseChan, streamErrorChan, iteration, &chunkID, responseChan)
 		if err != nil {
