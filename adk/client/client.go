@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -208,7 +209,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params adk.MessageSendPa
 
 	c.logger.Debug("streaming response started successfully")
 
-	decoder := json.NewDecoder(httpResp.Body)
+	scanner := bufio.NewScanner(httpResp.Body)
 	eventCount := 0
 	for {
 		select {
@@ -216,13 +217,32 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params adk.MessageSendPa
 			c.logger.Debug("streaming context cancelled", zap.Int("events_received", eventCount))
 			return ctx.Err()
 		default:
-			var event adk.JSONRPCSuccessResponse
-			if err := decoder.Decode(&event); err != nil {
-				if err == io.EOF {
-					c.logger.Debug("streaming completed", zap.Int("events_received", eventCount))
-					return nil
+			if !scanner.Scan() {
+				if err := scanner.Err(); err != nil {
+					c.logger.Error("failed to scan response", zap.Error(err), zap.Int("events_received", eventCount))
+					return fmt.Errorf("failed to scan response: %w", err)
 				}
-				c.logger.Error("failed to decode event", zap.Error(err), zap.Int("events_received", eventCount))
+				c.logger.Debug("streaming completed", zap.Int("events_received", eventCount))
+				return nil
+			}
+
+			line := scanner.Text()
+			c.logger.Debug("received line", zap.String("line", line))
+
+			if line == "" || !strings.HasPrefix(line, "data: ") {
+				continue
+			}
+
+			if strings.TrimSpace(line) == "data: [DONE]" {
+				c.logger.Debug("received stream termination signal", zap.Int("events_received", eventCount))
+				return nil
+			}
+
+			jsonData := strings.TrimPrefix(line, "data: ")
+
+			var event adk.JSONRPCSuccessResponse
+			if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
+				c.logger.Error("failed to decode event", zap.Error(err), zap.Int("events_received", eventCount), zap.String("json_data", jsonData))
 				return fmt.Errorf("failed to decode event: %w", err)
 			}
 
