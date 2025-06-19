@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.2](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.1...v0.4.0-rc.2) (2025-06-19)
+
+### 🐛 Bug Fixes
+
+* Update SendTaskStreaming to use Server-Sent Events format for streaming responses ([47b7c28](https://github.com/inference-gateway/a2a/commit/47b7c280bdd6b29ac1a6ce43680151d503bd5bee))
+
 ## [0.4.0-rc.1](https://github.com/inference-gateway/a2a/compare/v0.3.0...v0.4.0-rc.1) (2025-06-19)
 
 ### ✨ Features
