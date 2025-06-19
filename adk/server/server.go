@@ -138,6 +138,7 @@ func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.Ope
 	if agent != nil {
 		server.agent = agent
 		server.taskHandler = NewAgentTaskHandler(logger, agent)
+		server.messageHandler = NewDefaultMessageHandlerWithAgent(logger, server.taskManager, agent, cfg)
 	}
 
 	return server
@@ -213,6 +214,7 @@ func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
 // SetAgent sets the OpenAI-compatible agent for processing tasks
 func (s *A2AServerImpl) SetAgent(agent OpenAICompatibleAgent) {
 	s.agent = agent
+	s.messageHandler = NewDefaultMessageHandlerWithAgent(s.logger, s.taskManager, agent, s.cfg)
 }
 
 // GetAgent returns the configured OpenAI-compatible agent
