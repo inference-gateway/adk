@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.3](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.2...v0.4.0-rc.3) (2025-06-19)
+
+### 🐛 Bug Fixes
+
+* Update message handling to use SendStreamingMessageResponse for streaming responses ([06b43cb](https://github.com/inference-gateway/a2a/commit/06b43cbcf4630cc7dc281ef5d735831327a09b43))
+
 ## [0.4.0-rc.2](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.1...v0.4.0-rc.2) (2025-06-19)
 
 ### 🐛 Bug Fixes
