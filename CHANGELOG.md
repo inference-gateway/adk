@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.7](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.6...v0.4.0-rc.7) (2025-06-20)
+
+### ♻️ Improvements
+
+* Rename handleLLMStreaming to handleIterativeStreaming and streamline tool execution process ([d065031](https://github.com/inference-gateway/a2a/commit/d0650314e0eaca651b698cf5eebc82c7bc4c38a9))
+
 ## [0.4.0-rc.6](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.5...v0.4.0-rc.6) (2025-06-19)
 
 ### 🐛 Bug Fixes
