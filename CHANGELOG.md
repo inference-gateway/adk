@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.9](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.8...v0.4.0-rc.9) (2025-06-20)
+
+### 🐛 Bug Fixes
+
+* Improve tool execution handling and status updates in processStream ([1f8dcc2](https://github.com/inference-gateway/a2a/commit/1f8dcc27796b51afcb0ee27b76ac68339d788d25))
+
 ## [0.4.0-rc.8](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.7...v0.4.0-rc.8) (2025-06-20)
 
 ### 🐛 Bug Fixes
