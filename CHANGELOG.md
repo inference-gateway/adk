@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0](https://github.com/inference-gateway/a2a/compare/v0.3.0...v0.4.0) (2025-06-20)
+
+### ✨ Features
+
+* Add message handling and streaming capabilities ([#7](https://github.com/inference-gateway/a2a/issues/7)) ([88a7253](https://github.com/inference-gateway/a2a/commit/88a7253b0025f91d726f2a941bc232bff8440655)), closes [#8](https://github.com/inference-gateway/a2a/issues/8)
+
 ## [0.4.0-rc.10](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.9...v0.4.0-rc.10) (2025-06-20)
 
 ### 🐛 Bug Fixes
