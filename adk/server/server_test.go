@@ -200,7 +200,14 @@ func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 20)
 
-	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, nil)
+	cfg := &config.Config{
+		AgentConfig: config.AgentConfig{
+			MaxChatCompletionIterations: 10,
+			SystemPrompt:                "You are a helpful AI assistant.",
+		},
+	}
+
+	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, cfg)
 
 	contextID := "test-context"
 	params := adk.MessageSendParams{
