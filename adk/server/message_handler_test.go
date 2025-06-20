@@ -704,6 +704,9 @@ responseLoop:
 	assert.GreaterOrEqual(t, mockLLMClient.CreateStreamingChatCompletionCallCount(), 1)
 
 	var toolExecutionCompleted bool
+	var foundToolResultWithCallID bool
+	expectedToolCallID := "call_123"
+
 	for _, resp := range responses {
 		if statusUpdate, ok := resp.(adk.TaskStatusUpdateEvent); ok {
 			if statusUpdate.Status.Message != nil && len(statusUpdate.Status.Message.Parts) > 0 {
@@ -713,14 +716,39 @@ responseLoop:
 							if toolName, exists := dataMap["tool_name"]; exists {
 								if toolName == "test_tool" && dataMap["status"] == "completed" {
 									toolExecutionCompleted = true
-									break
 								}
 							}
 						}
 					}
 				}
 			}
+
+			if statusUpdate.Status.Message != nil && statusUpdate.Status.Message.Role == "tool" {
+				var hasToolResult, hasToolCallID bool
+				for _, part := range statusUpdate.Status.Message.Parts {
+					if partMap, ok := part.(map[string]interface{}); ok {
+						if kind, exists := partMap["kind"]; exists && kind == "data" {
+							if data, exists := partMap["data"]; exists {
+								if dataMap, ok := data.(map[string]interface{}); ok {
+									if result, exists := dataMap["result"]; exists && result == "Tool executed successfully" {
+										hasToolResult = true
+									}
+									if toolCallID, exists := dataMap["tool_call_id"]; exists {
+										if toolCallID == expectedToolCallID {
+											hasToolCallID = true
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				if hasToolResult && hasToolCallID {
+					foundToolResultWithCallID = true
+				}
+			}
 		}
 	}
 	assert.True(t, toolExecutionCompleted, "Tool should have been executed")
+	assert.True(t, foundToolResultWithCallID, "Should have found tool result message with correct tool_call_id")
 }

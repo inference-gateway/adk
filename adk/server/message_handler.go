@@ -392,12 +392,30 @@ func (mh *DefaultMessageHandler) executeToolCall(
 		Role:      "tool",
 		Parts: []adk.Part{
 			map[string]interface{}{
-				"kind": "text",
-				"text": result,
+				"kind": "data",
+				"data": map[string]interface{}{
+					"tool_call_id": toolCall.Id,
+					"result":       result,
+				},
 			},
 		},
 		TaskID:    &task.ID,
 		ContextID: &task.ContextID,
+	}
+
+	select {
+	case responseChan <- adk.TaskStatusUpdateEvent{
+		Kind:      "status-update",
+		TaskID:    task.ID,
+		ContextID: task.ContextID,
+		Status: adk.TaskStatus{
+			State:     adk.TaskStateWorking,
+			Message:   &toolResultMessage,
+			Timestamp: StringPtr(mh.getCurrentTimestamp()),
+		},
+		Final: false,
+	}:
+	case <-ctx.Done():
 	}
 
 	*messages = append(*messages, toolResultMessage)
