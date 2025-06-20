@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.8](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.7...v0.4.0-rc.8) (2025-06-20)
+
+### 🐛 Bug Fixes
+
+* Enhance tool execution status updates with tool call ID in response ([cbbc987](https://github.com/inference-gateway/a2a/commit/cbbc98739481a88a1c708dfffe9f5fd41f2b8ac9))
+
 ## [0.4.0-rc.7](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.6...v0.4.0-rc.7) (2025-06-20)
 
 ### ♻️ Improvements
