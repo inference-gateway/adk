@@ -16,6 +16,15 @@ import (
 type OpenAICompatibleAgent interface {
 	// ProcessTask processes a task with optional tool calling capabilities
 	ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error)
+
+	// GetLLMClient returns the LLM client for external use (e.g., streaming)
+	GetLLMClient() LLMClient
+
+	// GetToolBox returns the tool box for external use (e.g., streaming)
+	GetToolBox() ToolBox
+
+	// GetSystemPrompt returns the system prompt configured for the agent
+	GetSystemPrompt() string
 }
 
 // DefaultOpenAICompatibleAgent is the default implementation of OpenAICompatibleAgent
@@ -397,4 +406,22 @@ func (a *DefaultOpenAICompatibleAgent) executeTools(ctx context.Context, task *a
 	}
 
 	return toolResults, nil
+}
+
+// GetLLMClient returns the LLM client for external use (e.g., streaming)
+func (a *DefaultOpenAICompatibleAgent) GetLLMClient() LLMClient {
+	return a.llmClient
+}
+
+// GetToolBox returns the tool box for external use (e.g., streaming)
+func (a *DefaultOpenAICompatibleAgent) GetToolBox() ToolBox {
+	return a.toolBox
+}
+
+// GetSystemPrompt returns the system prompt configured for the agent
+func (a *DefaultOpenAICompatibleAgent) GetSystemPrompt() string {
+	if a.config == nil {
+		return "You are a helpful AI assistant." // default fallback
+	}
+	return a.config.SystemPrompt
 }

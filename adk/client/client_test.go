@@ -727,10 +727,9 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					assert.Equal(t, "2.0", req.JSONRPC)
 					assert.Equal(t, "message/stream", req.Method)
 
-					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("Content-Type", "text/event-stream")
 					w.WriteHeader(http.StatusOK)
 
-					// Send multiple streaming events
 					events := []adk.JSONRPCSuccessResponse{
 						{
 							JSONRPC: "2.0",
@@ -748,15 +747,35 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 						},
 					}
 
-					encoder := json.NewEncoder(w)
 					for _, event := range events {
-						if err := encoder.Encode(event); err != nil {
-							t.Errorf("Failed to encode event: %v", err)
+						eventBytes, err := json.Marshal(event)
+						if err != nil {
+							t.Errorf("Failed to marshal event: %v", err)
+							return
+						}
+						if _, err := w.Write([]byte("data: ")); err != nil {
+							t.Errorf("Failed to write data prefix: %v", err)
+							return
+						}
+						if _, err := w.Write(eventBytes); err != nil {
+							t.Errorf("Failed to write event: %v", err)
+							return
+						}
+						if _, err := w.Write([]byte("\n\n")); err != nil {
+							t.Errorf("Failed to write SSE terminator: %v", err)
 							return
 						}
 						if flusher, ok := w.(http.Flusher); ok {
 							flusher.Flush()
 						}
+					}
+
+					if _, err := w.Write([]byte("data: [DONE]\n\n")); err != nil {
+						t.Errorf("Failed to write termination signal: %v", err)
+						return
+					}
+					if flusher, ok := w.(http.Flusher); ok {
+						flusher.Flush()
 					}
 				}))
 			},
@@ -804,9 +823,9 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 		{name: "invalid json in stream",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("Content-Type", "text/event-stream")
 					w.WriteHeader(http.StatusOK)
-					if _, err := w.Write([]byte("invalid json stream")); err != nil {
+					if _, err := w.Write([]byte("data: invalid json stream\n\n")); err != nil {
 						t.Errorf("Failed to write response: %v", err)
 					}
 				}))
@@ -831,8 +850,12 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 			name: "empty stream response",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("Content-Type", "text/event-stream")
 					w.WriteHeader(http.StatusOK)
+
+					if _, err := w.Write([]byte("data: [DONE]\n\n")); err != nil {
+						t.Errorf("Failed to write termination signal: %v", err)
+					}
 				}))
 			},
 			params: adk.MessageSendParams{
@@ -875,7 +898,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 				assert.NoError(t, err)
 
 				eventCount := 0
-				timeout := time.After(1 * time.Second)
+				timeout := time.After(200 * time.Millisecond)
 
 			eventLoop:
 				for {
@@ -1045,7 +1068,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 			name: "context cancelled during request",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					time.Sleep(200 * time.Millisecond)
+					time.Sleep(50 * time.Millisecond)
 
 					response := adk.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
@@ -1061,7 +1084,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 				}))
 			},
 			setupContext: func() (context.Context, context.CancelFunc) {
-				ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+				ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
 				return ctx, cancel
 			},
 			expectError:   true,
@@ -1624,7 +1647,7 @@ func TestClient_GetAgentCard_NetworkErrors(t *testing.T) {
 
 func TestClient_GetAgentCard_ContextCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(2 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 

@@ -2,6 +2,67 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.10](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.9...v0.4.0-rc.10) (2025-06-20)
+
+### 🐛 Bug Fixes
+
+* Ensure tool_calls comes before tool results in the sequence order ([0067f08](https://github.com/inference-gateway/a2a/commit/0067f08113b0d319443e0deddc7beab65fb803bd))
+
+## [0.4.0-rc.9](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.8...v0.4.0-rc.9) (2025-06-20)
+
+### 🐛 Bug Fixes
+
+* Improve tool execution handling and status updates in processStream ([1f8dcc2](https://github.com/inference-gateway/a2a/commit/1f8dcc27796b51afcb0ee27b76ac68339d788d25))
+
+## [0.4.0-rc.8](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.7...v0.4.0-rc.8) (2025-06-20)
+
+### 🐛 Bug Fixes
+
+* Enhance tool execution status updates with tool call ID in response ([cbbc987](https://github.com/inference-gateway/a2a/commit/cbbc98739481a88a1c708dfffe9f5fd41f2b8ac9))
+
+## [0.4.0-rc.7](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.6...v0.4.0-rc.7) (2025-06-20)
+
+### ♻️ Improvements
+
+* Rename handleLLMStreaming to handleIterativeStreaming and streamline tool execution process ([d065031](https://github.com/inference-gateway/a2a/commit/d0650314e0eaca651b698cf5eebc82c7bc4c38a9))
+
+## [0.4.0-rc.6](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.5...v0.4.0-rc.6) (2025-06-19)
+
+### 🐛 Bug Fixes
+
+* Update processIterativeStreaming to include tools in CreateStreamingChatCompletion ([102c252](https://github.com/inference-gateway/a2a/commit/102c252d12e6d7daa2c4c37dfef14e7ee4abed15))
+
+## [0.4.0-rc.5](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.4...v0.4.0-rc.5) (2025-06-19)
+
+### ♻️ Improvements
+
+* Remove unnecessary abstractions and add missing methods to an OpenAICompatibleAgent interface ([a97a073](https://github.com/inference-gateway/a2a/commit/a97a073b85622ac819a3d4e588deada77015b421))
+
+## [0.4.0-rc.4](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.3...v0.4.0-rc.4) (2025-06-19)
+
+### 🐛 Bug Fixes
+
+* Initialize message handler with agent in NewA2AServer and SetAgent methods ([9ffb752](https://github.com/inference-gateway/a2a/commit/9ffb752163185eced68ca5318f0b7732cb70ab3e))
+
+## [0.4.0-rc.3](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.2...v0.4.0-rc.3) (2025-06-19)
+
+### 🐛 Bug Fixes
+
+* Update message handling to use SendStreamingMessageResponse for streaming responses ([06b43cb](https://github.com/inference-gateway/a2a/commit/06b43cbcf4630cc7dc281ef5d735831327a09b43))
+
+## [0.4.0-rc.2](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.1...v0.4.0-rc.2) (2025-06-19)
+
+### 🐛 Bug Fixes
+
+* Update SendTaskStreaming to use Server-Sent Events format for streaming responses ([47b7c28](https://github.com/inference-gateway/a2a/commit/47b7c280bdd6b29ac1a6ce43680151d503bd5bee))
+
+## [0.4.0-rc.1](https://github.com/inference-gateway/a2a/compare/v0.3.0...v0.4.0-rc.1) (2025-06-19)
+
+### ✨ Features
+
+* Add message handling and streaming capabilities ([2e5a2c6](https://github.com/inference-gateway/a2a/commit/2e5a2c6be32e35cf5a59ceb1c59d19c8733a9f89))
+* Enhance message handler with timezone support and current timestamp retrieval ([62ec9e9](https://github.com/inference-gateway/a2a/commit/62ec9e9b236d44926c323e6629f9c07fdeb3280e))
+
 ## [0.3.0](https://github.com/inference-gateway/a2a/compare/v0.2.0...v0.3.0) (2025-06-18)
 
 ### ✨ Features

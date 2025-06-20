@@ -18,7 +18,7 @@ type LLMClient interface {
 	CreateChatCompletion(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error)
 
 	// CreateStreamingChatCompletion sends a streaming chat completion request using SDK messages
-	CreateStreamingChatCompletion(ctx context.Context, messages []sdk.Message) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error)
+	CreateStreamingChatCompletion(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error)
 }
 
 var _ LLMClient = (*OpenAICompatibleLLMClient)(nil)
@@ -149,7 +149,7 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 }
 
 // CreateStreamingChatCompletion implements LLMClient.CreateStreamingChatCompletion using SDK messages
-func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Context, messages []sdk.Message) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
 	responseChan := make(chan *sdk.CreateChatCompletionStreamResponse)
 	errorChan := make(chan error, 1)
 
@@ -163,12 +163,24 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 			options.MaxTokens = &c.config.MaxTokens
 		}
 
-		events, err := c.client.WithOptions(options).GenerateContentStream(
-			ctx,
-			c.provider,
-			c.model,
-			messages,
-		)
+		var events <-chan sdk.SSEvent
+		var err error
+
+		if len(tools) > 0 {
+			events, err = c.client.WithOptions(options).WithTools(&tools).GenerateContentStream(
+				ctx,
+				c.provider,
+				c.model,
+				messages,
+			)
+		} else {
+			events, err = c.client.WithOptions(options).GenerateContentStream(
+				ctx,
+				c.provider,
+				c.model,
+				messages,
+			)
+		}
 		if err != nil {
 			errorChan <- fmt.Errorf("failed to create stream: %w", err)
 			return
