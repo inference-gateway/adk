@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0-rc.10](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.9...v0.4.0-rc.10) (2025-06-20)
+
+### 🐛 Bug Fixes
+
+* Ensure tool_calls comes before tool results in the sequence order ([0067f08](https://github.com/inference-gateway/a2a/commit/0067f08113b0d319443e0deddc7beab65fb803bd))
+
 ## [0.4.0-rc.9](https://github.com/inference-gateway/a2a/compare/v0.4.0-rc.8...v0.4.0-rc.9) (2025-06-20)
 
 ### 🐛 Bug Fixes
