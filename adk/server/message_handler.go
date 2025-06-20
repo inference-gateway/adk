@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -217,12 +216,16 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 		}
 
 		streamResponseChan, streamErrorChan := mh.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
-
-		toolCallsExecuted, assistantMessage := mh.processStream(ctx, task, iteration, streamResponseChan, streamErrorChan, responseChan, &messages)
+		toolCallsExecuted, assistantMessage, toolResultMessages := mh.processStream(ctx, task, iteration, streamResponseChan, streamErrorChan, responseChan, &messages)
 
 		if assistantMessage != nil {
 			messages = append(messages, *assistantMessage)
 			task.History = append(task.History, *assistantMessage)
+		}
+
+		for _, toolResultMsg := range toolResultMessages {
+			messages = append(messages, toolResultMsg)
+			task.History = append(task.History, toolResultMsg)
 		}
 
 		if !toolCallsExecuted {
@@ -275,19 +278,20 @@ func (mh *DefaultMessageHandler) processStream(
 	streamErrorChan <-chan error,
 	responseChan chan<- adk.SendStreamingMessageResponse,
 	messages *[]adk.Message,
-) (toolCallsExecuted bool, assistantMessage *adk.Message) {
+) (toolCallsExecuted bool, assistantMessage *adk.Message, toolResultMessages []adk.Message) {
 	var fullContent string
 	toolCallAccumulator := make(map[int]*sdk.ChatCompletionMessageToolCall)
+	toolResultMessages = make([]adk.Message, 0)
 
 	for {
 		select {
 		case <-ctx.Done():
-			return false, nil
+			return false, nil, nil
 		case streamErr := <-streamErrorChan:
 			if streamErr != nil {
 				mh.logger.Error("streaming failed", zap.Error(streamErr))
 				mh.sendErrorResponse(ctx, task, fmt.Sprintf("Streaming failed: %v", streamErr), responseChan)
-				return false, nil
+				return false, nil, nil
 			}
 		case streamResp, ok := <-streamResponseChan:
 			if !ok {
@@ -323,73 +327,6 @@ func (mh *DefaultMessageHandler) processStream(
 				if toolCallChunk.Function.Arguments != "" {
 					toolCall.Function.Arguments += toolCallChunk.Function.Arguments
 				}
-
-				args := strings.TrimSpace(toolCall.Function.Arguments)
-				funcName := strings.TrimSpace(toolCall.Function.Name)
-
-				if args == "" || funcName == "" || !strings.HasSuffix(args, "}") || toolCall.Id == "" {
-					continue
-				}
-
-				mh.sendToolExecutionEvent(ctx, task, toolCall.Function.Name, "started", responseChan)
-
-				var result string
-				if mh.toolBox != nil {
-					var argsMap map[string]interface{}
-					if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &argsMap); err != nil {
-						mh.logger.Error("failed to parse tool arguments", zap.Error(err), zap.String("function", toolCall.Function.Name))
-					} else {
-						toolResult, err := mh.toolBox.ExecuteTool(ctx, toolCall.Function.Name, argsMap)
-						if err != nil {
-							mh.logger.Error("tool execution failed", zap.Error(err), zap.String("function", toolCall.Function.Name))
-							result = fmt.Sprintf("Error executing tool: %v", err)
-						} else {
-							mh.logger.Info("tool executed successfully", zap.String("function", toolCall.Function.Name))
-							result = toolResult
-						}
-					}
-				}
-
-				if result == "" {
-					continue
-				}
-
-				mh.sendToolExecutionEvent(ctx, task, toolCall.Function.Name, "completed", responseChan)
-				toolResultMessage := adk.Message{
-					Kind:      "message",
-					MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
-					Role:      "tool",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "data",
-							"data": map[string]interface{}{
-								"tool_call_id": toolCall.Id,
-								"result":       result,
-							},
-						},
-					},
-					TaskID:    &task.ID,
-					ContextID: &task.ContextID,
-				}
-
-				select {
-				case responseChan <- adk.TaskStatusUpdateEvent{
-					Kind:      "status-update",
-					TaskID:    task.ID,
-					ContextID: task.ContextID,
-					Status: adk.TaskStatus{
-						State:     adk.TaskStateWorking,
-						Message:   &toolResultMessage,
-						Timestamp: StringPtr(mh.getCurrentTimestamp()),
-					},
-					Final: false,
-				}:
-				case <-ctx.Done():
-				}
-
-				*messages = append(*messages, toolResultMessage)
-				task.History = append(task.History, toolResultMessage)
-				toolCallsExecuted = true
 			}
 
 			if choice.FinishReason == "" {
@@ -412,20 +349,87 @@ func (mh *DefaultMessageHandler) processStream(
 				})
 			}
 
-			if len(toolCallAccumulator) > 0 {
-				toolCalls := make([]sdk.ChatCompletionMessageToolCall, 0, len(toolCallAccumulator))
-				for _, toolCall := range toolCallAccumulator {
-					toolCalls = append(toolCalls, *toolCall)
-				}
-				assistantMessage.Parts = append(assistantMessage.Parts, map[string]interface{}{
-					"kind": "data",
-					"data": map[string]interface{}{
-						"tool_calls": toolCalls,
-					},
-				})
+			if len(toolCallAccumulator) == 0 {
+				return false, assistantMessage, toolResultMessages
 			}
 
-			return toolCallsExecuted, assistantMessage
+			toolCalls := make([]sdk.ChatCompletionMessageToolCall, 0, len(toolCallAccumulator))
+			for _, toolCall := range toolCallAccumulator {
+				toolCalls = append(toolCalls, *toolCall)
+			}
+			assistantMessage.Parts = append(assistantMessage.Parts, map[string]interface{}{
+				"kind": "data",
+				"data": map[string]interface{}{
+					"tool_calls": toolCalls,
+				},
+			})
+
+			for _, toolCall := range toolCalls {
+				if toolCall.Function.Name == "" || toolCall.Id == "" {
+					continue
+				}
+
+				mh.sendToolExecutionEvent(ctx, task, toolCall.Function.Name, "started", responseChan)
+
+				if mh.toolBox == nil {
+					mh.logger.Debug("no toolbox available for tool execution", zap.String("function", toolCall.Function.Name))
+					continue
+				}
+
+				var argsMap map[string]interface{}
+				if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &argsMap); err != nil {
+					mh.logger.Error("failed to parse tool arguments", zap.Error(err), zap.String("function", toolCall.Function.Name))
+					mh.sendToolExecutionEvent(ctx, task, toolCall.Function.Name, "failed", responseChan)
+					continue
+				}
+
+				toolResult, err := mh.toolBox.ExecuteTool(ctx, toolCall.Function.Name, argsMap)
+				if err != nil {
+					mh.logger.Error("tool execution failed", zap.Error(err), zap.String("function", toolCall.Function.Name))
+					mh.sendToolExecutionEvent(ctx, task, toolCall.Function.Name, "failed", responseChan)
+					continue
+				}
+
+				mh.logger.Info("tool executed successfully", zap.String("function", toolCall.Function.Name))
+
+				mh.sendToolExecutionEvent(ctx, task, toolCall.Function.Name, "completed", responseChan)
+
+				toolResultMessage := adk.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
+					Role:      "tool",
+					Parts: []adk.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_call_id": toolCall.Id,
+								"result":       toolResult,
+							},
+						},
+					},
+					TaskID:    &task.ID,
+					ContextID: &task.ContextID,
+				}
+
+				select {
+				case responseChan <- adk.TaskStatusUpdateEvent{
+					Kind:      "status-update",
+					TaskID:    task.ID,
+					ContextID: task.ContextID,
+					Status: adk.TaskStatus{
+						State:     adk.TaskStateWorking,
+						Message:   &toolResultMessage,
+						Timestamp: StringPtr(mh.getCurrentTimestamp()),
+					},
+					Final: false,
+				}:
+				case <-ctx.Done():
+				}
+
+				toolResultMessages = append(toolResultMessages, toolResultMessage)
+			}
+
+			return true, assistantMessage, toolResultMessages
 		}
 	}
 }
