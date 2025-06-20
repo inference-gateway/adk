@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -159,7 +160,7 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 			return
 		}
 
-		mh.handleLLMStreaming(ctx, task, &params.Message, responseChan)
+		mh.handleIterativeStreaming(ctx, task, &params.Message, responseChan)
 	}()
 
 	select {
@@ -170,31 +171,30 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 	}
 }
 
-// handleLLMStreaming processes the message using actual LLM streaming with iterative approach and tool calling
-func (mh *DefaultMessageHandler) handleLLMStreaming(ctx context.Context, task *adk.Task, message *adk.Message, responseChan chan<- adk.SendStreamingMessageResponse) {
+// handleIterativeStreaming handles the iterative streaming process with tool calling support
+func (mh *DefaultMessageHandler) handleIterativeStreaming(
+	ctx context.Context,
+	task *adk.Task,
+	message *adk.Message,
+	responseChan chan<- adk.SendStreamingMessageResponse,
+) {
 	messages := make([]adk.Message, 0)
 
-	var systemPrompt string
-	if mh.agent != nil {
-		systemPrompt = mh.agent.GetSystemPrompt()
-	}
-	if systemPrompt == "" && mh.config != nil {
-		systemPrompt = mh.config.AgentConfig.SystemPrompt
-	}
-
-	if systemPrompt != "" {
-		systemMessage := adk.Message{
-			Kind:      "message",
-			MessageID: "system-prompt",
-			Role:      "system",
-			Parts: []adk.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": systemPrompt,
-				},
+	systemMessage := adk.Message{
+		Kind:      "message",
+		MessageID: "system-prompt",
+		Role:      "system",
+		Parts: []adk.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": mh.agent.GetSystemPrompt(),
 			},
-		}
-		messages = append(messages, systemMessage)
+		},
+	}
+	messages = append(messages, systemMessage)
+
+	if message != nil {
+		messages = append(messages, *message)
 	}
 
 	messages = append(messages, task.History...)
@@ -204,83 +204,37 @@ func (mh *DefaultMessageHandler) handleLLMStreaming(ctx context.Context, task *a
 		tools = mh.toolBox.GetTools()
 	}
 
-	mh.processIterativeStreaming(ctx, task, messages, mh.llmClient, mh.converter, tools, mh.maxIterations, responseChan)
-}
-
-// processIterativeStreaming handles the iterative streaming process with tool calling support
-func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, task *adk.Task,
-	messages []adk.Message, llmClient LLMClient, converter *utils.OptimizedMessageConverter,
-	tools []sdk.ChatCompletionTool, maxIterations int, responseChan chan<- adk.SendStreamingMessageResponse) {
-
-	currentMessages := messages
-	iteration := 0
-	chunkID := 1
-
-	for iteration < maxIterations {
-		iteration++
+	for iteration := 1; iteration <= mh.maxIterations; iteration++ {
 		mh.logger.Debug("starting streaming iteration",
 			zap.Int("iteration", iteration),
-			zap.Int("max_iterations", maxIterations),
 			zap.String("task_id", task.ID))
 
-		timestamp := mh.getCurrentTimestamp()
-		statusUpdate := adk.TaskStatusUpdateEvent{
-			Kind:      "status-update",
-			TaskID:    task.ID,
-			ContextID: task.ContextID,
-			Status: adk.TaskStatus{
-				State: adk.TaskStateWorking,
-				Message: &adk.Message{
-					Kind:      "message",
-					MessageID: fmt.Sprintf("status-%s-%d", task.ID, iteration),
-					Role:      "agent",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": fmt.Sprintf("Starting iteration %d of %d", iteration, maxIterations),
-						},
-					},
-					TaskID:    &task.ID,
-					ContextID: &task.ContextID,
-				},
-				Timestamp: &timestamp,
-			},
-			Final: false,
-		}
-
-		select {
-		case responseChan <- statusUpdate:
-		case <-ctx.Done():
-			return
-		}
-
-		sdkMessages, err := converter.ConvertToSDK(currentMessages)
+		sdkMessages, err := mh.converter.ConvertToSDK(messages)
 		if err != nil {
-			mh.logger.Error("failed to convert messages for streaming", zap.Error(err))
+			mh.logger.Error("failed to convert messages", zap.Error(err))
 			mh.sendErrorResponse(ctx, task, fmt.Sprintf("Message conversion failed: %v", err), responseChan)
 			return
 		}
 
-		var streamResponseChan <-chan *sdk.CreateChatCompletionStreamResponse
-		var streamErrorChan <-chan error
+		streamResponseChan, streamErrorChan := mh.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
 
-		streamResponseChan, streamErrorChan = llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
+		toolCallsExecuted, assistantMessage := mh.processStream(ctx, task, iteration, streamResponseChan, streamErrorChan, responseChan, &messages)
 
-		fullContent, toolCalls, finished, err := mh.processStreamIteration(ctx, task, streamResponseChan, streamErrorChan, iteration, &chunkID, responseChan)
-		if err != nil {
-			mh.logger.Error("streaming iteration failed", zap.Error(err), zap.Int("iteration", iteration))
-			mh.sendErrorResponse(ctx, task, fmt.Sprintf("Streaming iteration %d failed: %v", iteration, err), responseChan)
-			return
+		if assistantMessage != nil {
+			messages = append(messages, *assistantMessage)
+			task.History = append(task.History, *assistantMessage)
 		}
 
-		if !finished {
-			return
-		}
+		if !toolCallsExecuted {
+			finalMessage := assistantMessage
+			if finalMessage != nil {
+				task.Status.Message = finalMessage
+				mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
+			}
 
-		if len(toolCalls) > 0 {
-			mh.logger.Info("processing tool calls in streaming",
-				zap.Int("count", len(toolCalls)),
-				zap.Int("iteration", iteration))
+			mh.logger.Info("streaming task completed successfully",
+				zap.String("task_id", task.ID),
+				zap.Int("iterations", iteration))
 
 			select {
 			case responseChan <- adk.TaskStatusUpdateEvent{
@@ -288,104 +242,242 @@ func (mh *DefaultMessageHandler) processIterativeStreaming(ctx context.Context, 
 				TaskID:    task.ID,
 				ContextID: task.ContextID,
 				Status: adk.TaskStatus{
-					State: adk.TaskStateWorking,
-					Message: &adk.Message{
+					State:     adk.TaskStateCompleted,
+					Message:   finalMessage,
+					Timestamp: StringPtr(mh.getCurrentTimestamp()),
+				},
+				Final: true,
+			}:
+			case <-ctx.Done():
+			}
+			return
+		}
+
+		mh.logger.Debug("tool calls executed, continuing to next iteration",
+			zap.Int("iteration", iteration),
+			zap.String("task_id", task.ID))
+
+		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
+	}
+
+	mh.logger.Warn("max streaming iterations reached",
+		zap.String("task_id", task.ID),
+		zap.Int("max_iterations", mh.maxIterations))
+	mh.sendErrorResponse(ctx, task, fmt.Sprintf("Maximum iterations (%d) reached without completion", mh.maxIterations), responseChan)
+}
+
+// processStream handles the streaming response and tool execution
+func (mh *DefaultMessageHandler) processStream(
+	ctx context.Context,
+	task *adk.Task,
+	iteration int,
+	streamResponseChan <-chan *sdk.CreateChatCompletionStreamResponse,
+	streamErrorChan <-chan error,
+	responseChan chan<- adk.SendStreamingMessageResponse,
+	messages *[]adk.Message,
+) (toolCallsExecuted bool, assistantMessage *adk.Message) {
+	var fullContent string
+	toolCallAccumulator := make(map[int]*sdk.ChatCompletionMessageToolCall)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false, nil
+		case streamErr := <-streamErrorChan:
+			if streamErr != nil {
+				mh.logger.Error("streaming failed", zap.Error(streamErr))
+				mh.sendErrorResponse(ctx, task, fmt.Sprintf("Streaming failed: %v", streamErr), responseChan)
+				return false, nil
+			}
+		case streamResp, ok := <-streamResponseChan:
+			if !ok {
+				break
+			}
+
+			if streamResp == nil || len(streamResp.Choices) == 0 {
+				continue
+			}
+
+			choice := streamResp.Choices[0]
+
+			if choice.Delta.Content != "" {
+				fullContent += choice.Delta.Content
+				mh.sendContentChunk(ctx, task, choice.Delta.Content, responseChan)
+			}
+
+			for _, toolCallChunk := range choice.Delta.ToolCalls {
+				if toolCallAccumulator[toolCallChunk.Index] == nil {
+					toolCallAccumulator[toolCallChunk.Index] = &sdk.ChatCompletionMessageToolCall{
+						Type:     "function",
+						Function: sdk.ChatCompletionMessageToolCallFunction{},
+					}
+				}
+
+				toolCall := toolCallAccumulator[toolCallChunk.Index]
+				if toolCallChunk.ID != "" {
+					toolCall.Id = toolCallChunk.ID
+				}
+				if toolCallChunk.Function.Name != "" {
+					toolCall.Function.Name = toolCallChunk.Function.Name
+				}
+				if toolCallChunk.Function.Arguments != "" {
+					toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+				}
+
+				args := strings.TrimSpace(toolCall.Function.Arguments)
+				funcName := strings.TrimSpace(toolCall.Function.Name)
+
+				if args != "" && funcName != "" && strings.HasSuffix(args, "}") && toolCall.Id != "" {
+					if mh.executeToolCall(ctx, task, toolCall, messages, responseChan) {
+						toolCallsExecuted = true
+					}
+				}
+			}
+
+			if choice.FinishReason != "" {
+				if fullContent != "" {
+					assistantMessage = &adk.Message{
 						Kind:      "message",
-						MessageID: fmt.Sprintf("tool-calls-%s-%d", task.ID, iteration),
-						Role:      "agent",
+						MessageID: fmt.Sprintf("assistant-%s-%d", task.ID, iteration),
+						Role:      "assistant",
 						Parts: []adk.Part{
 							map[string]interface{}{
-								"kind": "data",
-								"data": map[string]interface{}{
-									"tool_calls": toolCalls,
-									"count":      len(toolCalls),
-								},
+								"kind": "text",
+								"text": fullContent,
 							},
 						},
 						TaskID:    &task.ID,
 						ContextID: &task.ContextID,
+					}
+				}
+				return toolCallsExecuted, assistantMessage
+			}
+		}
+	}
+}
+
+// executeToolCall handles individual tool execution
+func (mh *DefaultMessageHandler) executeToolCall(
+	ctx context.Context,
+	task *adk.Task,
+	toolCall *sdk.ChatCompletionMessageToolCall,
+	messages *[]adk.Message,
+	responseChan chan<- adk.SendStreamingMessageResponse,
+) bool {
+	if mh.toolBox == nil {
+		return false
+	}
+
+	mh.sendToolExecutionEvent(ctx, task, toolCall.Function.Name, "started", responseChan)
+
+	var argsMap map[string]interface{}
+	if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &argsMap); err != nil {
+		mh.logger.Error("failed to parse tool arguments", zap.Error(err), zap.String("function", toolCall.Function.Name))
+		return false
+	}
+
+	result, err := mh.toolBox.ExecuteTool(ctx, toolCall.Function.Name, argsMap)
+	if err != nil {
+		mh.logger.Error("tool execution failed", zap.Error(err), zap.String("function", toolCall.Function.Name))
+		result = fmt.Sprintf("Error executing tool: %v", err)
+	} else {
+		mh.logger.Info("tool executed successfully", zap.String("function", toolCall.Function.Name))
+	}
+
+	mh.sendToolExecutionEvent(ctx, task, toolCall.Function.Name, "completed", responseChan)
+
+	toolResultMessage := adk.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
+		Role:      "tool",
+		Parts: []adk.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": result,
+			},
+		},
+		TaskID:    &task.ID,
+		ContextID: &task.ContextID,
+	}
+
+	*messages = append(*messages, toolResultMessage)
+	task.History = append(task.History, toolResultMessage)
+
+	return true
+}
+
+// sendContentChunk sends a content chunk through the response channel
+func (mh *DefaultMessageHandler) sendContentChunk(
+	ctx context.Context,
+	task *adk.Task,
+	content string,
+	responseChan chan<- adk.SendStreamingMessageResponse,
+) {
+	select {
+	case responseChan <- adk.TaskStatusUpdateEvent{
+		Kind:      "status-update",
+		TaskID:    task.ID,
+		ContextID: task.ContextID,
+		Status: adk.TaskStatus{
+			State: adk.TaskStateWorking,
+			Message: &adk.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("stream-chunk-%s", task.ID),
+				Role:      "assistant",
+				Parts: []adk.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": content,
 					},
 				},
-				Final: false,
-			}:
-			case <-ctx.Done():
-				return
-			}
+				TaskID:    &task.ID,
+				ContextID: &task.ContextID,
+			},
+			Timestamp: StringPtr(mh.getCurrentTimestamp()),
+		},
+		Final: false,
+	}:
+	case <-ctx.Done():
+	}
+}
 
-			assistantMessage := &adk.Message{
+// sendToolExecutionEvent sends tool execution status events
+func (mh *DefaultMessageHandler) sendToolExecutionEvent(
+	ctx context.Context,
+	task *adk.Task,
+	toolName string,
+	status string,
+	responseChan chan<- adk.SendStreamingMessageResponse,
+) {
+	select {
+	case responseChan <- adk.TaskStatusUpdateEvent{
+		Kind:      "status-update",
+		TaskID:    task.ID,
+		ContextID: task.ContextID,
+		Status: adk.TaskStatus{
+			State: adk.TaskStateWorking,
+			Message: &adk.Message{
 				Kind:      "message",
-				MessageID: fmt.Sprintf("assistant-%s-%d", task.ID, iteration),
+				MessageID: fmt.Sprintf("tool-status-%s-%s", task.ID, status),
 				Role:      "assistant",
 				Parts: []adk.Part{
 					map[string]interface{}{
 						"kind": "data",
 						"data": map[string]interface{}{
-							"tool_calls": toolCalls,
-							"content":    fullContent,
+							"tool_name": toolName,
+							"status":    status,
 						},
 					},
 				},
-			}
-			task.History = append(task.History, *assistantMessage)
-			currentMessages = append(currentMessages, *assistantMessage)
-
-			mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
-
-			toolResults, err := mh.executeToolsForStreaming(ctx, task, toolCalls, &chunkID, responseChan)
-			if err != nil {
-				mh.logger.Error("tool execution failed in streaming", zap.Error(err))
-				mh.sendErrorResponse(ctx, task, fmt.Sprintf("Tool execution failed: %v", err), responseChan)
-				return
-			}
-
-			task.History = append(task.History, toolResults...)
-			mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
-
-			currentMessages = append(currentMessages, toolResults...)
-			continue
-		}
-
-		finalMessage := &adk.Message{
-			Kind:      "message",
-			MessageID: fmt.Sprintf("response-%s-%d", task.ID, iteration),
-			Role:      "assistant",
-			Parts: []adk.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": fullContent,
-				},
+				TaskID:    &task.ID,
+				ContextID: &task.ContextID,
 			},
-		}
-
-		task.History = append(task.History, *finalMessage)
-		task.Status.Message = finalMessage
-
-		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
-
-		mh.logger.Info("streaming task completed successfully",
-			zap.String("task_id", task.ID),
-			zap.Int("iterations", iteration))
-
-		select {
-		case responseChan <- adk.TaskStatusUpdateEvent{
-			Kind:      "status-update",
-			TaskID:    task.ID,
-			ContextID: task.ContextID,
-			Status: adk.TaskStatus{
-				State:   adk.TaskStateCompleted,
-				Message: finalMessage,
-			},
-			Final: true,
-		}:
-		case <-ctx.Done():
-		}
-		return
+			Timestamp: StringPtr(mh.getCurrentTimestamp()),
+		},
+		Final: false,
+	}:
+	case <-ctx.Done():
 	}
-
-	mh.logger.Warn("max streaming iterations reached",
-		zap.String("task_id", task.ID),
-		zap.Int("max_iterations", maxIterations))
-	mh.sendErrorResponse(ctx, task, fmt.Sprintf("Maximum iterations (%d) reached without completion", maxIterations), responseChan)
 }
 
 // handleMockStreaming provides fallback mock streaming for backward compatibility
@@ -418,7 +510,7 @@ func (mh *DefaultMessageHandler) handleMockStreaming(ctx context.Context, task *
 					Message: &adk.Message{
 						Kind:      "message",
 						MessageID: fmt.Sprintf("mock-progress-%s-%d", task.ID, i+1),
-						Role:      "agent",
+						Role:      "assistant",
 						Parts: []adk.Part{
 							map[string]interface{}{
 								"kind": "text",
@@ -428,6 +520,7 @@ func (mh *DefaultMessageHandler) handleMockStreaming(ctx context.Context, task *
 						TaskID:    &task.ID,
 						ContextID: &task.ContextID,
 					},
+					Timestamp: StringPtr(mh.getCurrentTimestamp()),
 				},
 				Final: false,
 			}:
@@ -452,7 +545,8 @@ func (mh *DefaultMessageHandler) handleMockStreaming(ctx context.Context, task *
 			TaskID:    task.ID,
 			ContextID: task.ContextID,
 			Status: adk.TaskStatus{
-				State: adk.TaskStateCompleted,
+				State:     adk.TaskStateCompleted,
+				Timestamp: StringPtr(mh.getCurrentTimestamp()),
 			},
 			Final: true,
 		}:
@@ -484,6 +578,7 @@ func (mh *DefaultMessageHandler) sendErrorResponse(ctx context.Context, task *ad
 				TaskID:    &task.ID,
 				ContextID: &task.ContextID,
 			},
+			Timestamp: StringPtr(mh.getCurrentTimestamp()),
 		},
 		Final: true,
 	}:
@@ -507,247 +602,4 @@ func (h *DefaultMessageHandler) getCurrentTimestamp() string {
 	}
 
 	return currentTime.Format(time.RFC3339)
-}
-
-// processStreamIteration processes a single streaming iteration and returns content, tool calls, and completion status
-func (mh *DefaultMessageHandler) processStreamIteration(
-	ctx context.Context,
-	task *adk.Task,
-	streamResponseChan <-chan *sdk.CreateChatCompletionStreamResponse,
-	streamErrorChan <-chan error,
-	iteration int,
-	chunkID *int,
-	responseChan chan<- adk.SendStreamingMessageResponse,
-) (string, []sdk.ChatCompletionMessageToolCall, bool, error) {
-
-	var fullContent string
-	var toolCalls []sdk.ChatCompletionMessageToolCall
-
-	for {
-		select {
-		case <-ctx.Done():
-			return "", nil, false, ctx.Err()
-		case streamErr := <-streamErrorChan:
-			if streamErr != nil {
-				return "", nil, false, streamErr
-			}
-		case streamResp, ok := <-streamResponseChan:
-			if !ok {
-				return fullContent, toolCalls, true, nil
-			}
-
-			if streamResp != nil && len(streamResp.Choices) > 0 {
-				choice := streamResp.Choices[0]
-
-				content := choice.Delta.Content
-				if content != "" {
-					fullContent += content
-
-					select {
-					case responseChan <- adk.TaskStatusUpdateEvent{
-						Kind:      "status-update",
-						TaskID:    task.ID,
-						ContextID: task.ContextID,
-						Status: adk.TaskStatus{
-							State: adk.TaskStateWorking,
-							Message: &adk.Message{
-								Kind:      "message",
-								MessageID: fmt.Sprintf("content-chunk-%s-%d", task.ID, *chunkID),
-								Role:      "assistant",
-								Parts: []adk.Part{
-									map[string]interface{}{
-										"kind": "text",
-										"text": content,
-									},
-								},
-								TaskID:    &task.ID,
-								ContextID: &task.ContextID,
-							},
-						},
-						Final: false,
-					}:
-						*chunkID++
-					case <-ctx.Done():
-						return "", nil, false, ctx.Err()
-					}
-				}
-
-				if len(choice.Delta.ToolCalls) > 0 {
-					for _, toolCallChunk := range choice.Delta.ToolCalls {
-						if toolCallChunk.Function.Name != "" && toolCallChunk.Function.Arguments != "" {
-							toolCall := sdk.ChatCompletionMessageToolCall{
-								Id:   toolCallChunk.ID,
-								Type: "function",
-								Function: sdk.ChatCompletionMessageToolCallFunction{
-									Name:      toolCallChunk.Function.Name,
-									Arguments: toolCallChunk.Function.Arguments,
-								},
-							}
-							toolCalls = append(toolCalls, toolCall)
-						}
-					}
-				}
-
-				if choice.FinishReason != "" {
-					select {
-					case responseChan <- adk.TaskStatusUpdateEvent{
-						Kind:      "status-update",
-						TaskID:    task.ID,
-						ContextID: task.ContextID,
-						Status: adk.TaskStatus{
-							State: adk.TaskStateWorking,
-							Message: &adk.Message{
-								Kind:      "message",
-								MessageID: fmt.Sprintf("final-content-%s-%d", task.ID, *chunkID),
-								Role:      "assistant",
-								Parts: []adk.Part{
-									map[string]interface{}{
-										"kind": "text",
-										"text": fullContent,
-									},
-								},
-								TaskID:    &task.ID,
-								ContextID: &task.ContextID,
-							},
-						},
-						Final: false,
-					}:
-						*chunkID++
-					case <-ctx.Done():
-						return "", nil, false, ctx.Err()
-					}
-
-					return fullContent, toolCalls, true, nil
-				}
-			}
-		}
-	}
-}
-
-// executeToolsForStreaming executes tools and sends streaming updates
-func (mh *DefaultMessageHandler) executeToolsForStreaming(ctx context.Context, task *adk.Task,
-	toolCalls []sdk.ChatCompletionMessageToolCall, chunkID *int, responseChan chan<- adk.SendStreamingMessageResponse) ([]adk.Message, error) {
-
-	if mh.toolBox == nil {
-		return nil, fmt.Errorf("no tool box available for tool execution")
-	}
-
-	toolResults := make([]adk.Message, 0, len(toolCalls))
-
-	for _, toolCall := range toolCalls {
-		if toolCall.Type != "function" {
-			continue
-		}
-
-		function := toolCall.Function
-		if function.Name == "" {
-			continue
-		}
-
-		select {
-		case responseChan <- adk.TaskStatusUpdateEvent{
-			Kind:      "status-update",
-			TaskID:    task.ID,
-			ContextID: task.ContextID,
-			Status: adk.TaskStatus{
-				State: adk.TaskStateWorking,
-				Message: &adk.Message{
-					Kind:      "message",
-					MessageID: fmt.Sprintf("tool-start-%s-%d", task.ID, *chunkID),
-					Role:      "agent",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "data",
-							"data": map[string]interface{}{
-								"tool_name": function.Name,
-								"tool_id":   toolCall.Id,
-								"status":    "started",
-							},
-						},
-					},
-					TaskID:    &task.ID,
-					ContextID: &task.ContextID,
-				},
-			},
-			Final: false,
-		}:
-			*chunkID++
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-
-		var args map[string]interface{}
-		if function.Arguments != "" {
-			if err := json.Unmarshal([]byte(function.Arguments), &args); err != nil {
-				mh.logger.Error("failed to parse tool arguments",
-					zap.String("tool", function.Name),
-					zap.Error(err))
-				continue
-			}
-		}
-
-		result, err := mh.toolBox.ExecuteTool(ctx, function.Name, args)
-		if err != nil {
-			result = fmt.Sprintf("Error executing tool: %v", err)
-			mh.logger.Error("tool execution failed",
-				zap.String("tool", function.Name),
-				zap.Error(err))
-		} else {
-			mh.logger.Info("tool executed successfully",
-				zap.String("tool", function.Name))
-		}
-
-		select {
-		case responseChan <- adk.TaskStatusUpdateEvent{
-			Kind:      "status-update",
-			TaskID:    task.ID,
-			ContextID: task.ContextID,
-			Status: adk.TaskStatus{
-				State: adk.TaskStateWorking,
-				Message: &adk.Message{
-					Kind:      "message",
-					MessageID: fmt.Sprintf("tool-completed-%s-%d", task.ID, *chunkID),
-					Role:      "agent",
-					Parts: []adk.Part{
-						map[string]interface{}{
-							"kind": "data",
-							"data": map[string]interface{}{
-								"tool_name": function.Name,
-								"tool_id":   toolCall.Id,
-								"result":    result,
-								"status":    "completed",
-							},
-						},
-					},
-					TaskID:    &task.ID,
-					ContextID: &task.ContextID,
-				},
-			},
-			Final: false,
-		}:
-			*chunkID++
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-
-		toolResultMessage := adk.Message{
-			Kind:      "message",
-			MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
-			Role:      "tool",
-			Parts: []adk.Part{
-				map[string]interface{}{
-					"kind": "data",
-					"data": map[string]interface{}{
-						"tool_call_id": toolCall.Id,
-						"tool_name":    function.Name,
-						"result":       result,
-					},
-				},
-			},
-		}
-
-		toolResults = append(toolResults, toolResultMessage)
-	}
-
-	return toolResults, nil
 }
