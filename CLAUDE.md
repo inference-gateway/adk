@@ -113,4 +113,4 @@ Uses table-driven tests with generated mocks:
 - Generated types are in `adk/generated_types.go` (do not edit manually)
 - Configuration supports both defaults and environment overrides
 - Server supports both mock mode (no LLM) and AI-powered mode
-- Never push directly to `main` - create a branch and open a PR
+- Always ensure on each given task that you push the changes to a branch and open a PR for review
