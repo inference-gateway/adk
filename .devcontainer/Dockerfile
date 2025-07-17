@@ -37,6 +37,8 @@ RUN apt-get update && \
                    conventional-changelog-conventionalcommits && \
     # Install js-yaml for converting JSON RPC schema to YAML
     npm i -g js-yaml@4.1.0 && \
+    # Install Claude code
+    npm i -g @anthropic-ai/claude-code && \
     # Clean up
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
