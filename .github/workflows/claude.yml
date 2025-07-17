@@ -44,6 +44,7 @@ jobs:
             actions: read
           use_commit_signing: true
           base_branch: main
+          branch_prefix: "claude/"
           allowed_tools: |
             Bash(task *)
             Bash(go *)
