@@ -55,6 +55,6 @@ jobs:
 
             Be constructive and helpful in your feedback.
           allowed_tools: |
-            Bash(task:*)
-            Bash(go:*)
-            Bash(gh:*)
+            Bash(task *)
+            Bash(go *)
+            Bash(gh *)
