@@ -43,6 +43,7 @@
     - [A2AServer](#a2aserver)
     - [A2AServerBuilder](#a2aserverbuilder)
     - [A2AClient](#a2aclient)
+    - [Agent Health Monitoring](#agent-health-monitoring)
   - [Configuration](#configuration)
   - [LLM Client](#llm-client)
 - [🔧 Advanced Usage](#-advanced-usage)
@@ -237,6 +238,66 @@ func main() {
 }
 ```
 
+### Health Check Example
+
+Monitor the health status of A2A agents for service discovery and load balancing:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "time"
+
+    "github.com/inference-gateway/a2a/adk/client"
+)
+
+func main() {
+    // Create client
+    client := client.NewClient("http://localhost:8080")
+
+    // Monitor agent health
+    ctx := context.Background()
+    
+    // Single health check
+    health, err := client.GetHealth(ctx)
+    if err != nil {
+        log.Printf("Health check failed: %v", err)
+        return
+    }
+    
+    fmt.Printf("Agent health: %s\n", health.Status)
+    
+    // Periodic health monitoring
+    ticker := time.NewTicker(30 * time.Second)
+    defer ticker.Stop()
+    
+    for {
+        select {
+        case <-ticker.C:
+            health, err := client.GetHealth(ctx)
+            if err != nil {
+                log.Printf("Health check failed: %v", err)
+                continue
+            }
+            
+            switch health.Status {
+            case "healthy":
+                fmt.Printf("[%s] Agent is healthy\n", time.Now().Format("15:04:05"))
+            case "degraded":
+                fmt.Printf("[%s] Agent is degraded - some functionality may be limited\n", time.Now().Format("15:04:05"))
+            case "unhealthy":
+                fmt.Printf("[%s] Agent is unhealthy - may not be able to process requests\n", time.Now().Format("15:04:05"))
+            default:
+                fmt.Printf("[%s] Unknown health status: %s\n", time.Now().Format("15:04:05"), health.Status)
+            }
+        }
+    }
+}
+```
+
 ### Examples
 
 For complete working examples, see the [examples](./examples/) directory:
@@ -244,6 +305,7 @@ For complete working examples, see the [examples](./examples/) directory:
 - **[Minimal Server](./examples/server/cmd/minimal/)** - Basic A2A server without AI capabilities
 - **[AI-Powered Server](./examples/server/cmd/aipowered/)** - Full A2A server with LLM integration
 - **[Client Example](./examples/client/)** - A2A client implementation
+- **[Health Check Example](#health-check-example)** - Monitor agent health status
 
 ## ✨ Key Features
 
@@ -414,9 +476,46 @@ client := client.NewClientWithConfig(config)
 
 // Using the client
 agentCard, err := client.GetAgentCard(ctx)
+health, err := client.GetHealth(ctx)
 response, err := client.SendTask(ctx, params)
 err = client.SendTaskStreaming(ctx, params, eventChan)
 ```
+
+#### Agent Health Monitoring
+
+Monitor the health status of A2A agents to ensure they are operational:
+
+```go
+// Check agent health
+health, err := client.GetHealth(ctx)
+if err != nil {
+    log.Printf("Health check failed: %v", err)
+    return
+}
+
+// Process health status
+switch health.Status {
+case "healthy":
+    log.Println("Agent is healthy")
+case "degraded":
+    log.Println("Agent is degraded - some functionality may be limited")
+case "unhealthy":
+    log.Println("Agent is unhealthy - may not be able to process requests")
+default:
+    log.Printf("Unknown health status: %s", health.Status)
+}
+```
+
+**Health Status Values:**
+- `healthy`: Agent is fully operational
+- `degraded`: Agent is partially operational (some functionality may be limited)
+- `unhealthy`: Agent is not operational or experiencing significant issues
+
+**Use Cases:**
+- Monitor agent availability in distributed systems
+- Implement health checks for load balancers
+- Detect and respond to agent failures
+- Service discovery and routing decisions
 
 #### LLM Client
 
