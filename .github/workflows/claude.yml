@@ -54,11 +54,10 @@ jobs:
           base_branch: main
           branch_prefix: "claude/"
           allowed_tools: |
-            Bash(task *)
-            Bash(go *)
-            Bash(gh *)
-            Bash(git *)
-            mcp__github__create_pull_request
+            Bash(task:*)
+            Bash(go:*)
+            Bash(gh:*)
+            Bash(git:*)
           custom_instructions: |
             IMPORTANT: You must NEVER push directly to the main branch. Always:
             1. Create a new feature branch (claude/feature-name)
