@@ -19,6 +19,7 @@ import (
 type A2AClient interface {
 	// Agent discovery
 	GetAgentCard(ctx context.Context) (*adk.AgentCard, error)
+	GetHealth(ctx context.Context) (*HealthResponse, error)
 
 	// Task operations
 	SendTask(ctx context.Context, params adk.MessageSendParams) (*adk.JSONRPCSuccessResponse, error)
@@ -38,6 +39,11 @@ type A2AClient interface {
 }
 
 var _ A2AClient = (*Client)(nil)
+
+// HealthResponse represents the response from the health endpoint
+type HealthResponse struct {
+	Status string `json:"status"`
+}
 
 // Config holds configuration options for the A2A client
 type Config struct {
@@ -402,6 +408,50 @@ func (c *Client) GetAgentCard(ctx context.Context) (*adk.AgentCard, error) {
 		zap.String("name", agentCard.Name),
 		zap.String("version", agentCard.Version))
 	return &agentCard, nil
+}
+
+// GetHealth retrieves the health status of the agent via HTTP GET to /health
+func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
+	c.logger.Debug("retrieving agent health", zap.String("endpoint", "/health"))
+
+	healthURL := c.config.BaseURL + "/health"
+
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", healthURL, nil)
+	if err != nil {
+		c.logger.Error("failed to create health request", zap.Error(err))
+		return nil, fmt.Errorf("failed to create health request: %w", err)
+	}
+
+	httpReq.Header.Set("Accept", "application/json")
+	httpReq.Header.Set("User-Agent", c.config.UserAgent)
+
+	httpResp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		c.logger.Error("health request failed", zap.Error(err))
+		return nil, fmt.Errorf("health request failed: %w", err)
+	}
+	defer func() {
+		if closeErr := httpResp.Body.Close(); closeErr != nil {
+			c.logger.Warn("failed to close health response body", zap.Error(closeErr))
+		}
+	}()
+
+	if httpResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(httpResp.Body)
+		c.logger.Error("unexpected status code for health check",
+			zap.Int("status_code", httpResp.StatusCode),
+			zap.String("response_body", string(bodyBytes)))
+		return nil, fmt.Errorf("unexpected status code for health check: %d, body: %s", httpResp.StatusCode, string(bodyBytes))
+	}
+
+	var healthResp HealthResponse
+	if err := json.NewDecoder(httpResp.Body).Decode(&healthResp); err != nil {
+		c.logger.Error("failed to decode health response", zap.Error(err))
+		return nil, fmt.Errorf("failed to decode health response: %w", err)
+	}
+
+	c.logger.Debug("health check completed successfully", zap.String("status", healthResp.Status))
+	return &healthResp, nil
 }
 
 // doRequestWithContext performs the HTTP request with context support and handles the response

@@ -1875,3 +1875,210 @@ func TestClient_ListTasks_ServerError(t *testing.T) {
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "Internal server error")
 }
+
+func TestClient_GetHealth(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupServer   func() *httptest.Server
+		expectedError string
+		expectedResp  *client.HealthResponse
+	}{
+		{
+			name: "successful health check",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/health", r.URL.Path)
+					assert.Equal(t, "application/json", r.Header.Get("Accept"))
+					assert.Equal(t, "A2A-Go-Client/1.0", r.Header.Get("User-Agent"))
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+
+					healthResp := client.HealthResponse{
+						Status: "healthy",
+					}
+
+					_ = json.NewEncoder(w).Encode(healthResp)
+				}))
+			},
+			expectedResp: &client.HealthResponse{
+				Status: "healthy",
+			},
+		},
+		{
+			name: "server returns 404 not found",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/health", r.URL.Path)
+
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte("Health endpoint not found"))
+				}))
+			},
+			expectedError: "unexpected status code for health check: 404, body: Health endpoint not found",
+		},
+		{
+			name: "server returns 500 internal server error",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/health", r.URL.Path)
+
+					w.WriteHeader(http.StatusInternalServerError)
+					_, _ = w.Write([]byte("Internal server error"))
+				}))
+			},
+			expectedError: "unexpected status code for health check: 500, body: Internal server error",
+		},
+		{
+			name: "server returns invalid JSON",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/health", r.URL.Path)
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte("invalid json response"))
+				}))
+			},
+			expectedError: "failed to decode health response:",
+		},
+		{
+			name: "different health status",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/health", r.URL.Path)
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+
+					healthResp := client.HealthResponse{
+						Status: "degraded",
+					}
+
+					_ = json.NewEncoder(w).Encode(healthResp)
+				}))
+			},
+			expectedResp: &client.HealthResponse{
+				Status: "degraded",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := tt.setupServer()
+			defer server.Close()
+
+			c := client.NewClient(server.URL)
+			ctx := context.Background()
+
+			resp, err := c.GetHealth(ctx)
+
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+				assert.Nil(t, resp)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, resp)
+				assert.Equal(t, tt.expectedResp, resp)
+			}
+		})
+	}
+}
+
+func TestClient_GetHealth_NetworkErrors(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupClient   func() client.A2AClient
+		expectedError string
+	}{
+		{
+			name: "connection refused",
+			setupClient: func() client.A2AClient {
+				return client.NewClient("http://localhost:99999")
+			},
+			expectedError: "health request failed:",
+		},
+		{
+			name: "invalid URL in base config",
+			setupClient: func() client.A2AClient {
+				config := client.DefaultConfig("://invalid-url")
+				return client.NewClientWithConfig(config)
+			},
+			expectedError: "failed to create health request:",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := tt.setupClient()
+			ctx := context.Background()
+
+			resp, err := c.GetHealth(ctx)
+
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedError)
+			assert.Nil(t, resp)
+		})
+	}
+}
+
+func TestClient_GetHealth_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(500 * time.Millisecond)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		healthResp := client.HealthResponse{
+			Status: "healthy",
+		}
+		_ = json.NewEncoder(w).Encode(healthResp)
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	resp, err := c.GetHealth(ctx)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "context deadline exceeded")
+	assert.Nil(t, resp)
+}
+
+func TestClient_GetHealth_WithCustomUserAgent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/health", r.URL.Path)
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+		assert.Equal(t, "CustomAgent/2.0", r.Header.Get("User-Agent"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		healthResp := client.HealthResponse{
+			Status: "healthy",
+		}
+		_ = json.NewEncoder(w).Encode(healthResp)
+	}))
+	defer server.Close()
+
+	config := client.DefaultConfig(server.URL)
+	config.UserAgent = "CustomAgent/2.0"
+	c := client.NewClientWithConfig(config)
+
+	ctx := context.Background()
+	resp, err := c.GetHealth(ctx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.Equal(t, "healthy", resp.Status)
+}
