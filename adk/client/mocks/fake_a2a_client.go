@@ -50,6 +50,19 @@ type FakeA2AClient struct {
 	getBaseURLReturnsOnCall map[int]struct {
 		result1 string
 	}
+	GetHealthStub        func(context.Context) (*client.HealthResponse, error)
+	getHealthMutex       sync.RWMutex
+	getHealthArgsForCall []struct {
+		arg1 context.Context
+	}
+	getHealthReturns struct {
+		result1 *client.HealthResponse
+		result2 error
+	}
+	getHealthReturnsOnCall map[int]struct {
+		result1 *client.HealthResponse
+		result2 error
+	}
 	GetLoggerStub        func() *zap.Logger
 	getLoggerMutex       sync.RWMutex
 	getLoggerArgsForCall []struct {
@@ -314,6 +327,70 @@ func (fake *FakeA2AClient) GetBaseURLReturnsOnCall(i int, result1 string) {
 	fake.getBaseURLReturnsOnCall[i] = struct {
 		result1 string
 	}{result1}
+}
+
+func (fake *FakeA2AClient) GetHealth(arg1 context.Context) (*client.HealthResponse, error) {
+	fake.getHealthMutex.Lock()
+	ret, specificReturn := fake.getHealthReturnsOnCall[len(fake.getHealthArgsForCall)]
+	fake.getHealthArgsForCall = append(fake.getHealthArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.GetHealthStub
+	fakeReturns := fake.getHealthReturns
+	fake.recordInvocation("GetHealth", []interface{}{arg1})
+	fake.getHealthMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeA2AClient) GetHealthCallCount() int {
+	fake.getHealthMutex.RLock()
+	defer fake.getHealthMutex.RUnlock()
+	return len(fake.getHealthArgsForCall)
+}
+
+func (fake *FakeA2AClient) GetHealthCalls(stub func(context.Context) (*client.HealthResponse, error)) {
+	fake.getHealthMutex.Lock()
+	defer fake.getHealthMutex.Unlock()
+	fake.GetHealthStub = stub
+}
+
+func (fake *FakeA2AClient) GetHealthArgsForCall(i int) context.Context {
+	fake.getHealthMutex.RLock()
+	defer fake.getHealthMutex.RUnlock()
+	argsForCall := fake.getHealthArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AClient) GetHealthReturns(result1 *client.HealthResponse, result2 error) {
+	fake.getHealthMutex.Lock()
+	defer fake.getHealthMutex.Unlock()
+	fake.GetHealthStub = nil
+	fake.getHealthReturns = struct {
+		result1 *client.HealthResponse
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeA2AClient) GetHealthReturnsOnCall(i int, result1 *client.HealthResponse, result2 error) {
+	fake.getHealthMutex.Lock()
+	defer fake.getHealthMutex.Unlock()
+	fake.GetHealthStub = nil
+	if fake.getHealthReturnsOnCall == nil {
+		fake.getHealthReturnsOnCall = make(map[int]struct {
+			result1 *client.HealthResponse
+			result2 error
+		})
+	}
+	fake.getHealthReturnsOnCall[i] = struct {
+		result1 *client.HealthResponse
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeA2AClient) GetLogger() *zap.Logger {
@@ -732,6 +809,8 @@ func (fake *FakeA2AClient) Invocations() map[string][][]interface{} {
 	defer fake.getAgentCardMutex.RUnlock()
 	fake.getBaseURLMutex.RLock()
 	defer fake.getBaseURLMutex.RUnlock()
+	fake.getHealthMutex.RLock()
+	defer fake.getHealthMutex.RUnlock()
 	fake.getLoggerMutex.RLock()
 	defer fake.getLoggerMutex.RUnlock()
 	fake.getTaskMutex.RLock()

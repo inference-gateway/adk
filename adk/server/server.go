@@ -262,7 +262,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	r := gin.Default()
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
+		c.JSON(http.StatusOK, gin.H{"status": adk.HealthStatusHealthy})
 	})
 
 	r.GET("/.well-known/agent.json", s.handleAgentInfo)

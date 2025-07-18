@@ -47,3 +47,10 @@ type FileData struct {
 	Bytes    *string `json:"bytes,omitempty"`
 	URI      *string `json:"uri,omitempty"`
 }
+
+// Health status constants
+const (
+	HealthStatusHealthy   = "healthy"
+	HealthStatusDegraded  = "degraded"
+	HealthStatusUnhealthy = "unhealthy"
+)
