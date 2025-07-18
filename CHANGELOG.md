@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0](https://github.com/inference-gateway/a2a/compare/v0.4.0...v0.5.0) (2025-07-18)
+
+### ✨ Features
+
+* Implement GetHealth method for A2A client ([#11](https://github.com/inference-gateway/a2a/issues/11)) ([3e4b8ce](https://github.com/inference-gateway/a2a/commit/3e4b8ce6487cbfd294ef684b846dbb32f931127f))
+
+### 🐛 Bug Fixes
+
+* Correct allowed tools syntax in Claude workflow ([489d1e4](https://github.com/inference-gateway/a2a/commit/489d1e47a227a8ced387d22a6347101002154871))
+
+### 👷 CI
+
+* Add claude GitHub actions 1752789926575 ([#10](https://github.com/inference-gateway/a2a/issues/10)) ([471e03f](https://github.com/inference-gateway/a2a/commit/471e03f2d044ffc6424f45c4228e30235112857c))
+* Update branch prefix in Claude workflow configuration ([d67bef3](https://github.com/inference-gateway/a2a/commit/d67bef3eb58768b31c152fee4f50327d92f48ee3))
+* Update Claude workflows to install golangci-lint and task ([583a72d](https://github.com/inference-gateway/a2a/commit/583a72db15f3148c2dbbacbef915152aebb31dfa))
+
+### 📚 Documentation
+
+* Add CLAUDE.md for project guidance and development commands ([29b3259](https://github.com/inference-gateway/a2a/commit/29b32590e6d3465461c8ff3b5fadca5bbb6725cf))
+* Update contribution guidelines for pushing changes to branches ([bad5c4a](https://github.com/inference-gateway/a2a/commit/bad5c4a0e0729d90ff1e7596ab65a6a109b36bf7))
+
+### 🔨 Miscellaneous
+
+* Add git command to allowed tools in Claude workflows ([fcb145d](https://github.com/inference-gateway/a2a/commit/fcb145d4583fdbef82d099eec1ae5cae4cef6c2d))
+* Install Claude code for enhanced functionality ([aca9f74](https://github.com/inference-gateway/a2a/commit/aca9f7457935ed51a5974e6f1dbe030b2c717f8d))
+
 ## [0.4.0](https://github.com/inference-gateway/a2a/compare/v0.3.0...v0.4.0) (2025-06-20)
 
 ### ✨ Features
