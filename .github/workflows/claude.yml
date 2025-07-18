@@ -49,6 +49,7 @@ jobs:
             Bash(task *)
             Bash(go *)
             Bash(gh *)
+            Bash(git *)
           custom_instructions: |
             IMPORTANT: You must NEVER push directly to the main branch. Always:
             1. Create a new feature branch (claude/feature-name)

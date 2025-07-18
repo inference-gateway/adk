@@ -58,3 +58,4 @@ jobs:
             Bash(task *)
             Bash(go *)
             Bash(gh *)
+            Bash(git *)
