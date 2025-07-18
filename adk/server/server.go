@@ -11,7 +11,6 @@ import (
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
 	adk "github.com/inference-gateway/a2a/adk"
-	client "github.com/inference-gateway/a2a/adk/client"
 	config "github.com/inference-gateway/a2a/adk/server/config"
 	middlewares "github.com/inference-gateway/a2a/adk/server/middlewares"
 	otel "github.com/inference-gateway/a2a/adk/server/otel"
@@ -263,7 +262,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	r := gin.Default()
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": client.HealthStatusHealthy})
+		c.JSON(http.StatusOK, gin.H{"status": adk.HealthStatusHealthy})
 	})
 
 	r.GET("/.well-known/agent.json", s.handleAgentInfo)

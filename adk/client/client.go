@@ -40,13 +40,6 @@ type A2AClient interface {
 
 var _ A2AClient = (*Client)(nil)
 
-// Health status constants
-const (
-	HealthStatusHealthy   = "healthy"
-	HealthStatusDegraded  = "degraded"
-	HealthStatusUnhealthy = "unhealthy"
-)
-
 // HealthResponse represents the response from the health endpoint
 type HealthResponse struct {
 	Status string `json:"status"`
@@ -457,14 +450,12 @@ func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
 		return nil, fmt.Errorf("failed to decode health response: %w", err)
 	}
 
-	// Validate response body
 	if healthResp.Status == "" {
 		c.logger.Error("health response missing status field")
 		return nil, fmt.Errorf("health response missing status field")
 	}
 
-	// Validate status value
-	validStatuses := []string{HealthStatusHealthy, HealthStatusDegraded, HealthStatusUnhealthy}
+	validStatuses := []string{adk.HealthStatusHealthy, adk.HealthStatusDegraded, adk.HealthStatusUnhealthy}
 	isValidStatus := false
 	for _, validStatus := range validStatuses {
 		if healthResp.Status == validStatus {
@@ -474,7 +465,6 @@ func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
 	}
 	if !isValidStatus {
 		c.logger.Warn("health response contains unknown status", zap.String("status", healthResp.Status))
-		// Don't return error for unknown statuses to maintain backward compatibility
 	}
 
 	c.logger.Debug("health check completed successfully", zap.String("status", healthResp.Status))

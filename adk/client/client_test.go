@@ -2131,18 +2131,18 @@ func TestClient_GetHealth_WithConstants(t *testing.T) {
 	}{
 		{
 			name:     "healthy status constant",
-			status:   client.HealthStatusHealthy,
-			expected: client.HealthStatusHealthy,
+			status:   adk.HealthStatusHealthy,
+			expected: adk.HealthStatusHealthy,
 		},
 		{
 			name:     "degraded status constant",
-			status:   client.HealthStatusDegraded,
-			expected: client.HealthStatusDegraded,
+			status:   adk.HealthStatusDegraded,
+			expected: adk.HealthStatusDegraded,
 		},
 		{
 			name:     "unhealthy status constant",
-			status:   client.HealthStatusUnhealthy,
-			expected: client.HealthStatusUnhealthy,
+			status:   adk.HealthStatusUnhealthy,
+			expected: adk.HealthStatusUnhealthy,
 		},
 	}
 
