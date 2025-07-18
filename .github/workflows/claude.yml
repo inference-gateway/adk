@@ -35,6 +35,14 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.1.6
+
+      - name: Install task
+        run: |
+          curl -s https://taskfile.dev/install.sh | sh -s -- -b /usr/local/bin v3.43.3
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@beta
@@ -50,6 +58,7 @@ jobs:
             Bash(go *)
             Bash(gh *)
             Bash(git *)
+            mcp__github__create_pull_request
           custom_instructions: |
             IMPORTANT: You must NEVER push directly to the main branch. Always:
             1. Create a new feature branch (claude/feature-name)
