@@ -1967,6 +1967,46 @@ func TestClient_GetHealth(t *testing.T) {
 				Status: "degraded",
 			},
 		},
+		{
+			name: "empty status field",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/health", r.URL.Path)
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+
+					healthResp := client.HealthResponse{
+						Status: "",
+					}
+
+					_ = json.NewEncoder(w).Encode(healthResp)
+				}))
+			},
+			expectedError: "health response missing status field",
+		},
+		{
+			name: "unknown status value",
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "GET", r.Method)
+					assert.Equal(t, "/health", r.URL.Path)
+
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusOK)
+
+					healthResp := client.HealthResponse{
+						Status: "unknown",
+					}
+
+					_ = json.NewEncoder(w).Encode(healthResp)
+				}))
+			},
+			expectedResp: &client.HealthResponse{
+				Status: "unknown",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -2081,4 +2121,56 @@ func TestClient_GetHealth_WithCustomUserAgent(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, "healthy", resp.Status)
+}
+
+func TestClient_GetHealth_WithConstants(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   string
+		expected string
+	}{
+		{
+			name:     "healthy status constant",
+			status:   client.HealthStatusHealthy,
+			expected: client.HealthStatusHealthy,
+		},
+		{
+			name:     "degraded status constant",
+			status:   client.HealthStatusDegraded,
+			expected: client.HealthStatusDegraded,
+		},
+		{
+			name:     "unhealthy status constant",
+			status:   client.HealthStatusUnhealthy,
+			expected: client.HealthStatusUnhealthy,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "GET", r.Method)
+				assert.Equal(t, "/health", r.URL.Path)
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+
+				healthResp := client.HealthResponse{
+					Status: tt.status,
+				}
+
+				_ = json.NewEncoder(w).Encode(healthResp)
+			}))
+			defer server.Close()
+
+			c := client.NewClient(server.URL)
+			ctx := context.Background()
+
+			resp, err := c.GetHealth(ctx)
+
+			assert.NoError(t, err)
+			assert.NotNil(t, resp)
+			assert.Equal(t, tt.expected, resp.Status)
+		})
+	}
 }
