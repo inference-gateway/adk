@@ -260,11 +260,8 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	}
 
 	r := gin.New()
-	
-	// Add recovery middleware
+
 	r.Use(gin.Recovery())
-	
-	// Add custom logging middleware that can skip health check logs
 	r.Use(middlewares.LoggingMiddleware(cfg.ServerConfig.DisableHealthcheckLog))
 
 	r.GET("/health", func(c *gin.Context) {
