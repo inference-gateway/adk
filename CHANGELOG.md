@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0](https://github.com/inference-gateway/a2a/compare/v0.5.0...v0.6.0) (2025-07-19)
+
+### ✨ Features
+
+* Add configuration to disable health check logs ([#14](https://github.com/inference-gateway/a2a/issues/14)) ([c86dac4](https://github.com/inference-gateway/a2a/commit/c86dac448d26d0d8749f80e90514b5ca4a52f3e7)), closes [#13](https://github.com/inference-gateway/a2a/issues/13)
+
+### 📚 Documentation
+
+* add GetHealth method documentation and examples to README ([#12](https://github.com/inference-gateway/a2a/issues/12)) ([1f5045d](https://github.com/inference-gateway/a2a/commit/1f5045dce3f5ea80c3cb71807f57faed49d2d60c))
+
 ## [0.5.0](https://github.com/inference-gateway/a2a/compare/v0.4.0...v0.5.0) (2025-07-18)
 
 ### ✨ Features
