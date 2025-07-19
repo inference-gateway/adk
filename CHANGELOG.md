@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1](https://github.com/inference-gateway/a2a/compare/v0.6.0...v0.6.1) (2025-07-19)
+
+### 🐛 Bug Fixes
+
+* Update sdk dependency to v1.9.0 and add middleware options for chat completion methods ([#15](https://github.com/inference-gateway/a2a/issues/15)) ([ad7a835](https://github.com/inference-gateway/a2a/commit/ad7a835afe1250a565a3a384aabbe6dc104c29e2))
+
 ## [0.6.0](https://github.com/inference-gateway/a2a/compare/v0.5.0...v0.6.0) (2025-07-19)
 
 ### ✨ Features
