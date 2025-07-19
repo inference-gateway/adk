@@ -87,9 +87,10 @@ type QueueConfig struct {
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
-	ReadTimeout  time.Duration `env:"READ_TIMEOUT,default=120s" description:"HTTP server read timeout"`
-	WriteTimeout time.Duration `env:"WRITE_TIMEOUT,default=120s" description:"HTTP server write timeout"`
-	IdleTimeout  time.Duration `env:"IDLE_TIMEOUT,default=120s" description:"HTTP server idle timeout"`
+	ReadTimeout           time.Duration `env:"READ_TIMEOUT,default=120s" description:"HTTP server read timeout"`
+	WriteTimeout          time.Duration `env:"WRITE_TIMEOUT,default=120s" description:"HTTP server write timeout"`
+	IdleTimeout           time.Duration `env:"IDLE_TIMEOUT,default=120s" description:"HTTP server idle timeout"`
+	DisableHealthcheckLog bool          `env:"DISABLE_HEALTHCHECK_LOG,default=true" description:"Disable logging for health check requests"`
 }
 
 // TelemetryConfig holds telemetry configuration

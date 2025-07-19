@@ -259,7 +259,13 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		gin.SetMode(gin.DebugMode)
 	}
 
-	r := gin.Default()
+	r := gin.New()
+	
+	// Add recovery middleware
+	r.Use(gin.Recovery())
+	
+	// Add custom logging middleware that can skip health check logs
+	r.Use(middlewares.LoggingMiddleware(cfg.ServerConfig.DisableHealthcheckLog))
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": adk.HealthStatusHealthy})
