@@ -6,7 +6,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
-	github.com/inference-gateway/sdk v1.8.1
+	github.com/inference-gateway/sdk v1.9.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/stretchr/testify v1.10.0
