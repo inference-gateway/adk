@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2](https://github.com/inference-gateway/a2a/compare/v0.6.1...v0.6.2) (2025-07-19)
+
+### 🐛 Bug Fixes
+
+* Add middleware options to skip A2A and MCP in chat completion requests ([eb07011](https://github.com/inference-gateway/a2a/commit/eb070117fe80ea69e9e66d4e1af17605190f980a))
+
 ## [0.6.1](https://github.com/inference-gateway/a2a/compare/v0.6.0...v0.6.1) (2025-07-19)
 
 ### 🐛 Bug Fixes
