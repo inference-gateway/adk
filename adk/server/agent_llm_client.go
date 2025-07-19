@@ -119,7 +119,10 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 				messages,
 			)
 		} else {
-			response, lastErr = c.client.WithOptions(options).GenerateContent(
+			response, lastErr = c.client.WithMiddlewareOptions(&sdk.MiddlewareOptions{
+				SkipA2A: true,
+				SkipMCP: true,
+			}).WithOptions(options).GenerateContent(
 				ctx,
 				c.provider,
 				c.model,
