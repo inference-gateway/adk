@@ -21,7 +21,6 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 			name:    "loads defaults when no env vars set",
 			envVars: map[string]string{},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
-				// Agent metadata fields are build-time constants, not configurable via environment
 				assert.Equal(t, "", cfg.AgentName)
 				assert.Equal(t, "", cfg.AgentDescription)
 				assert.Equal(t, "http://helloworld-agent:8080", cfg.AgentURL)
@@ -159,7 +158,6 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				"QUEUE_MAX_SIZE":        "200",
 			},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
-				// Agent metadata fields are build-time constants, not configurable via environment
 				assert.Equal(t, "", cfg.AgentName)
 				assert.True(t, cfg.Debug)
 
