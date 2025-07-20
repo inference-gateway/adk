@@ -15,7 +15,6 @@ type Config struct {
 	AgentVersion                  string             // Build-time metadata, not configurable via environment
 	AgentURL                      string             `env:"AGENT_URL,default=http://helloworld-agent:8080"`
 	Debug                         bool               `env:"DEBUG,default=false"`
-	Port                          string             `env:"PORT,default=8080"`
 	Timezone                      string             `env:"TIMEZONE,default=UTC" description:"Timezone for timestamps (e.g., UTC, America/New_York, Europe/London)"`
 	StreamingStatusUpdateInterval time.Duration      `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
 	AgentConfig                   AgentConfig        `env:",prefix=AGENT_CLIENT_"`
@@ -87,6 +86,7 @@ type QueueConfig struct {
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
+	Port                  string        `env:"PORT,default=8080" description:"HTTP server port"`
 	ReadTimeout           time.Duration `env:"READ_TIMEOUT,default=120s" description:"HTTP server read timeout"`
 	WriteTimeout          time.Duration `env:"WRITE_TIMEOUT,default=120s" description:"HTTP server write timeout"`
 	IdleTimeout           time.Duration `env:"IDLE_TIMEOUT,default=120s" description:"HTTP server idle timeout"`

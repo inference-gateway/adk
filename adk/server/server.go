@@ -320,14 +320,14 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 	router := s.setupRouter(s.cfg)
 
 	s.httpServer = &http.Server{
-		Addr:         fmt.Sprintf(":%s", s.cfg.Port),
+		Addr:         fmt.Sprintf(":%s", s.cfg.ServerConfig.Port),
 		Handler:      router,
 		ReadTimeout:  s.cfg.ServerConfig.ReadTimeout,
 		WriteTimeout: s.cfg.ServerConfig.WriteTimeout,
 		IdleTimeout:  s.cfg.ServerConfig.IdleTimeout,
 	}
 
-	s.logger.Info("starting A2A server", zap.String("port", s.cfg.Port))
+	s.logger.Info("starting A2A server", zap.String("port", s.cfg.ServerConfig.Port))
 
 	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
 		go func() {
