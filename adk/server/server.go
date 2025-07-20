@@ -115,6 +115,16 @@ var _ A2AServer = (*A2AServerImpl)(nil)
 
 // NewA2AServer creates a new A2A server with the provided configuration and logger
 func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
+	if cfg.AgentName == "" {
+		cfg.AgentName = BuildAgentName
+	}
+	if cfg.AgentDescription == "" {
+		cfg.AgentDescription = BuildAgentDescription
+	}
+	if cfg.AgentVersion == "" {
+		cfg.AgentVersion = BuildAgentVersion
+	}
+
 	server := &A2AServerImpl{
 		cfg:       cfg,
 		logger:    logger,

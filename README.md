@@ -363,29 +363,74 @@ For complete working examples, see the [examples](./examples/) directory:
    task lint
    ```
 
-4. **Build the application**:
-
-   ```bash
-   task build
-   ```
-
-5. **Run tests**:
+4. **Run tests**:
    ```bash
    task test
    ```
 
 ### Available Tasks
 
-| Task                       | Description                       |
-| -------------------------- | --------------------------------- |
-| `task a2a:download-schema` | Download the latest A2A schema    |
-| `task a2a:generate-types`  | Generate Go types from A2A schema |
-| `task generate:mocks`      | Generate all testing mocks        |
-| `task lint`                | Run static analysis and linting   |
-| `task build`               | Build the application binary      |
-| `task test`                | Run all tests                     |
-| `task tidy`                | Tidy Go modules                   |
-| `task clean`               | Clean up build artifacts          |
+| Task                       | Description                                                |
+| -------------------------- | ---------------------------------------------------------- |
+| `task a2a:download-schema` | Download the latest A2A schema                             |
+| `task a2a:generate-types`  | Generate Go types from A2A schema                          |
+| `task generate:mocks`      | Generate all testing mocks                                 |
+| `task lint`                | Run static analysis and linting                            |
+| `task test`                | Run all tests                                              |
+| `task tidy`                | Tidy Go modules                                            |
+| `task clean`               | Clean up build artifacts                                   |
+
+### Build-Time Agent Metadata
+
+The ADK supports injecting agent metadata at build time using Go linker flags (LD flags). This makes agent information immutable and embedded in the binary, which is useful for production deployments.
+
+#### Available LD Flags
+
+The following build-time metadata variables can be set via LD flags:
+
+- **`BuildAgentName`** - The agent's display name
+- **`BuildAgentDescription`** - A description of the agent's capabilities  
+- **`BuildAgentVersion`** - The agent's version number
+
+#### Usage Examples
+
+**Direct Go Build:**
+
+```bash
+# Build your application with custom LD flags
+go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=MyAgent \
+  -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=My custom agent description' \
+  -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=1.2.3" \
+  -o bin/my-agent ./cmd/server/main.go
+```
+
+**Docker Build:**
+
+```dockerfile
+# Build with custom metadata in Docker
+FROM golang:1.24-alpine AS builder
+
+ARG AGENT_NAME="Production Agent"
+ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"  
+ARG AGENT_VERSION="1.0.0"
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN go build \
+    -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=${AGENT_NAME} \
+              -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' \
+              -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=${AGENT_VERSION}" \
+    -o bin/agent .
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=builder /app/bin/agent .
+CMD ["./agent"]
+```
 
 ## 📖 API Reference
 
@@ -840,30 +885,52 @@ err := taskManager.DeleteTaskPushNotificationConfig(
 
 ### Agent Metadata
 
-Customize your agent's capabilities and metadata through configuration:
+Agent metadata can be configured in two ways: at build-time via LD flags (recommended for production) or at runtime via configuration.
+
+#### Build-Time Metadata (Recommended)
+
+Agent metadata is embedded directly into the binary during compilation using Go linker flags. This approach ensures immutable agent information and is ideal for production deployments:
+
+```bash
+# Build your application with custom LD flags
+go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName='Weather Assistant' \
+  -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=Specialized weather analysis agent' \
+  -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=2.0.0" \
+  -o bin/app .
+```
+
+#### Runtime Metadata Configuration
+
+For development or when dynamic configuration is needed, you can override the build-time metadata through the server's setter methods:
 
 ```go
 cfg := config.Config{
-    AgentName:        "Weather Assistant",
-    AgentDescription: "Specialized weather analysis agent",
-    AgentVersion:     "2.0.0",
+    Port: "8080",
     CapabilitiesConfig: &config.CapabilitiesConfig{
         Streaming:              true,
         PushNotifications:      true,
         StateTransitionHistory: false,
     },
 }
+
+// The server uses build-time metadata as defaults (server.BuildAgentName, etc.)
+// but you can override them at runtime if needed
+server := server.NewA2AServerBuilder(cfg, logger).Build()
+
+// Override build-time metadata for development
+server.SetAgentName("Development Weather Assistant")
+server.SetAgentDescription("Development version with debug features")
+server.SetAgentVersion("dev-1.0.0")
 ```
+
+**Note:** Build-time metadata takes precedence as defaults, but can be overridden at runtime using the setter methods (`SetAgentName`, `SetAgentDescription`, `SetAgentVersion`).
 
 ### Environment Configuration
 
 Key environment variables for configuring your agent:
 
 ```bash
-# Basic agent information
-AGENT_NAME="My Agent"
-AGENT_DESCRIPTION="A helpful AI assistant"
-AGENT_VERSION="1.0.0"
+# Server configuration
 PORT="8080"
 
 # LLM client configuration
@@ -916,17 +983,28 @@ This ADK is part of the broader Inference Gateway ecosystem:
 
 ## 🐳 Docker Support
 
-Build and run your agent in a container:
+Build and run your A2A agent application in a container. Here's an example Dockerfile for an application using the ADK:
 
 ```dockerfile
 FROM golang:1.24-alpine AS builder
+
+# Build arguments for agent metadata
+ARG AGENT_NAME="My A2A Agent"
+ARG AGENT_DESCRIPTION="A custom A2A agent built with the ADK"
+ARG AGENT_VERSION="1.0.0"
 
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o bin/agent .
+
+# Build with custom agent metadata
+RUN go build \
+    -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=${AGENT_NAME} \
+              -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' \
+              -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=${AGENT_VERSION}" \
+    -o bin/agent .
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
@@ -934,6 +1012,16 @@ WORKDIR /root/
 
 COPY --from=builder /app/bin/agent .
 CMD ["./agent"]
+```
+
+**Build with custom metadata:**
+
+```bash
+docker build \
+  --build-arg AGENT_NAME="Weather Assistant" \
+  --build-arg AGENT_DESCRIPTION="AI-powered weather forecasting agent" \
+  --build-arg AGENT_VERSION="2.0.0" \
+  -t my-a2a-agent .
 ```
 
 ## 🧪 Testing
@@ -1026,8 +1114,7 @@ We welcome contributions! Here's how you can help:
 2. **Generate types**: `task a2a:generate-types`
 3. **Generate mocks** (if interfaces changed): `task generate:mocks`
 4. **Run linting**: `task lint`
-5. **Build successfully**: `task build`
-6. **All tests pass**: `task test`
+5. **All tests pass**: `task test`
 
 ### Pull Request Process
 
@@ -1044,14 +1131,6 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 - **Bug Reports**: [GitHub Issues](https://github.com/inference-gateway/a2a/issues)
 - **Documentation**: [Official Docs](https://docs.inference-gateway.com)
-
-## 🗺️ Roadmap
-
-- [x] **Enhanced Tool System**: More built-in tools and better tool chaining
-- [ ] **Agent Discovery**: Automatic discovery and registration of agents
-- [x] **Monitoring Dashboard**: Built-in monitoring and analytics
-- [ ] **Multi-language SDKs**: Additional language support beyond Go
-- [ ] **Performance Optimization**: Further reduce resource consumption
 
 ## 🔗 Resources
 

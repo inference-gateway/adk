@@ -27,11 +27,6 @@ tasks:
     cmds:
       - golangci-lint run
 
-  build:
-    desc: 'Build the Go application'
-    cmds:
-      - go build -o bin/app .
-
   test:
     desc: 'Run tests'
     cmds:

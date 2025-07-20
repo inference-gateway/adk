@@ -6,7 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Go project that uses Task for build automation. Common commands:
 
-- `task build` - Build the Go application (outputs to `bin/app`)
 - `task test` - Run all tests with coverage (`go test -v -cover ./...`)
 - `task lint` - Run Go static analysis and linting (`golangci-lint run`)
 - `task tidy` - Tidy all Go modules

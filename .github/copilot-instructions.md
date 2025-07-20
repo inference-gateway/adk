@@ -9,7 +9,6 @@ Today is June 15, 2025.
 - Always run `task lint` before committing code to ensure it adheres to the project's linting rules.
 - Always download the latest schema: `a2a:download-schema`.
 - Always generate the types after downloading the schema: `a2a:generate-types`.
-- Always run `task build` to verify compilation after making changes.
 - Always run `task test` before committing code to ensure all tests pass.
 - Always search for the simplest solution first before considering more complex alternatives.
 - Always prefer type safety over dynamic typing: Use strong typing and interfaces to ensure type safety and reduce runtime errors.
@@ -23,8 +22,7 @@ Today is June 15, 2025.
 2. Run `task a2a:generate-types` If added new Schemas to openapi.yaml, update internal/openapi/schemas.go to include the new schemas.
 3. Run `task generate:mocks` to generate testing mocks, when interfaces are adjusted.
 4. Run `task lint` to ensure code quality.
-5. Run `task build` to verify successful compilation.
-6. Run `task test` to ensure all tests pass.
+5. Run `task test` to ensure all tests pass.
 
 ## Available Tools and MCPs
 
