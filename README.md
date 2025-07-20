@@ -237,7 +237,7 @@ func main() {
         }
     }()
 
-    logger.Info("AI-powered A2A server running", zap.String("port", cfg.Port))
+    logger.Info("AI-powered A2A server running", zap.String("port", cfg.ServerConfig.Port))
 
     // Wait for shutdown signal
     select {}
