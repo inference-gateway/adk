@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0](https://github.com/inference-gateway/a2a/compare/v0.6.3...v0.7.0) (2025-07-20)
+
+### ✨ Features
+
+* **telemetry:** Make OTEL prometheus exporter server configurable ([#24](https://github.com/inference-gateway/a2a/issues/24)) ([c6c5c27](https://github.com/inference-gateway/a2a/commit/c6c5c272b41898c7d3e8e81ac8d0138db5afac74))
+
+### ♻️ Improvements
+
+* **config:** Correct placement of AgentURL field in Config struct ([0293591](https://github.com/inference-gateway/a2a/commit/02935919a43480d8f2b3c49a258e4dac8d70ef59))
+* **config:** Move port config under SERVER_ prefix ([#20](https://github.com/inference-gateway/a2a/issues/20)) ([2062a5e](https://github.com/inference-gateway/a2a/commit/2062a5e8ef82b9a2134f20bb795790ed6946fe4e))
+* **config:** Move TLS config under SERVER_* prefix ([#23](https://github.com/inference-gateway/a2a/issues/23)) ([fe5e3c2](https://github.com/inference-gateway/a2a/commit/fe5e3c221c816e4f191e703289991659e4b3c95a))
+
 ## [0.6.3](https://github.com/inference-gateway/a2a/compare/v0.6.2...v0.6.3) (2025-07-20)
 
 ### ♻️ Improvements
