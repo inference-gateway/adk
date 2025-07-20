@@ -376,16 +376,89 @@ For complete working examples, see the [examples](./examples/) directory:
 
 ### Available Tasks
 
-| Task                       | Description                       |
-| -------------------------- | --------------------------------- |
-| `task a2a:download-schema` | Download the latest A2A schema    |
-| `task a2a:generate-types`  | Generate Go types from A2A schema |
-| `task generate:mocks`      | Generate all testing mocks        |
-| `task lint`                | Run static analysis and linting   |
-| `task build`               | Build the application binary      |
-| `task test`                | Run all tests                     |
-| `task tidy`                | Tidy Go modules                   |
-| `task clean`               | Clean up build artifacts          |
+| Task                       | Description                                                |
+| -------------------------- | ---------------------------------------------------------- |
+| `task a2a:download-schema` | Download the latest A2A schema                             |
+| `task a2a:generate-types`  | Generate Go types from A2A schema                          |
+| `task generate:mocks`      | Generate all testing mocks                                 |
+| `task lint`                | Run static analysis and linting                            |
+| `task build`               | Build with default agent metadata (LD flags)              |
+| `task build:with-metadata` | Build with custom agent metadata (LD flags)               |
+| `task test`                | Run all tests                                              |
+| `task tidy`                | Tidy Go modules                                            |
+| `task clean`               | Clean up build artifacts                                   |
+
+### Build-Time Agent Metadata
+
+The ADK supports injecting agent metadata at build time using Go linker flags (LD flags). This makes agent information immutable and embedded in the binary, which is useful for production deployments.
+
+#### Available LD Flags
+
+The following build-time metadata variables can be set via LD flags:
+
+- **`BuildAgentName`** - The agent's display name
+- **`BuildAgentDescription`** - A description of the agent's capabilities  
+- **`BuildAgentVersion`** - The agent's version number
+
+#### Usage Examples
+
+**Using Task Commands:**
+
+```bash
+# Build with default metadata
+task build
+
+# Build with custom metadata using environment variables
+AGENT_NAME="Weather Assistant" \
+AGENT_DESCRIPTION="Specialized weather analysis and forecasting agent" \
+AGENT_VERSION="2.1.0" \
+task build:with-metadata
+```
+
+**Direct Go Build:**
+
+```bash
+# Manual build with custom LD flags
+go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=MyAgent \
+  -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=My custom agent description' \
+  -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=1.2.3" \
+  -o bin/app .
+```
+
+**Docker Build:**
+
+```dockerfile
+# Build with custom metadata in Docker
+FROM golang:1.24-alpine AS builder
+
+ARG AGENT_NAME="Production Agent"
+ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"  
+ARG AGENT_VERSION="1.0.0"
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN go build \
+    -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=${AGENT_NAME} \
+              -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' \
+              -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=${AGENT_VERSION}" \
+    -o bin/agent .
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=builder /app/bin/agent .
+CMD ["./agent"]
+```
+
+#### Build-Time vs Runtime Configuration
+
+- **Build-time metadata** (LD flags): Immutable, embedded in binary, good for production deployments
+- **Runtime metadata** (environment variables): Flexible, can be changed without recompiling, good for development
+
+The server uses build-time values as defaults but provides setter methods (`SetAgentName`, `SetAgentDescription`, `SetAgentVersion`) for runtime customization when needed.
 
 ## 📖 API Reference
 
@@ -840,7 +913,29 @@ err := taskManager.DeleteTaskPushNotificationConfig(
 
 ### Agent Metadata
 
-Customize your agent's capabilities and metadata through configuration:
+Agent metadata can be configured in two ways: at build-time via LD flags (recommended for production) or at runtime via configuration.
+
+#### Build-Time Metadata (Recommended)
+
+Agent metadata is embedded directly into the binary during compilation using Go linker flags. This approach ensures immutable agent information and is ideal for production deployments:
+
+```bash
+# Build with custom metadata via Task
+AGENT_NAME="Weather Assistant" \
+AGENT_DESCRIPTION="Specialized weather analysis agent" \
+AGENT_VERSION="2.0.0" \
+task build:with-metadata
+
+# Or direct Go build command
+go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName='Weather Assistant' \
+  -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=Specialized weather analysis agent' \
+  -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=2.0.0" \
+  -o bin/app .
+```
+
+#### Runtime Metadata Configuration
+
+For development or when dynamic configuration is needed, you can customize agent metadata and capabilities through the config structure:
 
 ```go
 cfg := config.Config{
@@ -853,18 +948,28 @@ cfg := config.Config{
         StateTransitionHistory: false,
     },
 }
+
+// The server will use build-time values as defaults, but you can override them
+server := server.NewA2AServerBuilder(cfg, logger).Build()
+server.SetAgentName("Development Weather Assistant")
+server.SetAgentDescription("Development version with debug features")
 ```
+
+**Note:** Build-time metadata takes precedence as defaults, but can be overridden at runtime using the setter methods (`SetAgentName`, `SetAgentDescription`, `SetAgentVersion`).
 
 ### Environment Configuration
 
 Key environment variables for configuring your agent:
 
 ```bash
-# Basic agent information
-AGENT_NAME="My Agent"
-AGENT_DESCRIPTION="A helpful AI assistant"
-AGENT_VERSION="1.0.0"
+# Server configuration
 PORT="8080"
+
+# Agent metadata (for Task build commands only - not runtime configuration)
+# These are used by 'task build:with-metadata' to set LD flags
+AGENT_NAME="My Agent"
+AGENT_DESCRIPTION="A helpful AI assistant"  
+AGENT_VERSION="1.0.0"
 
 # LLM client configuration
 AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
