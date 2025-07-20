@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3](https://github.com/inference-gateway/a2a/compare/v0.6.2...v0.6.3) (2025-07-20)
+
+### ♻️ Improvements
+
+* **config:** Replace environment variable configurability for agent with LD flags as metadata ([#18](https://github.com/inference-gateway/a2a/issues/18)) ([70c8958](https://github.com/inference-gateway/a2a/commit/70c8958598edfc3367a7eec64f3d3a124f00d444)), closes [#16](https://github.com/inference-gateway/a2a/issues/16)
+
+### 🐛 Bug Fixes
+
+* **docs:** Ensure consistency in the convention ([c971fb3](https://github.com/inference-gateway/a2a/commit/c971fb3afe4bb0deef3786de3e5685fd4a768550))
+* **docs:** Update Table of Contents in README to include new sections and improve navigation ([e8ea1c5](https://github.com/inference-gateway/a2a/commit/e8ea1c5b433cc6570744653f155674af4d1c5def))
+
 ## [0.6.2](https://github.com/inference-gateway/a2a/compare/v0.6.1...v0.6.2) (2025-07-19)
 
 ### 🐛 Bug Fixes
