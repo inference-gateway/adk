@@ -21,10 +21,11 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 			name:    "loads defaults when no env vars set",
 			envVars: map[string]string{},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
-				assert.Equal(t, "helloworld-agent", cfg.AgentName)
-				assert.Equal(t, "A simple greeting agent that provides personalized greetings using the A2A protocol", cfg.AgentDescription)
+				// Agent metadata fields are build-time constants, not configurable via environment
+				assert.Equal(t, "", cfg.AgentName)
+				assert.Equal(t, "", cfg.AgentDescription)
 				assert.Equal(t, "http://helloworld-agent:8080", cfg.AgentURL)
-				assert.Equal(t, "1.0.0", cfg.AgentVersion)
+				assert.Equal(t, "", cfg.AgentVersion)
 				assert.False(t, cfg.Debug)
 				assert.Equal(t, "8080", cfg.Port)
 				assert.Equal(t, 1*time.Second, cfg.StreamingStatusUpdateInterval)
@@ -63,10 +64,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 		{
 			name: "overrides defaults with custom env vars",
 			envVars: map[string]string{
-				"AGENT_NAME":                       "custom-agent",
-				"AGENT_DESCRIPTION":                "A custom test agent",
 				"AGENT_URL":                        "http://localhost:9090",
-				"AGENT_VERSION":                    "2.0.0",
 				"DEBUG":                            "true",
 				"PORT":                             "9090",
 				"STREAMING_STATUS_UPDATE_INTERVAL": "5s",
@@ -98,11 +96,11 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				"SERVER_IDLE_TIMEOUT":                         "300s",
 			},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
-				// Test main config overrides
-				assert.Equal(t, "custom-agent", cfg.AgentName)
-				assert.Equal(t, "A custom test agent", cfg.AgentDescription)
+				// Agent metadata fields are build-time constants, not configurable via environment
+				assert.Equal(t, "", cfg.AgentName)
+				assert.Equal(t, "", cfg.AgentDescription)
 				assert.Equal(t, "http://localhost:9090", cfg.AgentURL)
-				assert.Equal(t, "2.0.0", cfg.AgentVersion)
+				assert.Equal(t, "", cfg.AgentVersion)
 				assert.True(t, cfg.Debug)
 				assert.Equal(t, "9090", cfg.Port)
 				assert.Equal(t, 5*time.Second, cfg.StreamingStatusUpdateInterval)
@@ -155,18 +153,18 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 		{
 			name: "partial override with remaining defaults",
 			envVars: map[string]string{
-				"AGENT_NAME":            "partial-agent",
 				"DEBUG":                 "true",
 				"AGENT_CLIENT_PROVIDER": "anthropic",
 				"AGENT_CLIENT_MODEL":    "claude-3",
 				"QUEUE_MAX_SIZE":        "200",
 			},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
-				assert.Equal(t, "partial-agent", cfg.AgentName)
+				// Agent metadata fields are build-time constants, not configurable via environment
+				assert.Equal(t, "", cfg.AgentName)
 				assert.True(t, cfg.Debug)
 
-				assert.Equal(t, "A simple greeting agent that provides personalized greetings using the A2A protocol", cfg.AgentDescription)
-				assert.Equal(t, "1.0.0", cfg.AgentVersion)
+				assert.Equal(t, "", cfg.AgentDescription)
+				assert.Equal(t, "", cfg.AgentVersion)
 				assert.Equal(t, "8080", cfg.Port)
 
 				require.NotNil(t, cfg.AgentConfig)
