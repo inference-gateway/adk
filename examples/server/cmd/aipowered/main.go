@@ -171,7 +171,7 @@ func main() {
 		}
 	}()
 
-	logger.Info("🌐 server running", zap.String("port", cfg.Port))
+	logger.Info("🌐 server running", zap.String("port", cfg.ServerConfig.Port))
 	fmt.Printf("\n🎯 Test with curl:\n")
 	fmt.Printf(`curl -X POST http://localhost:%s/a2a \
   -H "Content-Type: application/json" \
@@ -192,7 +192,7 @@ func main() {
       }
     },
     "id": 1
-  }'`, cfg.Port)
+  }'`, cfg.ServerConfig.Port)
 	fmt.Println()
 
 	// Wait for shutdown

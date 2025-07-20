@@ -273,7 +273,7 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 		AgentDescription: "A custom test agent for dependency injection",
 		AgentURL:         "http://custom-agent:9090",
 		AgentVersion:     "2.5.0",
-		Port:             "9090",
+		ServerConfig:     config.ServerConfig{Port: "9090"},
 		Debug:            true,
 	}
 
@@ -298,7 +298,7 @@ func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
 		AgentDescription: "A test agent with custom configuration",
 		AgentURL:         "http://test-agent:9999",
 		AgentVersion:     "2.0.0",
-		Port:             "9999",
+		ServerConfig:     config.ServerConfig{Port: "9999"},
 		Debug:            true,
 	}
 
@@ -328,7 +328,7 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
 		AgentVersion:     "1.0.0",
-		Port:             "8080",
+		ServerConfig:     config.ServerConfig{Port: "8080"},
 		CapabilitiesConfig: config.CapabilitiesConfig{
 			Streaming:              false,
 			PushNotifications:      false,
@@ -359,7 +359,7 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
 		AgentVersion:     "1.0.0",
-		Port:             "8080",
+		ServerConfig:     config.ServerConfig{Port: "8080"},
 	}
 
 	logger := zap.NewNop()
@@ -410,7 +410,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
 		AgentVersion:     "1.0.0",
-		Port:             "8080",
+		ServerConfig:     config.ServerConfig{Port: "8080"},
 		Debug:            false,
 		QueueConfig: config.QueueConfig{
 			MaxSize:         10,
@@ -495,7 +495,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		AgentDescription: "A weather agent",
 		AgentURL:         "http://weather-agent:8080",
 		AgentVersion:     "1.0.0",
-		Port:             "8080",
+		ServerConfig:     config.ServerConfig{Port: "8080"},
 		Debug:            false,
 		QueueConfig: config.QueueConfig{
 			MaxSize:         10,

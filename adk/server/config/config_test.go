@@ -26,7 +26,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				assert.Equal(t, "http://helloworld-agent:8080", cfg.AgentURL)
 				assert.Equal(t, "", cfg.AgentVersion)
 				assert.False(t, cfg.Debug)
-				assert.Equal(t, "8080", cfg.Port)
+				assert.Equal(t, "8080", cfg.ServerConfig.Port)
 				assert.Equal(t, 1*time.Second, cfg.StreamingStatusUpdateInterval)
 
 				require.NotNil(t, cfg.AgentConfig)
@@ -55,6 +55,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				assert.Equal(t, 30*time.Second, cfg.QueueConfig.CleanupInterval)
 
 				require.NotNil(t, cfg.ServerConfig)
+				assert.Equal(t, "8080", cfg.ServerConfig.Port)
 				assert.Equal(t, 120*time.Second, cfg.ServerConfig.ReadTimeout)
 				assert.Equal(t, 120*time.Second, cfg.ServerConfig.WriteTimeout)
 				assert.Equal(t, 120*time.Second, cfg.ServerConfig.IdleTimeout)
@@ -65,7 +66,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 			envVars: map[string]string{
 				"AGENT_URL":                        "http://localhost:9090",
 				"DEBUG":                            "true",
-				"PORT":                             "9090",
+				"SERVER_PORT":                      "9090",
 				"STREAMING_STATUS_UPDATE_INTERVAL": "5s",
 				"AGENT_CLIENT_PROVIDER":            "openai",
 				"AGENT_CLIENT_MODEL":               "gpt-4",
@@ -100,7 +101,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				assert.Equal(t, "http://localhost:9090", cfg.AgentURL)
 				assert.Equal(t, "", cfg.AgentVersion)
 				assert.True(t, cfg.Debug)
-				assert.Equal(t, "9090", cfg.Port)
+				assert.Equal(t, "9090", cfg.ServerConfig.Port)
 				assert.Equal(t, 5*time.Second, cfg.StreamingStatusUpdateInterval)
 
 				// Test LLM config overrides
@@ -143,6 +144,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 
 				// Test Server config overrides
 				require.NotNil(t, cfg.ServerConfig)
+				assert.Equal(t, "9090", cfg.ServerConfig.Port)
 				assert.Equal(t, 180*time.Second, cfg.ServerConfig.ReadTimeout)
 				assert.Equal(t, 180*time.Second, cfg.ServerConfig.WriteTimeout)
 				assert.Equal(t, 300*time.Second, cfg.ServerConfig.IdleTimeout)
@@ -162,7 +164,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 
 				assert.Equal(t, "", cfg.AgentDescription)
 				assert.Equal(t, "", cfg.AgentVersion)
-				assert.Equal(t, "8080", cfg.Port)
+				assert.Equal(t, "8080", cfg.ServerConfig.Port)
 
 				require.NotNil(t, cfg.AgentConfig)
 				assert.Equal(t, "anthropic", cfg.AgentConfig.Provider)
