@@ -12,8 +12,8 @@ import (
 type Config struct {
 	AgentName                     string             // Build-time metadata, not configurable via environment
 	AgentDescription              string             // Build-time metadata, not configurable via environment
-	AgentURL                      string             `env:"AGENT_URL,default=http://helloworld-agent:8080"`
 	AgentVersion                  string             // Build-time metadata, not configurable via environment
+	AgentURL                      string             `env:"AGENT_URL,default=http://helloworld-agent:8080"`
 	Debug                         bool               `env:"DEBUG,default=false"`
 	Port                          string             `env:"PORT,default=8080"`
 	Timezone                      string             `env:"TIMEZONE,default=UTC" description:"Timezone for timestamps (e.g., UTC, America/New_York, Europe/London)"`
