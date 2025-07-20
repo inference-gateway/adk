@@ -160,7 +160,8 @@ func (b *A2AServerBuilderImpl) Build() A2AServer {
 		if err != nil {
 			b.logger.Error("failed to initialize telemetry", zap.Error(err))
 		} else {
-			b.logger.Info("telemetry enabled - metrics will be available on :9090/metrics")
+			metricsAddr := b.cfg.TelemetryConfig.MetricsConfig.Host + ":" + b.cfg.TelemetryConfig.MetricsConfig.Port
+			b.logger.Info("telemetry enabled - metrics will be available", zap.String("metrics_url", metricsAddr+"/metrics"))
 		}
 	}
 

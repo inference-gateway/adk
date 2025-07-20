@@ -180,7 +180,8 @@ func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl {
 		if err != nil {
 			logger.Fatal("failed to initialize telemetry", zap.Error(err))
 		}
-		logger.Info("telemetry enabled - metrics will be available on :9090/metrics")
+		metricsAddr := finalCfg.TelemetryConfig.MetricsConfig.Host + ":" + finalCfg.TelemetryConfig.MetricsConfig.Port
+		logger.Info("telemetry enabled - metrics will be available", zap.String("metrics_url", metricsAddr+"/metrics"))
 	}
 
 	server := NewA2AServer(finalCfg, logger, telemetryInstance)
@@ -334,12 +335,16 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 			metricsRouter := gin.Default()
 			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
+			metricsAddr := s.cfg.TelemetryConfig.MetricsConfig.Host + ":" + s.cfg.TelemetryConfig.MetricsConfig.Port
 			s.metricsServer = &http.Server{
-				Addr:    ":9090",
-				Handler: metricsRouter,
+				Addr:         metricsAddr,
+				Handler:      metricsRouter,
+				ReadTimeout:  s.cfg.TelemetryConfig.MetricsConfig.ReadTimeout,
+				WriteTimeout: s.cfg.TelemetryConfig.MetricsConfig.WriteTimeout,
+				IdleTimeout:  s.cfg.TelemetryConfig.MetricsConfig.IdleTimeout,
 			}
 
-			s.logger.Info("starting metrics server on port 9090")
+			s.logger.Info("starting metrics server", zap.String("port", s.cfg.TelemetryConfig.MetricsConfig.Port))
 			if err := s.metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				s.logger.Error("metrics server failed", zap.Error(err))
 			}
