@@ -453,13 +453,6 @@ COPY --from=builder /app/bin/agent .
 CMD ["./agent"]
 ```
 
-#### Build-Time vs Runtime Configuration
-
-- **Build-time metadata** (LD flags): Immutable, embedded in binary, good for production deployments
-- **Runtime metadata** (environment variables): Flexible, can be changed without recompiling, good for development
-
-The server uses build-time values as defaults but provides setter methods (`SetAgentName`, `SetAgentDescription`, `SetAgentVersion`) for runtime customization when needed.
-
 ## 📖 API Reference
 
 ### Core Components
@@ -1149,14 +1142,6 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 - **Bug Reports**: [GitHub Issues](https://github.com/inference-gateway/a2a/issues)
 - **Documentation**: [Official Docs](https://docs.inference-gateway.com)
-
-## 🗺️ Roadmap
-
-- [x] **Enhanced Tool System**: More built-in tools and better tool chaining
-- [ ] **Agent Discovery**: Automatic discovery and registration of agents
-- [x] **Monitoring Dashboard**: Built-in monitoring and analytics
-- [ ] **Multi-language SDKs**: Additional language support beyond Go
-- [ ] **Performance Optimization**: Further reduce resource consumption
 
 ## 🔗 Resources
 
