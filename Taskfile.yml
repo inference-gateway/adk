@@ -27,24 +27,6 @@ tasks:
     cmds:
       - golangci-lint run
 
-  build:
-    desc: 'Build the Go application'
-    vars:
-      AGENT_NAME: '{{.AGENT_NAME | default "helloworld-agent"}}'
-      AGENT_DESCRIPTION: '{{.AGENT_DESCRIPTION | default "A simple greeting agent that provides personalized greetings using the A2A protocol"}}'
-      AGENT_VERSION: '{{.AGENT_VERSION | default "1.0.0"}}'
-    cmds:
-      - go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName={{.AGENT_NAME}} -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription={{.AGENT_DESCRIPTION}}' -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion={{.AGENT_VERSION}}" -o bin/app .
-
-  build:with-metadata:
-    desc: 'Build the Go application with custom metadata'
-    vars:
-      AGENT_NAME: '{{.AGENT_NAME | default "helloworld-agent"}}'
-      AGENT_DESCRIPTION: '{{.AGENT_DESCRIPTION | default "A simple greeting agent that provides personalized greetings using the A2A protocol"}}'
-      AGENT_VERSION: '{{.AGENT_VERSION | default "1.0.0"}}'
-    cmds:
-      - go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName={{.AGENT_NAME}} -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription={{.AGENT_DESCRIPTION}}' -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion={{.AGENT_VERSION}}" -o bin/app .
-
   test:
     desc: 'Run tests'
     cmds:
