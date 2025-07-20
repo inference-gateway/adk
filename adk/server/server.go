@@ -348,8 +348,8 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	go s.StartTaskProcessor(ctx)
 
-	if s.cfg.TLSConfig.Enable {
-		return s.httpServer.ListenAndServeTLS(s.cfg.TLSConfig.CertPath, s.cfg.TLSConfig.KeyPath)
+	if s.cfg.ServerConfig.TLSConfig.Enable {
+		return s.httpServer.ListenAndServeTLS(s.cfg.ServerConfig.TLSConfig.CertPath, s.cfg.ServerConfig.TLSConfig.KeyPath)
 	}
 
 	return s.httpServer.ListenAndServe()
