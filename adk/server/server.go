@@ -19,7 +19,6 @@ import (
 	zap "go.uber.org/zap"
 )
 
-
 // A2AServer defines the interface for an A2A-compatible server
 type A2AServer interface {
 	// Start starts the A2A server on the configured port
