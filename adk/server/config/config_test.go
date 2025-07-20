@@ -95,7 +95,6 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				"SERVER_IDLE_TIMEOUT":                         "300s",
 			},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
-				// Agent metadata fields are build-time constants, not configurable via environment
 				assert.Equal(t, "", cfg.AgentName)
 				assert.Equal(t, "", cfg.AgentDescription)
 				assert.Equal(t, "http://localhost:9090", cfg.AgentURL)
