@@ -960,9 +960,9 @@ AUTH_CLIENT_ID="inference-gateway-client"
 AUTH_CLIENT_SECRET="your-secret"
 
 # TLS (optional)
-TLS_ENABLE="false"
-TLS_CERT_PATH="/path/to/cert.pem"
-TLS_KEY_PATH="/path/to/key.pem"
+SERVER_TLS_ENABLE="false"
+SERVER_TLS_CERT_PATH="/path/to/cert.pem"
+SERVER_TLS_KEY_PATH="/path/to/key.pem"
 ```
 
 ## 🌐 A2A Ecosystem

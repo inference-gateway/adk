@@ -19,7 +19,6 @@ type Config struct {
 	StreamingStatusUpdateInterval time.Duration      `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
 	AgentConfig                   AgentConfig        `env:",prefix=AGENT_CLIENT_"`
 	CapabilitiesConfig            CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
-	TLSConfig                     TLSConfig          `env:",prefix=TLS_"`
 	AuthConfig                    AuthConfig         `env:",prefix=AUTH_"`
 	QueueConfig                   QueueConfig        `env:",prefix=QUEUE_"`
 	ServerConfig                  ServerConfig       `env:",prefix=SERVER_"`
@@ -91,6 +90,7 @@ type ServerConfig struct {
 	WriteTimeout          time.Duration `env:"WRITE_TIMEOUT,default=120s" description:"HTTP server write timeout"`
 	IdleTimeout           time.Duration `env:"IDLE_TIMEOUT,default=120s" description:"HTTP server idle timeout"`
 	DisableHealthcheckLog bool          `env:"DISABLE_HEALTHCHECK_LOG,default=true" description:"Disable logging for health check requests"`
+	TLSConfig             TLSConfig     `env:",prefix=TLS_"`
 }
 
 // TelemetryConfig holds telemetry configuration

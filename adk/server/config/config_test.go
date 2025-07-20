@@ -82,9 +82,9 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				"CAPABILITIES_STREAMING":                      "false",
 				"CAPABILITIES_PUSH_NOTIFICATIONS":             "false",
 				"CAPABILITIES_STATE_TRANSITION_HISTORY":       "true",
-				"TLS_ENABLE":                                  "true",
-				"TLS_CERT_PATH":                               "/custom/cert.pem",
-				"TLS_KEY_PATH":                                "/custom/key.pem",
+				"SERVER_TLS_ENABLE":                           "true",
+				"SERVER_TLS_CERT_PATH":                        "/custom/cert.pem",
+				"SERVER_TLS_KEY_PATH":                         "/custom/key.pem",
 				"AUTH_ENABLE":                                 "true",
 				"AUTH_ISSUER_URL":                             "http://custom-keycloak:8080/realms/custom",
 				"AUTH_CLIENT_ID":                              "custom-client",
@@ -125,10 +125,10 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				assert.True(t, cfg.CapabilitiesConfig.StateTransitionHistory)
 
 				// Test TLS config overrides
-				require.NotNil(t, cfg.TLSConfig)
-				assert.True(t, cfg.TLSConfig.Enable)
-				assert.Equal(t, "/custom/cert.pem", cfg.TLSConfig.CertPath)
-				assert.Equal(t, "/custom/key.pem", cfg.TLSConfig.KeyPath)
+				require.NotNil(t, cfg.ServerConfig.TLSConfig)
+				assert.True(t, cfg.ServerConfig.TLSConfig.Enable)
+				assert.Equal(t, "/custom/cert.pem", cfg.ServerConfig.TLSConfig.CertPath)
+				assert.Equal(t, "/custom/key.pem", cfg.ServerConfig.TLSConfig.KeyPath)
 
 				// Test Auth config overrides
 				require.NotNil(t, cfg.AuthConfig)
