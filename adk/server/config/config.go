@@ -93,9 +93,19 @@ type ServerConfig struct {
 	TLSConfig             TLSConfig     `env:",prefix=TLS_"`
 }
 
+// MetricsConfig holds metrics server configuration
+type MetricsConfig struct {
+	Port         string        `env:"PORT,default=9090" description:"Metrics server port"`
+	Host         string        `env:"HOST,default=" description:"Metrics server host (empty for all interfaces)"`
+	ReadTimeout  time.Duration `env:"READ_TIMEOUT,default=30s" description:"Metrics server read timeout"`
+	WriteTimeout time.Duration `env:"WRITE_TIMEOUT,default=30s" description:"Metrics server write timeout"`
+	IdleTimeout  time.Duration `env:"IDLE_TIMEOUT,default=60s" description:"Metrics server idle timeout"`
+}
+
 // TelemetryConfig holds telemetry configuration
 type TelemetryConfig struct {
-	Enable bool `env:"ENABLE,default=false" description:"Enable telemetry collection"`
+	Enable        bool          `env:"ENABLE,default=false" description:"Enable telemetry collection"`
+	MetricsConfig MetricsConfig `env:",prefix=METRICS_"`
 }
 
 // Load loads configuration from environment variables, merging with the provided base config.
