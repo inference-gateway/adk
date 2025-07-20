@@ -134,10 +134,15 @@ func main() {
 		port = "8080"
 	}
 
+	// Load configuration with agent metadata injected at build time
+	// Agent metadata is set via LD flags during build:
+	// go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=my-agent ..."
 	cfg := config.Config{
-		AgentName: "minimal-a2a-server",
-		Port:      port,
-		Debug:     true,
+		AgentName:        server.BuildAgentName,
+		AgentDescription: server.BuildAgentDescription,
+		AgentVersion:     server.BuildAgentVersion,
+		Port:             port,
+		Debug:            true,
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
@@ -152,6 +157,12 @@ func main() {
 		Build()
 
 	logger.Info("✅ minimal A2A server created with simple task handler")
+
+	// Display agent metadata (from build-time LD flags)
+	logger.Info("🤖 agent metadata",
+		zap.String("name", server.BuildAgentName),
+		zap.String("description", server.BuildAgentDescription),
+		zap.String("version", server.BuildAgentVersion))
 
 	// Step 3: Start the server
 	ctx, cancel := context.WithCancel(context.Background())

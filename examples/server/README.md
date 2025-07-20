@@ -102,6 +102,20 @@ curl -X POST http://localhost:8080/a2a \
   }' | jq .
 ```
 
+## Building with Custom Agent Metadata
+
+Both examples use build-time metadata injection via LD flags. You can customize the agent metadata when building:
+
+```bash
+# Build with custom agent metadata
+go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=my-custom-agent -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=My custom A2A agent description' -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=2.0.0" -o my-agent cmd/minimal/main.go
+```
+
+The agent metadata appears in:
+- `/.well-known/agent.json` endpoint
+- Server startup logs
+- A2A protocol responses
+
 ## Configuration
 
 ### Minimal Server
@@ -152,6 +166,47 @@ export AGENT_CLIENT_BASE_URL="http://localhost:11434/v1"
 - **ToolBox**: Function calling capabilities  
 - **Multiple LLM Providers**: Flexible provider support
 - **Conversation Management**: Context-aware interactions
+
+## Example Output
+
+When you run the examples with custom build-time metadata, you'll see the agent information displayed in the startup logs:
+
+**Minimal Server Example:**
+```bash
+# Build with custom metadata
+go build -ldflags="-X 'github.com/inference-gateway/a2a/adk/server.BuildAgentName=Weather Assistant' \
+  -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=AI-powered weather and time assistant' \
+  -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=2.1.0'" \
+  -o weather-agent cmd/minimal/main.go
+
+# Run the agent
+./weather-agent
+```
+
+**Output:**
+```
+🤖 Starting Minimal A2A Server (Non-AI)...
+2025-07-20T09:14:26.290Z  INFO  ✅ minimal A2A server created with simple task handler
+2025-07-20T09:14:26.290Z  INFO  🤖 agent metadata {"name": "Weather Assistant", "description": "AI-powered weather and time assistant", "version": "2.1.0"}
+2025-07-20T09:14:26.290Z  INFO  🌐 server running {"port": "8080"}
+
+🎯 Test the server:
+📋 Agent info: http://localhost:8080/.well-known/agent.json
+💚 Health check: http://localhost:8080/health
+📡 A2A endpoint: http://localhost:8080/a2a
+```
+
+The agent metadata is also available via the agent info endpoint:
+```bash
+curl http://localhost:8080/.well-known/agent.json | jq
+{
+  "name": "Weather Assistant",
+  "description": "AI-powered weather and time assistant", 
+  "version": "2.1.0",
+  "capabilities": { ... },
+  ...
+}
+```
 
 ## Files
 

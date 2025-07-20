@@ -73,9 +73,12 @@ func main() {
 	}
 
 	// Step 3: Load configuration from environment
+	// Agent metadata is injected at build time via LD flags
+	// Use: go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=my-agent ..."
 	cfg := config.Config{
-		AgentName:        "AI-Powered Assistant",
-		AgentDescription: "An AI assistant with weather and time tools",
+		AgentName:        server.BuildAgentName,
+		AgentDescription: server.BuildAgentDescription,
+		AgentVersion:     server.BuildAgentVersion,
 		Port:             "8080",
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
@@ -151,6 +154,12 @@ func main() {
 		zap.String("provider", cfg.AgentConfig.Provider),
 		zap.String("model", cfg.AgentConfig.Model),
 		zap.String("tools", "weather, time"))
+
+	// Display agent metadata (from build-time LD flags)
+	logger.Info("🤖 agent metadata",
+		zap.String("name", server.BuildAgentName),
+		zap.String("description", server.BuildAgentDescription),
+		zap.String("version", server.BuildAgentVersion))
 
 	// Start server
 	ctx, cancel := context.WithCancel(context.Background())

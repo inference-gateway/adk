@@ -928,13 +928,11 @@ go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName
 
 #### Runtime Metadata Configuration
 
-For development or when dynamic configuration is needed, you can customize agent metadata and capabilities through the config structure:
+For development or when dynamic configuration is needed, you can override the build-time metadata through the server's setter methods:
 
 ```go
 cfg := config.Config{
-    AgentName:        "Weather Assistant",
-    AgentDescription: "Specialized weather analysis agent",
-    AgentVersion:     "2.0.0",
+    Port: "8080",
     CapabilitiesConfig: &config.CapabilitiesConfig{
         Streaming:              true,
         PushNotifications:      true,
@@ -942,10 +940,14 @@ cfg := config.Config{
     },
 }
 
-// The server will use build-time values as defaults, but you can override them
+// The server uses build-time metadata as defaults (server.BuildAgentName, etc.)
+// but you can override them at runtime if needed
 server := server.NewA2AServerBuilder(cfg, logger).Build()
+
+// Override build-time metadata for development
 server.SetAgentName("Development Weather Assistant")
 server.SetAgentDescription("Development version with debug features")
+server.SetAgentVersion("dev-1.0.0")
 ```
 
 **Note:** Build-time metadata takes precedence as defaults, but can be overridden at runtime using the setter methods (`SetAgentName`, `SetAgentDescription`, `SetAgentVersion`).
@@ -957,12 +959,6 @@ Key environment variables for configuring your agent:
 ```bash
 # Server configuration
 PORT="8080"
-
-# Agent metadata (for Task build commands only - not runtime configuration)
-# These are used by 'task build:with-metadata' to set LD flags
-AGENT_NAME="My Agent"
-AGENT_DESCRIPTION="A helpful AI assistant"  
-AGENT_VERSION="1.0.0"
 
 # LLM client configuration
 AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
@@ -1014,17 +1010,28 @@ This ADK is part of the broader Inference Gateway ecosystem:
 
 ## 🐳 Docker Support
 
-Build and run your agent in a container:
+Build and run your A2A agent application in a container. Here's an example Dockerfile for an application using the ADK:
 
 ```dockerfile
 FROM golang:1.24-alpine AS builder
+
+# Build arguments for agent metadata
+ARG AGENT_NAME="My A2A Agent"
+ARG AGENT_DESCRIPTION="A custom A2A agent built with the ADK"
+ARG AGENT_VERSION="1.0.0"
 
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o bin/agent .
+
+# Build with custom agent metadata
+RUN go build \
+    -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=${AGENT_NAME} \
+              -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' \
+              -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=${AGENT_VERSION}" \
+    -o bin/agent .
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
@@ -1032,6 +1039,16 @@ WORKDIR /root/
 
 COPY --from=builder /app/bin/agent .
 CMD ["./agent"]
+```
+
+**Build with custom metadata:**
+
+```bash
+docker build \
+  --build-arg AGENT_NAME="Weather Assistant" \
+  --build-arg AGENT_DESCRIPTION="AI-powered weather forecasting agent" \
+  --build-arg AGENT_VERSION="2.0.0" \
+  -t my-a2a-agent .
 ```
 
 ## 🧪 Testing
