@@ -19,6 +19,13 @@ import (
 	zap "go.uber.org/zap"
 )
 
+// Build-time metadata variables set via LD flags
+var (
+	BuildAgentName        = "helloworld-agent"
+	BuildAgentDescription = "A simple greeting agent that provides personalized greetings using the A2A protocol"
+	BuildAgentVersion     = "1.0.0"
+)
+
 // A2AServer defines the interface for an A2A-compatible server
 type A2AServer interface {
 	// Start starts the A2A server on the configured port
@@ -115,6 +122,17 @@ var _ A2AServer = (*A2AServerImpl)(nil)
 
 // NewA2AServer creates a new A2A server with the provided configuration and logger
 func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
+	// Set build-time metadata values if not already configured
+	if cfg.AgentName == "" {
+		cfg.AgentName = BuildAgentName
+	}
+	if cfg.AgentDescription == "" {
+		cfg.AgentDescription = BuildAgentDescription
+	}
+	if cfg.AgentVersion == "" {
+		cfg.AgentVersion = BuildAgentVersion
+	}
+
 	server := &A2AServerImpl{
 		cfg:       cfg,
 		logger:    logger,

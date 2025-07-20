@@ -10,10 +10,10 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	AgentName                     string             `env:"AGENT_NAME,default=helloworld-agent"`
-	AgentDescription              string             `env:"AGENT_DESCRIPTION,default=A simple greeting agent that provides personalized greetings using the A2A protocol"`
+	AgentName                     string             // Build-time metadata, not configurable via environment
+	AgentDescription              string             // Build-time metadata, not configurable via environment
 	AgentURL                      string             `env:"AGENT_URL,default=http://helloworld-agent:8080"`
-	AgentVersion                  string             `env:"AGENT_VERSION,default=1.0.0"`
+	AgentVersion                  string             // Build-time metadata, not configurable via environment
 	Debug                         bool               `env:"DEBUG,default=false"`
 	Port                          string             `env:"PORT,default=8080"`
 	Timezone                      string             `env:"TIMEZONE,default=UTC" description:"Timezone for timestamps (e.g., UTC, America/New_York, Europe/London)"`
