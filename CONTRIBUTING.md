@@ -31,7 +31,7 @@ Before contributing, ensure you have the following installed:
    ```
 5. **Verify your setup**:
    ```bash
-   task build
+   task lint
    task test
    ```
 
@@ -74,9 +74,6 @@ Follow this cycle for development:
 # Run linting
 task lint
 
-# Build to verify compilation
-task build
-
 # Run tests
 task test
 
@@ -92,8 +89,7 @@ task tidy
 2. `task a2a:generate-types` (if schema changes were made)
 3. `task generate:mocks` (if interfaces were modified)
 4. `task lint` (ensure code quality)
-5. `task build` (verify compilation)
-6. `task test` (ensure all tests pass)
+5. `task test` (ensure all tests pass)
 
 ## 🎯 Coding Guidelines
 
@@ -348,7 +344,6 @@ When adding new features:
    task a2a:generate-types   # if needed
    task generate:mocks       # if interfaces changed
    task lint
-   task build
    task test
    ```
 

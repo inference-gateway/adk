@@ -363,13 +363,7 @@ For complete working examples, see the [examples](./examples/) directory:
    task lint
    ```
 
-4. **Build the application**:
-
-   ```bash
-   task build
-   ```
-
-5. **Run tests**:
+4. **Run tests**:
    ```bash
    task test
    ```
@@ -382,8 +376,6 @@ For complete working examples, see the [examples](./examples/) directory:
 | `task a2a:generate-types`  | Generate Go types from A2A schema                          |
 | `task generate:mocks`      | Generate all testing mocks                                 |
 | `task lint`                | Run static analysis and linting                            |
-| `task build`               | Build with default agent metadata (LD flags)              |
-| `task build:with-metadata` | Build with custom agent metadata (LD flags)               |
 | `task test`                | Run all tests                                              |
 | `task tidy`                | Tidy Go modules                                            |
 | `task clean`               | Clean up build artifacts                                   |
@@ -402,27 +394,14 @@ The following build-time metadata variables can be set via LD flags:
 
 #### Usage Examples
 
-**Using Task Commands:**
-
-```bash
-# Build with default metadata
-task build
-
-# Build with custom metadata using environment variables
-AGENT_NAME="Weather Assistant" \
-AGENT_DESCRIPTION="Specialized weather analysis and forecasting agent" \
-AGENT_VERSION="2.1.0" \
-task build:with-metadata
-```
-
 **Direct Go Build:**
 
 ```bash
-# Manual build with custom LD flags
+# Build your application with custom LD flags
 go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=MyAgent \
   -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=My custom agent description' \
   -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=1.2.3" \
-  -o bin/app .
+  -o bin/my-agent ./cmd/server/main.go
 ```
 
 **Docker Build:**
@@ -913,13 +892,7 @@ Agent metadata can be configured in two ways: at build-time via LD flags (recomm
 Agent metadata is embedded directly into the binary during compilation using Go linker flags. This approach ensures immutable agent information and is ideal for production deployments:
 
 ```bash
-# Build with custom metadata via Task
-AGENT_NAME="Weather Assistant" \
-AGENT_DESCRIPTION="Specialized weather analysis agent" \
-AGENT_VERSION="2.0.0" \
-task build:with-metadata
-
-# Or direct Go build command
+# Build your application with custom LD flags
 go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName='Weather Assistant' \
   -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=Specialized weather analysis agent' \
   -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=2.0.0" \
@@ -1141,8 +1114,7 @@ We welcome contributions! Here's how you can help:
 2. **Generate types**: `task a2a:generate-types`
 3. **Generate mocks** (if interfaces changed): `task generate:mocks`
 4. **Run linting**: `task lint`
-5. **Build successfully**: `task build`
-6. **All tests pass**: `task test`
+5. **All tests pass**: `task test`
 
 ### Pull Request Process
 
