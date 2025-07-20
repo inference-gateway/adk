@@ -23,12 +23,15 @@
 
 ---
 
+## Table of Contents
+
 - [Overview](#overview)
   - [What is A2A?](#what-is-a2a)
 - [🚀 Quick Start](#-quick-start)
   - [Installation](#installation)
   - [Basic Usage (Minimal Server)](#basic-usage-minimal-server)
   - [AI-Powered Server](#ai-powered-server)
+  - [Health Check Example](#health-check-example)
   - [Examples](#examples)
 - [✨ Key Features](#-key-features)
   - [Core Capabilities](#core-capabilities)
@@ -38,16 +41,20 @@
   - [Prerequisites](#prerequisites)
   - [Development Workflow](#development-workflow)
   - [Available Tasks](#available-tasks)
+  - [Build-Time Agent Metadata](#build-time-agent-metadata)
 - [📖 API Reference](#-api-reference)
   - [Core Components](#core-components)
     - [A2AServer](#a2aserver)
     - [A2AServerBuilder](#a2aserverbuilder)
+    - [AgentBuilder](#agentbuilder)
     - [A2AClient](#a2aclient)
     - [Agent Health Monitoring](#agent-health-monitoring)
+    - [LLM Client](#llm-client)
   - [Configuration](#configuration)
-  - [LLM Client](#llm-client)
 - [🔧 Advanced Usage](#-advanced-usage)
+  - [Building Custom Agents with AgentBuilder](#building-custom-agents-with-agentbuilder)
   - [Custom Tools](#custom-tools)
+  - [Custom Task Processing](#custom-task-processing)
   - [Push Notifications](#push-notifications)
   - [Agent Metadata](#agent-metadata)
   - [Environment Configuration](#environment-configuration)
@@ -64,8 +71,7 @@
   - [Before Submitting](#before-submitting)
   - [Pull Request Process](#pull-request-process)
 - [📞 Support](#-support)
-  - [Issues \& Questions](#issues--questions)
-- [🗺️ Roadmap](#️-roadmap)
+  - [Issues & Questions](#issues--questions)
 - [🔗 Resources](#-resources)
   - [Documentation](#documentation)
 
@@ -562,7 +568,7 @@ default:
 - Detect and respond to agent failures
 - Service discovery and routing decisions
 
-#### LLM Client
+### LLM Client
 
 Create OpenAI-compatible LLM clients for agents:
 
