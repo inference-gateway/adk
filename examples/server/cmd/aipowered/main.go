@@ -138,9 +138,27 @@ func main() {
 	})
 
 	// Alternative: Use NewA2AServerBuilder with JSON AgentCard file
+	// You can also load an agent card from a JSON file with optional overrides:
+	//
+	// Example 1: Load without overrides
 	// a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 	//	WithAgent(agent).
-	//	WithAgentCardFromFile(os.Getenv("AGENT_CARD_FILE_PATH")).
+	//	WithAgentCardFromFile(os.Getenv("AGENT_CARD_FILE_PATH"), nil).
+	//	Build()
+	//
+	// Example 2: Load with runtime overrides (useful for deployment environments)
+	// overrides := map[string]interface{}{
+	//	"name": cfg.AgentName,           // Override with environment-specific name
+	//	"version": cfg.AgentVersion,     // Override with build-time version
+	//	"url": cfg.AgentURL,             // Override with deployment URL
+	//	"capabilities": map[string]interface{}{
+	//		"streaming": cfg.CapabilitiesConfig.Streaming,
+	//		"pushNotifications": cfg.CapabilitiesConfig.PushNotifications,
+	//	},
+	// }
+	// a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+	//	WithAgent(agent).
+	//	WithAgentCardFromFile("./.well-known/agent.json", overrides).
 	//	Build()
 	if err != nil {
 		logger.Fatal("failed to create A2A server", zap.Error(err))

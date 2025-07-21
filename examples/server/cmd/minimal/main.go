@@ -153,10 +153,23 @@ func main() {
 	// Create custom task handler that provides simple responses
 	taskHandler := NewSimpleTaskHandler(logger)
 
-	// Build server with custom task handler
+	// Build server with custom task handler and agent card from file
+	// Demonstrate the override functionality for dynamic agent card customization
+	// This is useful when you want to use a template agent card but override certain values at runtime
+	overrides := map[string]interface{}{
+		"name":        cfg.AgentName,        // Override name from config
+		"description": cfg.AgentDescription, // Override description from config
+		"version":     cfg.AgentVersion,     // Override version from config
+		"capabilities": map[string]interface{}{
+			"streaming":              true,  // Enable streaming for this instance
+			"pushNotifications":      false, // Disable push notifications
+			"stateTransitionHistory": false, // Disable state transition history
+		},
+	}
+
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(taskHandler).
-		WithAgentCardFromFile("./.well-known/agent.json").
+		WithAgentCardFromFile("./.well-known/agent.json", overrides).
 		Build()
 	if err != nil {
 		logger.Fatal("failed to create A2A server", zap.Error(err))

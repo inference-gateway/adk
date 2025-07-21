@@ -44,10 +44,11 @@ type FakeA2AServerBuilder struct {
 	withAgentCardReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
-	WithAgentCardFromFileStub        func(string) server.A2AServerBuilder
+	WithAgentCardFromFileStub        func(string, map[string]interface{}) server.A2AServerBuilder
 	withAgentCardFromFileMutex       sync.RWMutex
 	withAgentCardFromFileArgsForCall []struct {
 		arg1 string
+		arg2 map[string]interface{}
 	}
 	withAgentCardFromFileReturns struct {
 		result1 server.A2AServerBuilder
@@ -270,18 +271,19 @@ func (fake *FakeA2AServerBuilder) WithAgentCardReturnsOnCall(i int, result1 serv
 	}{result1}
 }
 
-func (fake *FakeA2AServerBuilder) WithAgentCardFromFile(arg1 string) server.A2AServerBuilder {
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFile(arg1 string, arg2 map[string]interface{}) server.A2AServerBuilder {
 	fake.withAgentCardFromFileMutex.Lock()
 	ret, specificReturn := fake.withAgentCardFromFileReturnsOnCall[len(fake.withAgentCardFromFileArgsForCall)]
 	fake.withAgentCardFromFileArgsForCall = append(fake.withAgentCardFromFileArgsForCall, struct {
 		arg1 string
-	}{arg1})
+		arg2 map[string]interface{}
+	}{arg1, arg2})
 	stub := fake.WithAgentCardFromFileStub
 	fakeReturns := fake.withAgentCardFromFileReturns
-	fake.recordInvocation("WithAgentCardFromFile", []interface{}{arg1})
+	fake.recordInvocation("WithAgentCardFromFile", []interface{}{arg1, arg2})
 	fake.withAgentCardFromFileMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -295,17 +297,17 @@ func (fake *FakeA2AServerBuilder) WithAgentCardFromFileCallCount() int {
 	return len(fake.withAgentCardFromFileArgsForCall)
 }
 
-func (fake *FakeA2AServerBuilder) WithAgentCardFromFileCalls(stub func(string) server.A2AServerBuilder) {
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileCalls(stub func(string, map[string]interface{}) server.A2AServerBuilder) {
 	fake.withAgentCardFromFileMutex.Lock()
 	defer fake.withAgentCardFromFileMutex.Unlock()
 	fake.WithAgentCardFromFileStub = stub
 }
 
-func (fake *FakeA2AServerBuilder) WithAgentCardFromFileArgsForCall(i int) string {
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileArgsForCall(i int) (string, map[string]interface{}) {
 	fake.withAgentCardFromFileMutex.RLock()
 	defer fake.withAgentCardFromFileMutex.RUnlock()
 	argsForCall := fake.withAgentCardFromFileArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeA2AServerBuilder) WithAgentCardFromFileReturns(result1 server.A2AServerBuilder) {

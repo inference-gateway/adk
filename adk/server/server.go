@@ -66,7 +66,8 @@ type A2AServer interface {
 	SetAgentCard(agentCard adk.AgentCard)
 
 	// LoadAgentCardFromFile loads and sets an agent card from a JSON file
-	LoadAgentCardFromFile(filePath string) error
+	// The optional overrides map allows dynamic replacement of JSON attribute values
+	LoadAgentCardFromFile(filePath string, overrides map[string]interface{}) error
 }
 
 // TaskResultProcessor defines how to process tool call results for task completion
@@ -269,7 +270,8 @@ func (s *A2AServerImpl) SetAgentCard(agentCard adk.AgentCard) {
 }
 
 // LoadAgentCardFromFile loads and sets an agent card from a JSON file
-func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string) error {
+// The optional overrides map allows dynamic replacement of JSON attribute values
+func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string, overrides map[string]interface{}) error {
 	if filePath == "" {
 		return nil
 	}
@@ -281,12 +283,32 @@ func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string) error {
 		return fmt.Errorf("failed to read agent card file: %w", err)
 	}
 
-	var agentCard adk.AgentCard
-	if err := json.Unmarshal(data, &agentCard); err != nil {
+	var rawData map[string]interface{}
+	if err := json.Unmarshal(data, &rawData); err != nil {
 		return fmt.Errorf("failed to parse agent card JSON: %w", err)
 	}
 
-	s.logger.Info("successfully loaded agent card from file", zap.String("name", agentCard.Name), zap.String("version", agentCard.Version))
+	for key, value := range overrides {
+		s.logger.Debug("overriding agent card attribute",
+			zap.String("key", key),
+			zap.Any("value", value))
+		rawData[key] = value
+	}
+
+	modifiedData, err := json.Marshal(rawData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal modified agent card data: %w", err)
+	}
+
+	var agentCard adk.AgentCard
+	if err := json.Unmarshal(modifiedData, &agentCard); err != nil {
+		return fmt.Errorf("failed to parse modified agent card JSON: %w", err)
+	}
+
+	s.logger.Info("successfully loaded agent card from file",
+		zap.String("name", agentCard.Name),
+		zap.String("version", agentCard.Version),
+		zap.Int("overrides_count", len(overrides)))
 	s.customAgentCard = &agentCard
 	return nil
 }
