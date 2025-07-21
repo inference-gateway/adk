@@ -141,10 +141,12 @@ func main() {
 		AgentName:        server.BuildAgentName,
 		AgentDescription: server.BuildAgentDescription,
 		AgentVersion:     server.BuildAgentVersion,
-		Port:             port,
 		Debug:            true,
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
+		},
+		ServerConfig: config.ServerConfig{
+			Port: port,
 		},
 	}
 

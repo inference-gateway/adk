@@ -54,7 +54,6 @@ func main() {
 
 	// Step 2: Load configuration from environment
 	cfg := config.Config{
-		Port: "8080",
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
@@ -92,7 +91,7 @@ func main() {
 	// Step 4: Create agent (with or without AI depending on API key)
 	var agent server.OpenAICompatibleAgent
 	apiKey := os.Getenv("AGENT_CLIENT_API_KEY")
-	
+
 	if apiKey != "" {
 		// Create AI-powered agent
 		llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
@@ -124,7 +123,7 @@ func main() {
 	// Step 5: Create server with AgentCard from JSON file
 	a2aServer := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
-		WithAgentCardFromFile(os.Getenv("AGENT_CARD_FILE_PATH")).  // Defaults to empty, auto-loads if set
+		WithAgentCardFromFile(os.Getenv("AGENT_CARD_FILE_PATH")). // Defaults to empty, auto-loads if set
 		Build()
 
 	// Alternative: You can also load the agent card explicitly
@@ -140,11 +139,15 @@ func main() {
 
 	// Display the loaded agent card
 	agentCard := a2aServer.GetAgentCard()
-	logger.Info("🤖 agent card loaded",
-		zap.String("name", agentCard.Name),
-		zap.String("description", agentCard.Description),
-		zap.String("version", agentCard.Version),
-		zap.Int("skills", len(agentCard.Skills)))
+	if agentCard != nil {
+		logger.Info("🤖 agent card loaded",
+			zap.String("name", agentCard.Name),
+			zap.String("description", agentCard.Description),
+			zap.String("version", agentCard.Version),
+			zap.Int("skills", len(agentCard.Skills)))
+	} else {
+		logger.Warn("⚠️ no agent card loaded - server will return 503 for agent info requests")
+	}
 
 	// Step 6: Start server
 	ctx, cancel := context.WithCancel(context.Background())
@@ -157,11 +160,11 @@ func main() {
 	}()
 
 	logger.Info("🌐 server running", zap.String("port", cfg.ServerConfig.Port))
-	
+
 	// Show example usage
 	fmt.Printf("\n🎯 Test the agent card endpoint:\n")
 	fmt.Printf("curl http://localhost:%s/.well-known/agent.json | jq .\n", cfg.ServerConfig.Port)
-	
+
 	fmt.Printf("\n🎯 Test message sending:\n")
 	fmt.Printf(`curl -X POST http://localhost:%s/a2a \
   -H "Content-Type: application/json" \

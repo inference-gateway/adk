@@ -79,7 +79,6 @@ func main() {
 		AgentName:        server.BuildAgentName,
 		AgentDescription: server.BuildAgentDescription,
 		AgentVersion:     server.BuildAgentVersion,
-		Port:             "8080",
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},

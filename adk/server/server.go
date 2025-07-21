@@ -29,7 +29,8 @@ type A2AServer interface {
 	Stop(ctx context.Context) error
 
 	// GetAgentCard returns the agent's capabilities and metadata
-	GetAgentCard() adk.AgentCard
+	// Returns nil if no agent card has been explicitly set
+	GetAgentCard() *adk.AgentCard
 
 	// ProcessTask processes a task with the given message
 	ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error)
@@ -452,27 +453,9 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 }
 
 // GetAgentCard returns the agent's capabilities and metadata
-func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
-	if s.customAgentCard != nil {
-		return *s.customAgentCard
-	}
-
-	capabilities := adk.AgentCapabilities{
-		Streaming:              &s.cfg.CapabilitiesConfig.Streaming,
-		PushNotifications:      &s.cfg.CapabilitiesConfig.PushNotifications,
-		StateTransitionHistory: &s.cfg.CapabilitiesConfig.StateTransitionHistory,
-	}
-
-	return adk.AgentCard{
-		Name:               s.cfg.AgentName,
-		Description:        s.cfg.AgentDescription,
-		URL:                s.cfg.AgentURL,
-		Version:            s.cfg.AgentVersion,
-		Capabilities:       capabilities,
-		DefaultInputModes:  []string{"text/plain"},
-		DefaultOutputModes: []string{"text/plain"},
-		Skills:             []adk.AgentSkill{},
-	}
+// Returns nil if no agent card has been explicitly set
+func (s *A2AServerImpl) GetAgentCard() *adk.AgentCard {
+	return s.customAgentCard
 }
 
 // ProcessTask processes a task with the given message
@@ -591,7 +574,15 @@ func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
 func (s *A2AServerImpl) handleAgentInfo(c *gin.Context) {
 	s.logger.Info("agent info requested")
 	agentCard := s.GetAgentCard()
-	c.JSON(http.StatusOK, agentCard)
+	if agentCard == nil {
+		s.logger.Error("no agent card configured")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Agent card not configured",
+			"message": "This server requires an agent card to be explicitly set via JSON file or programmatically",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, *agentCard)
 }
 
 // handleA2ARequest processes A2A protocol requests

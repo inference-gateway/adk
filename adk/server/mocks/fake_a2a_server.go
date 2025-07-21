@@ -20,15 +20,15 @@ type FakeA2AServer struct {
 	getAgentReturnsOnCall map[int]struct {
 		result1 server.OpenAICompatibleAgent
 	}
-	GetAgentCardStub        func() adk.AgentCard
+	GetAgentCardStub        func() *adk.AgentCard
 	getAgentCardMutex       sync.RWMutex
 	getAgentCardArgsForCall []struct {
 	}
 	getAgentCardReturns struct {
-		result1 adk.AgentCard
+		result1 *adk.AgentCard
 	}
 	getAgentCardReturnsOnCall map[int]struct {
-		result1 adk.AgentCard
+		result1 *adk.AgentCard
 	}
 	GetTaskHandlerStub        func() server.TaskHandler
 	getTaskHandlerMutex       sync.RWMutex
@@ -185,7 +185,7 @@ func (fake *FakeA2AServer) GetAgentReturnsOnCall(i int, result1 server.OpenAICom
 	}{result1}
 }
 
-func (fake *FakeA2AServer) GetAgentCard() adk.AgentCard {
+func (fake *FakeA2AServer) GetAgentCard() *adk.AgentCard {
 	fake.getAgentCardMutex.Lock()
 	ret, specificReturn := fake.getAgentCardReturnsOnCall[len(fake.getAgentCardArgsForCall)]
 	fake.getAgentCardArgsForCall = append(fake.getAgentCardArgsForCall, struct {
@@ -209,32 +209,32 @@ func (fake *FakeA2AServer) GetAgentCardCallCount() int {
 	return len(fake.getAgentCardArgsForCall)
 }
 
-func (fake *FakeA2AServer) GetAgentCardCalls(stub func() adk.AgentCard) {
+func (fake *FakeA2AServer) GetAgentCardCalls(stub func() *adk.AgentCard) {
 	fake.getAgentCardMutex.Lock()
 	defer fake.getAgentCardMutex.Unlock()
 	fake.GetAgentCardStub = stub
 }
 
-func (fake *FakeA2AServer) GetAgentCardReturns(result1 adk.AgentCard) {
+func (fake *FakeA2AServer) GetAgentCardReturns(result1 *adk.AgentCard) {
 	fake.getAgentCardMutex.Lock()
 	defer fake.getAgentCardMutex.Unlock()
 	fake.GetAgentCardStub = nil
 	fake.getAgentCardReturns = struct {
-		result1 adk.AgentCard
+		result1 *adk.AgentCard
 	}{result1}
 }
 
-func (fake *FakeA2AServer) GetAgentCardReturnsOnCall(i int, result1 adk.AgentCard) {
+func (fake *FakeA2AServer) GetAgentCardReturnsOnCall(i int, result1 *adk.AgentCard) {
 	fake.getAgentCardMutex.Lock()
 	defer fake.getAgentCardMutex.Unlock()
 	fake.GetAgentCardStub = nil
 	if fake.getAgentCardReturnsOnCall == nil {
 		fake.getAgentCardReturnsOnCall = make(map[int]struct {
-			result1 adk.AgentCard
+			result1 *adk.AgentCard
 		})
 	}
 	fake.getAgentCardReturnsOnCall[i] = struct {
-		result1 adk.AgentCard
+		result1 *adk.AgentCard
 	}{result1}
 }
 

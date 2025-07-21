@@ -286,10 +286,7 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 	a2aServer.SetTaskResultProcessor(mockProcessor)
 
 	agentCard := a2aServer.GetAgentCard()
-	assert.Equal(t, "custom-test-agent", agentCard.Name)
-	assert.Equal(t, "A custom test agent for dependency injection", agentCard.Description)
-	assert.Equal(t, "http://custom-agent:9090", agentCard.URL)
-	assert.Equal(t, "2.5.0", agentCard.Version)
+	assert.Nil(t, agentCard, "Expected no agent card to be set by default")
 }
 
 func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
@@ -309,17 +306,7 @@ func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
 	assert.NotNil(t, serverInstance)
 
 	agentCard := serverInstance.GetAgentCard()
-	assert.Equal(t, "test-custom-agent", agentCard.Name)
-	assert.Equal(t, "A test agent with custom configuration", agentCard.Description)
-	assert.Equal(t, "http://test-agent:9999", agentCard.URL)
-	assert.Equal(t, "2.0.0", agentCard.Version)
-
-	assert.NotNil(t, agentCard.Capabilities.Streaming)
-	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
-	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
-	assert.True(t, *agentCard.Capabilities.Streaming)
-	assert.True(t, *agentCard.Capabilities.PushNotifications)
-	assert.False(t, *agentCard.Capabilities.StateTransitionHistory)
+	assert.Nil(t, agentCard, "Expected no agent card to be set by default")
 }
 
 func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
@@ -338,11 +325,30 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 
 	logger := zap.NewNop()
 
-	serverInstance := server.NewA2AServerBuilder(cfg, logger).Build()
+	// Create a custom agent card for testing
+	testAgentCard := adk.AgentCard{
+		Name:        "test-agent",
+		Description: "A test agent",
+		URL:         "http://test-agent:8080",
+		Version:     "1.0.0",
+		Capabilities: adk.AgentCapabilities{
+			Streaming:              &cfg.CapabilitiesConfig.Streaming,
+			PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
+			StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
+		},
+		DefaultInputModes:  []string{"text/plain"},
+		DefaultOutputModes: []string{"text/plain"},
+		Skills:             []adk.AgentSkill{},
+	}
+
+	serverInstance := server.NewA2AServerBuilder(cfg, logger).
+		WithAgentCard(testAgentCard).
+		Build()
 
 	assert.NotNil(t, serverInstance)
 
 	agentCard := serverInstance.GetAgentCard()
+	assert.NotNil(t, agentCard)
 	assert.Equal(t, "test-agent", agentCard.Name)
 
 	assert.NotNil(t, agentCard.Capabilities.Streaming)
@@ -364,11 +370,30 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 
 	logger := zap.NewNop()
 
-	serverInstance := server.NewA2AServerBuilder(*partialCfg, logger).Build()
+	// Create a custom agent card for testing
+	testAgentCard := adk.AgentCard{
+		Name:        "test-agent",
+		Description: "A test agent",
+		URL:         "http://test-agent:8080",
+		Version:     "1.0.0",
+		Capabilities: adk.AgentCapabilities{
+			Streaming:              &[]bool{true}[0],
+			PushNotifications:      &[]bool{true}[0],
+			StateTransitionHistory: &[]bool{false}[0],
+		},
+		DefaultInputModes:  []string{"text/plain"},
+		DefaultOutputModes: []string{"text/plain"},
+		Skills:             []adk.AgentSkill{},
+	}
+
+	serverInstance := server.NewA2AServerBuilder(*partialCfg, logger).
+		WithAgentCard(testAgentCard).
+		Build()
 
 	assert.NotNil(t, serverInstance)
 
 	agentCard := serverInstance.GetAgentCard()
+	assert.NotNil(t, agentCard)
 	assert.Equal(t, "test-agent", agentCard.Name)
 	assert.Equal(t, "A test agent", agentCard.Description)
 	assert.Equal(t, "http://test-agent:8080", agentCard.URL)
