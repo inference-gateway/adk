@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.3](https://github.com/inference-gateway/a2a/compare/v0.7.2...v0.7.3) (2025-07-21)
+
+### 🐛 Bug Fixes
+
+* **config:** Remove default value for AgentURL to enforce explicit configuration ([1547c21](https://github.com/inference-gateway/a2a/commit/1547c21a797aa7b735ef2c821d2867f00b1e229d))
+
+### ✅ Miscellaneous
+
+* **config:** Update AgentURL assertion in LoadWithLookuper test to reflect explicit configuration ([b4c3f4b](https://github.com/inference-gateway/a2a/commit/b4c3f4bbfba61caa998e72e5c09de0c854f43951))
+
 ## [0.7.2](https://github.com/inference-gateway/a2a/compare/v0.7.1...v0.7.2) (2025-07-21)
 
 ### ♻️ Improvements
