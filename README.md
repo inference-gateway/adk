@@ -310,6 +310,7 @@ For complete working examples, see the [examples](./examples/) directory:
 
 - **[Minimal Server](./examples/server/cmd/minimal/)** - Basic A2A server without AI capabilities
 - **[AI-Powered Server](./examples/server/cmd/aipowered/)** - Full A2A server with LLM integration
+- **[JSON AgentCard Server](./examples/server/cmd/json-agentcard/)** - A2A server with agent metadata loaded from JSON file
 - **[Client Example](./examples/client/)** - A2A client implementation
 - **[Health Check Example](#health-check-example)** - Monitor agent health status
 
@@ -745,6 +746,116 @@ toolBox.AddTool(weatherTool)
 agent.SetToolBox(toolBox)
 ```
 
+### Loading AgentCard from JSON File
+
+Load agent metadata from static JSON files, making it possible to serve agent cards without requiring Go code changes. This approach improves readability and allows non-developers to manage agent configuration.
+
+#### Environment Variable
+
+Configure the JSON file path using:
+
+```bash
+# Set the path to your JSON AgentCard file
+export AGENT_CARD_FILE_PATH="/path/to/your/agent-card.json"
+```
+
+#### JSON AgentCard Structure
+
+Create a JSON file following the A2A AgentCard specification:
+
+```json
+{
+  "name": "Weather Assistant",
+  "description": "A specialized AI agent that provides comprehensive weather information",
+  "version": "2.1.0",
+  "url": "https://weather-agent.example.com",
+  "documentationUrl": "https://weather-agent.example.com/docs",
+  "iconUrl": "https://weather-agent.example.com/icon.png",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text", "json"],
+  "skills": [
+    {
+      "id": "current-weather",
+      "name": "Current Weather",
+      "description": "Get current weather conditions for any location",
+      "tags": ["weather", "current", "conditions"],
+      "inputModes": ["text"],
+      "outputModes": ["text", "json"],
+      "examples": [
+        "What's the weather in New York?",
+        "Current conditions in Tokyo"
+      ]
+    }
+  ],
+  "provider": {
+    "organization": "Weather Corp",
+    "url": "https://weathercorp.example.com"
+  },
+  "securitySchemes": {
+    "apiKey": {
+      "type": "apiKey",
+      "in": "header",
+      "name": "X-API-Key",
+      "description": "API key for weather service access"
+    }
+  },
+  "security": [{"apiKey": []}]
+}
+```
+
+#### Using with Server Builder
+
+Load JSON AgentCard using the server builder:
+
+```go
+// Automatically load during server creation (if AGENT_CARD_FILE_PATH is set)
+server := server.NewA2AServerBuilder(cfg, logger).
+    WithAgent(agent).
+    Build()  // Auto-loads from AGENT_CARD_FILE_PATH environment variable
+
+// Or explicitly specify the file path
+server := server.NewA2AServerBuilder(cfg, logger).
+    WithAgent(agent).
+    WithAgentCardFromFile("./my-agent-card.json").
+    Build()
+
+// Or load after server creation
+if err := server.LoadAgentCardFromFile("./agent-card.json"); err != nil {
+    log.Printf("Failed to load agent card: %v", err)
+}
+```
+
+#### Complete Example
+
+See the complete example at [`examples/server/cmd/json-agentcard/`](./examples/server/cmd/json-agentcard/main.go):
+
+```bash
+# Run with default agent card
+cd examples/server/cmd/json-agentcard
+go run main.go
+
+# Run with custom agent card file
+AGENT_CARD_FILE_PATH="./my-custom-card.json" go run main.go
+
+# Run with AI capabilities
+export AGENT_CLIENT_API_KEY="sk-..."
+export AGENT_CARD_FILE_PATH="./agent-card.json"
+go run main.go
+```
+
+#### Benefits
+
+- **Improved Readability**: Agent configuration in human-readable JSON format
+- **No Code Changes**: Update agent metadata without recompiling
+- **Version Control Friendly**: Easy to track changes in agent configuration
+- **Team Collaboration**: Non-developers can manage agent metadata
+- **Deployment Flexibility**: Different agent cards for different environments
+
 ### Custom Task Processing
 
 Implement custom business logic for task completion:
@@ -938,6 +1049,9 @@ Key environment variables for configuring your agent:
 ```bash
 # Server configuration
 PORT="8080"
+
+# Agent metadata configuration
+AGENT_CARD_FILE_PATH="./agent-card.json"    # Path to JSON AgentCard file (optional)
 
 # LLM client configuration
 AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
