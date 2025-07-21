@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1](https://github.com/inference-gateway/a2a/compare/v0.7.0...v0.7.1) (2025-07-21)
+
+### ♻️ Improvements
+
+* **AgentCard:** Make it also possible to load Agent Card from raw JSON file - simple approach ([#27](https://github.com/inference-gateway/a2a/issues/27)) ([cadcd8a](https://github.com/inference-gateway/a2a/commit/cadcd8ac535f9aa5415c0eac0cf5ac426aff3800)), closes [#26](https://github.com/inference-gateway/a2a/issues/26)
+
 ## [0.7.0](https://github.com/inference-gateway/a2a/compare/v0.6.3...v0.7.0) (2025-07-20)
 
 ### ✨ Features
