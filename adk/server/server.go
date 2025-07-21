@@ -158,7 +158,6 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	// Load agent card from file if path is provided
 	if agentCard, err := loadAgentCardFromFile(cfg.AgentCardFilePath, logger); err != nil {
 		logger.Error("failed to load agent card from file", zap.Error(err))
 	} else if agentCard != nil {
