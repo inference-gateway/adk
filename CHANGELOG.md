@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.2](https://github.com/inference-gateway/a2a/compare/v0.7.1...v0.7.2) (2025-07-21)
+
+### ♻️ Improvements
+
+* Enhance LoadAgentCardFromFile to support dynamic JSON attribute overrides ([#28](https://github.com/inference-gateway/a2a/issues/28)) ([1873a12](https://github.com/inference-gateway/a2a/commit/1873a12c511a2ce9d7d613080596a23d2b27b9f1))
+
 ## [0.7.1](https://github.com/inference-gateway/a2a/compare/v0.7.0...v0.7.1) (2025-07-21)
 
 ### ♻️ Improvements
