@@ -20,15 +20,15 @@ type FakeA2AServer struct {
 	getAgentReturnsOnCall map[int]struct {
 		result1 server.OpenAICompatibleAgent
 	}
-	GetAgentCardStub        func() adk.AgentCard
+	GetAgentCardStub        func() *adk.AgentCard
 	getAgentCardMutex       sync.RWMutex
 	getAgentCardArgsForCall []struct {
 	}
 	getAgentCardReturns struct {
-		result1 adk.AgentCard
+		result1 *adk.AgentCard
 	}
 	getAgentCardReturnsOnCall map[int]struct {
-		result1 adk.AgentCard
+		result1 *adk.AgentCard
 	}
 	GetTaskHandlerStub        func() server.TaskHandler
 	getTaskHandlerMutex       sync.RWMutex
@@ -39,6 +39,17 @@ type FakeA2AServer struct {
 	}
 	getTaskHandlerReturnsOnCall map[int]struct {
 		result1 server.TaskHandler
+	}
+	LoadAgentCardFromFileStub        func(string) error
+	loadAgentCardFromFileMutex       sync.RWMutex
+	loadAgentCardFromFileArgsForCall []struct {
+		arg1 string
+	}
+	loadAgentCardFromFileReturns struct {
+		result1 error
+	}
+	loadAgentCardFromFileReturnsOnCall map[int]struct {
+		result1 error
 	}
 	ProcessTaskStub        func(context.Context, *adk.Task, *adk.Message) (*adk.Task, error)
 	processTaskMutex       sync.RWMutex
@@ -174,7 +185,7 @@ func (fake *FakeA2AServer) GetAgentReturnsOnCall(i int, result1 server.OpenAICom
 	}{result1}
 }
 
-func (fake *FakeA2AServer) GetAgentCard() adk.AgentCard {
+func (fake *FakeA2AServer) GetAgentCard() *adk.AgentCard {
 	fake.getAgentCardMutex.Lock()
 	ret, specificReturn := fake.getAgentCardReturnsOnCall[len(fake.getAgentCardArgsForCall)]
 	fake.getAgentCardArgsForCall = append(fake.getAgentCardArgsForCall, struct {
@@ -198,32 +209,32 @@ func (fake *FakeA2AServer) GetAgentCardCallCount() int {
 	return len(fake.getAgentCardArgsForCall)
 }
 
-func (fake *FakeA2AServer) GetAgentCardCalls(stub func() adk.AgentCard) {
+func (fake *FakeA2AServer) GetAgentCardCalls(stub func() *adk.AgentCard) {
 	fake.getAgentCardMutex.Lock()
 	defer fake.getAgentCardMutex.Unlock()
 	fake.GetAgentCardStub = stub
 }
 
-func (fake *FakeA2AServer) GetAgentCardReturns(result1 adk.AgentCard) {
+func (fake *FakeA2AServer) GetAgentCardReturns(result1 *adk.AgentCard) {
 	fake.getAgentCardMutex.Lock()
 	defer fake.getAgentCardMutex.Unlock()
 	fake.GetAgentCardStub = nil
 	fake.getAgentCardReturns = struct {
-		result1 adk.AgentCard
+		result1 *adk.AgentCard
 	}{result1}
 }
 
-func (fake *FakeA2AServer) GetAgentCardReturnsOnCall(i int, result1 adk.AgentCard) {
+func (fake *FakeA2AServer) GetAgentCardReturnsOnCall(i int, result1 *adk.AgentCard) {
 	fake.getAgentCardMutex.Lock()
 	defer fake.getAgentCardMutex.Unlock()
 	fake.GetAgentCardStub = nil
 	if fake.getAgentCardReturnsOnCall == nil {
 		fake.getAgentCardReturnsOnCall = make(map[int]struct {
-			result1 adk.AgentCard
+			result1 *adk.AgentCard
 		})
 	}
 	fake.getAgentCardReturnsOnCall[i] = struct {
-		result1 adk.AgentCard
+		result1 *adk.AgentCard
 	}{result1}
 }
 
@@ -277,6 +288,67 @@ func (fake *FakeA2AServer) GetTaskHandlerReturnsOnCall(i int, result1 server.Tas
 	}
 	fake.getTaskHandlerReturnsOnCall[i] = struct {
 		result1 server.TaskHandler
+	}{result1}
+}
+
+func (fake *FakeA2AServer) LoadAgentCardFromFile(arg1 string) error {
+	fake.loadAgentCardFromFileMutex.Lock()
+	ret, specificReturn := fake.loadAgentCardFromFileReturnsOnCall[len(fake.loadAgentCardFromFileArgsForCall)]
+	fake.loadAgentCardFromFileArgsForCall = append(fake.loadAgentCardFromFileArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.LoadAgentCardFromFileStub
+	fakeReturns := fake.loadAgentCardFromFileReturns
+	fake.recordInvocation("LoadAgentCardFromFile", []interface{}{arg1})
+	fake.loadAgentCardFromFileMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServer) LoadAgentCardFromFileCallCount() int {
+	fake.loadAgentCardFromFileMutex.RLock()
+	defer fake.loadAgentCardFromFileMutex.RUnlock()
+	return len(fake.loadAgentCardFromFileArgsForCall)
+}
+
+func (fake *FakeA2AServer) LoadAgentCardFromFileCalls(stub func(string) error) {
+	fake.loadAgentCardFromFileMutex.Lock()
+	defer fake.loadAgentCardFromFileMutex.Unlock()
+	fake.LoadAgentCardFromFileStub = stub
+}
+
+func (fake *FakeA2AServer) LoadAgentCardFromFileArgsForCall(i int) string {
+	fake.loadAgentCardFromFileMutex.RLock()
+	defer fake.loadAgentCardFromFileMutex.RUnlock()
+	argsForCall := fake.loadAgentCardFromFileArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServer) LoadAgentCardFromFileReturns(result1 error) {
+	fake.loadAgentCardFromFileMutex.Lock()
+	defer fake.loadAgentCardFromFileMutex.Unlock()
+	fake.LoadAgentCardFromFileStub = nil
+	fake.loadAgentCardFromFileReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeA2AServer) LoadAgentCardFromFileReturnsOnCall(i int, result1 error) {
+	fake.loadAgentCardFromFileMutex.Lock()
+	defer fake.loadAgentCardFromFileMutex.Unlock()
+	fake.LoadAgentCardFromFileStub = nil
+	if fake.loadAgentCardFromFileReturnsOnCall == nil {
+		fake.loadAgentCardFromFileReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.loadAgentCardFromFileReturnsOnCall[i] = struct {
+		result1 error
 	}{result1}
 }
 
@@ -733,6 +805,8 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.getAgentCardMutex.RUnlock()
 	fake.getTaskHandlerMutex.RLock()
 	defer fake.getTaskHandlerMutex.RUnlock()
+	fake.loadAgentCardFromFileMutex.RLock()
+	defer fake.loadAgentCardFromFileMutex.RUnlock()
 	fake.processTaskMutex.RLock()
 	defer fake.processTaskMutex.RUnlock()
 	fake.setAgentMutex.RLock()

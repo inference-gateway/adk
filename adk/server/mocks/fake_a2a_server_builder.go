@@ -10,15 +10,17 @@ import (
 )
 
 type FakeA2AServerBuilder struct {
-	BuildStub        func() server.A2AServer
+	BuildStub        func() (server.A2AServer, error)
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
 	}
 	buildReturns struct {
 		result1 server.A2AServer
+		result2 error
 	}
 	buildReturnsOnCall map[int]struct {
 		result1 server.A2AServer
+		result2 error
 	}
 	WithAgentStub        func(server.OpenAICompatibleAgent) server.A2AServerBuilder
 	withAgentMutex       sync.RWMutex
@@ -40,6 +42,17 @@ type FakeA2AServerBuilder struct {
 		result1 server.A2AServerBuilder
 	}
 	withAgentCardReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
+	WithAgentCardFromFileStub        func(string) server.A2AServerBuilder
+	withAgentCardFromFileMutex       sync.RWMutex
+	withAgentCardFromFileArgsForCall []struct {
+		arg1 string
+	}
+	withAgentCardFromFileReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withAgentCardFromFileReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
 	WithLoggerStub        func(*zap.Logger) server.A2AServerBuilder
@@ -79,7 +92,7 @@ type FakeA2AServerBuilder struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeA2AServerBuilder) Build() server.A2AServer {
+func (fake *FakeA2AServerBuilder) Build() (server.A2AServer, error) {
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
@@ -92,9 +105,9 @@ func (fake *FakeA2AServerBuilder) Build() server.A2AServer {
 		return stub()
 	}
 	if specificReturn {
-		return ret.result1
+		return ret.result1, ret.result2
 	}
-	return fakeReturns.result1
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeA2AServerBuilder) BuildCallCount() int {
@@ -103,33 +116,36 @@ func (fake *FakeA2AServerBuilder) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *FakeA2AServerBuilder) BuildCalls(stub func() server.A2AServer) {
+func (fake *FakeA2AServerBuilder) BuildCalls(stub func() (server.A2AServer, error)) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *FakeA2AServerBuilder) BuildReturns(result1 server.A2AServer) {
+func (fake *FakeA2AServerBuilder) BuildReturns(result1 server.A2AServer, result2 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
 	fake.buildReturns = struct {
 		result1 server.A2AServer
-	}{result1}
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeA2AServerBuilder) BuildReturnsOnCall(i int, result1 server.A2AServer) {
+func (fake *FakeA2AServerBuilder) BuildReturnsOnCall(i int, result1 server.A2AServer, result2 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
 	if fake.buildReturnsOnCall == nil {
 		fake.buildReturnsOnCall = make(map[int]struct {
 			result1 server.A2AServer
+			result2 error
 		})
 	}
 	fake.buildReturnsOnCall[i] = struct {
 		result1 server.A2AServer
-	}{result1}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeA2AServerBuilder) WithAgent(arg1 server.OpenAICompatibleAgent) server.A2AServerBuilder {
@@ -250,6 +266,67 @@ func (fake *FakeA2AServerBuilder) WithAgentCardReturnsOnCall(i int, result1 serv
 		})
 	}
 	fake.withAgentCardReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFile(arg1 string) server.A2AServerBuilder {
+	fake.withAgentCardFromFileMutex.Lock()
+	ret, specificReturn := fake.withAgentCardFromFileReturnsOnCall[len(fake.withAgentCardFromFileArgsForCall)]
+	fake.withAgentCardFromFileArgsForCall = append(fake.withAgentCardFromFileArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.WithAgentCardFromFileStub
+	fakeReturns := fake.withAgentCardFromFileReturns
+	fake.recordInvocation("WithAgentCardFromFile", []interface{}{arg1})
+	fake.withAgentCardFromFileMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileCallCount() int {
+	fake.withAgentCardFromFileMutex.RLock()
+	defer fake.withAgentCardFromFileMutex.RUnlock()
+	return len(fake.withAgentCardFromFileArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileCalls(stub func(string) server.A2AServerBuilder) {
+	fake.withAgentCardFromFileMutex.Lock()
+	defer fake.withAgentCardFromFileMutex.Unlock()
+	fake.WithAgentCardFromFileStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileArgsForCall(i int) string {
+	fake.withAgentCardFromFileMutex.RLock()
+	defer fake.withAgentCardFromFileMutex.RUnlock()
+	argsForCall := fake.withAgentCardFromFileArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileReturns(result1 server.A2AServerBuilder) {
+	fake.withAgentCardFromFileMutex.Lock()
+	defer fake.withAgentCardFromFileMutex.Unlock()
+	fake.WithAgentCardFromFileStub = nil
+	fake.withAgentCardFromFileReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withAgentCardFromFileMutex.Lock()
+	defer fake.withAgentCardFromFileMutex.Unlock()
+	fake.WithAgentCardFromFileStub = nil
+	if fake.withAgentCardFromFileReturnsOnCall == nil {
+		fake.withAgentCardFromFileReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withAgentCardFromFileReturnsOnCall[i] = struct {
 		result1 server.A2AServerBuilder
 	}{result1}
 }
@@ -446,6 +523,8 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.withAgentMutex.RUnlock()
 	fake.withAgentCardMutex.RLock()
 	defer fake.withAgentCardMutex.RUnlock()
+	fake.withAgentCardFromFileMutex.RLock()
+	defer fake.withAgentCardFromFileMutex.RUnlock()
 	fake.withLoggerMutex.RLock()
 	defer fake.withLoggerMutex.RUnlock()
 	fake.withTaskHandlerMutex.RLock()

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
@@ -28,7 +29,8 @@ type A2AServer interface {
 	Stop(ctx context.Context) error
 
 	// GetAgentCard returns the agent's capabilities and metadata
-	GetAgentCard() adk.AgentCard
+	// Returns nil if no agent card has been explicitly set
+	GetAgentCard() *adk.AgentCard
 
 	// ProcessTask processes a task with the given message
 	ProcessTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error)
@@ -62,6 +64,9 @@ type A2AServer interface {
 
 	// SetAgentCard sets a custom agent card that overrides the default card generation
 	SetAgentCard(agentCard adk.AgentCard)
+
+	// LoadAgentCardFromFile loads and sets an agent card from a JSON file
+	LoadAgentCardFromFile(filePath string) error
 }
 
 // TaskResultProcessor defines how to process tool call results for task completion
@@ -263,6 +268,29 @@ func (s *A2AServerImpl) SetAgentCard(agentCard adk.AgentCard) {
 	s.customAgentCard = &agentCard
 }
 
+// LoadAgentCardFromFile loads and sets an agent card from a JSON file
+func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string) error {
+	if filePath == "" {
+		return nil
+	}
+
+	s.logger.Info("loading agent card from file", zap.String("file_path", filePath))
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read agent card file: %w", err)
+	}
+
+	var agentCard adk.AgentCard
+	if err := json.Unmarshal(data, &agentCard); err != nil {
+		return fmt.Errorf("failed to parse agent card JSON: %w", err)
+	}
+
+	s.logger.Info("successfully loaded agent card from file", zap.String("name", agentCard.Name), zap.String("version", agentCard.Version))
+	s.customAgentCard = &agentCard
+	return nil
+}
+
 // SetupRouter configures the HTTP router with A2A endpoints
 func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
@@ -318,6 +346,10 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 
 // Start starts the A2A server
 func (s *A2AServerImpl) Start(ctx context.Context) error {
+	if s.customAgentCard == nil {
+		return fmt.Errorf("agent card must be configured before starting the server - use SetAgentCard() or LoadAgentCardFromFile()")
+	}
+
 	router := s.setupRouter(s.cfg)
 
 	s.httpServer = &http.Server{
@@ -401,27 +433,9 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 }
 
 // GetAgentCard returns the agent's capabilities and metadata
-func (s *A2AServerImpl) GetAgentCard() adk.AgentCard {
-	if s.customAgentCard != nil {
-		return *s.customAgentCard
-	}
-
-	capabilities := adk.AgentCapabilities{
-		Streaming:              &s.cfg.CapabilitiesConfig.Streaming,
-		PushNotifications:      &s.cfg.CapabilitiesConfig.PushNotifications,
-		StateTransitionHistory: &s.cfg.CapabilitiesConfig.StateTransitionHistory,
-	}
-
-	return adk.AgentCard{
-		Name:               s.cfg.AgentName,
-		Description:        s.cfg.AgentDescription,
-		URL:                s.cfg.AgentURL,
-		Version:            s.cfg.AgentVersion,
-		Capabilities:       capabilities,
-		DefaultInputModes:  []string{"text/plain"},
-		DefaultOutputModes: []string{"text/plain"},
-		Skills:             []adk.AgentSkill{},
-	}
+// Returns nil if no agent card has been explicitly set
+func (s *A2AServerImpl) GetAgentCard() *adk.AgentCard {
+	return s.customAgentCard
 }
 
 // ProcessTask processes a task with the given message
@@ -540,7 +554,15 @@ func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
 func (s *A2AServerImpl) handleAgentInfo(c *gin.Context) {
 	s.logger.Info("agent info requested")
 	agentCard := s.GetAgentCard()
-	c.JSON(http.StatusOK, agentCard)
+	if agentCard == nil {
+		s.logger.Error("no agent card configured")
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Agent card not configured",
+			"message": "This server requires an agent card to be explicitly set via JSON file or programmatically",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, *agentCard)
 }
 
 // handleA2ARequest processes A2A protocol requests

@@ -9,40 +9,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/inference-gateway/a2a/adk"
 	server "github.com/inference-gateway/a2a/adk/server"
 	config "github.com/inference-gateway/a2a/adk/server/config"
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 )
 
-// AI-Powered A2A Server Example
-//
-// This example demonstrates how to create an A2A server with AI capabilities.
-// It requires proper AI provider configuration to run.
-//
-// REQUIRED Configuration:
-//
-//	AGENT_CLIENT_API_KEY - Your LLM provider API key (REQUIRED)
-//
-// Optional Configuration:
-//
-//	AGENT_CLIENT_PROVIDER - LLM provider: "openai", "anthropic", "deepseek", "ollama" (default: "openai")
-//	AGENT_CLIENT_MODEL    - Model name (uses provider defaults if not set)
-//	AGENT_CLIENT_BASE_URL - Custom API endpoint URL
-//	PORT                  - Server port (default: "8080")
-//
-// Examples:
-//
-//	# OpenAI (default)
-//	export AGENT_CLIENT_API_KEY="sk-..." && go run main.go
-//
-//	# Anthropic
-//	export AGENT_CLIENT_API_KEY="sk-ant-..." AGENT_CLIENT_PROVIDER="anthropic" && go run main.go
-//
-//	# Via Inference Gateway
-//	AGENT_CLIENT_API_KEY="test" AGENT_CLIENT_PROVIDER="deepseek" AGENT_CLIENT_MODEL="deepseek-chat" AGENT_CLIENT_BASE_URL="http://localhost:8080/v1" go run main.go
-//
-// To run: go run main.go
 func main() {
 	fmt.Println("🤖 Starting AI-Powered A2A Server...")
 
@@ -79,9 +52,11 @@ func main() {
 		AgentName:        server.BuildAgentName,
 		AgentDescription: server.BuildAgentDescription,
 		AgentVersion:     server.BuildAgentVersion,
-		Port:             "8080",
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
+		},
+		ServerConfig: config.ServerConfig{
+			Port: "8080",
 		},
 	}
 
@@ -148,7 +123,28 @@ func main() {
 	}
 
 	// Step 6: Create and start server
-	a2aServer := server.SimpleA2AServerWithAgent(cfg, logger, agent)
+	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, agent, adk.AgentCard{
+		Name:        cfg.AgentName,
+		Description: cfg.AgentDescription,
+		URL:         cfg.AgentURL,
+		Version:     cfg.AgentVersion,
+		Capabilities: adk.AgentCapabilities{
+			Streaming:              &cfg.CapabilitiesConfig.Streaming,
+			PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
+			StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
+		},
+		DefaultInputModes:  []string{"text/plain"},
+		DefaultOutputModes: []string{"text/plain"},
+	})
+
+	// Alternative: Use NewA2AServerBuilder with JSON AgentCard file
+	// a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+	//	WithAgent(agent).
+	//	WithAgentCardFromFile(os.Getenv("AGENT_CARD_FILE_PATH")).
+	//	Build()
+	if err != nil {
+		logger.Fatal("failed to create A2A server", zap.Error(err))
+	}
 
 	logger.Info("✅ AI-powered A2A server created",
 		zap.String("provider", cfg.AgentConfig.Provider),

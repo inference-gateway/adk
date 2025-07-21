@@ -45,11 +45,14 @@ func TestA2AServerBuilder_BasicConstruction(t *testing.T) {
 
 			if tt.expectPanic {
 				assert.Panics(t, func() {
-					server.NewA2AServerBuilder(cfg, logger).Build()
+					_, _ = server.NewA2AServerBuilder(cfg, logger).Build()
 				})
 			} else {
 				assert.NotPanics(t, func() {
-					a2aServer := server.NewA2AServerBuilder(cfg, logger).Build()
+					a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+						WithAgentCard(createTestAgentCard()).
+						Build()
+					assert.NoError(t, err)
 					assert.NotNil(t, a2aServer)
 				})
 			}
@@ -65,9 +68,12 @@ func TestA2AServerBuilder_WithTaskHandler(t *testing.T) {
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 
-	a2aServer := server.NewA2AServerBuilder(cfg, logger).
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(mockTaskHandler).
+		WithAgentCard(createTestAgentCard()).
 		Build()
+
+	require.NoError(t, err)
 
 	assert.NotNil(t, a2aServer)
 	assert.Equal(t, mockTaskHandler, a2aServer.GetTaskHandler())
@@ -81,9 +87,12 @@ func TestA2AServerBuilder_WithTaskResultProcessor(t *testing.T) {
 	logger := zap.NewNop()
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 
-	a2aServer := server.NewA2AServerBuilder(cfg, logger).
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskResultProcessor(mockProcessor).
+		WithAgentCard(createTestAgentCard()).
 		Build()
+
+	require.NoError(t, err)
 
 	assert.NotNil(t, a2aServer)
 }
@@ -101,10 +110,12 @@ func TestA2AServerBuilder_WithAgent(t *testing.T) {
 		Build()
 	require.NoError(t, err)
 
-	a2aServer := server.NewA2AServerBuilder(cfg, logger).
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
+		WithAgentCard(createTestAgentCard()).
 		Build()
 
+	require.NoError(t, err)
 	assert.NotNil(t, a2aServer)
 	assert.NotNil(t, a2aServer.GetAgent())
 }
@@ -125,10 +136,12 @@ func TestA2AServerBuilder_WithAgentAndConfig(t *testing.T) {
 	agent, err := server.NewOpenAICompatibleAgentWithConfig(logger, agentConfig)
 	assert.NoError(t, err)
 
-	a2aServer := server.NewA2AServerBuilder(cfg, logger).
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
+		WithAgentCard(createTestAgentCard()).
 		Build()
 
+	require.NoError(t, err)
 	assert.NotNil(t, a2aServer)
 	assert.NotNil(t, a2aServer.GetAgent())
 }
@@ -147,11 +160,13 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 		Build()
 	require.NoError(t, err)
 
-	a2aServer := server.NewA2AServerBuilder(cfg, logger).
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(mockTaskHandler).
 		WithTaskResultProcessor(mockProcessor).
 		WithAgent(agent).
+		WithAgentCard(createTestAgentCard()).
 		Build()
+	require.NoError(t, err)
 
 	assert.NotNil(t, a2aServer)
 	assert.Equal(t, mockTaskHandler, a2aServer.GetTaskHandler())
@@ -172,7 +187,8 @@ func TestCustomA2AServer(t *testing.T) {
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 
-	a2aServer := server.CustomA2AServer(cfg, logger, mockTaskHandler, mockProcessor)
+	a2aServer, err := server.CustomA2AServer(cfg, logger, mockTaskHandler, mockProcessor, createTestAgentCard())
+	require.NoError(t, err)
 
 	assert.NotNil(t, a2aServer)
 	assert.Equal(t, mockTaskHandler, a2aServer.GetTaskHandler())
@@ -186,15 +202,16 @@ func TestA2AServerBuilderInterface_WithMocks(t *testing.T) {
 	fakeBuilder.WithAgentReturns(fakeBuilder)
 	fakeBuilder.WithTaskHandlerReturns(fakeBuilder)
 	fakeBuilder.WithTaskResultProcessorReturns(fakeBuilder)
-	fakeBuilder.BuildReturns(mockServer)
+	fakeBuilder.BuildReturns(mockServer, nil)
 
 	logger := zap.NewNop()
 	agent := server.NewDefaultOpenAICompatibleAgent(logger)
 
-	result := fakeBuilder.
+	result, err := fakeBuilder.
 		WithLogger(logger).
 		WithAgent(agent).
 		Build()
+	require.NoError(t, err, "Expected no error when building server with mocks")
 
 	assert.Equal(t, 1, fakeBuilder.WithLoggerCallCount())
 	assert.Equal(t, 1, fakeBuilder.WithAgentCallCount())
@@ -218,9 +235,11 @@ func TestA2AServerBuilderInterface_Polymorphism(t *testing.T) {
 
 	builder := server.NewA2AServerBuilder(cfg, logger)
 
-	result := builder.
+	result, err := builder.
 		WithLogger(logger).
+		WithAgentCard(createTestAgentCard()).
 		Build()
+	require.NoError(t, err, "Expected no error when building server with polymorphic interface")
 
 	assert.NotNil(t, result)
 	assert.NotNil(t, builder)
@@ -235,19 +254,20 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 	fakeBuilder.WithTaskResultProcessorReturns(fakeBuilder)
 
 	mockServer := &mocks.FakeA2AServer{}
-	fakeBuilder.BuildReturns(mockServer)
+	fakeBuilder.BuildReturns(mockServer, nil)
 
 	logger := zap.NewNop()
 	agent := server.NewDefaultOpenAICompatibleAgent(logger)
 	taskHandler := &mocks.FakeTaskHandler{}
 	taskResultProcessor := &mocks.FakeTaskResultProcessor{}
 
-	result := fakeBuilder.
+	result, err := fakeBuilder.
 		WithLogger(logger).
 		WithAgent(agent).
 		WithTaskHandler(taskHandler).
 		WithTaskResultProcessor(taskResultProcessor).
 		Build()
+	require.NoError(t, err, "Expected no error when building server with all methods")
 
 	assert.Equal(t, 1, fakeBuilder.WithLoggerCallCount())
 	assert.Equal(t, 1, fakeBuilder.WithAgentCallCount())
@@ -276,7 +296,10 @@ func TestServerBuilderAppliesAgentConfigDefaults(t *testing.T) {
 
 	builder := server.NewA2AServerBuilder(cfg, logger)
 
-	server := builder.Build()
+	server, err := builder.
+		WithAgentCard(createTestAgentCard()).
+		Build()
+	require.NoError(t, err, "Expected no error when building server with defaults")
 
 	if server == nil {
 		t.Fatal("server should not be nil")
@@ -305,9 +328,25 @@ func TestServerBuilderPreservesExplicitAgentConfig(t *testing.T) {
 	assert.Equal(t, 10, cfg.AgentConfig.MaxChatCompletionIterations, "Expected explicit MaxChatCompletionIterations")
 
 	builder := server.NewA2AServerBuilder(cfg, logger)
-	server := builder.Build()
+	srv, err := builder.WithAgentCard(createTestAgentCard()).Build()
 
-	if server == nil {
+	require.NoError(t, err)
+	if srv == nil {
 		t.Fatal("server should not be nil")
 	}
+}
+
+func TestA2AServerBuilder_Build_RequiresAgentCard(t *testing.T) {
+	cfg := config.Config{
+		AgentName:    "test-agent",
+		ServerConfig: config.ServerConfig{Port: "8080"},
+	}
+	logger := zap.NewNop()
+
+	builder := server.NewA2AServerBuilder(cfg, logger)
+	srv, err := builder.Build()
+
+	assert.Error(t, err)
+	assert.Nil(t, srv)
+	assert.Contains(t, err.Error(), "agent card must be configured")
 }
