@@ -13,7 +13,7 @@ type Config struct {
 	AgentName                     string             // Build-time metadata, not configurable via environment
 	AgentDescription              string             // Build-time metadata, not configurable via environment
 	AgentVersion                  string             // Build-time metadata, not configurable via environment
-	AgentURL                      string             `env:"AGENT_URL,default=http://helloworld-agent:8080"`
+	AgentURL                      string             `env:"AGENT_URL"`
 	AgentCardFilePath             string             `env:"AGENT_CARD_FILE_PATH" description:"Path to JSON file containing static agent card definition"`
 	Debug                         bool               `env:"DEBUG,default=false"`
 	Timezone                      string             `env:"TIMEZONE,default=UTC" description:"Timezone for timestamps (e.g., UTC, America/New_York, Europe/London)"`
