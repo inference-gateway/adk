@@ -118,28 +118,6 @@ type A2AServerImpl struct {
 
 var _ A2AServer = (*A2AServerImpl)(nil)
 
-// loadAgentCardFromFile loads an agent card from a JSON file
-func loadAgentCardFromFile(filePath string, logger *zap.Logger) (*adk.AgentCard, error) {
-	if filePath == "" {
-		return nil, nil
-	}
-
-	logger.Info("loading agent card from file", zap.String("file_path", filePath))
-
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read agent card file: %w", err)
-	}
-
-	var agentCard adk.AgentCard
-	if err := json.Unmarshal(data, &agentCard); err != nil {
-		return nil, fmt.Errorf("failed to parse agent card JSON: %w", err)
-	}
-
-	logger.Info("successfully loaded agent card from file", zap.String("name", agentCard.Name), zap.String("version", agentCard.Version))
-	return &agentCard, nil
-}
-
 // NewA2AServer creates a new A2A server with the provided configuration and logger
 func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
 	if cfg.AgentName == "" {
@@ -157,12 +135,6 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		logger:    logger,
 		otel:      otel,
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
-	}
-
-	if agentCard, err := loadAgentCardFromFile(cfg.AgentCardFilePath, logger); err != nil {
-		logger.Error("failed to load agent card from file", zap.Error(err))
-	} else if agentCard != nil {
-		server.customAgentCard = agentCard
 	}
 
 	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
@@ -237,13 +209,6 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	// Load agent card from file if path is provided
-	if agentCard, err := loadAgentCardFromFile(cfg.AgentCardFilePath, logger); err != nil {
-		logger.Error("failed to load agent card from file", zap.Error(err))
-	} else if agentCard != nil {
-		server.customAgentCard = agentCard
-	}
-
 	server.taskManager = NewDefaultTaskManager(logger, cfg.AgentConfig.MaxConversationHistory)
 	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
@@ -305,13 +270,24 @@ func (s *A2AServerImpl) SetAgentCard(agentCard adk.AgentCard) {
 
 // LoadAgentCardFromFile loads and sets an agent card from a JSON file
 func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string) error {
-	agentCard, err := loadAgentCardFromFile(filePath, s.logger)
+	if filePath == "" {
+		return nil
+	}
+
+	s.logger.Info("loading agent card from file", zap.String("file_path", filePath))
+
+	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to load agent card from file %s: %w", filePath, err)
+		return fmt.Errorf("failed to read agent card file: %w", err)
 	}
-	if agentCard != nil {
-		s.customAgentCard = agentCard
+
+	var agentCard adk.AgentCard
+	if err := json.Unmarshal(data, &agentCard); err != nil {
+		return fmt.Errorf("failed to parse agent card JSON: %w", err)
 	}
+
+	s.logger.Info("successfully loaded agent card from file", zap.String("name", agentCard.Name), zap.String("version", agentCard.Version))
+	s.customAgentCard = &agentCard
 	return nil
 }
 
@@ -370,6 +346,10 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 
 // Start starts the A2A server
 func (s *A2AServerImpl) Start(ctx context.Context) error {
+	if s.customAgentCard == nil {
+		return fmt.Errorf("agent card must be configured before starting the server - use SetAgentCard() or LoadAgentCardFromFile()")
+	}
+
 	router := s.setupRouter(s.cfg)
 
 	s.httpServer = &http.Server{

@@ -154,9 +154,13 @@ func main() {
 	taskHandler := NewSimpleTaskHandler(logger)
 
 	// Build server with custom task handler
-	a2aServer := server.NewA2AServerBuilder(cfg, logger).
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(taskHandler).
+		WithAgentCardFromFile("./.well-known/agent.json").
 		Build()
+	if err != nil {
+		logger.Fatal("failed to create A2A server", zap.Error(err))
+	}
 
 	logger.Info("✅ minimal A2A server created with simple task handler")
 

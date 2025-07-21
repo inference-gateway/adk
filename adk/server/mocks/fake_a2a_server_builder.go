@@ -10,15 +10,17 @@ import (
 )
 
 type FakeA2AServerBuilder struct {
-	BuildStub        func() server.A2AServer
+	BuildStub        func() (server.A2AServer, error)
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
 	}
 	buildReturns struct {
 		result1 server.A2AServer
+		result2 error
 	}
 	buildReturnsOnCall map[int]struct {
 		result1 server.A2AServer
+		result2 error
 	}
 	WithAgentStub        func(server.OpenAICompatibleAgent) server.A2AServerBuilder
 	withAgentMutex       sync.RWMutex
@@ -90,7 +92,7 @@ type FakeA2AServerBuilder struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeA2AServerBuilder) Build() server.A2AServer {
+func (fake *FakeA2AServerBuilder) Build() (server.A2AServer, error) {
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
@@ -103,9 +105,9 @@ func (fake *FakeA2AServerBuilder) Build() server.A2AServer {
 		return stub()
 	}
 	if specificReturn {
-		return ret.result1
+		return ret.result1, ret.result2
 	}
-	return fakeReturns.result1
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeA2AServerBuilder) BuildCallCount() int {
@@ -114,33 +116,36 @@ func (fake *FakeA2AServerBuilder) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *FakeA2AServerBuilder) BuildCalls(stub func() server.A2AServer) {
+func (fake *FakeA2AServerBuilder) BuildCalls(stub func() (server.A2AServer, error)) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *FakeA2AServerBuilder) BuildReturns(result1 server.A2AServer) {
+func (fake *FakeA2AServerBuilder) BuildReturns(result1 server.A2AServer, result2 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
 	fake.buildReturns = struct {
 		result1 server.A2AServer
-	}{result1}
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeA2AServerBuilder) BuildReturnsOnCall(i int, result1 server.A2AServer) {
+func (fake *FakeA2AServerBuilder) BuildReturnsOnCall(i int, result1 server.A2AServer, result2 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
 	if fake.buildReturnsOnCall == nil {
 		fake.buildReturnsOnCall = make(map[int]struct {
 			result1 server.A2AServer
+			result2 error
 		})
 	}
 	fake.buildReturnsOnCall[i] = struct {
 		result1 server.A2AServer
-	}{result1}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeA2AServerBuilder) WithAgent(arg1 server.OpenAICompatibleAgent) server.A2AServerBuilder {

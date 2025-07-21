@@ -18,6 +18,28 @@ import (
 	zap "go.uber.org/zap"
 )
 
+// createTestAgentCard creates a test agent card for use in tests
+func createTestAgentCard() adk.AgentCard {
+	return adk.AgentCard{
+		Name:        "test-agent",
+		Description: "A test agent",
+		URL:         "http://test-agent:8080",
+		Version:     "1.0.0",
+		Capabilities: adk.AgentCapabilities{
+			Streaming:              boolPtr(true),
+			PushNotifications:      boolPtr(true),
+			StateTransitionHistory: boolPtr(true),
+		},
+		DefaultInputModes:  []string{"text/plain"},
+		DefaultOutputModes: []string{"text/plain"},
+	}
+}
+
+// boolPtr returns a pointer to a boolean value
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -301,12 +323,17 @@ func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
 
 	logger := zap.NewNop()
 
-	serverInstance := server.NewA2AServerBuilder(*partialCfg, logger).Build()
+	serverInstance, err := server.NewA2AServerBuilder(*partialCfg, logger).
+		WithAgentCard(createTestAgentCard()).
+		Build()
+
+	require.NoError(t, err, "Expected no error when building server with partial config")
 
 	assert.NotNil(t, serverInstance)
 
 	agentCard := serverInstance.GetAgentCard()
-	assert.Nil(t, agentCard, "Expected no agent card to be set by default")
+	assert.NotNil(t, agentCard, "Expected agent card to be set")
+	assert.Equal(t, "test-agent", agentCard.Name) // From createTestAgentCard()
 }
 
 func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
@@ -341,9 +368,10 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 		Skills:             []adk.AgentSkill{},
 	}
 
-	serverInstance := server.NewA2AServerBuilder(cfg, logger).
+	serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgentCard(testAgentCard).
 		Build()
+	require.NoError(t, err, "Expected no error when building server with custom capabilities configuration")
 
 	assert.NotNil(t, serverInstance)
 
@@ -370,7 +398,6 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 
 	logger := zap.NewNop()
 
-	// Create a custom agent card for testing
 	testAgentCard := adk.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
@@ -386,9 +413,10 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 		Skills:             []adk.AgentSkill{},
 	}
 
-	serverInstance := server.NewA2AServerBuilder(*partialCfg, logger).
+	serverInstance, err := server.NewA2AServerBuilder(*partialCfg, logger).
 		WithAgentCard(testAgentCard).
 		Build()
+	require.NoError(t, err, "Expected no error when building server with partial config")
 
 	assert.NotNil(t, serverInstance)
 

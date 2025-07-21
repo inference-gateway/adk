@@ -2,6 +2,9 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
 
 	adk "github.com/inference-gateway/a2a/adk"
 	config "github.com/inference-gateway/a2a/adk/server/config"
@@ -45,7 +48,7 @@ type A2AServerBuilder interface {
 
 	// Build creates and returns the configured A2A server.
 	// This method applies configuration defaults and initializes all components.
-	Build() A2AServer
+	Build() (A2AServer, error)
 }
 
 var _ A2AServerBuilder = (*A2AServerBuilderImpl)(nil)
@@ -151,11 +154,26 @@ func (b *A2AServerBuilderImpl) WithAgentCard(agentCard adk.AgentCard) A2AServerB
 
 // WithAgentCardFromFile loads and sets an agent card from a JSON file
 func (b *A2AServerBuilderImpl) WithAgentCardFromFile(filePath string) A2AServerBuilder {
-	if agentCard, err := loadAgentCardFromFile(filePath, b.logger); err != nil {
-		b.logger.Error("failed to load agent card from file", zap.String("file_path", filePath), zap.Error(err))
-	} else if agentCard != nil {
-		b.agentCard = agentCard
+	if filePath == "" {
+		return b
 	}
+
+	b.logger.Info("loading agent card from file", zap.String("file_path", filePath))
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		b.logger.Error("failed to read agent card file", zap.String("file_path", filePath), zap.Error(err))
+		return b
+	}
+
+	var agentCard adk.AgentCard
+	if err := json.Unmarshal(data, &agentCard); err != nil {
+		b.logger.Error("failed to parse agent card JSON", zap.String("file_path", filePath), zap.Error(err))
+		return b
+	}
+
+	b.logger.Info("successfully loaded agent card from file", zap.String("name", agentCard.Name), zap.String("version", agentCard.Version))
+	b.agentCard = &agentCard
 	return b
 }
 
@@ -166,17 +184,21 @@ func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 }
 
 // Build creates and returns the configured A2A server.
-func (b *A2AServerBuilderImpl) Build() A2AServer {
+func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
+	// Validate that an agent card is configured
+	if b.agentCard == nil {
+		return nil, fmt.Errorf("agent card must be configured before building the server - use WithAgentCard() or WithAgentCardFromFile()")
+	}
+
 	var telemetryInstance otel.OpenTelemetry
 	if b.cfg.TelemetryConfig.Enable {
 		var err error
 		telemetryInstance, err = otel.NewOpenTelemetry(&b.cfg, b.logger)
 		if err != nil {
-			b.logger.Error("failed to initialize telemetry", zap.Error(err))
-		} else {
-			metricsAddr := b.cfg.TelemetryConfig.MetricsConfig.Host + ":" + b.cfg.TelemetryConfig.MetricsConfig.Port
-			b.logger.Info("telemetry enabled - metrics will be available", zap.String("metrics_url", metricsAddr+"/metrics"))
+			return nil, fmt.Errorf("failed to initialize telemetry: %w", err)
 		}
+		metricsAddr := b.cfg.TelemetryConfig.MetricsConfig.Host + ":" + b.cfg.TelemetryConfig.MetricsConfig.Port
+		b.logger.Info("telemetry enabled - metrics will be available", zap.String("metrics_url", metricsAddr+"/metrics"))
 	}
 
 	server := NewA2AServer(&b.cfg, b.logger, telemetryInstance)
@@ -202,14 +224,15 @@ func (b *A2AServerBuilderImpl) Build() A2AServer {
 		server.SetAgentCard(*b.agentCard)
 	}
 
-	return server
+	return server, nil
 }
 
 // SimpleA2AServerWithAgent creates a basic A2A server with an OpenAI-compatible agent
 // This is a convenience function for agent-based use cases
-func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenAICompatibleAgent) A2AServer {
+func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenAICompatibleAgent, agentCard adk.AgentCard) (A2AServer, error) {
 	return NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
+		WithAgentCard(agentCard).
 		Build()
 }
 
@@ -220,10 +243,12 @@ func CustomA2AServer(
 	logger *zap.Logger,
 	taskHandler TaskHandler,
 	taskResultProcessor TaskResultProcessor,
-) A2AServer {
+	agentCard adk.AgentCard,
+) (A2AServer, error) {
 	return NewA2AServerBuilder(cfg, logger).
 		WithTaskHandler(taskHandler).
 		WithTaskResultProcessor(taskResultProcessor).
+		WithAgentCard(agentCard).
 		Build()
 }
 
@@ -235,7 +260,8 @@ func CustomA2AServerWithAgent(
 	agent OpenAICompatibleAgent,
 	toolBox ToolBox,
 	taskResultProcessor TaskResultProcessor,
-) A2AServer {
+	agentCard adk.AgentCard,
+) (A2AServer, error) {
 	if toolBox != nil {
 		if defaultAgent, ok := agent.(*DefaultOpenAICompatibleAgent); ok {
 			defaultAgent.toolBox = toolBox
@@ -245,5 +271,6 @@ func CustomA2AServerWithAgent(
 	return NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
 		WithTaskResultProcessor(taskResultProcessor).
+		WithAgentCard(agentCard).
 		Build()
 }
