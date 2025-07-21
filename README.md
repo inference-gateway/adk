@@ -167,9 +167,7 @@ func main() {
 
     // Load configuration from environment
     cfg := config.Config{
-        AgentName:        "AI Assistant",
-        AgentDescription: "An AI-powered A2A agent",
-        Port:             "8080",
+        Port: "8080",
     }
 
     ctx := context.Background()
@@ -203,6 +201,7 @@ func main() {
 
     // Create LLM client (requires AGENT_CLIENT_API_KEY environment variable)
     var a2aServer server.A2AServer
+    var err error
     if cfg.AgentConfig != nil && cfg.AgentConfig.APIKey != "" {
         // Modern approach using AgentBuilder
         agent, err := server.NewAgentBuilder(logger).
@@ -213,9 +212,13 @@ func main() {
             log.Fatal("Failed to create agent:", err)
         }
         
-        a2aServer = server.NewA2AServerBuilder(cfg, logger).
+        a2aServer, err = server.NewA2AServerBuilder(cfg, logger).
             WithAgent(agent).
+            WithAgentCardFromFile(".well-known/agent.json").
             Build()
+        if err != nil {
+            log.Fatal("Failed to create server:", err)
+        }
     } else {
         // Mock mode without actual LLM
         agent, err := server.NewAgentBuilder(logger).
@@ -225,9 +228,13 @@ func main() {
             log.Fatal("Failed to create agent:", err)
         }
         
-        a2aServer = server.NewA2AServerBuilder(cfg, logger).
+        a2aServer, err = server.NewA2AServerBuilder(cfg, logger).
             WithAgent(agent).
+            WithAgentCardFromFile(".well-known/agent.json").
             Build()
+        if err != nil {
+            log.Fatal("Failed to create server:", err)
+        }
     }
 
     // Start server
@@ -449,13 +456,13 @@ The main server interface that handles A2A protocol communication.
 
 ```go
 // Create a default A2A server
-func NewDefaultA2AServer(cfg *config.Config) A2AServer
+func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl
 
 // Create a server with agent integration
-func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenAICompatibleAgent) A2AServer
+func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenAICompatibleAgent, agentCard adk.AgentCard) (A2AServer, error)
 
 // Create a server with custom components
-func CustomA2AServer(cfg config.Config, logger *zap.Logger, taskHandler TaskHandler, processor TaskResultProcessor) A2AServer
+func CustomA2AServer(cfg config.Config, logger *zap.Logger, taskHandler TaskHandler, processor TaskResultProcessor, agentCard adk.AgentCard) (A2AServer, error)
 
 // Create a server with full customization
 func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl
@@ -467,21 +474,33 @@ Build A2A servers with custom configurations using a fluent interface:
 
 ```go
 // Basic server with agent
-server := server.NewA2AServerBuilder(config, logger).
+a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithAgent(agent).
+    WithAgentCardFromFile(".well-known/agent.json").
     Build()
+if err != nil {
+    // handle error
+}
 
 // Server with custom task handler
-server := server.NewA2AServerBuilder(config, logger).
+a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithTaskHandler(customTaskHandler).
     WithTaskResultProcessor(customProcessor).
+    WithAgentCardFromFile(".well-known/agent.json").
     Build()
+if err != nil {
+    // handle error
+}
 
 // Server with custom logger
-server := server.NewA2AServerBuilder(config, logger).
+a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithLogger(customLogger).
     WithAgent(agent).
+    WithAgentCardFromFile(".well-known/agent.json").
     Build()
+if err != nil {
+    // handle error
+}
 ```
 
 #### AgentBuilder
@@ -494,17 +513,27 @@ agent, err := server.NewAgentBuilder(logger).
     WithLLMClient(customLLMClient).
     WithToolBox(toolBox).
     Build()
+if err != nil {
+    // handle error
+}
 
 // Agent with system prompt
 agent, err := server.NewAgentBuilder(logger).
     WithSystemPrompt("You are a helpful assistant").
     WithMaxChatCompletion(10).
     Build()
+if err != nil {
+    // handle error
+}
 
 // Use with A2A server builder
-server := server.NewA2AServerBuilder(config, logger).
+a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithAgent(agent).
+    WithAgentCardFromFile(".well-known/agent.json").
     Build()
+if err != nil {
+    // handle error
+}
 ```
 
 #### A2AClient
@@ -589,10 +618,7 @@ The configuration is managed through environment variables and the config packag
 
 ```go
 type Config struct {
-    AgentName                     string              `env:"AGENT_NAME,default=helloworld-agent"`
-    AgentDescription              string              `env:"AGENT_DESCRIPTION,default=A simple greeting agent"`
     AgentURL                      string              `env:"AGENT_URL,default=http://helloworld-agent:8080"`
-    AgentVersion                  string              `env:"AGENT_VERSION,default=1.0.0"`
     Debug                         bool                `env:"DEBUG,default=false"`
     Port                          string              `env:"PORT,default=8080"`
     StreamingStatusUpdateInterval time.Duration       `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
@@ -642,6 +668,7 @@ agent, err = server.NewAgentBuilder(logger).
     WithSystemPrompt("You are a helpful AI assistant specialized in customer support.").
     WithMaxChatCompletion(15).
     WithMaxConversationHistory(30).
+    WithAgentCardFromFile(".well-known/agent.json").
     Build()
 ```
 
@@ -699,11 +726,18 @@ agent, err := server.NewAgentBuilder(logger).
     WithMaxChatCompletion(20).
     WithMaxConversationHistory(50).
     Build()
+if err != nil {
+    // handle error
+}
 
 // Use the agent in your server
-a2aServer := server.NewA2AServerBuilder(serverCfg, logger).
+a2aServer, err := server.NewA2AServerBuilder(serverCfg, logger).
     WithAgent(agent).
+    WithAgentCardFromFile(".well-known/agent.json").
     Build()
+if err != nil {
+    // handle error
+}
 ```
 
 ### Custom Tools
@@ -814,18 +848,24 @@ Load JSON AgentCard using the server builder:
 
 ```go
 // Automatically load during server creation (if AGENT_CARD_FILE_PATH is set)
-server := server.NewA2AServerBuilder(cfg, logger).
+a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
     WithAgent(agent).
-    Build()  // Auto-loads from AGENT_CARD_FILE_PATH environment variable
+    Build()
+if err != nil {
+    // handle error
+}
 
 // Or explicitly specify the file path
-server := server.NewA2AServerBuilder(cfg, logger).
+a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
     WithAgent(agent).
     WithAgentCardFromFile("./.well-known/agent.json").
     Build()
+if err != nil {
+    // handle error
+}
 
 // Or load after server creation
-if err := server.LoadAgentCardFromFile("./.well-known/agent.json"); err != nil {
+if err := a2aServer.LoadAgentCardFromFile("./.well-known/agent.json"); err != nil {
     log.Printf("Failed to load agent card: %v", err)
 }
 ```
@@ -886,9 +926,13 @@ func (ctp *CustomTaskProcessor) ProcessToolResult(toolCallResult string) *adk.Me
 }
 
 // Set the processor when building your server
-server := server.NewA2AServerBuilder(cfg, logger).
+a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
     WithTaskResultProcessor(&CustomTaskProcessor{}).
+    WithAgentCardFromFile(".well-known/agent.json").
     Build()
+if err != nil {
+    // handle error
+}
 ```
 
 ### Push Notifications
@@ -1032,12 +1076,17 @@ cfg := config.Config{
 
 // The server uses build-time metadata as defaults (server.BuildAgentName, etc.)
 // but you can override them at runtime if needed
-server := server.NewA2AServerBuilder(cfg, logger).Build()
+a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+    WithAgentCardFromFile(".well-known/agent.json").
+    Build()
+if err != nil {
+    log.Fatal("Failed to create server:", err)
+}
 
 // Override build-time metadata for development
-server.SetAgentName("Development Weather Assistant")
-server.SetAgentDescription("Development version with debug features")
-server.SetAgentVersion("dev-1.0.0")
+a2aServer.SetAgentName("Development Weather Assistant")
+a2aServer.SetAgentDescription("Development version with debug features")
+a2aServer.SetAgentVersion("dev-1.0.0")
 ```
 
 **Note:** Build-time metadata takes precedence as defaults, but can be overridden at runtime using the setter methods (`SetAgentName`, `SetAgentDescription`, `SetAgentVersion`).
@@ -1050,7 +1099,8 @@ Key environment variables for configuring your agent:
 # Server configuration
 PORT="8080"
 
-# Agent metadata configuration
+# Agent metadata configuration (via LD flags only - see Build-Time Agent Metadata section)
+# AGENT_NAME, AGENT_DESCRIPTION, AGENT_VERSION are set at build time via LD flags
 AGENT_CARD_FILE_PATH="./.well-known/agent.json"    # Path to JSON AgentCard file (optional)
 
 # LLM client configuration
