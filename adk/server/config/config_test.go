@@ -23,7 +23,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 			validateFunc: func(t *testing.T, cfg *config.Config) {
 				assert.Equal(t, "", cfg.AgentName)
 				assert.Equal(t, "", cfg.AgentDescription)
-				assert.Equal(t, "http://helloworld-agent:8080", cfg.AgentURL)
+				assert.Equal(t, "", cfg.AgentURL)
 				assert.Equal(t, "", cfg.AgentVersion)
 				assert.False(t, cfg.Debug)
 				assert.Equal(t, "8080", cfg.ServerConfig.Port)
@@ -64,16 +64,16 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 		{
 			name: "overrides defaults with custom env vars",
 			envVars: map[string]string{
-				"AGENT_URL":                        "http://localhost:9090",
-				"DEBUG":                            "true",
-				"SERVER_PORT":                      "9090",
-				"STREAMING_STATUS_UPDATE_INTERVAL": "5s",
-				"AGENT_CLIENT_PROVIDER":            "openai",
-				"AGENT_CLIENT_MODEL":               "gpt-4",
-				"AGENT_CLIENT_BASE_URL":            "https://api.openai.com/v1",
-				"AGENT_CLIENT_API_KEY":             "test-key",
-				"AGENT_CLIENT_TIMEOUT":             "45s",
-				"AGENT_CLIENT_MAX_RETRIES":         "5",
+				"AGENT_URL":                                   "http://localhost:9090",
+				"DEBUG":                                       "true",
+				"SERVER_PORT":                                 "9090",
+				"STREAMING_STATUS_UPDATE_INTERVAL":            "5s",
+				"AGENT_CLIENT_PROVIDER":                       "openai",
+				"AGENT_CLIENT_MODEL":                          "gpt-4",
+				"AGENT_CLIENT_BASE_URL":                       "https://api.openai.com/v1",
+				"AGENT_CLIENT_API_KEY":                        "test-key",
+				"AGENT_CLIENT_TIMEOUT":                        "45s",
+				"AGENT_CLIENT_MAX_RETRIES":                    "5",
 				"AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS": "15",
 				"AGENT_CLIENT_USER_AGENT":                     "custom-agent/2.0",
 				"AGENT_CLIENT_MAX_TOKENS":                     "8192",
