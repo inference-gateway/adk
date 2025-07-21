@@ -40,10 +40,11 @@ type FakeA2AServer struct {
 	getTaskHandlerReturnsOnCall map[int]struct {
 		result1 server.TaskHandler
 	}
-	LoadAgentCardFromFileStub        func(string) error
+	LoadAgentCardFromFileStub        func(string, map[string]interface{}) error
 	loadAgentCardFromFileMutex       sync.RWMutex
 	loadAgentCardFromFileArgsForCall []struct {
 		arg1 string
+		arg2 map[string]interface{}
 	}
 	loadAgentCardFromFileReturns struct {
 		result1 error
@@ -291,18 +292,19 @@ func (fake *FakeA2AServer) GetTaskHandlerReturnsOnCall(i int, result1 server.Tas
 	}{result1}
 }
 
-func (fake *FakeA2AServer) LoadAgentCardFromFile(arg1 string) error {
+func (fake *FakeA2AServer) LoadAgentCardFromFile(arg1 string, arg2 map[string]interface{}) error {
 	fake.loadAgentCardFromFileMutex.Lock()
 	ret, specificReturn := fake.loadAgentCardFromFileReturnsOnCall[len(fake.loadAgentCardFromFileArgsForCall)]
 	fake.loadAgentCardFromFileArgsForCall = append(fake.loadAgentCardFromFileArgsForCall, struct {
 		arg1 string
-	}{arg1})
+		arg2 map[string]interface{}
+	}{arg1, arg2})
 	stub := fake.LoadAgentCardFromFileStub
 	fakeReturns := fake.loadAgentCardFromFileReturns
-	fake.recordInvocation("LoadAgentCardFromFile", []interface{}{arg1})
+	fake.recordInvocation("LoadAgentCardFromFile", []interface{}{arg1, arg2})
 	fake.loadAgentCardFromFileMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -316,17 +318,17 @@ func (fake *FakeA2AServer) LoadAgentCardFromFileCallCount() int {
 	return len(fake.loadAgentCardFromFileArgsForCall)
 }
 
-func (fake *FakeA2AServer) LoadAgentCardFromFileCalls(stub func(string) error) {
+func (fake *FakeA2AServer) LoadAgentCardFromFileCalls(stub func(string, map[string]interface{}) error) {
 	fake.loadAgentCardFromFileMutex.Lock()
 	defer fake.loadAgentCardFromFileMutex.Unlock()
 	fake.LoadAgentCardFromFileStub = stub
 }
 
-func (fake *FakeA2AServer) LoadAgentCardFromFileArgsForCall(i int) string {
+func (fake *FakeA2AServer) LoadAgentCardFromFileArgsForCall(i int) (string, map[string]interface{}) {
 	fake.loadAgentCardFromFileMutex.RLock()
 	defer fake.loadAgentCardFromFileMutex.RUnlock()
 	argsForCall := fake.loadAgentCardFromFileArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeA2AServer) LoadAgentCardFromFileReturns(result1 error) {
