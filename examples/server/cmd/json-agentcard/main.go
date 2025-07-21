@@ -22,7 +22,7 @@ import (
 //
 // REQUIRED Configuration:
 //
-//	AGENT_CARD_FILE_PATH - Path to the JSON AgentCard file (default: "./agent-card.json")
+//	AGENT_CARD_FILE_PATH - Path to the JSON AgentCard file (default: "./.well-known/agent.json")
 //
 // Optional Configuration:
 //
@@ -39,7 +39,7 @@ import (
 //	AGENT_CARD_FILE_PATH="/path/to/my-card.json" go run main.go
 //
 //	# With AI capabilities
-//	export AGENT_CLIENT_API_KEY="sk-..." AGENT_CARD_FILE_PATH="./agent-card.json" && go run main.go
+//	export AGENT_CLIENT_API_KEY="sk-..." AGENT_CARD_FILE_PATH="./.well-known/agent.json" && go run main.go
 //
 // To run: go run main.go
 func main() {
@@ -184,7 +184,7 @@ func main() {
 	cardPath := os.Getenv("AGENT_CARD_FILE_PATH")
 	if cardPath == "" {
 		fmt.Printf("\n💡 Set AGENT_CARD_FILE_PATH to load a custom agent card:\n")
-		fmt.Printf("  AGENT_CARD_FILE_PATH='./agent-card.json' go run main.go\n")
+		fmt.Printf("  AGENT_CARD_FILE_PATH='./.well-known/agent.json' go run main.go\n")
 	} else {
 		fmt.Printf("\n📄 Using agent card file: %s\n", cardPath)
 	}

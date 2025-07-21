@@ -756,7 +756,7 @@ Configure the JSON file path using:
 
 ```bash
 # Set the path to your JSON AgentCard file
-export AGENT_CARD_FILE_PATH="/path/to/your/agent-card.json"
+export AGENT_CARD_FILE_PATH="/path/to/your/.well-known/agent.json"
 ```
 
 #### JSON AgentCard Structure
@@ -821,11 +821,11 @@ server := server.NewA2AServerBuilder(cfg, logger).
 // Or explicitly specify the file path
 server := server.NewA2AServerBuilder(cfg, logger).
     WithAgent(agent).
-    WithAgentCardFromFile("./my-agent-card.json").
+    WithAgentCardFromFile("./.well-known/agent.json").
     Build()
 
 // Or load after server creation
-if err := server.LoadAgentCardFromFile("./agent-card.json"); err != nil {
+if err := server.LoadAgentCardFromFile("./.well-known/agent.json"); err != nil {
     log.Printf("Failed to load agent card: %v", err)
 }
 ```
@@ -844,7 +844,7 @@ AGENT_CARD_FILE_PATH="./my-custom-card.json" go run main.go
 
 # Run with AI capabilities
 export AGENT_CLIENT_API_KEY="sk-..."
-export AGENT_CARD_FILE_PATH="./agent-card.json"
+export AGENT_CARD_FILE_PATH="./.well-known/agent.json"
 go run main.go
 ```
 
@@ -1051,7 +1051,7 @@ Key environment variables for configuring your agent:
 PORT="8080"
 
 # Agent metadata configuration
-AGENT_CARD_FILE_PATH="./agent-card.json"    # Path to JSON AgentCard file (optional)
+AGENT_CARD_FILE_PATH="./.well-known/agent.json"    # Path to JSON AgentCard file (optional)
 
 # LLM client configuration
 AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
