@@ -35,6 +35,10 @@ type A2AServerBuilder interface {
 	// This gives full control over the agent's advertised capabilities and metadata.
 	WithAgentCard(agentCard adk.AgentCard) A2AServerBuilder
 
+	// WithAgentCardFromFile loads and sets an agent card from a JSON file.
+	// This provides a convenient way to load agent configuration from a static file.
+	WithAgentCardFromFile(filePath string) A2AServerBuilder
+
 	// WithLogger sets a custom logger for the builder and resulting server.
 	// This allows using a logger configured with appropriate level based on the Debug config.
 	WithLogger(logger *zap.Logger) A2AServerBuilder
@@ -142,6 +146,16 @@ func (b *A2AServerBuilderImpl) WithAgent(agent OpenAICompatibleAgent) A2AServerB
 // WithAgentCard sets a custom agent card that overrides the default card generation
 func (b *A2AServerBuilderImpl) WithAgentCard(agentCard adk.AgentCard) A2AServerBuilder {
 	b.agentCard = &agentCard
+	return b
+}
+
+// WithAgentCardFromFile loads and sets an agent card from a JSON file
+func (b *A2AServerBuilderImpl) WithAgentCardFromFile(filePath string) A2AServerBuilder {
+	if agentCard, err := loadAgentCardFromFile(filePath, b.logger); err != nil {
+		b.logger.Error("failed to load agent card from file", zap.String("file_path", filePath), zap.Error(err))
+	} else if agentCard != nil {
+		b.agentCard = agentCard
+	}
 	return b
 }
 
