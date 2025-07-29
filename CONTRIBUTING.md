@@ -18,8 +18,8 @@ Before contributing, ensure you have the following installed:
 1. **Fork the repository** on GitHub
 2. **Clone your fork**:
    ```bash
-   git clone https://github.com/your-username/a2a.git
-   cd a2a
+   git clone https://github.com/your-username/adk.git
+   cd adk
    ```
 3. **Add the upstream remote**:
    ```bash
@@ -238,17 +238,18 @@ test(agent): Add table-driven tests for endpoint handlers
 The project follows Go conventions for test organization:
 
 ```
-a2a/
-├── adk/
-│   ├── client/
-│   │   ├── client.go
-│   │   └── client_test.go
-│   ├── server/
-│   │   ├── agent.go
-│   │   ├── agent_test.go
-│   │   ├── server.go
-│   │   └── server_test.go
+adk/
+├── client/
+│   ├── client.go
+│   └── client_test.go
+├── server/
+│   ├── agent.go
+│   ├── agent_test.go
+│   ├── server.go
+│   └── server_test.go
+├── types/
 │   └── generated_types.go
+│   └── types.go
 └── examples/
     ├── client/
     └── server/
