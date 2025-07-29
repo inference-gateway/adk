@@ -6,19 +6,19 @@
 
 <p align="center">
   <!-- CI Status Badge -->
-  <a href="https://github.com/inference-gateway/a2a/actions/workflows/ci.yml?query=branch%3Amain">
-    <img src="https://github.com/inference-gateway/a2a/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI Status"/>
+  <a href="https://github.com/inference-gateway/adk/actions/workflows/ci.yml?query=branch%3Amain">
+    <img src="https://github.com/inference-gateway/adk/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI Status"/>
   </a>
   <!-- Version Badge -->
-  <a href="https://github.com/inference-gateway/a2a/releases">
-    <img src="https://img.shields.io/github/v/release/inference-gateway/a2a?color=blue&style=flat-square" alt="Version"/>
+  <a href="https://github.com/inference-gateway/adk/releases">
+    <img src="https://img.shields.io/github/v/release/inference-gateway/adk?color=blue&style=flat-square" alt="Version"/>
   </a>
   <!-- License Badge -->
-  <a href="https://github.com/inference-gateway/a2a/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/inference-gateway/a2a?color=blue&style=flat-square" alt="License"/>
+  <a href="https://github.com/inference-gateway/adk/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/inference-gateway/adk?color=blue&style=flat-square" alt="License"/>
   </a>
   <!-- Go Version -->
-  <img src="https://img.shields.io/github/go-mod/go-version/inference-gateway/a2a?style=flat-square" alt="Go Version"/>
+  <img src="https://img.shields.io/github/go-mod/go-version/inference-gateway/adk?style=flat-square" alt="Go Version"/>
 </p>
 
 ---
@@ -96,7 +96,7 @@ Agent-to-Agent (A2A) is a standardized protocol that enables AI agents to:
 ### Installation
 
 ```bash
-go get github.com/inference-gateway/a2a
+go get github.com/inference-gateway/adk
 ```
 
 ### Basic Usage (Minimal Server)
@@ -264,7 +264,7 @@ import (
     "log"
     "time"
 
-    "github.com/inference-gateway/a2a/adk/client"
+    "github.com/inference-gateway/adk/client"
 )
 
 func main() {
@@ -1299,7 +1299,7 @@ For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### Issues & Questions
 
-- **Bug Reports**: [GitHub Issues](https://github.com/inference-gateway/a2a/issues)
+- **Bug Reports**: [GitHub Issues](https://github.com/inference-gateway/adk/issues)
 - **Documentation**: [Official Docs](https://docs.inference-gateway.com)
 
 ## 🔗 Resources

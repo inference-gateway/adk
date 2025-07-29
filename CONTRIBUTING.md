@@ -23,7 +23,7 @@ Before contributing, ensure you have the following installed:
    ```
 3. **Add the upstream remote**:
    ```bash
-   git remote add upstream https://github.com/inference-gateway/a2a.git
+   git remote add upstream https://github.com/inference-gateway/adk.git
    ```
 4. **Install dependencies**:
    ```bash
@@ -402,7 +402,7 @@ For feature requests:
 
 ### Community Resources
 
-- **GitHub Discussions**: [Project Discussions](https://github.com/inference-gateway/a2a/discussions)
+- **GitHub Discussions**: [Project Discussions](https://github.com/inference-gateway/adk/discussions)
 - **Discord**: [Inference Gateway Discord](https://discord.gg/inference-gateway)
 - **Documentation**: [Official Docs](https://docs.inference-gateway.com)
 
