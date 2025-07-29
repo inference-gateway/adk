@@ -40,7 +40,7 @@ tasks:
   clean:mocks:
     desc: 'Clean up generated mocks'
     cmds:
-      - rm -rf adk/server/mocks/*.go
+      - rm -rf server/mocks/*.go
 
   generate:mocks:
     desc: 'Generate all mocks using counterfeiter'
