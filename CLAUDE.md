@@ -14,7 +14,7 @@ This is a Go project that uses Task for build automation. Common commands:
 ### A2A Schema Management
 
 - `task a2a:download-schema` - Download latest A2A schema from GitHub
-- `task a2a:generate-types` - Generate Go types from A2A schema (creates `adk/generated_types.go`)
+- `task a2a:generate-types` - Generate Go types from A2A schema (creates `types/generated_types.go`)
 
 ### Mock Generation
 
@@ -109,7 +109,7 @@ Uses table-driven tests with generated mocks:
 
 - Always run `task a2a:generate-types` after schema updates
 - The project follows Go module structure with `go.mod` at root
-- Generated types are in `adk/generated_types.go` (do not edit manually)
+- Generated types are in `types/generated_types.go` (do not edit manually)
 - Configuration supports both defaults and environment overrides
 - Server supports both mock mode (no LLM) and AI-powered mode
 - Always ensure on each given task that you push the changes to a branch and open a PR for review

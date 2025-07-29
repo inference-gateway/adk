@@ -53,7 +53,7 @@ After downloading the schema, generate the types:
 task a2a:generate-types
 ```
 
-This will update the generated types in `adk/generated_types.go` based on the latest schema.
+This will update the generated types in `types/generated_types.go` based on the latest schema.
 
 ### 3. Generate Mocks
 
