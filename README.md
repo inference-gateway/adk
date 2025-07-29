@@ -4,6 +4,8 @@
   <strong>Build powerful, interoperable AI agents with the Agent-to-Agent (A2A) protocol</strong>
 </p>
 
+> ⚠️ **Early Stage Warning**: This project is in its early stages of development. Breaking changes are expected as we iterate and improve the API. Please use pinned versions in production environments and be prepared to update your code when upgrading versions.
+
 <p align="center">
   <!-- CI Status Badge -->
   <a href="https://github.com/inference-gateway/adk/actions/workflows/ci.yml?query=branch%3Amain">
