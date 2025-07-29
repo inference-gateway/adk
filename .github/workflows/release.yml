@@ -24,7 +24,7 @@ jobs:
           private-key: ${{ secrets.BOT_GH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: |
-            a2a
+            adk
 
       - name: Get GitHub App User ID
         id: get-user-id
