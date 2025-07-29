@@ -108,7 +108,7 @@ Both examples use build-time metadata injection via LD flags. You can customize 
 
 ```bash
 # Build with custom agent metadata
-go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=my-custom-agent -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=My custom A2A agent description' -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=2.0.0" -o my-agent cmd/minimal/main.go
+go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=my-custom-agent -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=My custom A2A agent description' -X github.com/inference-gateway/adk/server.BuildAgentVersion=2.0.0" -o my-agent cmd/minimal/main.go
 ```
 
 The agent metadata appears in:
@@ -174,9 +174,9 @@ When you run the examples with custom build-time metadata, you'll see the agent 
 **Minimal Server Example:**
 ```bash
 # Build with custom metadata
-go build -ldflags="-X 'github.com/inference-gateway/a2a/adk/server.BuildAgentName=Weather Assistant' \
-  -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentDescription=AI-powered weather and time assistant' \
-  -X 'github.com/inference-gateway/a2a/adk/server.BuildAgentVersion=2.1.0'" \
+go build -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=Weather Assistant' \
+  -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=AI-powered weather and time assistant' \
+  -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=2.1.0'" \
   -o weather-agent cmd/minimal/main.go
 
 # Run the agent

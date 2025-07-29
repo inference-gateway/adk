@@ -122,7 +122,7 @@ import (
     "testing"
     
     "github.com/stretchr/testify/assert"
-    "github.com/inference-gateway/a2a/adk/server"
+    "github.com/inference-gateway/adk/server"
 )
 
 func TestAgentServer(t *testing.T) {
@@ -269,9 +269,9 @@ Create helper functions for common test setup:
 ```go
 import (
     "testing"
-    "github.com/inference-gateway/a2a/adk/server"
-    "github.com/inference-gateway/a2a/adk/server/config"
-    "github.com/inference-gateway/a2a/adk/server/mocks"
+    "github.com/inference-gateway/adk/server"
+    "github.com/inference-gateway/adk/server/config"
+    "github.com/inference-gateway/adk/server/mocks"
     "github.com/stretchr/testify/require"
     "go.uber.org/zap"
 )

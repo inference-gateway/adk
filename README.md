@@ -111,7 +111,7 @@ import (
     "os/signal"
     "syscall"
 
-    "github.com/inference-gateway/a2a/adk/server"
+    "github.com/inference-gateway/adk/server"
     "go.uber.org/zap"
 )
 
@@ -154,8 +154,8 @@ import (
     "log"
     "os"
 
-    "github.com/inference-gateway/a2a/adk/server"
-    "github.com/inference-gateway/a2a/adk/server/config"
+    "github.com/inference-gateway/adk/server"
+    "github.com/inference-gateway/adk/server/config"
     "github.com/sethvargo/go-envconfig"
     "go.uber.org/zap"
 )
@@ -412,9 +412,9 @@ The following build-time metadata variables can be set via LD flags:
 
 ```bash
 # Build your application with custom LD flags
-go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName='MyAgent' \
-  -X github.com/inference-gateway/a2a/adk/server.BuildAgentDescription='My custom agent description' \
-  -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion='1.2.3'" \
+go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName='MyAgent' \
+  -X github.com/inference-gateway/adk/server.BuildAgentDescription='My custom agent description' \
+  -X github.com/inference-gateway/adk/server.BuildAgentVersion='1.2.3'" \
   -o bin/my-agent ./cmd/server/main.go
 ```
 
@@ -434,9 +434,9 @@ RUN go mod download
 
 COPY . .
 RUN go build \
-    -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName='${AGENT_NAME}' \
-              -X github.com/inference-gateway/a2a/adk/server.BuildAgentDescription='${AGENT_DESCRIPTION}' \
-              -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion='${AGENT_VERSION}'" \
+    -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName='${AGENT_NAME}' \
+              -X github.com/inference-gateway/adk/server.BuildAgentDescription='${AGENT_DESCRIPTION}' \
+              -X github.com/inference-gateway/adk/server.BuildAgentVersion='${AGENT_VERSION}'" \
     -o bin/agent .
 
 FROM alpine:latest
@@ -1054,9 +1054,9 @@ Agent metadata is embedded directly into the binary during compilation using Go 
 
 ```bash
 # Build your application with custom LD flags
-go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName='Weather Assistant' \
-  -X github.com/inference-gateway/a2a/adk/server.BuildAgentDescription='Specialized weather analysis agent' \
-  -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion='2.0.0'" \
+go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName='Weather Assistant' \
+  -X github.com/inference-gateway/adk/server.BuildAgentDescription='Specialized weather analysis agent' \
+  -X github.com/inference-gateway/adk/server.BuildAgentVersion='2.0.0'" \
   -o bin/app .
 ```
 
@@ -1171,9 +1171,9 @@ COPY . .
 
 # Build with custom agent metadata
 RUN go build \
-    -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName='${AGENT_NAME}' \
-              -X github.com/inference-gateway/a2a/adk/server.BuildAgentDescription='${AGENT_DESCRIPTION}' \
-              -X github.com/inference-gateway/a2a/adk/server.BuildAgentVersion='${AGENT_VERSION}'" \
+    -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName='${AGENT_NAME}' \
+              -X github.com/inference-gateway/adk/server.BuildAgentDescription='${AGENT_DESCRIPTION}' \
+              -X github.com/inference-gateway/adk/server.BuildAgentVersion='${AGENT_VERSION}'" \
     -o bin/agent .
 
 FROM alpine:latest
