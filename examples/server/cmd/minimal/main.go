@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/inference-gateway/a2a/adk"
-	"github.com/inference-gateway/a2a/adk/server"
-	"github.com/inference-gateway/a2a/adk/server/config"
-	"go.uber.org/zap"
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
+	zap "go.uber.org/zap"
 )
 
 // SimpleTaskHandler implements a basic task handler without LLM
@@ -29,7 +29,7 @@ func NewSimpleTaskHandler(logger *zap.Logger) *SimpleTaskHandler {
 }
 
 // HandleTask processes tasks with simple predefined responses
-func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *adk.Task, message *adk.Message) (*adk.Task, error) {
+func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	h.logger.Info("processing task with simple handler",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
@@ -68,11 +68,11 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *adk.Task, mess
 	}
 
 	// Create response message
-	response := &adk.Message{
+	response := &types.Message{
 		Kind:      "message",
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		Role:      "assistant",
-		Parts: []adk.Part{
+		Parts: []types.Part{
 			map[string]interface{}{
 				"kind": "text",
 				"text": responseText,
@@ -82,7 +82,7 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *adk.Task, mess
 
 	// Update task with response
 	task.History = append(task.History, *response)
-	task.Status.State = adk.TaskStateCompleted
+	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = response
 
 	h.logger.Info("task completed with simple handler",
@@ -136,7 +136,7 @@ func main() {
 
 	// Load configuration with agent metadata injected at build time
 	// Agent metadata is set via LD flags during build:
-	// go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=my-agent ..."
+	// go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=my-agent ..."
 	cfg := config.Config{
 		AgentName:        server.BuildAgentName,
 		AgentDescription: server.BuildAgentDescription,

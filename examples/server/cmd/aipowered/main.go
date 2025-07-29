@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/inference-gateway/a2a/adk"
-	server "github.com/inference-gateway/a2a/adk/server"
-	config "github.com/inference-gateway/a2a/adk/server/config"
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 )
@@ -47,7 +47,7 @@ func main() {
 
 	// Step 3: Load configuration from environment
 	// Agent metadata is injected at build time via LD flags
-	// Use: go build -ldflags="-X github.com/inference-gateway/a2a/adk/server.BuildAgentName=my-agent ..."
+	// Use: go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=my-agent ..."
 	cfg := config.Config{
 		AgentName:        server.BuildAgentName,
 		AgentDescription: server.BuildAgentDescription,
@@ -123,12 +123,12 @@ func main() {
 	}
 
 	// Step 6: Create and start server
-	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, agent, adk.AgentCard{
+	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, agent, types.AgentCard{
 		Name:        cfg.AgentName,
 		Description: cfg.AgentDescription,
 		URL:         cfg.AgentURL,
 		Version:     cfg.AgentVersion,
-		Capabilities: adk.AgentCapabilities{
+		Capabilities: types.AgentCapabilities{
 			Streaming:              &cfg.CapabilitiesConfig.Streaming,
 			PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
 			StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,

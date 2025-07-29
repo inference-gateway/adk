@@ -1,4 +1,4 @@
-module github.com/inference-gateway/a2a
+module github.com/inference-gateway/adk
 
 go 1.24
 

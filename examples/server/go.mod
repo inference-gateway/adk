@@ -2,10 +2,10 @@ module server-example
 
 go 1.24.3
 
-replace github.com/inference-gateway/a2a => ../..
+replace github.com/inference-gateway/adk => ../..
 
 require (
-	github.com/inference-gateway/a2a v0.0.0-00010101000000-000000000000
+	github.com/inference-gateway/adk v0.0.0-00010101000000-000000000000
 	github.com/sethvargo/go-envconfig v1.3.0
 	go.uber.org/zap v1.27.0
 )

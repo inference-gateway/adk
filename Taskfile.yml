@@ -15,7 +15,7 @@ tasks:
   a2a:generate-types:
     desc: 'Generate the Golang ADK types from the A2A schema'
     cmds:
-      - go run github.com/inference-gateway/tools/cmd/generator@v0.1.1 -generator jsonrpc -package adk schema.yaml adk/generated_types.go
+      - go run github.com/inference-gateway/tools/cmd/generator@v0.1.1 -generator jsonrpc -package types schema.yaml types/generated_types.go
 
   tidy:
     desc: 'Tidy all Go modules'
@@ -68,69 +68,69 @@ tasks:
   generate:mock:a2a-client:
     desc: 'Generate mock for A2AClient interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/client/mocks/fake_a2a_client.go adk/client A2AClient
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o client/mocks/fake_a2a_client.go client A2AClient
 
   generate:mock:a2a-server:
     desc: 'Generate mock for A2AServer interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_a2a_server.go adk/server A2AServer
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_a2a_server.go server A2AServer
 
   generate:mock:a2a-server-builder:
     desc: 'Generate mock for A2AServerBuilder interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_a2a_server_builder.go adk/server A2AServerBuilder
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_a2a_server_builder.go server A2AServerBuilder
 
   generate:mock:task-handler:
     desc: 'Generate mock for TaskHandler interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_task_handler.go adk/server TaskHandler
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_task_handler.go server TaskHandler
 
   generate:mock:message-handler:
     desc: 'Generate mock for MessageHandler interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_message_handler.go adk/server MessageHandler
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_message_handler.go server MessageHandler
 
   generate:mock:task-manager:
     desc: 'Generate mock for TaskManager interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_task_manager.go adk/server TaskManager
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_task_manager.go server TaskManager
 
   generate:mock:response-sender:
     desc: 'Generate mock for ResponseSender interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_response_sender.go adk/server ResponseSender
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_response_sender.go server ResponseSender
 
   generate:mock:tools-provider:
     desc: 'Generate mock for ToolsProvider interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_tools_provider.go adk/server ToolsProvider
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_tools_provider.go server ToolsProvider
 
   generate:mock:task-result-processor:
     desc: 'Generate mock for TaskResultProcessor interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_task_result_processor.go adk/server TaskResultProcessor
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_task_result_processor.go server TaskResultProcessor
 
   generate:mock:telemetry:
     desc: 'Generate mock for Telemetry interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_telemetry.go adk/server/middlewares Telemetry
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_telemetry.go server/middlewares Telemetry
 
   generate:mock:oidc-authenticator:
     desc: 'Generate mock for OIDCAuthenticator interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_oidc_authenticator.go adk/server/middlewares OIDCAuthenticator
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_oidc_authenticator.go server/middlewares OIDCAuthenticator
 
   generate:mock:opentelemetry:
     desc: 'Generate mock for OpenTelemetry interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_opentelemetry.go adk/server/otel OpenTelemetry
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_opentelemetry.go server/otel OpenTelemetry
 
   generate:mock:llm-client:
     desc: 'Generate mock for LLMClient interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_llm_client.go adk/server LLMClient
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_llm_client.go server LLMClient
 
   generate:mock:agent-builder:
     desc: 'Generate mock for AgentBuilder interface'
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o adk/server/mocks/fake_agent_builder.go adk/server AgentBuilder
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_agent_builder.go server AgentBuilder
