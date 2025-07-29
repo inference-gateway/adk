@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.4](https://github.com/inference-gateway/adk/compare/v0.7.3...v0.7.4) (2025-07-29)
+
+### ♻️ Improvements
+
+* Move everything out of adk package - this repo is the adk ([e72cd1e](https://github.com/inference-gateway/adk/commit/e72cd1eb245097f3454667efb79a76d09a4c6b11))
+* Update generated types path from 'adk' to 'types' for consistency ([d0617ca](https://github.com/inference-gateway/adk/commit/d0617ca48273c32741846a829255c60453c73a26))
+* Update generator package from 'adk' to 'types' for consistency ([bb7619c](https://github.com/inference-gateway/adk/commit/bb7619cb47be58a84653fc97d1e130d0692cec3e))
+
+### 👷 CI
+
+* Update repository name in release workflow from 'a2a' to 'adk' ([4d7d5c9](https://github.com/inference-gateway/adk/commit/4d7d5c9b20b6f14887b6fb743ed06b38ca76fc8f))
+
+### 📚 Documentation
+
+* Add early stage warning to README.md for project clarity ([22a8dbe](https://github.com/inference-gateway/adk/commit/22a8dbed80944ca5441d90a05e0b4af0e1fedb25))
+* Update clone instructions and project structure in CONTRIBUTING.md for 'adk' consistency ([51b2544](https://github.com/inference-gateway/adk/commit/51b2544bfd9e98cdb40dfde436a256dc76a2456f))
+* Update import paths to remove 'a2a' prefix for consistency ([e81d9ec](https://github.com/inference-gateway/adk/commit/e81d9ec7316f1c8cdaf3b1090397a9e782a8fc3c))
+* Update repository links in CONTRIBUTING.md and README.md to reflect new 'adk' naming ([6af543d](https://github.com/inference-gateway/adk/commit/6af543d962de41f5a7c36e1afdaadc46b6fcb317))
+
+### 🔧 Miscellaneous
+
+* Update clean:mocks task to remove 'adk' prefix from mock files path ([628b4f7](https://github.com/inference-gateway/adk/commit/628b4f70f4f02eb547b7de08c9f3aa793ab07b9c))
+
 ## [0.7.3](https://github.com/inference-gateway/a2a/compare/v0.7.2...v0.7.3) (2025-07-21)
 
 ### 🐛 Bug Fixes
