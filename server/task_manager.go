@@ -51,6 +51,15 @@ type TaskManager interface {
 
 	// DeleteTaskPushNotificationConfig deletes a push notification configuration
 	DeleteTaskPushNotificationConfig(params types.DeleteTaskPushNotificationConfigParams) error
+
+	// PauseTaskForInput pauses a task waiting for additional input from the client
+	PauseTaskForInput(taskID string, message *types.Message) error
+
+	// ResumeTaskWithInput resumes a paused task with new input from the client
+	ResumeTaskWithInput(taskID string, message *types.Message) error
+
+	// IsTaskPaused checks if a task is currently paused (in input-required state)
+	IsTaskPaused(taskID string) (bool, error)
 }
 
 // DefaultTaskManager implements the TaskManager interface
@@ -287,11 +296,37 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 		return NewTaskNotFoundError(taskID)
 	}
 
+	// Check if task can be canceled based on its current state
+	if !tm.isTaskCancelable(task.Status.State) {
+		return NewTaskNotCancelableError(taskID, task.Status.State)
+	}
+
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 	task.Status.State = types.TaskStateCanceled
+	task.Status.Timestamp = &timestamp
 	tm.tasks[taskID] = task
 	tm.logger.Info("task canceled", zap.String("task_id", taskID))
 
+	if tm.notificationSender != nil {
+		go tm.sendPushNotifications(taskID, task)
+	}
+
 	return nil
+}
+
+// isTaskCancelable determines if a task can be canceled based on its current state
+func (tm *DefaultTaskManager) isTaskCancelable(state types.TaskState) bool {
+	switch state {
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+		// Cannot cancel tasks that are already in a final state
+		return false
+	case types.TaskStateSubmitted, types.TaskStateWorking, types.TaskStateInputRequired, types.TaskStateAuthRequired, types.TaskStateUnknown:
+		// Can cancel tasks that are still in progress or waiting
+		return true
+	default:
+		// Unknown states cannot be canceled for safety
+		return false
+	}
 }
 
 // CleanupCompletedTasks removes old completed tasks from memory
@@ -333,7 +368,13 @@ func (tm *DefaultTaskManager) PollTaskStatus(taskID string, interval time.Durati
 				return nil, NewTaskNotFoundError(taskID)
 			}
 
-			if task.Status.State == types.TaskStateCompleted || task.Status.State == types.TaskStateFailed {
+			// Task is complete when it reaches a final state
+			switch task.Status.State {
+			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+				return task, nil
+			case types.TaskStateInputRequired:
+				// Task is paused waiting for input, this is also a "completion" for polling purposes
+				// The client should resume the task with new input
 				return task, nil
 			}
 
@@ -489,4 +530,100 @@ func (e *TaskNotFoundError) Error() string {
 // NewTaskNotFoundError creates a new TaskNotFoundError
 func NewTaskNotFoundError(taskID string) error {
 	return &TaskNotFoundError{TaskID: taskID}
+}
+
+// TaskNotCancelableError represents an error when a task cannot be canceled due to its current state
+type TaskNotCancelableError struct {
+	TaskID string
+	State  types.TaskState
+}
+
+func (e *TaskNotCancelableError) Error() string {
+	return fmt.Sprintf("task %s cannot be canceled: current state is %s", e.TaskID, e.State)
+}
+
+// NewTaskNotCancelableError creates a new TaskNotCancelableError
+func NewTaskNotCancelableError(taskID string, state types.TaskState) error {
+	return &TaskNotCancelableError{TaskID: taskID, State: state}
+}
+
+// PauseTaskForInput pauses a task waiting for additional input from the client
+func (tm *DefaultTaskManager) PauseTaskForInput(taskID string, message *types.Message) error {
+	tm.tasksMu.Lock()
+	defer tm.tasksMu.Unlock()
+
+	task, exists := tm.tasks[taskID]
+	if !exists {
+		return NewTaskNotFoundError(taskID)
+	}
+
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+	task.Status.State = types.TaskStateInputRequired
+	task.Status.Message = message
+	task.Status.Timestamp = &timestamp
+
+	if message != nil {
+		task.History = append(task.History, *message)
+		tm.UpdateConversationHistory(task.ContextID, task.History)
+	}
+
+	tm.tasks[taskID] = task
+	tm.logger.Info("task paused for input", 
+		zap.String("task_id", taskID), 
+		zap.String("context_id", task.ContextID))
+
+	if tm.notificationSender != nil {
+		go tm.sendPushNotifications(taskID, task)
+	}
+
+	return nil
+}
+
+// ResumeTaskWithInput resumes a paused task with new input from the client
+func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.Message) error {
+	tm.tasksMu.Lock()
+	defer tm.tasksMu.Unlock()
+
+	task, exists := tm.tasks[taskID]
+	if !exists {
+		return NewTaskNotFoundError(taskID)
+	}
+
+	if task.Status.State != types.TaskStateInputRequired {
+		return fmt.Errorf("task %s is not in input-required state, current state: %s", taskID, task.Status.State)
+	}
+
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+	task.Status.State = types.TaskStateWorking
+	task.Status.Message = message
+	task.Status.Timestamp = &timestamp
+
+	if message != nil {
+		task.History = append(task.History, *message)
+		tm.UpdateConversationHistory(task.ContextID, task.History)
+	}
+
+	tm.tasks[taskID] = task
+	tm.logger.Info("task resumed with input", 
+		zap.String("task_id", taskID), 
+		zap.String("context_id", task.ContextID))
+
+	if tm.notificationSender != nil {
+		go tm.sendPushNotifications(taskID, task)
+	}
+
+	return nil
+}
+
+// IsTaskPaused checks if a task is currently paused (in input-required state)
+func (tm *DefaultTaskManager) IsTaskPaused(taskID string) (bool, error) {
+	tm.tasksMu.RLock()
+	defer tm.tasksMu.RUnlock()
+
+	task, exists := tm.tasks[taskID]
+	if !exists {
+		return false, NewTaskNotFoundError(taskID)
+	}
+
+	return task.Status.State == types.TaskStateInputRequired, nil
 }
