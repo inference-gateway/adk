@@ -222,9 +222,12 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 	}
 
 	var lastMessage *types.Message
+	var generatedMessages []types.Message
 	for msg := range streamChan {
 		if msg != nil {
 			lastMessage = msg
+			// Collect all messages generated during this streaming session
+			generatedMessages = append(generatedMessages, *msg)
 
 			select {
 			case responseChan <- types.TaskStatusUpdateEvent{
@@ -246,16 +249,13 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 
 	if lastMessage != nil {
 		task.Status.Message = lastMessage
-		// Get conversation history added during this task execution (including tool calls)
-		conversationHistory := mh.agent.GetConversationHistory()
-		
-		// Calculate how many new messages were added during this execution
-		if len(conversationHistory) > len(messages) {
-			newMessages := conversationHistory[len(messages):]
-			task.History = append(task.History, newMessages...)
-		} else {
-			// Fallback to just adding the last message
-			task.History = append(task.History, *lastMessage)
+		// Add all messages generated during this streaming session to task history
+		// This maintains privacy by only including messages from this specific task
+		for _, msg := range generatedMessages {
+			// Only add assistant and tool messages (responses), not user messages
+			if msg.Role == "assistant" || msg.Role == "tool" {
+				task.History = append(task.History, msg)
+			}
 		}
 		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
 		mh.logger.Info("agent streaming completed successfully",

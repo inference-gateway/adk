@@ -82,16 +82,22 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 		return task, nil
 	}
 
-	// Get conversation history added during this task execution (including tool calls)
+	// Collect all conversation history added during this task execution
+	// This maintains privacy by only including messages from this specific task
 	conversationHistory := agent.GetConversationHistory()
 	
-	// Calculate how many new messages were added during this execution
-	// The agent history should now include the original messages plus new responses/tool calls
+	// Calculate new messages added during this execution
+	// Only add messages beyond the original input messages to maintain task isolation
 	if len(conversationHistory) > len(messages) {
 		newMessages := conversationHistory[len(messages):]
-		task.History = append(task.History, newMessages...)
+		for _, msg := range newMessages {
+			// Only capture assistant and tool messages (responses), not user messages from other tasks
+			if msg.Role == "assistant" || msg.Role == "tool" {
+				task.History = append(task.History, msg)
+			}
+		}
 	} else if response != nil {
-		// Fallback in case agent didn't update conversation history
+		// Fallback to just adding the response if conversation history tracking fails
 		task.History = append(task.History, *response)
 	}
 
