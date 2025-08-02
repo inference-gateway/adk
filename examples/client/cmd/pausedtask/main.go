@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/inference-gateway/adk"
 	"github.com/inference-gateway/adk/client"
+	adk "github.com/inference-gateway/adk/types"
 	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 )
@@ -234,8 +234,9 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 								"text": userInput,
 							},
 						},
+						TaskID: &taskID, // Resume the existing task
+
 					},
-					TaskID: &taskID, // Resume the existing task
 					Configuration: &adk.MessageSendConfiguration{
 						Blocking:            boolPtr(false),
 						AcceptedOutputModes: []string{"text"},
@@ -273,13 +274,13 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 // getUserInput prompts the user for input when task is paused
 func getUserInput() (string, error) {
 	fmt.Print("\n💬 Please provide your input (or press Enter to cancel): ")
-	
+
 	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadLine()
+	input, _, err := reader.ReadLine()
 	if err != nil {
 		return "", fmt.Errorf("failed to read user input: %w", err)
 	}
-	
+
 	return strings.TrimSpace(string(input)), nil
 }
 
