@@ -20,7 +20,7 @@ import (
 type Config struct {
 	ServerURL      string        `env:"A2A_SERVER_URL,default=http://localhost:8080"`
 	PollInterval   time.Duration `env:"POLL_INTERVAL,default=2s"`
-	MaxPollTimeout time.Duration `env:"MAX_POLL_TIMEOUT,default=60s"`
+	MaxPollTimeout time.Duration `env:"MAX_POLL_TIMEOUT,default=120s"`
 }
 
 func main() {
