@@ -26,26 +26,7 @@ func main() {
 	}
 	defer logger.Sync()
 
-	// Step 2: Check for required API key
-	apiKey := os.Getenv("AGENT_CLIENT_API_KEY")
-	if apiKey == "" {
-		fmt.Println("\n❌ ERROR: AI provider configuration required!")
-		fmt.Println("\n🔑 Please set AGENT_CLIENT_API_KEY environment variable:")
-		fmt.Println("\n📋 Examples:")
-		fmt.Println("  # OpenAI")
-		fmt.Println("  export AGENT_CLIENT_API_KEY=\"sk-...\"")
-		fmt.Println("\n  # Anthropic")
-		fmt.Println("  export AGENT_CLIENT_API_KEY=\"sk-ant-...\"")
-		fmt.Println("  export AGENT_CLIENT_PROVIDER=\"anthropic\"")
-		fmt.Println("\n  # Via Inference Gateway")
-		fmt.Println("  export AGENT_CLIENT_API_KEY=\"your-key\"")
-		fmt.Println("  export AGENT_CLIENT_BASE_URL=\"http://localhost:3000/v1\"")
-		fmt.Println("\n💡 For a server without AI, use the minimal example instead:")
-		fmt.Println("  go run ../minimal/main.go")
-		os.Exit(1)
-	}
-
-	// Step 3: Load configuration from environment
+	// Step 2: Load configuration from environment
 	// Agent metadata is injected at build time via LD flags
 	// Use: go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=my-agent ..."
 	cfg := config.Config{
@@ -65,7 +46,7 @@ func main() {
 		logger.Fatal("failed to process environment config", zap.Error(err))
 	}
 
-	// Step 4: Create toolbox with sample tools
+	// Step 3: Create toolbox with sample tools
 	toolBox := server.NewDefaultToolBox()
 
 	// Add weather tool
@@ -105,7 +86,7 @@ func main() {
 	)
 	toolBox.AddTool(timeTool)
 
-	// Step 5: Create AI agent with LLM client
+	// Step 4: Create AI agent with LLM client
 	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
 	if err != nil {
 		logger.Fatal("failed to create LLM client", zap.Error(err))
@@ -122,7 +103,7 @@ func main() {
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Step 6: Create and start server
+	// Step 5: Create and start server
 	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, agent, types.AgentCard{
 		Name:        cfg.AgentName,
 		Description: cfg.AgentDescription,

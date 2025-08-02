@@ -86,6 +86,19 @@ type FakeTaskManager struct {
 		result1 *types.TaskPushNotificationConfig
 		result2 error
 	}
+	IsTaskPausedStub        func(string) (bool, error)
+	isTaskPausedMutex       sync.RWMutex
+	isTaskPausedArgsForCall []struct {
+		arg1 string
+	}
+	isTaskPausedReturns struct {
+		result1 bool
+		result2 error
+	}
+	isTaskPausedReturnsOnCall map[int]struct {
+		result1 bool
+		result2 error
+	}
 	ListTaskPushNotificationConfigsStub        func(types.ListTaskPushNotificationConfigParams) ([]types.TaskPushNotificationConfig, error)
 	listTaskPushNotificationConfigsMutex       sync.RWMutex
 	listTaskPushNotificationConfigsArgsForCall []struct {
@@ -112,6 +125,18 @@ type FakeTaskManager struct {
 		result1 *types.TaskList
 		result2 error
 	}
+	PauseTaskForInputStub        func(string, *types.Message) error
+	pauseTaskForInputMutex       sync.RWMutex
+	pauseTaskForInputArgsForCall []struct {
+		arg1 string
+		arg2 *types.Message
+	}
+	pauseTaskForInputReturns struct {
+		result1 error
+	}
+	pauseTaskForInputReturnsOnCall map[int]struct {
+		result1 error
+	}
 	PollTaskStatusStub        func(string, time.Duration, time.Duration) (*types.Task, error)
 	pollTaskStatusMutex       sync.RWMutex
 	pollTaskStatusArgsForCall []struct {
@@ -126,6 +151,18 @@ type FakeTaskManager struct {
 	pollTaskStatusReturnsOnCall map[int]struct {
 		result1 *types.Task
 		result2 error
+	}
+	ResumeTaskWithInputStub        func(string, *types.Message) error
+	resumeTaskWithInputMutex       sync.RWMutex
+	resumeTaskWithInputArgsForCall []struct {
+		arg1 string
+		arg2 *types.Message
+	}
+	resumeTaskWithInputReturns struct {
+		result1 error
+	}
+	resumeTaskWithInputReturnsOnCall map[int]struct {
+		result1 error
 	}
 	SetTaskPushNotificationConfigStub        func(types.TaskPushNotificationConfig) (*types.TaskPushNotificationConfig, error)
 	setTaskPushNotificationConfigMutex       sync.RWMutex
@@ -561,6 +598,70 @@ func (fake *FakeTaskManager) GetTaskPushNotificationConfigReturnsOnCall(i int, r
 	}{result1, result2}
 }
 
+func (fake *FakeTaskManager) IsTaskPaused(arg1 string) (bool, error) {
+	fake.isTaskPausedMutex.Lock()
+	ret, specificReturn := fake.isTaskPausedReturnsOnCall[len(fake.isTaskPausedArgsForCall)]
+	fake.isTaskPausedArgsForCall = append(fake.isTaskPausedArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.IsTaskPausedStub
+	fakeReturns := fake.isTaskPausedReturns
+	fake.recordInvocation("IsTaskPaused", []interface{}{arg1})
+	fake.isTaskPausedMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeTaskManager) IsTaskPausedCallCount() int {
+	fake.isTaskPausedMutex.RLock()
+	defer fake.isTaskPausedMutex.RUnlock()
+	return len(fake.isTaskPausedArgsForCall)
+}
+
+func (fake *FakeTaskManager) IsTaskPausedCalls(stub func(string) (bool, error)) {
+	fake.isTaskPausedMutex.Lock()
+	defer fake.isTaskPausedMutex.Unlock()
+	fake.IsTaskPausedStub = stub
+}
+
+func (fake *FakeTaskManager) IsTaskPausedArgsForCall(i int) string {
+	fake.isTaskPausedMutex.RLock()
+	defer fake.isTaskPausedMutex.RUnlock()
+	argsForCall := fake.isTaskPausedArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskManager) IsTaskPausedReturns(result1 bool, result2 error) {
+	fake.isTaskPausedMutex.Lock()
+	defer fake.isTaskPausedMutex.Unlock()
+	fake.IsTaskPausedStub = nil
+	fake.isTaskPausedReturns = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) IsTaskPausedReturnsOnCall(i int, result1 bool, result2 error) {
+	fake.isTaskPausedMutex.Lock()
+	defer fake.isTaskPausedMutex.Unlock()
+	fake.IsTaskPausedStub = nil
+	if fake.isTaskPausedReturnsOnCall == nil {
+		fake.isTaskPausedReturnsOnCall = make(map[int]struct {
+			result1 bool
+			result2 error
+		})
+	}
+	fake.isTaskPausedReturnsOnCall[i] = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeTaskManager) ListTaskPushNotificationConfigs(arg1 types.ListTaskPushNotificationConfigParams) ([]types.TaskPushNotificationConfig, error) {
 	fake.listTaskPushNotificationConfigsMutex.Lock()
 	ret, specificReturn := fake.listTaskPushNotificationConfigsReturnsOnCall[len(fake.listTaskPushNotificationConfigsArgsForCall)]
@@ -689,6 +790,68 @@ func (fake *FakeTaskManager) ListTasksReturnsOnCall(i int, result1 *types.TaskLi
 	}{result1, result2}
 }
 
+func (fake *FakeTaskManager) PauseTaskForInput(arg1 string, arg2 *types.Message) error {
+	fake.pauseTaskForInputMutex.Lock()
+	ret, specificReturn := fake.pauseTaskForInputReturnsOnCall[len(fake.pauseTaskForInputArgsForCall)]
+	fake.pauseTaskForInputArgsForCall = append(fake.pauseTaskForInputArgsForCall, struct {
+		arg1 string
+		arg2 *types.Message
+	}{arg1, arg2})
+	stub := fake.PauseTaskForInputStub
+	fakeReturns := fake.pauseTaskForInputReturns
+	fake.recordInvocation("PauseTaskForInput", []interface{}{arg1, arg2})
+	fake.pauseTaskForInputMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeTaskManager) PauseTaskForInputCallCount() int {
+	fake.pauseTaskForInputMutex.RLock()
+	defer fake.pauseTaskForInputMutex.RUnlock()
+	return len(fake.pauseTaskForInputArgsForCall)
+}
+
+func (fake *FakeTaskManager) PauseTaskForInputCalls(stub func(string, *types.Message) error) {
+	fake.pauseTaskForInputMutex.Lock()
+	defer fake.pauseTaskForInputMutex.Unlock()
+	fake.PauseTaskForInputStub = stub
+}
+
+func (fake *FakeTaskManager) PauseTaskForInputArgsForCall(i int) (string, *types.Message) {
+	fake.pauseTaskForInputMutex.RLock()
+	defer fake.pauseTaskForInputMutex.RUnlock()
+	argsForCall := fake.pauseTaskForInputArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeTaskManager) PauseTaskForInputReturns(result1 error) {
+	fake.pauseTaskForInputMutex.Lock()
+	defer fake.pauseTaskForInputMutex.Unlock()
+	fake.PauseTaskForInputStub = nil
+	fake.pauseTaskForInputReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeTaskManager) PauseTaskForInputReturnsOnCall(i int, result1 error) {
+	fake.pauseTaskForInputMutex.Lock()
+	defer fake.pauseTaskForInputMutex.Unlock()
+	fake.PauseTaskForInputStub = nil
+	if fake.pauseTaskForInputReturnsOnCall == nil {
+		fake.pauseTaskForInputReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.pauseTaskForInputReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeTaskManager) PollTaskStatus(arg1 string, arg2 time.Duration, arg3 time.Duration) (*types.Task, error) {
 	fake.pollTaskStatusMutex.Lock()
 	ret, specificReturn := fake.pollTaskStatusReturnsOnCall[len(fake.pollTaskStatusArgsForCall)]
@@ -753,6 +916,68 @@ func (fake *FakeTaskManager) PollTaskStatusReturnsOnCall(i int, result1 *types.T
 		result1 *types.Task
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) ResumeTaskWithInput(arg1 string, arg2 *types.Message) error {
+	fake.resumeTaskWithInputMutex.Lock()
+	ret, specificReturn := fake.resumeTaskWithInputReturnsOnCall[len(fake.resumeTaskWithInputArgsForCall)]
+	fake.resumeTaskWithInputArgsForCall = append(fake.resumeTaskWithInputArgsForCall, struct {
+		arg1 string
+		arg2 *types.Message
+	}{arg1, arg2})
+	stub := fake.ResumeTaskWithInputStub
+	fakeReturns := fake.resumeTaskWithInputReturns
+	fake.recordInvocation("ResumeTaskWithInput", []interface{}{arg1, arg2})
+	fake.resumeTaskWithInputMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeTaskManager) ResumeTaskWithInputCallCount() int {
+	fake.resumeTaskWithInputMutex.RLock()
+	defer fake.resumeTaskWithInputMutex.RUnlock()
+	return len(fake.resumeTaskWithInputArgsForCall)
+}
+
+func (fake *FakeTaskManager) ResumeTaskWithInputCalls(stub func(string, *types.Message) error) {
+	fake.resumeTaskWithInputMutex.Lock()
+	defer fake.resumeTaskWithInputMutex.Unlock()
+	fake.ResumeTaskWithInputStub = stub
+}
+
+func (fake *FakeTaskManager) ResumeTaskWithInputArgsForCall(i int) (string, *types.Message) {
+	fake.resumeTaskWithInputMutex.RLock()
+	defer fake.resumeTaskWithInputMutex.RUnlock()
+	argsForCall := fake.resumeTaskWithInputArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeTaskManager) ResumeTaskWithInputReturns(result1 error) {
+	fake.resumeTaskWithInputMutex.Lock()
+	defer fake.resumeTaskWithInputMutex.Unlock()
+	fake.ResumeTaskWithInputStub = nil
+	fake.resumeTaskWithInputReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeTaskManager) ResumeTaskWithInputReturnsOnCall(i int, result1 error) {
+	fake.resumeTaskWithInputMutex.Lock()
+	defer fake.resumeTaskWithInputMutex.Unlock()
+	fake.ResumeTaskWithInputStub = nil
+	if fake.resumeTaskWithInputReturnsOnCall == nil {
+		fake.resumeTaskWithInputReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.resumeTaskWithInputReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *FakeTaskManager) SetTaskPushNotificationConfig(arg1 types.TaskPushNotificationConfig) (*types.TaskPushNotificationConfig, error) {
@@ -937,12 +1162,18 @@ func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	defer fake.getTaskMutex.RUnlock()
 	fake.getTaskPushNotificationConfigMutex.RLock()
 	defer fake.getTaskPushNotificationConfigMutex.RUnlock()
+	fake.isTaskPausedMutex.RLock()
+	defer fake.isTaskPausedMutex.RUnlock()
 	fake.listTaskPushNotificationConfigsMutex.RLock()
 	defer fake.listTaskPushNotificationConfigsMutex.RUnlock()
 	fake.listTasksMutex.RLock()
 	defer fake.listTasksMutex.RUnlock()
+	fake.pauseTaskForInputMutex.RLock()
+	defer fake.pauseTaskForInputMutex.RUnlock()
 	fake.pollTaskStatusMutex.RLock()
 	defer fake.pollTaskStatusMutex.RUnlock()
+	fake.resumeTaskWithInputMutex.RLock()
+	defer fake.resumeTaskWithInputMutex.RUnlock()
 	fake.setTaskPushNotificationConfigMutex.RLock()
 	defer fake.setTaskPushNotificationConfigMutex.RUnlock()
 	fake.updateConversationHistoryMutex.RLock()

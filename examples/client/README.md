@@ -26,6 +26,21 @@ go run main.go
 
 **Best for:** Interactive applications, real-time UIs, live progress updates
 
+### Paused Task Client (`cmd/pausedtask`)
+
+Demonstrates handling tasks that require user input (input-required state). Shows how to:
+- Monitor tasks that may pause for additional input
+- Handle the input-required state
+- Resume paused tasks with user-provided input
+- Manage the complete pause/resume workflow
+
+```bash
+cd cmd/pausedtask
+go run main.go
+```
+
+**Best for:** Interactive workflows, multi-step processes, tasks requiring user clarification
+
 ## Configuration
 
 Environment variables:
@@ -39,12 +54,13 @@ Environment variables:
 
 ## Quick Comparison
 
-| Aspect            | Async Pattern         | Streaming Pattern          |
-| ----------------- | --------------------- | -------------------------- |
-| **Compatibility** | Any A2A agent         | Requires streaming support |
-| **Use Case**      | Background processing | Interactive applications   |
-| **Network**       | Multiple requests     | Single connection          |
-| **Latency**       | Higher                | Lower                      |
+| Aspect            | Async Pattern         | Streaming Pattern          | Paused Task Pattern          |
+| ----------------- | --------------------- | -------------------------- | ---------------------------- |
+| **Compatibility** | Any A2A agent         | Requires streaming support | Any A2A agent                |
+| **Use Case**      | Background processing | Interactive applications   | Multi-step interactions     |
+| **Network**       | Multiple requests     | Single connection          | Multiple requests with pauses|
+| **Latency**       | Higher                | Lower                      | Variable (user-dependent)    |
+| **User Input**    | No                    | No                         | Yes (on demand)              |
 
 ## Troubleshooting
 

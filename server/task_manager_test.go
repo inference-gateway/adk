@@ -790,3 +790,373 @@ func TestDefaultTaskManager_ConversationHistoryLimitZeroDirectInstantiation(t *t
 
 	assert.Len(t, history, 0)
 }
+
+// TestDefaultTaskManager_CancelTask_StateValidation tests the new cancellation state validation
+func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	tests := []struct {
+		name          string
+		initialState  types.TaskState
+		shouldSucceed bool
+		errorMsg      string
+	}{
+		{
+			name:          "can cancel submitted task",
+			initialState:  types.TaskStateSubmitted,
+			shouldSucceed: true,
+		},
+		{
+			name:          "can cancel working task",
+			initialState:  types.TaskStateWorking,
+			shouldSucceed: true,
+		},
+		{
+			name:          "can cancel input-required task",
+			initialState:  types.TaskStateInputRequired,
+			shouldSucceed: true,
+		},
+		{
+			name:          "can cancel auth-required task",
+			initialState:  types.TaskStateAuthRequired,
+			shouldSucceed: true,
+		},
+		{
+			name:          "can cancel unknown task",
+			initialState:  types.TaskStateUnknown,
+			shouldSucceed: true,
+		},
+		{
+			name:          "cannot cancel completed task",
+			initialState:  types.TaskStateCompleted,
+			shouldSucceed: false,
+			errorMsg:      "cannot be canceled: current state is completed",
+		},
+		{
+			name:          "cannot cancel failed task",
+			initialState:  types.TaskStateFailed,
+			shouldSucceed: false,
+			errorMsg:      "cannot be canceled: current state is failed",
+		},
+		{
+			name:          "cannot cancel already canceled task",
+			initialState:  types.TaskStateCanceled,
+			shouldSucceed: false,
+			errorMsg:      "cannot be canceled: current state is canceled",
+		},
+		{
+			name:          "cannot cancel rejected task",
+			initialState:  types.TaskStateRejected,
+			shouldSucceed: false,
+			errorMsg:      "cannot be canceled: current state is rejected",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a task in the specified initial state
+			task := taskManager.CreateTask("test-context", tt.initialState, &types.Message{
+				Kind:      "message",
+				MessageID: "test-msg",
+				Role:      "user",
+				Parts: []types.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": "Test message",
+					},
+				},
+			})
+
+			// Try to cancel the task
+			err := taskManager.CancelTask(task.ID)
+
+			if tt.shouldSucceed {
+				assert.NoError(t, err)
+				
+				// Verify task was actually canceled
+				retrievedTask, exists := taskManager.GetTask(task.ID)
+				assert.True(t, exists)
+				assert.Equal(t, types.TaskStateCanceled, retrievedTask.Status.State)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+				
+				// Verify task state didn't change
+				retrievedTask, exists := taskManager.GetTask(task.ID)
+				assert.True(t, exists)
+				assert.Equal(t, tt.initialState, retrievedTask.Status.State)
+			}
+		})
+	}
+}
+
+// TestDefaultTaskManager_PauseTaskForInput tests the task pausing functionality
+func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	t.Run("pause existing task successfully", func(t *testing.T) {
+		// Create a working task
+		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
+			Kind:      "message",
+			MessageID: "initial-msg",
+			Role:      "user",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "Initial message",
+				},
+			},
+		})
+
+		// Pause the task
+		pauseMessage := &types.Message{
+			Kind:      "message",
+			MessageID: "pause-msg",
+			Role:      "assistant",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "Please provide more information",
+				},
+			},
+		}
+
+		err := taskManager.PauseTaskForInput(task.ID, pauseMessage)
+		assert.NoError(t, err)
+
+		// Verify task state changed to input-required
+		retrievedTask, exists := taskManager.GetTask(task.ID)
+		assert.True(t, exists)
+		assert.Equal(t, types.TaskStateInputRequired, retrievedTask.Status.State)
+		assert.Equal(t, pauseMessage, retrievedTask.Status.Message)
+
+		// Verify message was added to history
+		assert.Len(t, retrievedTask.History, 2) // initial + pause message
+		assert.Equal(t, pauseMessage.MessageID, retrievedTask.History[1].MessageID)
+	})
+
+	t.Run("pause with nil message", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
+
+		err := taskManager.PauseTaskForInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		retrievedTask, exists := taskManager.GetTask(task.ID)
+		assert.True(t, exists)
+		assert.Equal(t, types.TaskStateInputRequired, retrievedTask.Status.State)
+		assert.Nil(t, retrievedTask.Status.Message)
+	})
+
+	t.Run("pause non-existent task", func(t *testing.T) {
+		err := taskManager.PauseTaskForInput("non-existent-id", nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "task not found")
+	})
+}
+
+// TestDefaultTaskManager_ResumeTaskWithInput tests the task resumption functionality
+func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	t.Run("resume paused task successfully", func(t *testing.T) {
+		// Create and pause a task
+		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
+		err := taskManager.PauseTaskForInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		// Resume the task
+		resumeMessage := &types.Message{
+			Kind:      "message",
+			MessageID: "resume-msg",
+			Role:      "user",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "Here is the additional information",
+				},
+			},
+		}
+
+		err = taskManager.ResumeTaskWithInput(task.ID, resumeMessage)
+		assert.NoError(t, err)
+
+		// Verify task state changed to working
+		retrievedTask, exists := taskManager.GetTask(task.ID)
+		assert.True(t, exists)
+		assert.Equal(t, types.TaskStateWorking, retrievedTask.Status.State)
+		assert.Equal(t, resumeMessage, retrievedTask.Status.Message)
+
+		// Verify message was added to history
+		assert.Len(t, retrievedTask.History, 1) // resume message
+		assert.Equal(t, resumeMessage.MessageID, retrievedTask.History[0].MessageID)
+	})
+
+	t.Run("resume task not in input-required state", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
+
+		err := taskManager.ResumeTaskWithInput(task.ID, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not in input-required state")
+		assert.Contains(t, err.Error(), "current state: working")
+	})
+
+	t.Run("resume non-existent task", func(t *testing.T) {
+		err := taskManager.ResumeTaskWithInput("non-existent-id", nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "task not found")
+	})
+}
+
+// TestDefaultTaskManager_IsTaskPaused tests the task pause check functionality
+func TestDefaultTaskManager_IsTaskPaused(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	t.Run("check paused task", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
+		
+		// Initially not paused
+		isPaused, err := taskManager.IsTaskPaused(task.ID)
+		assert.NoError(t, err)
+		assert.False(t, isPaused)
+
+		// Pause the task
+		err = taskManager.PauseTaskForInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		// Now should be paused
+		isPaused, err = taskManager.IsTaskPaused(task.ID)
+		assert.NoError(t, err)
+		assert.True(t, isPaused)
+	})
+
+	t.Run("check non-existent task", func(t *testing.T) {
+		isPaused, err := taskManager.IsTaskPaused("non-existent-id")
+		assert.Error(t, err)
+		assert.False(t, isPaused)
+		assert.Contains(t, err.Error(), "task not found")
+	})
+}
+
+// TestDefaultTaskManager_PollTaskStatus_InputRequired tests polling behavior with input-required state
+func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	t.Run("polling returns when task reaches input-required state", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
+
+		// Start polling in a goroutine
+		resultChan := make(chan *types.Task, 1)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			result, err := taskManager.PollTaskStatus(task.ID, 10*time.Millisecond, 1*time.Second)
+			if err != nil {
+				errorChan <- err
+			} else {
+				resultChan <- result
+			}
+		}()
+
+		// Give polling a moment to start
+		time.Sleep(50 * time.Millisecond)
+
+		// Pause the task (set to input-required)
+		err := taskManager.PauseTaskForInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		// Polling should complete
+		select {
+		case result := <-resultChan:
+			assert.Equal(t, types.TaskStateInputRequired, result.Status.State)
+		case err := <-errorChan:
+			t.Fatalf("Polling failed with error: %v", err)
+		case <-time.After(2 * time.Second):
+			t.Fatal("Polling did not complete within timeout")
+		}
+	})
+}
+
+// TestDefaultTaskManager_InputRequiredWorkflow tests the complete input-required workflow
+func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger, 10)
+
+	// Create initial task
+	initialMessage := &types.Message{
+		Kind:      "message",
+		MessageID: "initial-msg",
+		Role:      "user",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "Process this request",
+			},
+		},
+	}
+	task := taskManager.CreateTask("test-context", types.TaskStateWorking, initialMessage)
+
+	// 1. Pause task for input
+	pauseMessage := &types.Message{
+		Kind:      "message",
+		MessageID: "pause-msg",
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I need more information. What is your preference?",
+			},
+		},
+	}
+	err := taskManager.PauseTaskForInput(task.ID, pauseMessage)
+	assert.NoError(t, err)
+
+	// 2. Verify task is paused
+	isPaused, err := taskManager.IsTaskPaused(task.ID)
+	assert.NoError(t, err)
+	assert.True(t, isPaused)
+
+	// 3. Try to cancel paused task (should succeed)
+	cancelErr := taskManager.CancelTask(task.ID)
+	assert.NoError(t, cancelErr)
+
+	// 4. Create another task for resumption test
+	task2 := taskManager.CreateTask("test-context-2", types.TaskStateWorking, initialMessage)
+	err = taskManager.PauseTaskForInput(task2.ID, pauseMessage)
+	assert.NoError(t, err)
+
+	// 5. Resume with user input
+	resumeMessage := &types.Message{
+		Kind:      "message",
+		MessageID: "resume-msg",
+		Role:      "user",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I prefer option A",
+			},
+		},
+	}
+	err = taskManager.ResumeTaskWithInput(task2.ID, resumeMessage)
+	assert.NoError(t, err)
+
+	// 6. Verify task is no longer paused
+	isPaused, err = taskManager.IsTaskPaused(task2.ID)
+	assert.NoError(t, err)
+	assert.False(t, isPaused)
+
+	// 7. Verify complete conversation history
+	retrievedTask, exists := taskManager.GetTask(task2.ID)
+	assert.True(t, exists)
+	assert.Equal(t, types.TaskStateWorking, retrievedTask.Status.State)
+	assert.Len(t, retrievedTask.History, 3) // initial + pause + resume messages
+	
+	// Verify message order
+	assert.Equal(t, "initial-msg", retrievedTask.History[0].MessageID)
+	assert.Equal(t, "pause-msg", retrievedTask.History[1].MessageID)
+	assert.Equal(t, "resume-msg", retrievedTask.History[2].MessageID)
+}
