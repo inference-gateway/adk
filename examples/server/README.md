@@ -2,6 +2,15 @@
 
 This directory contains examples demonstrating how to create A2A (Agent-to-Agent) compatible servers using the A2A ADK (Agent Development Kit).
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Quick Start](#quick-start)
+   1. [Minimal Server (No AI Required)](#1-minimal-server-no-ai-required)
+   2. [AI-Powered Server (API Key Required)](#2-ai-powered-server-api-key-required)
+   3. [Pausable Task Server (API Key Required)](#3-pausable-task-server-api-key-required)
+3. [Example Usage](#example-usage)
+
 ## Overview
 
 The A2A protocol enables agents to communicate with each other using JSON-RPC over HTTP. These examples show different approaches to creating A2A servers:
@@ -9,7 +18,6 @@ The A2A protocol enables agents to communicate with each other using JSON-RPC ov
 1. **Minimal Server** - A working server with custom task handler that provides simple responses without AI
 2. **AI-Powered Server** - A full-featured server with LLM integration and tool calling capabilities
 3. **Pausable Task Server** - An AI-powered server that demonstrates intelligent task pausing with the `input-required` state
-4. **Mock Pausable Server** - A mock server that simulates task pausing behavior without requiring an API key
 
 ## Quick Start
 
@@ -18,8 +26,7 @@ The A2A protocol enables agents to communicate with each other using JSON-RPC ov
 A working A2A server with simple conversational responses using a custom task handler:
 
 ```bash
-cd cmd/minimal
-go run main.go
+go run cmd/minimal/main.go
 ```
 
 This minimal example:
@@ -40,12 +47,16 @@ Perfect for learning the A2A protocol, creating deterministic business logic age
 For AI capabilities with LLM integration and tool calling:
 
 ```bash
-cd cmd/aipowered
+# Configure the Inference Gateway
+cp .env.gateway.example .env
 
-# Required: Set inference gateway URL
-export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
+# Edit .env to configure the Inference Gateway URL and other settings
+docker run -d --name inference-gateway -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
+export AGENT_CLIENT_BASE_URL=http://localhost:8081/v1
+export AGENT_CLIENT_PROVIDER=deepseek # Choose your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
+export AGENT_CLIENT_MODEL=deepseek-chat
 
-go run main.go
+go run cmd/aipowered/main.go
 ```
 
 This AI-powered example:
@@ -62,12 +73,16 @@ This AI-powered example:
 Demonstrates intelligent task pausing where the LLM decides when to request user input:
 
 ```bash
-cd cmd/pausedtask
+# Configure the Inference Gateway
+cp .env.gateway.example .env
 
-# Required: Set inference gateway URL
-export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
+# Edit .env to configure the Inference Gateway URL and other settings
+docker run -d --name inference-gateway --env-file .env -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
+export AGENT_CLIENT_BASE_URL=http://localhost:8081/v1
+export AGENT_CLIENT_PROVIDER='deepseek' # Choose your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
+export AGENT_CLIENT_MODEL='deepseek-chat'
 
-go run main.go
+go run cmd/pausedtask/main.go
 ```
 
 This pausable task example:
@@ -77,22 +92,6 @@ This pausable task example:
 - ✅ Demonstrates complete input-required workflow (submit → pause → resume → complete)
 - ✅ Works with existing pausedtask client example
 - ✅ Production-ready pattern for human-in-the-loop AI workflows
-
-### 4. Mock Pausable Server (No API Key Required)
-
-For testing task pausing behavior without LLM integration:
-
-```bash
-cd cmd/pausedtask-mock
-go run main.go
-```
-
-This mock example:
-
-- ✅ **Works immediately** - no API key required
-- ✅ Simulates realistic task pausing behavior  
-- ✅ Perfect for testing client-side pause/resume logic
-- ✅ Deterministic state transitions for reliable testing
 
 ## Example Usage
 
@@ -161,7 +160,9 @@ The agent metadata appears in:
 
 ### AI-Powered Server
 **Required:**
-- `INFERENCE_GATEWAY_URL` - Your inference gateway URL (automatically configures AGENT_CLIENT_BASE_URL)
+- `AGENT_CLIENT_BASE_URL` - Your inference gateway URL (automatically configures AGENT_CLIENT_BASE_URL)
+- `AGENT_CLIENT_PROVIDER` - Your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
+- `AGENT_CLIENT_MODEL` - Model name (e.g., "gpt-4", "claude-2", "deepseek-chat")
 
 **Optional:**
 - `AGENT_CLIENT_MODEL` - Model name (uses provider defaults if not specified)
@@ -171,14 +172,14 @@ The agent metadata appears in:
 
 ```bash
 # Standard Inference Gateway
-export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
+export AGENT_CLIENT_BASE_URL="http://localhost:3000/v1"
 
 # Custom Inference Gateway with specific model
-export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
+export AGENT_CLIENT_BASE_URL="http://localhost:3000/v1"
 export AGENT_CLIENT_MODEL="gpt-4"
 
 # Production Gateway
-export INFERENCE_GATEWAY_URL="https://gateway.example.com/v1"
+export AGENT_CLIENT_BASE_URL="https://gateway.example.com/v1"
 ```
 
 ## Architecture
@@ -240,7 +241,6 @@ curl http://localhost:8080/.well-known/agent.json | jq
 - `cmd/minimal/main.go` - Simple working server with custom task handler
 - `cmd/aipowered/main.go` - AI-powered server with LLM integration and tools
 - `cmd/pausedtask/main.go` - AI-powered server with intelligent task pausing capabilities
-- `cmd/pausedtask-mock/main.go` - Mock server for testing task pausing behavior
 - `README.md` - This documentation
 
 ## Next Steps

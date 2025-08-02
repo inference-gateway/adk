@@ -27,13 +27,6 @@ go run main.go
 
 The server will start on `http://localhost:8080`
 
-If AI using LLMs completions are required, create a simple Inference Gateway instance and run the server:
-
-```bash
-docker run -d --name inference-gateway -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
-export INFERENCE_GATEWAY_URL=http://localhost:8081
-```
-
 ### Client Example
 
 The client example demonstrates how to create an A2A client to communicate with A2A servers.

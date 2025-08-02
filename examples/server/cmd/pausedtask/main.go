@@ -26,22 +26,7 @@ func main() {
 	}
 	defer logger.Sync()
 
-	// Step 2: Check for required inference gateway URL
-	gatewayURL := os.Getenv("INFERENCE_GATEWAY_URL")
-	if gatewayURL == "" {
-		fmt.Println("\n❌ ERROR: Inference Gateway configuration required!")
-		fmt.Println("\n🔗 Please set INFERENCE_GATEWAY_URL environment variable:")
-		fmt.Println("\n📋 Example:")
-		fmt.Println("  export INFERENCE_GATEWAY_URL=\"http://localhost:3000/v1\"")
-		fmt.Println("\n💡 For a mock server without AI, use the mock example instead:")
-		fmt.Println("  go run ../pausedtask-mock/main.go")
-		os.Exit(1)
-	}
-
-	// Set the base URL for the agent configuration
-	os.Setenv("AGENT_CLIENT_BASE_URL", gatewayURL)
-
-	// Step 3: Load configuration from environment
+	// Step 2: Load configuration from environment
 	cfg := config.Config{
 		AgentName:        server.BuildAgentName,
 		AgentDescription: server.BuildAgentDescription,
@@ -59,7 +44,7 @@ func main() {
 		logger.Fatal("failed to process environment config", zap.Error(err))
 	}
 
-	// Step 4: Create toolbox with input_required tool
+	// Step 3: Create toolbox with input_required tool
 	toolBox := server.NewDefaultToolBox()
 
 	// Add input_required tool that the LLM can call to pause task execution
@@ -75,7 +60,7 @@ func main() {
 					"description": "The message to display to the user explaining what information is needed",
 				},
 				"reason": map[string]interface{}{
-					"type":        "string", 
+					"type":        "string",
 					"description": "Internal reason for why additional input is required",
 				},
 			},
@@ -84,11 +69,11 @@ func main() {
 		func(ctx context.Context, args map[string]interface{}) (string, error) {
 			message := args["message"].(string)
 			reason := args["reason"].(string)
-			
-			logger.Info("LLM requested user input", 
+
+			logger.Info("LLM requested user input",
 				zap.String("message", message),
 				zap.String("reason", reason))
-			
+
 			// Return a special marker that triggers input-required state
 			// The agent will handle this by calling PauseTaskForInput
 			return fmt.Sprintf("INPUT_REQUIRED:%s", message), nil
@@ -132,7 +117,7 @@ func main() {
 	)
 	toolBox.AddTool(timeTool)
 
-	// Step 5: Create AI agent with LLM client
+	// Step 4: Create AI agent with LLM client
 	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
 	if err != nil {
 		logger.Fatal("failed to create LLM client", zap.Error(err))
@@ -164,13 +149,13 @@ Always be helpful and provide what you can, but don't hesitate to ask for more i
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Step 6: Create a custom agent wrapper that can pause tasks
+	// Step 5: Create a custom agent wrapper that can pause tasks
 	pausableAgent := &PausableAgent{
 		agent:  agent,
 		logger: logger,
 	}
 
-	// Step 7: Create and start server
+	// Step 6: Create and start server
 	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, pausableAgent, types.AgentCard{
 		Name:        cfg.AgentName,
 		Description: cfg.AgentDescription,
@@ -250,16 +235,16 @@ type PausableAgent struct {
 }
 
 func (p *PausableAgent) ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	p.logger.Info("processing task with pausable agent", 
+	p.logger.Info("processing task with pausable agent",
 		zap.String("task_id", task.ID),
 		zap.String("message_role", message.Role))
-	
+
 	// Process the task with the underlying agent
 	result, err := p.agent.ProcessTask(ctx, task, message)
 	if err != nil {
 		return result, err
 	}
-	
+
 	// Check if the agent's response contains an INPUT_REQUIRED marker
 	if result != nil && len(result.History) > 0 {
 		lastMessage := result.History[len(result.History)-1]
@@ -270,10 +255,10 @@ func (p *PausableAgent) ProcessTask(ctx context.Context, task *types.Task, messa
 						// Check for INPUT_REQUIRED marker
 						if len(textStr) > 15 && textStr[:15] == "INPUT_REQUIRED:" {
 							userMessage := textStr[15:] // Extract the message after the marker
-							
-							p.logger.Info("Agent requested input pause", 
+
+							p.logger.Info("Agent requested input pause",
 								zap.String("user_message", userMessage))
-							
+
 							// Create the input request message
 							inputMessage := &types.Message{
 								Kind:      "message",
@@ -286,17 +271,17 @@ func (p *PausableAgent) ProcessTask(ctx context.Context, task *types.Task, messa
 									},
 								},
 							}
-							
+
 							// Update the task state to input-required
 							result.Status.State = types.TaskStateInputRequired
 							result.Status.Message = inputMessage
-							
-							// Replace the last message in history with the user-facing message  
+
+							// Replace the last message in history with the user-facing message
 							result.History[len(result.History)-1] = *inputMessage
-							
-							p.logger.Info("Task paused for user input", 
+
+							p.logger.Info("Task paused for user input",
 								zap.String("task_id", task.ID))
-							
+
 							break
 						}
 					}
@@ -304,7 +289,7 @@ func (p *PausableAgent) ProcessTask(ctx context.Context, task *types.Task, messa
 			}
 		}
 	}
-	
+
 	return result, nil
 }
 
