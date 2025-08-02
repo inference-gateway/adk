@@ -8,6 +8,7 @@ The A2A protocol enables agents to communicate with each other using JSON-RPC ov
 
 1. **Minimal Server** - A working server with custom task handler that provides simple responses without AI
 2. **AI-Powered Server** - A full-featured server with LLM integration and tool calling capabilities
+3. **Pausable Server** - A server that demonstrates the `input-required` task state, allowing agents to pause and request user input mid-task
 
 ## Quick Start
 
