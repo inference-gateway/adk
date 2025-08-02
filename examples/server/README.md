@@ -8,7 +8,8 @@ The A2A protocol enables agents to communicate with each other using JSON-RPC ov
 
 1. **Minimal Server** - A working server with custom task handler that provides simple responses without AI
 2. **AI-Powered Server** - A full-featured server with LLM integration and tool calling capabilities
-3. **Pausable Server** - A server that demonstrates the `input-required` task state, allowing agents to pause and request user input mid-task
+3. **Pausable Task Server** - An AI-powered server that demonstrates intelligent task pausing with the `input-required` state
+4. **Mock Pausable Server** - A mock server that simulates task pausing behavior without requiring an API key
 
 ## Quick Start
 
@@ -57,6 +58,45 @@ This AI-powered example:
 - ✅ Full conversation context and history
 - ✅ Works with Inference Gateway for unified LLM access
 - ✅ Production-ready AI agent architecture
+
+### 3. Pausable Task Server (API Key Required)
+
+Demonstrates intelligent task pausing where the LLM decides when to request user input:
+
+```bash
+cd cmd/pausedtask
+
+# Required: Set your API key
+export AGENT_CLIENT_API_KEY="sk-..."  # OpenAI
+# OR  
+export AGENT_CLIENT_API_KEY="sk-ant-..." AGENT_CLIENT_PROVIDER="anthropic"  # Anthropic
+
+go run main.go
+```
+
+This pausable task example:
+
+- ✅ **LLM-driven pausing** - Agent intelligently determines when more user input is needed
+- ✅ Built-in `request_user_input` tool that LLM can call to pause execution  
+- ✅ Demonstrates complete input-required workflow (submit → pause → resume → complete)
+- ✅ Works with existing pausedtask client example
+- ✅ Production-ready pattern for human-in-the-loop AI workflows
+
+### 4. Mock Pausable Server (No API Key Required)
+
+For testing task pausing behavior without LLM integration:
+
+```bash
+cd cmd/pausedtask-mock
+go run main.go
+```
+
+This mock example:
+
+- ✅ **Works immediately** - no API key required
+- ✅ Simulates realistic task pausing behavior  
+- ✅ Perfect for testing client-side pause/resume logic
+- ✅ Deterministic state transitions for reliable testing
 
 ## Example Usage
 
@@ -213,6 +253,8 @@ curl http://localhost:8080/.well-known/agent.json | jq
 
 - `cmd/minimal/main.go` - Simple working server with custom task handler
 - `cmd/aipowered/main.go` - AI-powered server with LLM integration and tools
+- `cmd/pausedtask/main.go` - AI-powered server with intelligent task pausing capabilities
+- `cmd/pausedtask-mock/main.go` - Mock server for testing task pausing behavior
 - `README.md` - This documentation
 
 ## Next Steps

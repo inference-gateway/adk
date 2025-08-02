@@ -2,549 +2,328 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"sync"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	adk "github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
 )
 
-// MockTaskManager manages tasks and their state transitions for the mock server
-type MockTaskManager struct {
-	mu    sync.RWMutex
-	tasks map[string]*adk.Task
-	ctx   context.Context
-}
+func main() {
+	fmt.Println("🤖 Starting AI-Powered A2A Server with Input-Required Pausing...")
 
-// NewMockTaskManager creates a new mock task manager
-func NewMockTaskManager(ctx context.Context) *MockTaskManager {
-	return &MockTaskManager{
-		tasks: make(map[string]*adk.Task),
-		ctx:   ctx,
+	// Step 1: Initialize logger
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
 	}
-}
+	defer logger.Sync()
 
-// CreateTask creates a new task and starts its state progression
-func (m *MockTaskManager) CreateTask(message adk.Message) *adk.Task {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	// Step 2: Check for required API key
+	apiKey := os.Getenv("AGENT_CLIENT_API_KEY")
+	if apiKey == "" {
+		fmt.Println("\n❌ ERROR: AI provider configuration required!")
+		fmt.Println("\n🔑 Please set AGENT_CLIENT_API_KEY environment variable:")
+		fmt.Println("\n📋 Examples:")
+		fmt.Println("  # OpenAI")
+		fmt.Println("  export AGENT_CLIENT_API_KEY=\"sk-...\"")
+		fmt.Println("\n  # Anthropic")
+		fmt.Println("  export AGENT_CLIENT_API_KEY=\"sk-ant-...\"")
+		fmt.Println("  export AGENT_CLIENT_PROVIDER=\"anthropic\"")
+		fmt.Println("\n  # Via Inference Gateway")
+		fmt.Println("  export AGENT_CLIENT_API_KEY=\"your-key\"")
+		fmt.Println("  export AGENT_CLIENT_BASE_URL=\"http://localhost:3000/v1\"")
+		fmt.Println("\n💡 For a mock server without AI, use the mock example instead:")
+		fmt.Println("  go run ../pausedtask-mock/main.go")
+		os.Exit(1)
+	}
 
-	contextID := uuid.New().String()
-	taskID := uuid.New().String()
-
-	task := &adk.Task{
-		ID:        taskID,
-		ContextID: contextID,
-		Kind:      "task",
-		Status: adk.TaskStatus{
-			State: adk.TaskStateSubmitted,
+	// Step 3: Load configuration from environment
+	cfg := config.Config{
+		AgentName:        server.BuildAgentName,
+		AgentDescription: server.BuildAgentDescription,
+		AgentVersion:     server.BuildAgentVersion,
+		QueueConfig: config.QueueConfig{
+			CleanupInterval: 5 * time.Minute,
 		},
-		History:   []adk.Message{message},
-		Artifacts: []adk.Artifact{},
+		ServerConfig: config.ServerConfig{
+			Port: "8080",
+		},
 	}
 
-	m.tasks[taskID] = task
-
-	// Start the task state progression in a goroutine
-	go m.progressTaskState(taskID)
-
-	return task
-}
-
-// GetTask retrieves a task by ID
-func (m *MockTaskManager) GetTask(taskID string) (*adk.Task, bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	task, exists := m.tasks[taskID]
-	return task, exists
-}
-
-// ResumeTask resumes a paused task with user input
-func (m *MockTaskManager) ResumeTask(taskID string, userMessage adk.Message) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	task, exists := m.tasks[taskID]
-	if !exists {
-		return fmt.Errorf("task not found: %s", taskID)
+	ctx := context.Background()
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		logger.Fatal("failed to process environment config", zap.Error(err))
 	}
 
-	if task.Status.State != adk.TaskStateInputRequired {
-		return fmt.Errorf("task %s is not in input-required state", taskID)
-	}
+	// Step 4: Create toolbox with input_required tool
+	toolBox := server.NewDefaultToolBox()
 
-	// Add user input to history
-	task.History = append(task.History, userMessage)
-	task.Status.State = adk.TaskStateWorking
-	task.Status.Message = nil // Clear the input request message
-
-	// Continue the task progression
-	go m.progressTaskStateFromWorking(taskID)
-
-	return nil
-}
-
-// CancelTask cancels a task
-func (m *MockTaskManager) CancelTask(taskID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	task, exists := m.tasks[taskID]
-	if !exists {
-		return fmt.Errorf("task not found: %s", taskID)
-	}
-
-	task.Status.State = adk.TaskStateCanceled
-
-	return nil
-}
-
-// progressTaskState simulates task state progression with input-required pause
-func (m *MockTaskManager) progressTaskState(taskID string) {
-	// submitted -> working (after 1 second)
-	time.Sleep(1 * time.Second)
-	m.updateTaskState(taskID, adk.TaskStateWorking, nil)
-
-	// working -> input-required (after 2 seconds, requesting audience info)
-	time.Sleep(2 * time.Second)
-	inputRequestMessage := &adk.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
-		Role:      "assistant",
-		Parts: []adk.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "I'd be happy to help you create a presentation outline about climate change! To create the most effective outline, I need to know: What is the specific audience for this presentation? (e.g., students, business executives, policymakers, general public, etc.)",
+	// Add input_required tool that the LLM can call to pause task execution
+	// This tool simulates pausing by returning a special response that will trigger the pause
+	inputRequiredTool := server.NewBasicTool(
+		"request_user_input",
+		"Request additional input from the user when current information is insufficient to complete the task",
+		map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"message": map[string]interface{}{
+					"type":        "string",
+					"description": "The message to display to the user explaining what information is needed",
+				},
+				"reason": map[string]interface{}{
+					"type":        "string", 
+					"description": "Internal reason for why additional input is required",
+				},
 			},
+			"required": []string{"message", "reason"},
 		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			message := args["message"].(string)
+			reason := args["reason"].(string)
+			
+			logger.Info("LLM requested user input", 
+				zap.String("message", message),
+				zap.String("reason", reason))
+			
+			// Return a special marker that triggers input-required state
+			// The agent will handle this by calling PauseTaskForInput
+			return fmt.Sprintf("INPUT_REQUIRED:%s", message), nil
+		},
+	)
+	toolBox.AddTool(inputRequiredTool)
+
+	// Add helper tools that might be useful
+	weatherTool := server.NewBasicTool(
+		"get_weather",
+		"Get current weather information for a location",
+		map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"location": map[string]interface{}{
+					"type":        "string",
+					"description": "The city name",
+				},
+			},
+			"required": []string{"location"},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			location := args["location"].(string)
+			return fmt.Sprintf(`{"location": "%s", "temperature": "22°C", "condition": "sunny", "humidity": "65%%"}`, location), nil
+		},
+	)
+	toolBox.AddTool(weatherTool)
+
+	timeTool := server.NewBasicTool(
+		"get_current_time",
+		"Get the current date and time",
+		map[string]interface{}{
+			"type":       "object",
+			"properties": map[string]interface{}{},
+		},
+		func(ctx context.Context, args map[string]interface{}) (string, error) {
+			now := time.Now()
+			return fmt.Sprintf(`{"current_time": "%s", "timezone": "%s"}`,
+				now.Format("2006-01-02 15:04:05"), now.Location()), nil
+		},
+	)
+	toolBox.AddTool(timeTool)
+
+	// Step 5: Create AI agent with LLM client
+	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
+	if err != nil {
+		logger.Fatal("failed to create LLM client", zap.Error(err))
 	}
-	m.updateTaskState(taskID, adk.TaskStateInputRequired, inputRequestMessage)
+
+	// Create agent with system prompt that encourages intelligent input pausing
+	systemPrompt := `You are a helpful AI assistant that creates detailed presentation outlines and provides information.
+
+When users request something that could benefit from more specific information, you should:
+1. First analyze if you have enough context to provide a useful response
+2. If the request is vague or could be significantly improved with more details, use the request_user_input tool to ask for clarification
+3. Be specific about what information would help you provide a better response
+
+For example:
+- If someone asks for a "presentation outline" without specifying the audience, topic depth, or duration, ask for these details
+- If someone asks for weather without a location, ask for the location
+- If someone asks for advice without context, ask for relevant background
+
+Always be helpful and provide what you can, but don't hesitate to ask for more information when it would significantly improve your response.`
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithConfig(&cfg.AgentConfig).
+		WithLLMClient(llmClient).
+		WithSystemPrompt(systemPrompt).
+		WithMaxChatCompletion(10).
+		WithToolBox(toolBox).
+		Build()
+	if err != nil {
+		logger.Fatal("failed to create AI agent", zap.Error(err))
+	}
+
+	// Step 6: Create a custom agent wrapper that can pause tasks
+	pausableAgent := &PausableAgent{
+		agent:  agent,
+		logger: logger,
+	}
+
+	// Step 7: Create and start server
+	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, pausableAgent, types.AgentCard{
+		Name:        cfg.AgentName,
+		Description: cfg.AgentDescription,
+		URL:         cfg.AgentURL,
+		Version:     cfg.AgentVersion,
+		Capabilities: types.AgentCapabilities{
+			Streaming:              &cfg.CapabilitiesConfig.Streaming,
+			PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
+			StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
+		},
+		DefaultInputModes:  []string{"text/plain"},
+		DefaultOutputModes: []string{"text/plain"},
+	})
+
+	if err != nil {
+		logger.Fatal("failed to create A2A server", zap.Error(err))
+	}
+
+	// The pausable agent will work with the server's built-in task management
+	// No additional setup needed - the agent processes the INPUT_REQUIRED responses
+	logger.Info("Pausable agent configured to detect INPUT_REQUIRED responses")
+
+	logger.Info("✅ AI-powered A2A server created with input-required pausing",
+		zap.String("provider", cfg.AgentConfig.Provider),
+		zap.String("model", cfg.AgentConfig.Model),
+		zap.String("tools", "request_user_input, weather, time"))
+
+	// Display agent metadata
+	logger.Info("🤖 agent metadata",
+		zap.String("name", server.BuildAgentName),
+		zap.String("description", server.BuildAgentDescription),
+		zap.String("version", server.BuildAgentVersion))
+
+	// Start server
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		if err := a2aServer.Start(ctx); err != nil {
+			logger.Fatal("server failed to start", zap.Error(err))
+		}
+	}()
+
+	logger.Info("🌐 server running", zap.String("port", cfg.ServerConfig.Port))
+	fmt.Printf("\n🎯 Test with the pausedtask client:\n")
+	fmt.Printf("  cd ../../../client/cmd/pausedtask\n")
+	fmt.Printf("  go run main.go\n")
+	fmt.Printf("\n📋 Example requests that will trigger input-required pausing:\n")
+	fmt.Printf("  - \"Create a presentation outline about climate change\"\n")
+	fmt.Printf("  - \"Help me plan a workshop\"\n")
+	fmt.Printf("  - \"What's the weather like?\"\n")
+	fmt.Printf("\n🧠 The LLM will analyze requests and use the request_user_input tool when it needs more context.\n")
+	fmt.Println()
+
+	// Wait for shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("🛑 shutting down server...")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := a2aServer.Stop(shutdownCtx); err != nil {
+		logger.Error("shutdown error", zap.Error(err))
+	} else {
+		logger.Info("✅ goodbye!")
+	}
 }
 
-// progressTaskStateFromWorking continues task progression after user input
-func (m *MockTaskManager) progressTaskStateFromWorking(taskID string) {
-	// working -> completed (after 1 second with final response)
-	time.Sleep(1 * time.Second)
+// PausableAgent wraps an OpenAI-compatible agent and adds the ability to pause tasks
+// when the agent returns an INPUT_REQUIRED response from the request_user_input tool
+type PausableAgent struct {
+	agent       server.OpenAICompatibleAgent
+	taskManager server.TaskManager
+	logger      *zap.Logger
+}
 
-	m.mu.Lock()
-	task, exists := m.tasks[taskID]
-	if !exists {
-		m.mu.Unlock()
-		return
+func (p *PausableAgent) ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	p.logger.Info("processing task with pausable agent", 
+		zap.String("task_id", task.ID),
+		zap.String("message_role", message.Role))
+	
+	// Process the task with the underlying agent
+	result, err := p.agent.ProcessTask(ctx, task, message)
+	if err != nil {
+		return result, err
 	}
-
-	// Get the user's audience input from the last message
-	var audienceInfo string = "general audience"
-	if len(task.History) > 1 {
-		lastMsg := task.History[len(task.History)-1]
-		for _, part := range lastMsg.Parts {
+	
+	// Check if the agent's response contains an INPUT_REQUIRED marker
+	if result != nil && len(result.History) > 0 {
+		lastMessage := result.History[len(result.History)-1]
+		for _, part := range lastMessage.Parts {
 			if partMap, ok := part.(map[string]interface{}); ok {
 				if textContent, exists := partMap["text"]; exists {
 					if textStr, ok := textContent.(string); ok {
-						audienceInfo = textStr
+						// Check for INPUT_REQUIRED marker
+						if len(textStr) > 15 && textStr[:15] == "INPUT_REQUIRED:" {
+							userMessage := textStr[15:] // Extract the message after the marker
+							
+							p.logger.Info("Agent requested input pause", 
+								zap.String("user_message", userMessage))
+							
+							// Create the input request message
+							inputMessage := &types.Message{
+								Kind:      "message",
+								MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
+								Role:      "assistant",
+								Parts: []types.Part{
+									map[string]interface{}{
+										"kind": "text",
+										"text": userMessage,
+									},
+								},
+							}
+							
+							// Update the task state to input-required
+							result.Status.State = types.TaskStateInputRequired
+							result.Status.Message = inputMessage
+							
+							// Replace the last message in history with the user-facing message  
+							result.History[len(result.History)-1] = *inputMessage
+							
+							p.logger.Info("Task paused for user input", 
+								zap.String("task_id", task.ID))
+							
+							break
+						}
 					}
 				}
 			}
 		}
 	}
-
-	// Create comprehensive final response based on audience
-	finalResponse := m.generateOutlineResponse(audienceInfo)
-
-	completionMessage := adk.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("completion-%d", time.Now().Unix()),
-		Role:      "assistant",
-		Parts: []adk.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": finalResponse,
-			},
-		},
-	}
-
-	task.History = append(task.History, completionMessage)
-	task.Status.State = adk.TaskStateCompleted
-	task.Status.Message = nil
-
-	m.mu.Unlock()
+	
+	return result, nil
 }
 
-// generateOutlineResponse creates a tailored response based on audience
-func (m *MockTaskManager) generateOutlineResponse(audienceInfo string) string {
-	return fmt.Sprintf(`Perfect! Based on your audience ("%s"), here's a comprehensive presentation outline about climate change:
-
-**Climate Change Presentation Outline**
-
-**I. Introduction (5 minutes)**
-   - What is climate change?
-   - Why it matters to %s
-   - Presentation roadmap
-
-**II. The Science Behind Climate Change (10 minutes)**
-   - Greenhouse effect basics
-   - Human activities contributing to climate change
-   - Key evidence and data trends
-
-**III. Current and Future Impacts (10 minutes)**
-   - Environmental impacts (rising temperatures, sea levels, extreme weather)
-   - Economic consequences
-   - Social and health effects
-   - Specific relevance to %s
-
-**IV. Solutions and Actions (10 minutes)**
-   - Mitigation strategies (reducing emissions)
-   - Adaptation approaches (preparing for changes)
-   - Role of %s in climate action
-   - Technology and innovation opportunities
-
-**V. Call to Action (5 minutes)**
-   - What %s can do immediately
-   - Long-term commitments and goals
-   - Resources for further engagement
-
-**VI. Q&A (10 minutes)**
-   - Address audience questions and concerns
-
-**Supporting Materials Needed:**
-- Current climate data and graphs
-- Local/regional impact examples
-- Success stories relevant to %s
-- Actionable next steps handout
-
-This outline can be adjusted based on your specific time constraints and the depth of information your %s audience requires. Would you like me to elaborate on any particular section?`,
-		audienceInfo, audienceInfo, audienceInfo, audienceInfo, audienceInfo, audienceInfo, audienceInfo)
+func (p *PausableAgent) SetTaskManager(taskManager server.TaskManager) {
+	p.taskManager = taskManager
 }
 
-// updateTaskState updates a task's state and optional message
-func (m *MockTaskManager) updateTaskState(taskID string, state adk.TaskState, message *adk.Message) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	task, exists := m.tasks[taskID]
-	if !exists {
-		return
-	}
-
-	task.Status.State = state
-	task.Status.Message = message
-
-	if message != nil {
-		task.History = append(task.History, *message)
-	}
+func (p *PausableAgent) GetLLMClient() server.LLMClient {
+	return p.agent.GetLLMClient()
 }
 
-// MockServer represents the mock A2A server
-type MockServer struct {
-	taskManager *MockTaskManager
-	logger      *zap.Logger
-	agentCard   *adk.AgentCard
+func (p *PausableAgent) GetToolBox() server.ToolBox {
+	return p.agent.GetToolBox()
 }
 
-// NewMockServer creates a new mock server
-func NewMockServer(ctx context.Context, logger *zap.Logger) *MockServer {
-	streaming := false
-	pushNotifications := false
-	stateTransitionHistory := true
-
-	agentCard := &adk.AgentCard{
-		Name:               "climate-presentation-agent",
-		Description:        "A mock A2A agent that demonstrates input-required task states by helping create climate change presentations",
-		Version:            "1.0.0",
-		URL:                "http://localhost:8080",
-		ProtocolVersion:    "1.0.0",
-		Skills:             []adk.AgentSkill{},
-		DefaultInputModes:  []string{"text"},
-		DefaultOutputModes: []string{"text"},
-		Capabilities: adk.AgentCapabilities{
-			Streaming:              &streaming,
-			PushNotifications:      &pushNotifications,
-			StateTransitionHistory: &stateTransitionHistory,
-		},
-	}
-
-	return &MockServer{
-		taskManager: NewMockTaskManager(ctx),
-		logger:      logger,
-		agentCard:   agentCard,
-	}
-}
-
-// SetupRoutes configures the HTTP routes for the mock server
-func (s *MockServer) SetupRoutes() *gin.Engine {
-	router := gin.Default()
-
-	// Agent info endpoint
-	router.GET("/.well-known/agent.json", s.handleAgentInfo)
-
-	// Health check endpoint
-	router.GET("/health", s.handleHealth)
-
-	// Main A2A endpoint
-	router.POST("/a2a", s.handleA2ARequest)
-
-	return router
-}
-
-// handleAgentInfo returns the agent card
-func (s *MockServer) handleAgentInfo(c *gin.Context) {
-	s.logger.Info("agent card requested")
-	c.JSON(200, s.agentCard)
-}
-
-// handleHealth returns server health status
-func (s *MockServer) handleHealth(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"status":    "healthy",
-		"timestamp": time.Now().UTC(),
-		"version":   s.agentCard.Version,
-	})
-}
-
-// A2ARequest represents an A2A JSON-RPC request
-type A2ARequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params"`
-	ID      interface{} `json:"id"`
-}
-
-// A2AResponse represents an A2A JSON-RPC response
-type A2AResponse struct {
-	JSONRPC string      `json:"jsonrpc"`
-	Result  interface{} `json:"result,omitempty"`
-	Error   interface{} `json:"error,omitempty"`
-	ID      interface{} `json:"id"`
-}
-
-// handleA2ARequest handles A2A protocol requests
-func (s *MockServer) handleA2ARequest(c *gin.Context) {
-	var req A2ARequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		s.logger.Error("failed to parse A2A request", zap.Error(err))
-		c.JSON(400, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32700, "message": "Parse error"},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	s.logger.Info("received a2a request", zap.String("method", req.Method), zap.Any("id", req.ID))
-
-	switch req.Method {
-	case "message/send":
-		s.handleMessageSend(c, req)
-	case "tasks/get":
-		s.handleTasksGet(c, req)
-	case "tasks/cancel":
-		s.handleTasksCancel(c, req)
-	default:
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32601, "message": "Method not found"},
-			ID:      req.ID,
-		})
-	}
-}
-
-// handleMessageSend handles message/send requests
-func (s *MockServer) handleMessageSend(c *gin.Context, req A2ARequest) {
-	// Parse message send params
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32602, "message": "Invalid params"},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	var params adk.MessageSendParams
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to unmarshal message send params", zap.Error(err))
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32602, "message": "Invalid params"},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	// Check if this is resuming an existing task
-	if params.Message.TaskID != nil {
-		// Resume existing task with user input
-		taskID := *params.Message.TaskID
-		err := s.taskManager.ResumeTask(taskID, params.Message)
-		if err != nil {
-			s.logger.Error("failed to resume task", zap.Error(err), zap.String("task_id", taskID))
-			c.JSON(200, A2AResponse{
-				JSONRPC: "2.0",
-				Error:   map[string]interface{}{"code": -32603, "message": err.Error()},
-				ID:      req.ID,
-			})
-			return
-		}
-
-		s.logger.Info("task resumed successfully", zap.String("task_id", taskID))
-
-		// Return success response for task resume
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Result:  map[string]interface{}{"status": "resumed", "task_id": taskID},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	// Create new task
-	task := s.taskManager.CreateTask(params.Message)
-	s.logger.Info("new task created", zap.String("task_id", task.ID), zap.String("context_id", task.ContextID))
-
-	c.JSON(200, A2AResponse{
-		JSONRPC: "2.0",
-		Result:  task,
-		ID:      req.ID,
-	})
-}
-
-// handleTasksGet handles tasks/get requests
-func (s *MockServer) handleTasksGet(c *gin.Context, req A2ARequest) {
-	// Parse task query params
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32602, "message": "Invalid params"},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	var params adk.TaskQueryParams
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to unmarshal task query params", zap.Error(err))
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32602, "message": "Invalid params"},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	// Get task
-	task, exists := s.taskManager.GetTask(params.ID)
-	if !exists {
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32603, "message": "Task not found"},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	s.logger.Info("task retrieved", zap.String("task_id", task.ID), zap.String("state", string(task.Status.State)))
-
-	c.JSON(200, A2AResponse{
-		JSONRPC: "2.0",
-		Result:  task,
-		ID:      req.ID,
-	})
-}
-
-// handleTasksCancel handles tasks/cancel requests
-func (s *MockServer) handleTasksCancel(c *gin.Context, req A2ARequest) {
-	// Parse task ID params
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32602, "message": "Invalid params"},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	var params adk.TaskIdParams
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to unmarshal task ID params", zap.Error(err))
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32602, "message": "Invalid params"},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	// Cancel task
-	err = s.taskManager.CancelTask(params.ID)
-	if err != nil {
-		s.logger.Error("failed to cancel task", zap.Error(err), zap.String("task_id", params.ID))
-		c.JSON(200, A2AResponse{
-			JSONRPC: "2.0",
-			Error:   map[string]interface{}{"code": -32603, "message": err.Error()},
-			ID:      req.ID,
-		})
-		return
-	}
-
-	s.logger.Info("task canceled successfully", zap.String("task_id", params.ID))
-
-	c.JSON(200, A2AResponse{
-		JSONRPC: "2.0",
-		Result:  map[string]interface{}{"status": "canceled", "task_id": params.ID},
-		ID:      req.ID,
-	})
-}
-
-func main() {
-	fmt.Println("🧪 Starting Mock A2A Server with Input-Required State Simulation...")
-
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to initialize logger: %v", err)
-	}
-	defer logger.Sync()
-
-	// Create mock server
-	ctx := context.Background()
-	server := NewMockServer(ctx, logger)
-
-	// Setup routes
-	router := server.SetupRoutes()
-
-	logger.Info("✅ mock server created with input-required state simulation")
-	logger.Info("🤖 agent metadata",
-		zap.String("name", server.agentCard.Name),
-		zap.String("description", server.agentCard.Description),
-		zap.String("version", server.agentCard.Version))
-
-	fmt.Println("\n🎯 Test the mock server:")
-	fmt.Println("📋 Agent info: http://localhost:8080/.well-known/agent.json")
-	fmt.Println("💚 Health check: http://localhost:8080/health")
-	fmt.Println("📡 A2A endpoint: http://localhost:8080/a2a")
-	fmt.Println("\n📘 This server simulates the following task flow:")
-	fmt.Println("  1. submitted → working (1s)")
-	fmt.Println("  2. working → input-required (2s) - asks for audience info")
-	fmt.Println("  3. [PAUSED] - waits for user input")
-	fmt.Println("  4. input-required → working (when user provides input)")
-	fmt.Println("  5. working → completed (1s) - provides tailored outline")
-
-	logger.Info("🌐 server running", zap.String("port", "8080"))
-	fmt.Printf("\n🚀 Ready! Run the pausedtask client example to test the input-required flow.\n\n")
-
-	if err := router.Run(":8080"); err != nil {
-		logger.Fatal("failed to start server", zap.Error(err))
-	}
+func (p *PausableAgent) GetSystemPrompt() string {
+	return p.agent.GetSystemPrompt()
 }
