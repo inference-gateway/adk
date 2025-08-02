@@ -194,6 +194,11 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 				logger.Info("=== TASK PAUSED FOR INPUT ===",
 					zap.String("task_id", taskID))
 
+				// Debug: log the task status to see what we're getting
+				logger.Debug("task status details",
+					zap.String("task_id", taskID),
+					zap.Bool("has_status_message", updatedTask.Status.Message != nil))
+
 				// Display any message from the agent asking for input
 				if updatedTask.Status.Message != nil {
 					fmt.Println("\n" + strings.Repeat("=", 50))
@@ -201,6 +206,11 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 					fmt.Println(strings.Repeat("=", 50))
 					displayMessage(updatedTask.Status.Message)
 					fmt.Println(strings.Repeat("=", 50))
+				} else {
+					// Debug: if no message, show that we didn't get one
+					fmt.Println("\n⚠️  Task is paused for input but no message was provided by the agent.")
+					logger.Warn("task paused for input but no status message available",
+						zap.String("task_id", taskID))
 				}
 
 				// Get user input
