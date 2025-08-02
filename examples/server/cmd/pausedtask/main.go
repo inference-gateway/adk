@@ -29,9 +29,9 @@ func main() {
 
 	// Step 2: Load configuration from environment
 	cfg := config.Config{
-		AgentName:        server.BuildAgentName,
-		AgentDescription: server.BuildAgentDescription,
-		AgentVersion:     server.BuildAgentVersion,
+		AgentName:        "pausable-task-agent",
+		AgentDescription: "An AI-powered agent that can pause task execution to request additional user input when needed",
+		AgentVersion:     "1.0.0",
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
@@ -193,9 +193,9 @@ Always be helpful and provide what you can, but don't hesitate to ask for more i
 
 	// Display agent metadata
 	logger.Info("🤖 agent metadata",
-		zap.String("name", server.BuildAgentName),
-		zap.String("description", server.BuildAgentDescription),
-		zap.String("version", server.BuildAgentVersion))
+		zap.String("name", cfg.AgentName),
+		zap.String("description", cfg.AgentDescription),
+		zap.String("version", cfg.AgentVersion))
 
 	// Start server
 	ctx, cancel := context.WithCancel(context.Background())
@@ -388,11 +388,6 @@ func (p *PausableTaskHandler) handleWithoutAgent(ctx context.Context, task *type
 	task.Status.Message = response
 
 	return task, nil
-}
-
-type PausableAgent struct {
-	agent  server.OpenAICompatibleAgent
-	logger *zap.Logger
 }
 
 // PausableToolBox wraps a toolbox to intercept INPUT_REQUIRED responses
