@@ -125,13 +125,3 @@ func (th *DefaultTaskHandler) processWithoutAgent(ctx context.Context, task *typ
 
 	return task, nil
 }
-
-// messageExistsInHistory checks if a message with the same MessageID already exists in the history
-func (th *DefaultTaskHandler) messageExistsInHistory(history []types.Message, message types.Message) bool {
-	for _, msg := range history {
-		if msg.MessageID == message.MessageID {
-			return true
-		}
-	}
-	return false
-}
