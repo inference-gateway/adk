@@ -7,8 +7,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/inference-gateway/adk"
 	"github.com/inference-gateway/adk/client"
+	adk "github.com/inference-gateway/adk/types"
 	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
 )

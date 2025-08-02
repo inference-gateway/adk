@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/inference-gateway/adk"
 	"github.com/inference-gateway/adk/client"
+	adk "github.com/inference-gateway/adk/types"
 	"go.uber.org/zap"
 )
 
