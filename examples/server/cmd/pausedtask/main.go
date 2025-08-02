@@ -12,6 +12,7 @@ import (
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
+	sdk "github.com/inference-gateway/sdk"
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 )
@@ -48,7 +49,7 @@ func main() {
 	toolBox := server.NewDefaultToolBox()
 
 	// Add input_required tool that the LLM can call to pause task execution
-	// This tool simulates pausing by returning a special response that will trigger the pause
+	// This tool will return an error that signals the task should be paused
 	inputRequiredTool := server.NewBasicTool(
 		"request_user_input",
 		"Request additional input from the user when current information is insufficient to complete the task",
@@ -70,12 +71,11 @@ func main() {
 			message := args["message"].(string)
 			reason := args["reason"].(string)
 
-			logger.Info("LLM requested user input",
+			logger.Info("LLM requested user input - returning marker for detection",
 				zap.String("message", message),
 				zap.String("reason", reason))
 
-			// Return a special marker that triggers input-required state
-			// The agent will handle this by calling PauseTaskForInput
+			// Return the marker that the PausableAgent will detect
 			return fmt.Sprintf("INPUT_REQUIRED:%s", message), nil
 		},
 	)
@@ -117,6 +117,9 @@ func main() {
 	)
 	toolBox.AddTool(timeTool)
 
+	// Wrap the toolbox to intercept INPUT_REQUIRED responses
+	pausableToolBox := NewPausableToolBox(toolBox, logger)
+
 	// Step 4: Create AI agent with LLM client
 	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
 	if err != nil {
@@ -136,6 +139,10 @@ For example:
 - If someone asks for weather without a location, ask for the location
 - If someone asks for advice without context, ask for relevant background
 
+IMPORTANT: When you call the request_user_input tool and it returns a result starting with "INPUT_REQUIRED:", 
+you must IMMEDIATELY stop processing and wait for user input. Do not continue with your response or provide any additional content.
+The tool result starting with "INPUT_REQUIRED:" indicates that the user needs to provide more information before you can continue.
+
 Always be helpful and provide what you can, but don't hesitate to ask for more information when it would significantly improve your response.`
 
 	agent, err := server.NewAgentBuilder(logger).
@@ -143,32 +150,33 @@ Always be helpful and provide what you can, but don't hesitate to ask for more i
 		WithLLMClient(llmClient).
 		WithSystemPrompt(systemPrompt).
 		WithMaxChatCompletion(10).
-		WithToolBox(toolBox).
+		WithToolBox(pausableToolBox).
 		Build()
 	if err != nil {
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Step 5: Create a custom agent wrapper that can pause tasks
-	pausableAgent := &PausableAgent{
-		agent:  agent,
-		logger: logger,
-	}
+	// Step 5: Create a custom task handler that can pause tasks for input
+	pausableTaskHandler := NewPausableTaskHandler(logger)
 
 	// Step 6: Create and start server
-	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, pausableAgent, types.AgentCard{
-		Name:        cfg.AgentName,
-		Description: cfg.AgentDescription,
-		URL:         cfg.AgentURL,
-		Version:     cfg.AgentVersion,
-		Capabilities: types.AgentCapabilities{
-			Streaming:              &cfg.CapabilitiesConfig.Streaming,
-			PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
-			StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
-		},
-		DefaultInputModes:  []string{"text/plain"},
-		DefaultOutputModes: []string{"text/plain"},
-	})
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+		WithAgent(agent).
+		WithTaskHandler(pausableTaskHandler).
+		WithAgentCard(types.AgentCard{
+			Name:        cfg.AgentName,
+			Description: cfg.AgentDescription,
+			URL:         cfg.AgentURL,
+			Version:     cfg.AgentVersion,
+			Capabilities: types.AgentCapabilities{
+				Streaming:              &cfg.CapabilitiesConfig.Streaming,
+				PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
+				StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+		}).
+		Build()
 
 	if err != nil {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
@@ -226,63 +234,100 @@ Always be helpful and provide what you can, but don't hesitate to ask for more i
 	}
 }
 
-// PausableAgent wraps an OpenAI-compatible agent and adds the ability to pause tasks
-// when the agent returns an INPUT_REQUIRED response from the request_user_input tool
-type PausableAgent struct {
-	agent       server.OpenAICompatibleAgent
-	taskManager server.TaskManager
-	logger      *zap.Logger
+// PausableTaskHandler is a TaskHandler that can pause tasks when tools request user input
+type PausableTaskHandler struct {
+	logger *zap.Logger
 }
 
-func (p *PausableAgent) ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	p.logger.Info("processing task with pausable agent",
+func NewPausableTaskHandler(logger *zap.Logger) *PausableTaskHandler {
+	return &PausableTaskHandler{
+		logger: logger,
+	}
+}
+
+func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message, agent server.OpenAICompatibleAgent) (*types.Task, error) {
+	p.logger.Info("processing task with pausable task handler",
 		zap.String("task_id", task.ID),
 		zap.String("message_role", message.Role))
 
-	// Process the task with the underlying agent
-	result, err := p.agent.ProcessTask(ctx, task, message)
+	// Check if task is already in input-required state (resume scenario)
+	if task.Status.State == types.TaskStateInputRequired {
+		p.logger.Info("task already in input-required state, continuing processing",
+			zap.String("task_id", task.ID))
+	}
+
+	// If no agent is provided, fall back to simple response
+	if agent == nil {
+		return p.handleWithoutAgent(ctx, task, message)
+	}
+
+	// Process the task using agent capabilities
+	result, err := p.processWithAgent(ctx, task, message, agent)
 	if err != nil {
 		return result, err
 	}
 
-	// Check if the agent's response contains an INPUT_REQUIRED marker
+	// Check if any tool result in the history contains an INPUT_REQUIRED marker
 	if result != nil && len(result.History) > 0 {
-		lastMessage := result.History[len(result.History)-1]
-		for _, part := range lastMessage.Parts {
-			if partMap, ok := part.(map[string]interface{}); ok {
-				if textContent, exists := partMap["text"]; exists {
-					if textStr, ok := textContent.(string); ok {
-						// Check for INPUT_REQUIRED marker
-						if len(textStr) > 15 && textStr[:15] == "INPUT_REQUIRED:" {
-							userMessage := textStr[15:] // Extract the message after the marker
+		for i := len(result.History) - 1; i >= 0; i-- {
+			historyMessage := result.History[i]
 
-							p.logger.Info("Agent requested input pause",
-								zap.String("user_message", userMessage))
+			// Check tool result messages for INPUT_REQUIRED marker
+			if historyMessage.Role == "tool" {
+				for _, part := range historyMessage.Parts {
+					if partMap, ok := part.(map[string]interface{}); ok {
+						if dataContent, exists := partMap["data"]; exists {
+							if dataMap, ok := dataContent.(map[string]interface{}); ok {
+								if toolResult, exists := dataMap["result"]; exists {
+									if resultStr, ok := toolResult.(string); ok {
+										// Check for INPUT_REQUIRED marker
+										if len(resultStr) > 15 && resultStr[:15] == "INPUT_REQUIRED:" {
+											userMessage := resultStr[15:] // Extract the message after the marker
 
-							// Create the input request message
-							inputMessage := &types.Message{
-								Kind:      "message",
-								MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
-								Role:      "assistant",
-								Parts: []types.Part{
-									map[string]interface{}{
-										"kind": "text",
-										"text": userMessage,
-									},
-								},
+											p.logger.Info("Tool requested input pause, pausing task",
+												zap.String("task_id", task.ID),
+												zap.String("user_message", userMessage))
+
+											// Create the input request message
+											inputMessage := &types.Message{
+												Kind:      "message",
+												MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
+												Role:      "assistant",
+												Parts: []types.Part{
+													map[string]interface{}{
+														"kind": "text",
+														"text": userMessage,
+													},
+												},
+											}
+
+											// Update the task state to input-required
+											result.Status.State = types.TaskStateInputRequired
+											result.Status.Message = inputMessage
+
+											// Clean up the history to remove any messages after the tool call that requested input
+											// Find where this tool result is and truncate history after that
+											historyIndex := -1
+											for j, msg := range result.History {
+												if msg.MessageID == historyMessage.MessageID {
+													historyIndex = j
+													break
+												}
+											}
+											if historyIndex >= 0 {
+												// Keep history up to and including the tool result, but remove any assistant responses after
+												result.History = result.History[:historyIndex+1]
+											}
+
+											p.logger.Info("Task paused for user input",
+												zap.String("task_id", task.ID),
+												zap.String("state", string(result.Status.State)))
+
+											return result, nil
+										}
+									}
+								}
 							}
-
-							// Update the task state to input-required
-							result.Status.State = types.TaskStateInputRequired
-							result.Status.Message = inputMessage
-
-							// Replace the last message in history with the user-facing message
-							result.History[len(result.History)-1] = *inputMessage
-
-							p.logger.Info("Task paused for user input",
-								zap.String("task_id", task.ID))
-
-							break
 						}
 					}
 				}
@@ -293,18 +338,112 @@ func (p *PausableAgent) ProcessTask(ctx context.Context, task *types.Task, messa
 	return result, nil
 }
 
-func (p *PausableAgent) SetTaskManager(taskManager server.TaskManager) {
-	p.taskManager = taskManager
+// processWithAgent processes a task using the provided agent's capabilities
+func (p *PausableTaskHandler) processWithAgent(ctx context.Context, task *types.Task, message *types.Message, agent server.OpenAICompatibleAgent) (*types.Task, error) {
+	// TODO: Implement the agent-based processing logic here
+	// This should use the agent's LLM client, toolbox, and system prompt to process the task
+	// For now, return a simple response indicating the functionality is not yet implemented
+
+	response := &types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("response-%s", task.ID),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I received your message and have access to an AI agent with pausable capabilities, but the full agent processing logic is not yet implemented in this task handler.",
+			},
+		},
+	}
+
+	if task.History == nil {
+		task.History = []types.Message{}
+	}
+	task.History = append(task.History, *response)
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = response
+
+	return task, nil
 }
 
-func (p *PausableAgent) GetLLMClient() server.LLMClient {
-	return p.agent.GetLLMClient()
+// handleWithoutAgent processes a task without agent capabilities
+func (p *PausableTaskHandler) handleWithoutAgent(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	response := &types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("response-%s", task.ID),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I received your message. I'm a pausable task handler but no AI agent is configured. To enable AI responses with pausable capabilities, configure an OpenAI-compatible agent.",
+			},
+		},
+	}
+
+	if task.History == nil {
+		task.History = []types.Message{}
+	}
+	task.History = append(task.History, *response)
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = response
+
+	return task, nil
 }
 
-func (p *PausableAgent) GetToolBox() server.ToolBox {
-	return p.agent.GetToolBox()
+type PausableAgent struct {
+	agent  server.OpenAICompatibleAgent
+	logger *zap.Logger
 }
 
-func (p *PausableAgent) GetSystemPrompt() string {
-	return p.agent.GetSystemPrompt()
+// PausableToolBox wraps a toolbox to intercept INPUT_REQUIRED responses
+type PausableToolBox struct {
+	underlying server.ToolBox
+	logger     *zap.Logger
+}
+
+// InputRequiredError signals that the agent should pause for user input
+type InputRequiredError struct {
+	Message string
+}
+
+func (e *InputRequiredError) Error() string {
+	return fmt.Sprintf("INPUT_REQUIRED: %s", e.Message)
+}
+
+// NewPausableToolBox creates a new pausable toolbox wrapper
+func NewPausableToolBox(underlying server.ToolBox, logger *zap.Logger) *PausableToolBox {
+	return &PausableToolBox{
+		underlying: underlying,
+		logger:     logger,
+	}
+}
+
+func (p *PausableToolBox) GetTools() []sdk.ChatCompletionTool {
+	return p.underlying.GetTools()
+}
+
+func (p *PausableToolBox) ExecuteTool(ctx context.Context, name string, args map[string]interface{}) (string, error) {
+	result, err := p.underlying.ExecuteTool(ctx, name, args)
+	if err != nil {
+		return result, err
+	}
+
+	// Check if the tool result contains INPUT_REQUIRED marker
+	if len(result) > 15 && result[:15] == "INPUT_REQUIRED:" {
+		userMessage := result[15:] // Extract the message after the marker
+		p.logger.Info("Tool returned INPUT_REQUIRED marker, throwing pause error",
+			zap.String("tool", name),
+			zap.String("user_message", userMessage))
+		return "", &InputRequiredError{Message: userMessage}
+	}
+
+	return result, nil
+}
+
+func (p *PausableToolBox) GetToolNames() []string {
+	return p.underlying.GetToolNames()
+}
+
+func (p *PausableToolBox) HasTool(toolName string) bool {
+	return p.underlying.HasTool(toolName)
 }

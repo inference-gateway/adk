@@ -348,16 +348,21 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 		{
 			name: "convert SDK tool message",
 			input: sdk.Message{
-				Role:    sdk.Tool,
-				Content: "Tool response",
+				Role:       sdk.Tool,
+				Content:    "Tool response",
+				ToolCallId: func() *string { s := "call_123"; return &s }(),
 			},
 			expectedOutput: &types.Message{
 				Kind: "message",
 				Role: "tool",
 				Parts: []types.Part{
 					map[string]interface{}{
-						"kind": "text",
-						"text": "Tool response",
+						"kind": "data",
+						"data": map[string]interface{}{
+							"tool_call_id": "call_123",
+							"tool_name":    "",
+							"result":       "Tool response",
+						},
 					},
 				},
 			},

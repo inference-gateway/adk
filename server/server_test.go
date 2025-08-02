@@ -333,7 +333,7 @@ func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
 
 	agentCard := serverInstance.GetAgentCard()
 	assert.NotNil(t, agentCard, "Expected agent card to be set")
-	assert.Equal(t, "test-agent", agentCard.Name) // From createTestAgentCard()
+	assert.Equal(t, "test-agent", agentCard.Name)
 }
 
 func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
@@ -352,7 +352,6 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 
 	logger := zap.NewNop()
 
-	// Create a custom agent card for testing
 	testAgentCard := types.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
@@ -506,7 +505,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
-	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
+	_, actualTask, actualMessage, _ := mockTaskHandler.HandleTaskArgsForCall(0)
 	assert.NotNil(t, actualTask)
 	assert.NotNil(t, actualMessage)
 
@@ -556,7 +555,6 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		},
 	}
 
-	// Apply defaults to the config
 	cfg, err := config.NewWithDefaults(context.Background(), baseCfg)
 	require.NoError(t, err)
 
@@ -600,7 +598,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
-	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
+	_, actualTask, actualMessage, _ := mockTaskHandler.HandleTaskArgsForCall(0)
 
 	assert.NotNil(t, actualTask)
 	assert.NotNil(t, actualMessage)
@@ -973,7 +971,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 				},
 			}
 
-			result, err := agent.ProcessTask(context.Background(), task, message)
+			result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
 
 			if tt.expectedStates[0] == types.TaskStateFailed {
 				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
@@ -1337,7 +1335,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 				},
 			}
 
-			result, err := agent.ProcessTask(context.Background(), task, message)
+			result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
 
 			if tt.expectedFinalState == types.TaskStateFailed {
 				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
@@ -1415,7 +1413,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			},
 		}
 
-		result, err := agent.ProcessTask(context.Background(), task, message)
+		result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
 
 		assert.NoError(t, err)
 		assert.Equal(t, types.TaskStateCompleted, result.Status.State)
@@ -1531,7 +1529,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			},
 		}
 
-		result, err := agent.ProcessTask(context.Background(), task, message)
+		result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
 
 		assert.NoError(t, err)
 		assert.Equal(t, types.TaskStateCompleted, result.Status.State)

@@ -153,7 +153,7 @@ func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.Ope
 
 	if agent != nil {
 		server.agent = agent
-		server.taskHandler = NewAgentTaskHandler(logger, agent)
+		// Keep using the default task handler, agent will be passed as parameter
 		server.messageHandler = NewDefaultMessageHandlerWithAgent(logger, server.taskManager, agent, cfg)
 	}
 
@@ -462,14 +462,7 @@ func (s *A2AServerImpl) GetAgentCard() *types.AgentCard {
 
 // ProcessTask processes a task with the given message
 func (s *A2AServerImpl) ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	if s.agent != nil {
-		s.logger.Info("processing task with openai-compatible agent",
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
-		return s.agent.ProcessTask(ctx, task, message)
-	}
-
-	return s.taskHandler.HandleTask(ctx, task, message)
+	return s.taskHandler.HandleTask(ctx, task, message, s.agent)
 }
 
 // StartTaskProcessor starts the background task processing goroutine
@@ -515,7 +508,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		return
 	}
 
-	updatedTask, err := s.taskHandler.HandleTask(ctx, task, message)
+	updatedTask, err := s.taskHandler.HandleTask(ctx, task, message, s.agent)
 	if err != nil {
 		s.logger.Error("failed to process task",
 			zap.Error(err),
@@ -555,7 +548,6 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 // startTaskCleanup starts the background task cleanup process
 func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
-	// Get cleanup interval from config (defaults applied in NewWithDefaults)
 	cleanupInterval := s.cfg.QueueConfig.CleanupInterval
 
 	ticker := time.NewTicker(cleanupInterval)

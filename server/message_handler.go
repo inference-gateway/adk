@@ -59,22 +59,14 @@ func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManag
 		logger.Fatal("config is required but was nil")
 	}
 
-	var llmClient LLMClient
-	var toolBox ToolBox
-
-	if agent != nil {
-		llmClient = agent.GetLLMClient()
-		toolBox = agent.GetToolBox()
-	}
-
 	return &DefaultMessageHandler{
 		logger:        logger,
 		taskManager:   taskManager,
 		agent:         agent,
 		config:        cfg,
-		llmClient:     llmClient,
+		llmClient:     nil, // Will use agent directly
 		converter:     utils.NewOptimizedMessageConverter(logger),
-		toolBox:       toolBox,
+		toolBox:       nil, // Will use agent directly
 		maxIterations: cfg.AgentConfig.MaxChatCompletionIterations,
 	}
 }
@@ -85,6 +77,35 @@ func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params t
 		return nil, NewEmptyMessagePartsError()
 	}
 
+	// Check if this is a task resumption (TaskID provided)
+	if params.Message.TaskID != nil {
+		taskID := *params.Message.TaskID
+
+		// Resume the existing task with the new input
+		err := mh.taskManager.ResumeTaskWithInput(taskID, &params.Message)
+		if err != nil {
+			mh.logger.Error("failed to resume task with input",
+				zap.String("task_id", taskID),
+				zap.Error(err))
+			return nil, fmt.Errorf("failed to resume task: %w", err)
+		}
+
+		// Get the updated task to return
+		task, exists := mh.taskManager.GetTask(taskID)
+		if !exists {
+			mh.logger.Error("failed to get resumed task",
+				zap.String("task_id", taskID))
+			return nil, fmt.Errorf("resumed task not found: %s", taskID)
+		}
+
+		mh.logger.Info("task resumed with user input",
+			zap.String("task_id", taskID),
+			zap.String("context_id", task.ContextID))
+
+		return task, nil
+	}
+
+	// This is a new task creation
 	contextID := params.Message.ContextID
 	if contextID == nil {
 		newContextID := uuid.New().String()
@@ -147,14 +168,14 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 			}
 		}()
 
-		if mh.llmClient == nil {
-			mh.logger.Error("no LLM client available for streaming")
-			mh.handleMockStreaming(ctx, task, responseChan)
+		if mh.agent != nil {
+			// Use agent for streaming when available
+			mh.handleAgentStreaming(ctx, task, &params.Message, responseChan)
 			return
 		}
 
-		if mh.agent == nil {
-			mh.logger.Error("no agent available for streaming")
+		if mh.llmClient == nil {
+			mh.logger.Error("no LLM client or agent available for streaming")
 			mh.handleMockStreaming(ctx, task, responseChan)
 			return
 		}
@@ -170,6 +191,85 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 	}
 }
 
+// handleAgentStreaming handles streaming using the agent's RunWithStream method
+func (mh *DefaultMessageHandler) handleAgentStreaming(
+	ctx context.Context,
+	task *types.Task,
+	message *types.Message,
+	responseChan chan<- types.SendStreamingMessageResponse,
+) {
+	messages := make([]types.Message, 0)
+
+	if message != nil {
+		messages = append(messages, *message)
+	}
+
+	messages = append(messages, task.History...)
+
+	var tools []sdk.ChatCompletionTool
+	if mh.toolBox != nil {
+		tools = mh.toolBox.GetTools()
+	}
+
+	mh.logger.Debug("starting agent streaming",
+		zap.String("task_id", task.ID))
+
+	streamChan, err := mh.agent.RunWithStream(ctx, messages, tools)
+	if err != nil {
+		mh.logger.Error("agent streaming failed", zap.Error(err))
+		mh.sendErrorResponse(ctx, task, fmt.Sprintf("Agent streaming failed: %v", err), responseChan)
+		return
+	}
+
+	var lastMessage *types.Message
+	for msg := range streamChan {
+		if msg != nil {
+			lastMessage = msg
+
+			select {
+			case responseChan <- types.TaskStatusUpdateEvent{
+				Kind:      "status-update",
+				TaskID:    task.ID,
+				ContextID: task.ContextID,
+				Status: types.TaskStatus{
+					State:     types.TaskStateWorking,
+					Message:   msg,
+					Timestamp: StringPtr(mh.getCurrentTimestamp()),
+				},
+				Final: false,
+			}:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	if lastMessage != nil {
+		task.Status.Message = lastMessage
+		task.History = mh.agent.GetConversationHistory()
+		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
+		mh.logger.Info("agent streaming completed successfully",
+			zap.String("task_id", task.ID))
+
+		select {
+		case responseChan <- types.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    task.ID,
+			ContextID: task.ContextID,
+			Status: types.TaskStatus{
+				State:     types.TaskStateCompleted,
+				Message:   lastMessage,
+				Timestamp: StringPtr(mh.getCurrentTimestamp()),
+			},
+			Final: true,
+		}:
+		case <-ctx.Done():
+		}
+	} else {
+		mh.sendErrorResponse(ctx, task, "Agent returned no result", responseChan)
+	}
+}
+
 // handleIterativeStreaming handles the iterative streaming process with tool calling support
 func (mh *DefaultMessageHandler) handleIterativeStreaming(
 	ctx context.Context,
@@ -178,19 +278,6 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 	responseChan chan<- types.SendStreamingMessageResponse,
 ) {
 	messages := make([]types.Message, 0)
-
-	systemMessage := types.Message{
-		Kind:      "message",
-		MessageID: "system-prompt",
-		Role:      "system",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": mh.agent.GetSystemPrompt(),
-			},
-		},
-	}
-	messages = append(messages, systemMessage)
 
 	if message != nil {
 		messages = append(messages, *message)

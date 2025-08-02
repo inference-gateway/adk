@@ -33,7 +33,7 @@ type AgentBuilder interface {
 	// GetConfig returns the current agent configuration (for testing purposes)
 	GetConfig() *config.AgentConfig
 	// Build creates and returns the configured agent
-	Build() (*DefaultOpenAICompatibleAgent, error)
+	Build() (*OpenAICompatibleAgentImpl, error)
 }
 
 var _ AgentBuilder = (*AgentBuilderImpl)(nil)
@@ -142,49 +142,51 @@ func (b *AgentBuilderImpl) GetConfig() *config.AgentConfig {
 }
 
 // Build creates and returns the configured agent
-func (b *AgentBuilderImpl) Build() (*DefaultOpenAICompatibleAgent, error) {
-	agentConfig := b.config
+func (b *AgentBuilderImpl) Build() (*OpenAICompatibleAgentImpl, error) {
+	var agent *OpenAICompatibleAgentImpl
 
-	if b.systemPrompt != nil {
-		agentConfig.SystemPrompt = *b.systemPrompt
+	if b.config != nil {
+		agent = NewOpenAICompatibleAgentWithConfig(b.logger, b.config)
+	} else {
+		agent = NewOpenAICompatibleAgent(b.logger)
 	}
 
-	agent := NewDefaultOpenAICompatibleAgentWithConfig(b.logger, agentConfig)
+	// Override system prompt if explicitly set
+	if b.systemPrompt != nil {
+		if agent.config == nil {
+			agent.config = &config.AgentConfig{}
+		}
+		agent.config.SystemPrompt = *b.systemPrompt
+	}
 
 	if b.llmClient != nil {
-		agent.llmClient = b.llmClient
-	} else if b.config != nil {
-		client, err := NewOpenAICompatibleLLMClient(b.config, b.logger)
-		if err != nil {
-			return nil, err
-		}
-		agent.llmClient = client
+		agent.SetLLMClient(b.llmClient)
 	}
 
 	if b.toolBox != nil {
-		agent.toolBox = b.toolBox
+		agent.SetToolBox(b.toolBox)
 	}
 
 	return agent, nil
 }
 
 // SimpleAgent creates a basic agent with default configuration
-func SimpleAgent(logger *zap.Logger) (*DefaultOpenAICompatibleAgent, error) {
+func SimpleAgent(logger *zap.Logger) (*OpenAICompatibleAgentImpl, error) {
 	return NewAgentBuilder(logger).Build()
 }
 
 // AgentWithConfig creates an agent with the provided configuration
-func AgentWithConfig(logger *zap.Logger, config *config.AgentConfig) (*DefaultOpenAICompatibleAgent, error) {
+func AgentWithConfig(logger *zap.Logger, config *config.AgentConfig) (*OpenAICompatibleAgentImpl, error) {
 	return NewAgentBuilder(logger).WithConfig(config).Build()
 }
 
 // AgentWithLLM creates an agent with a pre-configured LLM client
-func AgentWithLLM(logger *zap.Logger, llmClient LLMClient) (*DefaultOpenAICompatibleAgent, error) {
+func AgentWithLLM(logger *zap.Logger, llmClient LLMClient) (*OpenAICompatibleAgentImpl, error) {
 	return NewAgentBuilder(logger).WithLLMClient(llmClient).Build()
 }
 
 // FullyConfiguredAgent creates an agent with all components configured
-func FullyConfiguredAgent(logger *zap.Logger, config *config.AgentConfig, llmClient LLMClient, toolBox ToolBox) (*DefaultOpenAICompatibleAgent, error) {
+func FullyConfiguredAgent(logger *zap.Logger, config *config.AgentConfig, llmClient LLMClient, toolBox ToolBox) (*OpenAICompatibleAgentImpl, error) {
 	return NewAgentBuilder(logger).
 		WithConfig(config).
 		WithLLMClient(llmClient).

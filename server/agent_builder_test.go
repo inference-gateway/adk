@@ -29,11 +29,6 @@ func TestAgentBuilder_Build_WithDefaults(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, agent)
 
-	task := &types.Task{
-		ID:      "test-task",
-		Status:  types.TaskStatus{State: types.TaskStateSubmitted},
-		History: []types.Message{},
-	}
 	message := &types.Message{
 		Role: "user",
 		Parts: []types.Part{
@@ -43,16 +38,18 @@ func TestAgentBuilder_Build_WithDefaults(t *testing.T) {
 			},
 		},
 	}
-	result, err := agent.ProcessTask(context.TODO(), task, message)
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
+	// Expect error because no LLM client is configured
+	result, err := agent.Run(context.TODO(), []types.Message{*message}, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no LLM client configured for agent")
+	assert.Nil(t, result)
 }
 
 func TestAgentBuilder_WithConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		config   *config.AgentConfig
-		expected func(*testing.T, *server.DefaultOpenAICompatibleAgent)
+		expected func(*testing.T, *server.OpenAICompatibleAgentImpl)
 	}{
 		{
 			name: "custom_system_prompt",
@@ -60,7 +57,7 @@ func TestAgentBuilder_WithConfig(t *testing.T) {
 				SystemPrompt:                "Custom test prompt",
 				MaxChatCompletionIterations: 5,
 			},
-			expected: func(t *testing.T, agent *server.DefaultOpenAICompatibleAgent) {
+			expected: func(t *testing.T, agent *server.OpenAICompatibleAgentImpl) {
 				assert.NotNil(t, agent)
 			},
 		},
@@ -70,7 +67,7 @@ func TestAgentBuilder_WithConfig(t *testing.T) {
 				SystemPrompt:                "You are a helpful AI assistant.",
 				MaxChatCompletionIterations: 20,
 			},
-			expected: func(t *testing.T, agent *server.DefaultOpenAICompatibleAgent) {
+			expected: func(t *testing.T, agent *server.OpenAICompatibleAgentImpl) {
 				assert.NotNil(t, agent)
 			},
 		},
@@ -84,7 +81,7 @@ func TestAgentBuilder_WithConfig(t *testing.T) {
 				Temperature:                 0.8,
 				MaxTokens:                   2048,
 			},
-			expected: func(t *testing.T, agent *server.DefaultOpenAICompatibleAgent) {
+			expected: func(t *testing.T, agent *server.OpenAICompatibleAgentImpl) {
 				assert.NotNil(t, agent)
 			},
 		},
@@ -483,8 +480,9 @@ func TestAgentBuilder_ErrorHandling(t *testing.T) {
 		WithConfig(invalidConfig).
 		Build()
 
-	assert.Error(t, err)
-	assert.Nil(t, agent)
+	// Build should succeed even with invalid config (validation happens later)
+	assert.NoError(t, err)
+	assert.NotNil(t, agent)
 }
 
 func TestAgentBuilder_FluentInterface(t *testing.T) {

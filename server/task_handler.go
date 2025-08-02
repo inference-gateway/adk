@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	types "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
@@ -13,7 +14,8 @@ import (
 type TaskHandler interface {
 	// HandleTask processes a task and returns the updated task
 	// This is where the main business logic should be implemented
-	HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error)
+	// The agent parameter is optional and will be nil if no OpenAI-compatible agent is configured
+	HandleTask(ctx context.Context, task *types.Task, message *types.Message, agent OpenAICompatibleAgent) (*types.Task, error)
 }
 
 // DefaultTaskHandler implements the TaskHandler interface
@@ -30,12 +32,106 @@ func NewDefaultTaskHandler(logger *zap.Logger) *DefaultTaskHandler {
 }
 
 // HandleTask processes a task and returns the updated task
-// This is a simple fallback implementation that marks tasks as completed
-func (th *DefaultTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	th.logger.Error("default task handler should not be used directly",
+// If an agent is provided, it will use the agent's capabilities, otherwise it will provide a simple response
+func (th *DefaultTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message, agent OpenAICompatibleAgent) (*types.Task, error) {
+	th.logger.Info("processing task with default task handler",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID),
-		zap.String("message", "configure an agent or custom task handler"))
+		zap.Bool("has_agent", agent != nil))
 
-	return nil, fmt.Errorf("no task handler configured: use AgentTaskHandler with an OpenAI-compatible agent or implement a custom TaskHandler")
+	if agent != nil {
+		return th.processWithAgent(ctx, task, message, agent)
+	}
+
+	return th.processWithoutAgent(ctx, task, message)
+}
+
+// processWithAgent processes a task using the provided agent's capabilities
+func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.Task, message *types.Message, agent OpenAICompatibleAgent) (*types.Task, error) {
+	th.logger.Info("processing task with agent capabilities",
+		zap.String("task_id", task.ID))
+
+	messages := make([]types.Message, 0, len(task.History)+1)
+	if message != nil {
+		messages = append(messages, *message)
+	}
+	messages = append(messages, task.History...)
+
+	response, err := agent.Run(ctx, messages, nil)
+	if err != nil {
+		th.logger.Error("agent processing failed", zap.Error(err))
+
+		task.Status.State = types.TaskStateFailed
+
+		errorText := err.Error()
+		if strings.Contains(errorText, "failed to create chat completion") {
+			errorText = "LLM request failed: " + err.Error()
+		}
+
+		task.Status.Message = &types.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("error-%s", task.ID),
+			Role:      "assistant",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": errorText,
+				},
+			},
+		}
+		return task, nil
+	}
+
+	conversationHistory := agent.GetConversationHistory()
+
+	if len(conversationHistory) > len(messages) {
+		newMessages := conversationHistory[len(messages):]
+		task.History = append(task.History, newMessages...)
+	} else {
+		if response != nil {
+			task.History = append(task.History, *response)
+		}
+	}
+
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = response
+
+	return task, nil
+}
+
+// processWithoutAgent processes a task without any agent capabilities
+func (th *DefaultTaskHandler) processWithoutAgent(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	th.logger.Info("processing task without agent",
+		zap.String("task_id", task.ID))
+
+	response := &types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("response-%s", task.ID),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I received your message. I'm a basic task handler without AI capabilities. To enable AI responses, configure an OpenAI-compatible agent.",
+			},
+		},
+	}
+
+	if task.History == nil {
+		task.History = []types.Message{}
+	}
+	task.History = append(task.History, *response)
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = response
+
+	return task, nil
+}
+
+// messageExistsInHistory checks if a message with the same MessageID already exists in the history
+func (th *DefaultTaskHandler) messageExistsInHistory(history []types.Message, message types.Message) bool {
+	for _, msg := range history {
+		if msg.MessageID == message.MessageID {
+			return true
+		}
+	}
+	return false
 }

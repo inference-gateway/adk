@@ -329,6 +329,18 @@ func TestMessageHandler_HandleMessageStream_WithLLM(t *testing.T) {
 
 	mockLLMClient.CreateStreamingChatCompletionReturns(streamResponseChan, streamErrorChan)
 
+	mockLLMClient.CreateChatCompletionReturns(&sdk.CreateChatCompletionResponse{
+		Choices: []sdk.ChatCompletionChoice{
+			{
+				Message: sdk.Message{
+					Role:    "assistant",
+					Content: "Hello world!",
+				},
+				FinishReason: "stop",
+			},
+		},
+	}, nil)
+
 	agent := server.NewOpenAICompatibleAgentWithLLM(logger, mockLLMClient)
 
 	taskManager := server.NewDefaultTaskManager(logger, 10)
@@ -581,6 +593,27 @@ func TestMessageHandler_HandleMessageStream_WithToolCalls(t *testing.T) {
 	}()
 
 	mockLLMClient.CreateStreamingChatCompletionReturns(streamResponseChan, streamErrorChan)
+	mockLLMClient.CreateChatCompletionReturns(&sdk.CreateChatCompletionResponse{
+		Choices: []sdk.ChatCompletionChoice{
+			{
+				Message: sdk.Message{
+					Role:    "assistant",
+					Content: "Based on the tool result, here's my response.",
+					ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
+						{
+							Id:   "call_123",
+							Type: "function",
+							Function: sdk.ChatCompletionMessageToolCallFunction{
+								Name:      "test_tool",
+								Arguments: `{"param": "value"}`,
+							},
+						},
+					},
+				},
+				FinishReason: "tool_calls",
+			},
+		},
+	}, nil)
 
 	testTool := server.NewBasicTool(
 		"test_tool",

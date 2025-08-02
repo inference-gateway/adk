@@ -29,7 +29,7 @@ func NewSimpleTaskHandler(logger *zap.Logger) *SimpleTaskHandler {
 }
 
 // HandleTask processes tasks with simple predefined responses
-func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message, agent server.OpenAICompatibleAgent) (*types.Task, error) {
 	h.logger.Info("processing task with simple handler",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))

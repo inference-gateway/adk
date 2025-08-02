@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"time"
 
 	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
@@ -184,16 +185,39 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg types.Message) (sdk
 func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types.Message, error) {
 	role := string(response.Role)
 
+	messageID := fmt.Sprintf("%s-%d", role, time.Now().UnixNano())
+
 	message := &types.Message{
 		Kind:      "message",
-		MessageID: "",
+		MessageID: messageID,
 		Role:      role,
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": string(types.MessagePartKindText),
-				"text": response.Content,
-			},
-		},
+		Parts:     []types.Part{},
+	}
+
+	if role == "tool" {
+		toolData := map[string]interface{}{
+			"result": response.Content,
+		}
+
+		if response.ToolCalls != nil && len(*response.ToolCalls) > 0 {
+			toolData["tool_name"] = (*response.ToolCalls)[0].Function.Name
+		} else {
+			toolData["tool_name"] = ""
+		}
+
+		if response.ToolCallId != nil {
+			toolData["tool_call_id"] = *response.ToolCallId
+		}
+
+		message.Parts = append(message.Parts, map[string]interface{}{
+			"kind": string(types.MessagePartKindData),
+			"data": toolData,
+		})
+	} else {
+		message.Parts = append(message.Parts, map[string]interface{}{
+			"kind": string(types.MessagePartKindText),
+			"text": response.Content,
+		})
 	}
 
 	if response.ToolCalls != nil && len(*response.ToolCalls) > 0 {
