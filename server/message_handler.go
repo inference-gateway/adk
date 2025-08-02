@@ -246,7 +246,17 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 
 	if lastMessage != nil {
 		task.Status.Message = lastMessage
-		task.History = mh.agent.GetConversationHistory()
+		// Get conversation history added during this task execution (including tool calls)
+		conversationHistory := mh.agent.GetConversationHistory()
+		
+		// Calculate how many new messages were added during this execution
+		if len(conversationHistory) > len(messages) {
+			newMessages := conversationHistory[len(messages):]
+			task.History = append(task.History, newMessages...)
+		} else {
+			// Fallback to just adding the last message
+			task.History = append(task.History, *lastMessage)
+		}
 		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
 		mh.logger.Info("agent streaming completed successfully",
 			zap.String("task_id", task.ID))

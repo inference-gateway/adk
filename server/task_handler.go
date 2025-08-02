@@ -82,15 +82,17 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 		return task, nil
 	}
 
+	// Get conversation history added during this task execution (including tool calls)
 	conversationHistory := agent.GetConversationHistory()
-
+	
+	// Calculate how many new messages were added during this execution
+	// The agent history should now include the original messages plus new responses/tool calls
 	if len(conversationHistory) > len(messages) {
 		newMessages := conversationHistory[len(messages):]
 		task.History = append(task.History, newMessages...)
-	} else {
-		if response != nil {
-			task.History = append(task.History, *response)
-		}
+	} else if response != nil {
+		// Fallback in case agent didn't update conversation history
+		task.History = append(task.History, *response)
 	}
 
 	task.Status.State = types.TaskStateCompleted
