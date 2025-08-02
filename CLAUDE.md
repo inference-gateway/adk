@@ -66,7 +66,7 @@ Uses `github.com/sethvargo/go-envconfig` for environment-based configuration:
 
 **Key Environment Variables:**
 - `AGENT_NAME` - Agent identifier
-- `AGENT_CLIENT_API_KEY` - LLM provider API key
+- `INFERENCE_GATEWAY_URL` - Inference Gateway URL (configures AGENT_CLIENT_BASE_URL)
 - `AGENT_CLIENT_PROVIDER` - LLM provider (openai, anthropic, etc.)
 - `AGENT_CLIENT_MODEL` - Model name
 - `CAPABILITIES_STREAMING` - Enable streaming support

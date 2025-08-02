@@ -201,7 +201,7 @@ func main() {
     )
     toolBox.AddTool(weatherTool)
 
-    // Create LLM client (requires AGENT_CLIENT_API_KEY environment variable)
+    // Create LLM client (requires INFERENCE_GATEWAY_URL environment variable)
     var a2aServer server.A2AServer
     var err error
     if cfg.AgentConfig != nil && cfg.AgentConfig.APIKey != "" {
@@ -887,7 +887,7 @@ go run main.go
 AGENT_CARD_FILE_PATH="./my-custom-card.json" go run main.go
 
 # Run with AI capabilities
-export AGENT_CLIENT_API_KEY="sk-..."
+export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
 export AGENT_CARD_FILE_PATH="./.well-known/agent.json"
 go run main.go
 ```
@@ -1217,7 +1217,7 @@ AGENT_CARD_FILE_PATH="./.well-known/agent.json"    # Path to JSON AgentCard file
 # LLM client configuration
 AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
 AGENT_CLIENT_MODEL="gpt-4"                  # Model name
-AGENT_CLIENT_API_KEY="your-api-key"         # Required for AI features
+INFERENCE_GATEWAY_URL="http://localhost:3000/v1"  # Required for AI features
 AGENT_CLIENT_BASE_URL="https://api.openai.com/v1"  # Custom endpoint
 AGENT_CLIENT_MAX_TOKENS="4096"              # Max tokens for completion
 AGENT_CLIENT_TEMPERATURE="0.7"              # Temperature for completion

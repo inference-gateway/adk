@@ -26,24 +26,20 @@ func main() {
 	}
 	defer logger.Sync()
 
-	// Step 2: Check for required API key
-	apiKey := os.Getenv("AGENT_CLIENT_API_KEY")
-	if apiKey == "" {
-		fmt.Println("\n❌ ERROR: AI provider configuration required!")
-		fmt.Println("\n🔑 Please set AGENT_CLIENT_API_KEY environment variable:")
-		fmt.Println("\n📋 Examples:")
-		fmt.Println("  # OpenAI")
-		fmt.Println("  export AGENT_CLIENT_API_KEY=\"sk-...\"")
-		fmt.Println("\n  # Anthropic")
-		fmt.Println("  export AGENT_CLIENT_API_KEY=\"sk-ant-...\"")
-		fmt.Println("  export AGENT_CLIENT_PROVIDER=\"anthropic\"")
-		fmt.Println("\n  # Via Inference Gateway")
-		fmt.Println("  export AGENT_CLIENT_API_KEY=\"your-key\"")
-		fmt.Println("  export AGENT_CLIENT_BASE_URL=\"http://localhost:3000/v1\"")
+	// Step 2: Check for required inference gateway URL
+	gatewayURL := os.Getenv("INFERENCE_GATEWAY_URL")
+	if gatewayURL == "" {
+		fmt.Println("\n❌ ERROR: Inference Gateway configuration required!")
+		fmt.Println("\n🔗 Please set INFERENCE_GATEWAY_URL environment variable:")
+		fmt.Println("\n📋 Example:")
+		fmt.Println("  export INFERENCE_GATEWAY_URL=\"http://localhost:3000/v1\"")
 		fmt.Println("\n💡 For a mock server without AI, use the mock example instead:")
 		fmt.Println("  go run ../pausedtask-mock/main.go")
 		os.Exit(1)
 	}
+
+	// Set the base URL for the agent configuration
+	os.Setenv("AGENT_CLIENT_BASE_URL", gatewayURL)
 
 	// Step 3: Load configuration from environment
 	cfg := config.Config{

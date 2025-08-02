@@ -42,10 +42,8 @@ For AI capabilities with LLM integration and tool calling:
 ```bash
 cd cmd/aipowered
 
-# Required: Set your API key
-export AGENT_CLIENT_API_KEY="sk-..."  # OpenAI
-# OR
-export AGENT_CLIENT_API_KEY="sk-ant-..." AGENT_CLIENT_PROVIDER="anthropic"  # Anthropic
+# Required: Set inference gateway URL
+export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
 
 go run main.go
 ```
@@ -66,10 +64,8 @@ Demonstrates intelligent task pausing where the LLM decides when to request user
 ```bash
 cd cmd/pausedtask
 
-# Required: Set your API key
-export AGENT_CLIENT_API_KEY="sk-..."  # OpenAI
-# OR  
-export AGENT_CLIENT_API_KEY="sk-ant-..." AGENT_CLIENT_PROVIDER="anthropic"  # Anthropic
+# Required: Set inference gateway URL
+export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
 
 go run main.go
 ```
@@ -165,34 +161,24 @@ The agent metadata appears in:
 
 ### AI-Powered Server
 **Required:**
-- `AGENT_CLIENT_API_KEY` - Your LLM provider API key
-
-**Required for specific providers:**
-- `AGENT_CLIENT_PROVIDER` - LLM provider: "openai", "anthropic", "deepseek", "ollama" (required for non-OpenAI providers)
-- `AGENT_CLIENT_BASE_URL` - Custom API endpoint (required for Ollama, Inference Gateway, or custom deployments)
+- `INFERENCE_GATEWAY_URL` - Your inference gateway URL (automatically configures AGENT_CLIENT_BASE_URL)
 
 **Optional:**
 - `AGENT_CLIENT_MODEL` - Model name (uses provider defaults if not specified)
 - `PORT` - Server port (default: "8080")
 
-### Provider Examples
+### Configuration Examples
 
 ```bash
-# OpenAI (default)
-export AGENT_CLIENT_API_KEY="sk-..."
+# Standard Inference Gateway
+export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
 
-# Anthropic
-export AGENT_CLIENT_API_KEY="sk-ant-..."
-export AGENT_CLIENT_PROVIDER="anthropic"
+# Custom Inference Gateway with specific model
+export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
+export AGENT_CLIENT_MODEL="gpt-4"
 
-# Via Inference Gateway
-export AGENT_CLIENT_API_KEY="your-key"
-export AGENT_CLIENT_BASE_URL="http://localhost:3000/v1"
-
-# Local Ollama
-export AGENT_CLIENT_PROVIDER="ollama"
-export AGENT_CLIENT_MODEL="llama3.2"
-export AGENT_CLIENT_BASE_URL="http://localhost:11434/v1"
+# Production Gateway
+export INFERENCE_GATEWAY_URL="https://gateway.example.com/v1"
 ```
 
 ## Architecture
