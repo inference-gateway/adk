@@ -78,3 +78,14 @@ Environment variables:
 
 - Increase timeout values in environment variables
 - Check agent processing performance
+
+**Further debugging tips:**
+
+Use the a2a-debugger:
+
+```bash
+docker run --rm --net host ghcr.io/inference-gateway/a2a-debugger:latest --server-url http://localhost:8080 tasks list
+docker run --rm --net host ghcr.io/inference-gateway/a2a-debugger:latest --server-url http://localhost:8080 tasks submit "Hello, can you help me?"
+docker run --rm --net host ghcr.io/inference-gateway/a2a-debugger:latest --server-url http://localhost:8080 tasks get <task_id>
+docker run --rm --net host ghcr.io/inference-gateway/a2a-debugger:latest --server-url http://localhost:8080 tasks history <context-id>
+```
