@@ -515,10 +515,6 @@ func (s *InMemoryStorage) CleanupCompletedTasks() int {
 		}
 	}
 
-	if len(toRemove) > 0 {
-		s.logger.Info("cleaned up completed tasks", zap.Int("count", len(toRemove)))
-	}
-
 	return len(toRemove)
 }
 
@@ -527,7 +523,6 @@ func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int)
 	s.deadLetterMu.Lock()
 	defer s.deadLetterMu.Unlock()
 
-	// Separate tasks by state and sort by timestamp (newest first)
 	completedTasks := make([]*types.Task, 0)
 	failedTasks := make([]*types.Task, 0)
 
@@ -540,14 +535,12 @@ func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int)
 		}
 	}
 
-	// Sort by timestamp (newest first)
 	s.sortTasksByTimestamp(completedTasks, true)
 	s.sortTasksByTimestamp(failedTasks, true)
 
 	var toRemove []string
 	contextUpdates := make(map[string][]string)
 
-	// Remove excess completed tasks (keep only maxCompleted newest)
 	if len(completedTasks) > maxCompleted {
 		for i := maxCompleted; i < len(completedTasks); i++ {
 			task := completedTasks[i]
@@ -556,7 +549,6 @@ func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int)
 		}
 	}
 
-	// Remove excess failed tasks (keep only maxFailed newest)
 	if len(failedTasks) > maxFailed {
 		for i := maxFailed; i < len(failedTasks); i++ {
 			task := failedTasks[i]
@@ -565,12 +557,10 @@ func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int)
 		}
 	}
 
-	// Remove the tasks
 	for _, taskID := range toRemove {
 		delete(s.deadLetterTasks, taskID)
 	}
 
-	// Update context mappings
 	for contextID, taskIDsToRemove := range contextUpdates {
 		contextTasks := s.tasksByContext[contextID]
 
@@ -593,13 +583,6 @@ func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int)
 		} else {
 			s.tasksByContext[contextID] = remainingTasks
 		}
-	}
-
-	if len(toRemove) > 0 {
-		s.logger.Info("cleaned up tasks with retention policy",
-			zap.Int("removed_count", len(toRemove)),
-			zap.Int("max_completed", maxCompleted),
-			zap.Int("max_failed", maxFailed))
 	}
 
 	return len(toRemove)
