@@ -81,7 +81,7 @@ Environment variables:
 
 **Further debugging tips:**
 
-Use the a2a-debugger:
+There is a utility developed to allow you to troubleshot the A2A server using a client, it is called `a2a-debugger`. It can be used to list tasks, submit new tasks, get task details, and view task history:
 
 ```bash
 docker run --rm --net host ghcr.io/inference-gateway/a2a-debugger:latest --server-url http://localhost:8080 tasks list
