@@ -47,7 +47,7 @@ Environment variables:
 
 | Variable            | Default                     | Description                 |
 | ------------------- | --------------------------- | --------------------------- |
-| `A2A_SERVER_URL`    | `http://localhost:8080/a2a` | A2A agent server URL        |
+| `A2A_SERVER_URL`    | `http://localhost:8080`     | A2A agent server URL        |
 | `POLL_INTERVAL`     | `2s`                        | Polling interval (async)    |
 | `MAX_POLL_TIMEOUT`  | `30s`                       | Max polling timeout (async) |
 | `STREAMING_TIMEOUT` | `60s`                       | Max streaming timeout       |
