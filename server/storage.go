@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -8,25 +9,34 @@ import (
 	zap "go.uber.org/zap"
 )
 
-// Storage defines the interface for managing conversation history and task data
-// The storage is designed to support multiple tasks per context ID and efficient retrieval
+// QueuedTask represents a task in the processing queue
+type QueuedTask struct {
+	Task      *types.Task
+	RequestID interface{}
+}
+
+// Storage defines the interface for queue-centric task management
+// Tasks carry their complete message history and flow through: Queue -> Processing -> Dead Letter
 type Storage interface {
-	// Task Management
-	StoreTask(task *types.Task) error
+	// Task Queue Management (primary storage for active tasks)
+	EnqueueTask(task *types.Task, requestID interface{}) error
+	DequeueTask(ctx context.Context) (*QueuedTask, error)
+	GetQueueLength() int
+	ClearQueue() error
+
+	// Active Task Queries (for tasks currently in queue or being processed)
+	GetActiveTask(taskID string) (*types.Task, error)
+	UpdateActiveTask(task *types.Task) error
+
+	// Dead Letter Queue (completed/failed tasks with full history for audit)
+	StoreDeadLetterTask(task *types.Task) error
 	GetTask(taskID string) (*types.Task, bool)
 	GetTaskByContextAndID(contextID, taskID string) (*types.Task, bool)
-	UpdateTask(task *types.Task) error
 	DeleteTask(taskID string) error
 	ListTasks(filter TaskFilter) ([]*types.Task, error)
 	ListTasksByContext(contextID string, filter TaskFilter) ([]*types.Task, error)
 
-	// Conversation History Management
-	GetConversationHistory(contextID string) []types.Message
-	UpdateConversationHistory(contextID string, messages []types.Message)
-	AddMessageToConversation(contextID string, message types.Message) error
-	TrimConversationHistory(contextID string, maxMessages int) error
-
-	// Context Management
+	// Context Management (contexts are implicit from tasks)
 	GetContexts() []string
 	GetContextsWithTasks() []string
 	DeleteContext(contextID string) error
@@ -34,7 +44,7 @@ type Storage interface {
 
 	// Cleanup Operations
 	CleanupCompletedTasks() int
-	CleanupOldConversations(maxAge int64) int
+	CleanupTasksWithRetention(maxCompleted, maxFailed int) int
 
 	// Health and Statistics
 	GetStats() StorageStats
@@ -81,13 +91,21 @@ type StorageStats struct {
 
 // InMemoryStorage implements Storage interface using in-memory storage
 type InMemoryStorage struct {
-	logger                 *zap.Logger
-	tasks                  map[string]*types.Task
-	tasksByContext         map[string][]string
-	conversationHistory    map[string][]types.Message
-	maxConversationHistory int
-	tasksMu                sync.RWMutex
-	conversationMu         sync.RWMutex
+	logger *zap.Logger
+
+	// Active tasks (in queue only - no persistent storage for active tasks)
+	activeTasksMetadata map[string]*types.Task
+	activeTasksMu       sync.RWMutex
+
+	// Dead letter queue (completed/failed tasks for audit)
+	deadLetterTasks map[string]*types.Task
+	tasksByContext  map[string][]string
+	deadLetterMu    sync.RWMutex
+
+	// Task queue for processing (primary storage for active tasks)
+	taskQueue   []*QueuedTask
+	queueMu     sync.RWMutex
+	queueNotify chan struct{}
 }
 
 // NewInMemoryStorage creates a new in-memory storage instance
@@ -97,128 +115,64 @@ func NewInMemoryStorage(logger *zap.Logger, maxConversationHistory int) *InMemor
 	}
 
 	return &InMemoryStorage{
-		logger:                 logger,
-		tasks:                  make(map[string]*types.Task),
-		tasksByContext:         make(map[string][]string),
-		conversationHistory:    make(map[string][]types.Message),
-		maxConversationHistory: maxConversationHistory,
+		logger:              logger,
+		activeTasksMetadata: make(map[string]*types.Task),
+		deadLetterTasks:     make(map[string]*types.Task),
+		tasksByContext:      make(map[string][]string),
+		taskQueue:           make([]*QueuedTask, 0),
+		queueNotify:         make(chan struct{}, 1000), // Buffered channel for queue notifications
 	}
 }
 
-// GetConversationHistory retrieves conversation history for a context ID
-func (s *InMemoryStorage) GetConversationHistory(contextID string) []types.Message {
-	s.conversationMu.RLock()
-	defer s.conversationMu.RUnlock()
+// GetActiveTask retrieves an active task by ID (from queue or processing)
+func (s *InMemoryStorage) GetActiveTask(taskID string) (*types.Task, error) {
+	s.activeTasksMu.RLock()
+	defer s.activeTasksMu.RUnlock()
 
-	if history, exists := s.conversationHistory[contextID]; exists {
-		result := make([]types.Message, len(history))
-		copy(result, history)
-		return result
+	task, exists := s.activeTasksMetadata[taskID]
+	if !exists {
+		return nil, fmt.Errorf("active task not found: %s", taskID)
 	}
 
-	return []types.Message{}
+	taskCopy := *task
+	return &taskCopy, nil
 }
 
-// UpdateConversationHistory updates conversation history for a context ID
-func (s *InMemoryStorage) UpdateConversationHistory(contextID string, messages []types.Message) {
-	s.conversationMu.Lock()
-	defer s.conversationMu.Unlock()
-
-	history := make([]types.Message, len(messages))
-	copy(history, messages)
-
-	trimmedHistory := s.trimConversationHistoryInternal(history)
-	s.conversationHistory[contextID] = trimmedHistory
-
-	s.logger.Debug("conversation history updated",
-		zap.String("context_id", contextID),
-		zap.Int("message_count", len(trimmedHistory)),
-		zap.Int("max_history", s.maxConversationHistory))
-}
-
-// AddMessageToConversation adds a single message to conversation history
-func (s *InMemoryStorage) AddMessageToConversation(contextID string, message types.Message) error {
-	s.conversationMu.Lock()
-	defer s.conversationMu.Unlock()
-
-	history := s.conversationHistory[contextID]
-	if history == nil {
-		history = make([]types.Message, 0, 1)
-	}
-
-	for _, existingMsg := range history {
-		if existingMsg.MessageID == message.MessageID {
-			s.logger.Warn("attempted to add duplicate message to conversation",
-				zap.String("context_id", contextID),
-				zap.String("message_id", message.MessageID))
-			return nil
-		}
-	}
-
-	history = append(history, message)
-	trimmedHistory := s.trimConversationHistoryInternal(history)
-	s.conversationHistory[contextID] = trimmedHistory
-
-	s.logger.Debug("message added to conversation history",
-		zap.String("context_id", contextID),
-		zap.String("message_id", message.MessageID),
-		zap.String("role", message.Role),
-		zap.Int("total_messages", len(trimmedHistory)))
-
-	return nil
-}
-
-// TrimConversationHistory trims conversation history to max messages
-func (s *InMemoryStorage) TrimConversationHistory(contextID string, maxMessages int) error {
-	s.conversationMu.Lock()
-	defer s.conversationMu.Unlock()
-
-	history := s.conversationHistory[contextID]
-	if history == nil || len(history) <= maxMessages {
-		return nil
-	}
-
-	startIndex := len(history) - maxMessages
-	trimmed := make([]types.Message, maxMessages)
-	copy(trimmed, history[startIndex:])
-	s.conversationHistory[contextID] = trimmed
-
-	s.logger.Debug("conversation history trimmed",
-		zap.String("context_id", contextID),
-		zap.Int("original_length", len(history)),
-		zap.Int("trimmed_length", len(trimmed)))
-
-	return nil
-}
-
-// trimConversationHistoryInternal ensures conversation history doesn't exceed the maximum allowed size
-func (s *InMemoryStorage) trimConversationHistoryInternal(history []types.Message) []types.Message {
-	if s.maxConversationHistory <= 0 {
-		return []types.Message{}
-	}
-
-	if len(history) <= s.maxConversationHistory {
-		return history
-	}
-
-	startIndex := len(history) - s.maxConversationHistory
-	trimmed := make([]types.Message, s.maxConversationHistory)
-	copy(trimmed, history[startIndex:])
-
-	return trimmed
-}
-
-// StoreTask stores a task and maintains context->tasks mapping
-func (s *InMemoryStorage) StoreTask(task *types.Task) error {
+// UpdateActiveTask updates an active task's metadata
+func (s *InMemoryStorage) UpdateActiveTask(task *types.Task) error {
 	if task == nil {
 		return fmt.Errorf("task cannot be nil")
 	}
 
-	s.tasksMu.Lock()
-	defer s.tasksMu.Unlock()
+	s.activeTasksMu.Lock()
+	defer s.activeTasksMu.Unlock()
+
+	if _, exists := s.activeTasksMetadata[task.ID]; !exists {
+		return fmt.Errorf("active task not found: %s", task.ID)
+	}
 
 	taskCopy := *task
-	s.tasks[task.ID] = &taskCopy
+	s.activeTasksMetadata[task.ID] = &taskCopy
+
+	s.logger.Debug("active task updated",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID),
+		zap.String("state", string(task.Status.State)))
+
+	return nil
+}
+
+// StoreDeadLetterTask stores a completed/failed task in the dead letter queue for audit
+func (s *InMemoryStorage) StoreDeadLetterTask(task *types.Task) error {
+	if task == nil {
+		return fmt.Errorf("task cannot be nil")
+	}
+
+	s.deadLetterMu.Lock()
+	defer s.deadLetterMu.Unlock()
+
+	taskCopy := *task
+	s.deadLetterTasks[task.ID] = &taskCopy
 
 	contextTasks := s.tasksByContext[task.ContextID]
 
@@ -234,7 +188,11 @@ func (s *InMemoryStorage) StoreTask(task *types.Task) error {
 		s.tasksByContext[task.ContextID] = append(contextTasks, task.ID)
 	}
 
-	s.logger.Debug("task stored",
+	s.activeTasksMu.Lock()
+	delete(s.activeTasksMetadata, task.ID)
+	s.activeTasksMu.Unlock()
+
+	s.logger.Debug("task stored in dead letter queue",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
@@ -242,12 +200,12 @@ func (s *InMemoryStorage) StoreTask(task *types.Task) error {
 	return nil
 }
 
-// GetTask retrieves a task by ID
+// GetTask retrieves a task by ID from dead letter queue
 func (s *InMemoryStorage) GetTask(taskID string) (*types.Task, bool) {
-	s.tasksMu.RLock()
-	defer s.tasksMu.RUnlock()
+	s.deadLetterMu.RLock()
+	defer s.deadLetterMu.RUnlock()
 
-	task, exists := s.tasks[taskID]
+	task, exists := s.deadLetterTasks[taskID]
 	if !exists {
 		return nil, false
 	}
@@ -256,12 +214,12 @@ func (s *InMemoryStorage) GetTask(taskID string) (*types.Task, bool) {
 	return &taskCopy, true
 }
 
-// GetTaskByContextAndID retrieves a task by context ID and task ID
+// GetTaskByContextAndID retrieves a task by context ID and task ID from dead letter queue
 func (s *InMemoryStorage) GetTaskByContextAndID(contextID, taskID string) (*types.Task, bool) {
-	s.tasksMu.RLock()
-	defer s.tasksMu.RUnlock()
+	s.deadLetterMu.RLock()
+	defer s.deadLetterMu.RUnlock()
 
-	task, exists := s.tasks[taskID]
+	task, exists := s.deadLetterTasks[taskID]
 	if !exists {
 		return nil, false
 	}
@@ -274,43 +232,19 @@ func (s *InMemoryStorage) GetTaskByContextAndID(contextID, taskID string) (*type
 	return &taskCopy, true
 }
 
-// UpdateTask updates an existing task
-func (s *InMemoryStorage) UpdateTask(task *types.Task) error {
-	if task == nil {
-		return fmt.Errorf("task cannot be nil")
-	}
-
-	s.tasksMu.Lock()
-	defer s.tasksMu.Unlock()
-
-	if _, exists := s.tasks[task.ID]; !exists {
-		return fmt.Errorf("task not found: %s", task.ID)
-	}
-
-	taskCopy := *task
-	s.tasks[task.ID] = &taskCopy
-
-	s.logger.Debug("task updated",
-		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
-		zap.String("state", string(task.Status.State)))
-
-	return nil
-}
-
-// DeleteTask deletes a task and cleans up context mapping
+// DeleteTask deletes a task from dead letter queue and cleans up context mapping
 func (s *InMemoryStorage) DeleteTask(taskID string) error {
-	s.tasksMu.Lock()
-	defer s.tasksMu.Unlock()
+	s.deadLetterMu.Lock()
+	defer s.deadLetterMu.Unlock()
 
-	task, exists := s.tasks[taskID]
+	task, exists := s.deadLetterTasks[taskID]
 	if !exists {
 		return fmt.Errorf("task not found: %s", taskID)
 	}
 
 	contextID := task.ContextID
 
-	delete(s.tasks, taskID)
+	delete(s.deadLetterTasks, taskID)
 
 	contextTasks := s.tasksByContext[contextID]
 	for i, existingTaskID := range contextTasks {
@@ -331,14 +265,12 @@ func (s *InMemoryStorage) DeleteTask(taskID string) error {
 	return nil
 }
 
-// ListTasks retrieves a list of tasks based on the provided filter
+// ListTasks retrieves a list of tasks based on the provided filter from both active and dead letter queues
 func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
-	s.tasksMu.RLock()
-	defer s.tasksMu.RUnlock()
-
 	var filteredTasks []*types.Task
 
-	for _, task := range s.tasks {
+	s.deadLetterMu.RLock()
+	for _, task := range s.deadLetterTasks {
 		if filter.State != nil && task.Status.State != *filter.State {
 			continue
 		}
@@ -350,6 +282,44 @@ func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 		taskCopy := *task
 		filteredTasks = append(filteredTasks, &taskCopy)
 	}
+	s.deadLetterMu.RUnlock()
+
+	queueTaskIDs := make(map[string]bool)
+	s.queueMu.RLock()
+	for _, queuedTask := range s.taskQueue {
+		task := queuedTask.Task
+		queueTaskIDs[task.ID] = true
+
+		if filter.State != nil && task.Status.State != *filter.State {
+			continue
+		}
+
+		if filter.ContextID != nil && task.ContextID != *filter.ContextID {
+			continue
+		}
+
+		taskCopy := *task
+		filteredTasks = append(filteredTasks, &taskCopy)
+	}
+	s.queueMu.RUnlock()
+
+	s.activeTasksMu.RLock()
+	for _, task := range s.activeTasksMetadata {
+		task := task
+		if filter.State != nil && task.Status.State != *filter.State {
+			continue
+		}
+
+		if filter.ContextID != nil && task.ContextID != *filter.ContextID {
+			continue
+		}
+
+		if !queueTaskIDs[task.ID] {
+			taskCopy := *task
+			filteredTasks = append(filteredTasks, &taskCopy)
+		}
+	}
+	s.activeTasksMu.RUnlock()
 
 	s.sortTasks(filteredTasks, filter.SortBy, filter.SortOrder)
 
@@ -367,10 +337,10 @@ func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 	return filteredTasks[start:end], nil
 }
 
-// ListTasksByContext retrieves tasks for a specific context with filtering
+// ListTasksByContext retrieves tasks for a specific context with filtering from dead letter queue
 func (s *InMemoryStorage) ListTasksByContext(contextID string, filter TaskFilter) ([]*types.Task, error) {
-	s.tasksMu.RLock()
-	defer s.tasksMu.RUnlock()
+	s.deadLetterMu.RLock()
+	defer s.deadLetterMu.RUnlock()
 
 	contextTasks, exists := s.tasksByContext[contextID]
 	if !exists {
@@ -380,9 +350,9 @@ func (s *InMemoryStorage) ListTasksByContext(contextID string, filter TaskFilter
 	var filteredTasks []*types.Task
 
 	for _, taskID := range contextTasks {
-		task, exists := s.tasks[taskID]
+		task, exists := s.deadLetterTasks[taskID]
 		if !exists {
-			s.logger.Warn("task not found in tasks map but exists in context mapping",
+			s.logger.Warn("task not found in dead letter tasks but exists in context mapping",
 				zap.String("task_id", taskID),
 				zap.String("context_id", contextID))
 			continue
@@ -423,6 +393,20 @@ func (s *InMemoryStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, o
 			var shouldSwap bool
 
 			switch sortBy {
+			case TaskSortFieldCreatedAt, TaskSortFieldUpdatedAt:
+				var time1, time2 string
+				if tasks[j].Status.Timestamp != nil {
+					time1 = *tasks[j].Status.Timestamp
+				}
+				if tasks[j+1].Status.Timestamp != nil {
+					time2 = *tasks[j+1].Status.Timestamp
+				}
+
+				if order == SortOrderAsc {
+					shouldSwap = time1 > time2
+				} else {
+					shouldSwap = time1 < time2
+				}
 			case TaskSortFieldState:
 				if order == SortOrderAsc {
 					shouldSwap = string(tasks[j].Status.State) > string(tasks[j+1].Status.State)
@@ -450,43 +434,52 @@ func (s *InMemoryStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, o
 	}
 }
 
-// GetContexts returns all context IDs that have conversation history
+// GetContexts returns all context IDs that have tasks (both active and dead letter)
 func (s *InMemoryStorage) GetContexts() []string {
-	s.conversationMu.RLock()
-	defer s.conversationMu.RUnlock()
+	contextSet := make(map[string]bool)
 
-	contexts := make([]string, 0, len(s.conversationHistory))
-	for contextID := range s.conversationHistory {
+	s.deadLetterMu.RLock()
+	for contextID := range s.tasksByContext {
+		contextSet[contextID] = true
+	}
+	s.deadLetterMu.RUnlock()
+
+	s.queueMu.RLock()
+	for _, queuedTask := range s.taskQueue {
+		contextSet[queuedTask.Task.ContextID] = true
+	}
+	s.queueMu.RUnlock()
+
+	s.activeTasksMu.RLock()
+	for _, task := range s.activeTasksMetadata {
+		contextSet[task.ContextID] = true
+	}
+	s.activeTasksMu.RUnlock()
+
+	contexts := make([]string, 0, len(contextSet))
+	for contextID := range contextSet {
 		contexts = append(contexts, contextID)
 	}
 
 	return contexts
 }
 
-// DeleteContext deletes all conversation history for a context
+// DeleteContext deletes all tasks for a context (not applicable since no conversation history)
 func (s *InMemoryStorage) DeleteContext(contextID string) error {
-	s.conversationMu.Lock()
-	defer s.conversationMu.Unlock()
-
-	if _, exists := s.conversationHistory[contextID]; !exists {
-		return fmt.Errorf("context not found: %s", contextID)
-	}
-
-	delete(s.conversationHistory, contextID)
-	s.logger.Debug("context deleted", zap.String("context_id", contextID))
-
-	return nil
+	// Since we don't have separate conversation history,
+	// this is equivalent to deleting all tasks for the context
+	return s.DeleteContextAndTasks(contextID)
 }
 
 // CleanupCompletedTasks removes completed, failed, and canceled tasks
 func (s *InMemoryStorage) CleanupCompletedTasks() int {
-	s.tasksMu.Lock()
-	defer s.tasksMu.Unlock()
+	s.deadLetterMu.Lock()
+	defer s.deadLetterMu.Unlock()
 
 	var toRemove []string
-	contextUpdates := make(map[string][]string) // contextID -> taskIDs to remove
+	contextUpdates := make(map[string][]string)
 
-	for taskID, task := range s.tasks {
+	for taskID, task := range s.deadLetterTasks {
 		switch task.Status.State {
 		case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled:
 			toRemove = append(toRemove, taskID)
@@ -495,7 +488,7 @@ func (s *InMemoryStorage) CleanupCompletedTasks() int {
 	}
 
 	for _, taskID := range toRemove {
-		delete(s.tasks, taskID)
+		delete(s.deadLetterTasks, taskID)
 	}
 
 	for contextID, taskIDsToRemove := range contextUpdates {
@@ -529,6 +522,119 @@ func (s *InMemoryStorage) CleanupCompletedTasks() int {
 	return len(toRemove)
 }
 
+// CleanupTasksWithRetention removes old completed and failed tasks while keeping the specified number of most recent ones
+func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) int {
+	s.deadLetterMu.Lock()
+	defer s.deadLetterMu.Unlock()
+
+	// Separate tasks by state and sort by timestamp (newest first)
+	completedTasks := make([]*types.Task, 0)
+	failedTasks := make([]*types.Task, 0)
+
+	for _, task := range s.deadLetterTasks {
+		switch task.Status.State {
+		case types.TaskStateCompleted:
+			completedTasks = append(completedTasks, task)
+		case types.TaskStateFailed:
+			failedTasks = append(failedTasks, task)
+		}
+	}
+
+	// Sort by timestamp (newest first)
+	s.sortTasksByTimestamp(completedTasks, true)
+	s.sortTasksByTimestamp(failedTasks, true)
+
+	var toRemove []string
+	contextUpdates := make(map[string][]string)
+
+	// Remove excess completed tasks (keep only maxCompleted newest)
+	if len(completedTasks) > maxCompleted {
+		for i := maxCompleted; i < len(completedTasks); i++ {
+			task := completedTasks[i]
+			toRemove = append(toRemove, task.ID)
+			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], task.ID)
+		}
+	}
+
+	// Remove excess failed tasks (keep only maxFailed newest)
+	if len(failedTasks) > maxFailed {
+		for i := maxFailed; i < len(failedTasks); i++ {
+			task := failedTasks[i]
+			toRemove = append(toRemove, task.ID)
+			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], task.ID)
+		}
+	}
+
+	// Remove the tasks
+	for _, taskID := range toRemove {
+		delete(s.deadLetterTasks, taskID)
+	}
+
+	// Update context mappings
+	for contextID, taskIDsToRemove := range contextUpdates {
+		contextTasks := s.tasksByContext[contextID]
+
+		var remainingTasks []string
+		for _, existingTaskID := range contextTasks {
+			found := false
+			for _, removedTaskID := range taskIDsToRemove {
+				if existingTaskID == removedTaskID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				remainingTasks = append(remainingTasks, existingTaskID)
+			}
+		}
+
+		if len(remainingTasks) == 0 {
+			delete(s.tasksByContext, contextID)
+		} else {
+			s.tasksByContext[contextID] = remainingTasks
+		}
+	}
+
+	if len(toRemove) > 0 {
+		s.logger.Info("cleaned up tasks with retention policy",
+			zap.Int("removed_count", len(toRemove)),
+			zap.Int("max_completed", maxCompleted),
+			zap.Int("max_failed", maxFailed))
+	}
+
+	return len(toRemove)
+}
+
+// sortTasksByTimestamp sorts tasks by timestamp (newest first if desc=true)
+func (s *InMemoryStorage) sortTasksByTimestamp(tasks []*types.Task, desc bool) {
+	if len(tasks) <= 1 {
+		return
+	}
+
+	for i := 0; i < len(tasks)-1; i++ {
+		for j := 0; j < len(tasks)-i-1; j++ {
+			var time1, time2 string
+			if tasks[j].Status.Timestamp != nil {
+				time1 = *tasks[j].Status.Timestamp
+			}
+			if tasks[j+1].Status.Timestamp != nil {
+				time2 = *tasks[j+1].Status.Timestamp
+			}
+
+			var shouldSwap bool
+			if desc {
+				shouldSwap = time1 < time2 // For descending (newest first)
+			} else {
+				shouldSwap = time1 > time2 // For ascending (oldest first)
+			}
+
+			if shouldSwap {
+				tasks[j], tasks[j+1] = tasks[j+1], tasks[j]
+			}
+		}
+	}
+}
+
 // CleanupOldConversations removes conversations older than maxAge (in seconds)
 func (s *InMemoryStorage) CleanupOldConversations(maxAge int64) int {
 	// For in-memory storage, we don't track timestamps, so this is a no-op
@@ -538,8 +644,8 @@ func (s *InMemoryStorage) CleanupOldConversations(maxAge int64) int {
 
 // GetContextsWithTasks returns all context IDs that have tasks
 func (s *InMemoryStorage) GetContextsWithTasks() []string {
-	s.tasksMu.RLock()
-	defer s.tasksMu.RUnlock()
+	s.deadLetterMu.RLock()
+	defer s.deadLetterMu.RUnlock()
 
 	contexts := make([]string, 0, len(s.tasksByContext))
 	for contextID := range s.tasksByContext {
@@ -549,19 +655,27 @@ func (s *InMemoryStorage) GetContextsWithTasks() []string {
 	return contexts
 }
 
-// DeleteContextAndTasks deletes all conversation history and tasks for a context
+// DeleteContextAndTasks deletes all tasks for a context
 func (s *InMemoryStorage) DeleteContextAndTasks(contextID string) error {
-	s.conversationMu.Lock()
-	delete(s.conversationHistory, contextID)
-	s.conversationMu.Unlock()
+	s.queueMu.Lock()
+	s.deadLetterMu.Lock()
+	defer s.queueMu.Unlock()
+	defer s.deadLetterMu.Unlock()
 
-	s.tasksMu.Lock()
-	defer s.tasksMu.Unlock()
+	filteredQueue := make([]*QueuedTask, 0)
+	for _, queuedTask := range s.taskQueue {
+		if queuedTask.Task.ContextID != contextID {
+			filteredQueue = append(filteredQueue, queuedTask)
+		} else {
+			delete(s.activeTasksMetadata, queuedTask.Task.ID)
+		}
+	}
+	s.taskQueue = filteredQueue
 
 	taskIDs, exists := s.tasksByContext[contextID]
 	if exists {
 		for _, taskID := range taskIDs {
-			delete(s.tasks, taskID)
+			delete(s.deadLetterTasks, taskID)
 		}
 		delete(s.tasksByContext, contextID)
 	}
@@ -572,41 +686,31 @@ func (s *InMemoryStorage) DeleteContextAndTasks(contextID string) error {
 
 // GetStats provides statistics about the storage
 func (s *InMemoryStorage) GetStats() StorageStats {
-	s.tasksMu.RLock()
-	s.conversationMu.RLock()
-	defer s.tasksMu.RUnlock()
-	defer s.conversationMu.RUnlock()
+	s.deadLetterMu.RLock()
+	defer s.deadLetterMu.RUnlock()
 
 	tasksByState := make(map[string]int)
-	for _, task := range s.tasks {
+	totalMessages := 0
+
+	for _, task := range s.deadLetterTasks {
 		state := string(task.Status.State)
 		tasksByState[state]++
-	}
-
-	totalMessages := 0
-	for _, messages := range s.conversationHistory {
-		totalMessages += len(messages)
+		totalMessages += len(task.History)
 	}
 
 	contextsWithTasks := len(s.tasksByContext)
-	totalContexts := len(s.conversationHistory)
-
-	for contextID := range s.tasksByContext {
-		if _, exists := s.conversationHistory[contextID]; !exists {
-			totalContexts++
-		}
-	}
+	totalContexts := contextsWithTasks
 
 	var avgTasksPerContext float64
 	var avgMessagesPerContext float64
 
 	if totalContexts > 0 {
-		avgTasksPerContext = float64(len(s.tasks)) / float64(totalContexts)
-		avgMessagesPerContext = float64(totalMessages) / float64(len(s.conversationHistory))
+		avgTasksPerContext = float64(len(s.deadLetterTasks)) / float64(totalContexts)
+		avgMessagesPerContext = float64(totalMessages) / float64(totalContexts)
 	}
 
 	return StorageStats{
-		TotalTasks:                len(s.tasks),
+		TotalTasks:                len(s.deadLetterTasks),
 		TasksByState:              tasksByState,
 		TotalContexts:             totalContexts,
 		ContextsWithTasks:         contextsWithTasks,
@@ -614,4 +718,87 @@ func (s *InMemoryStorage) GetStats() StorageStats {
 		TotalMessages:             totalMessages,
 		AverageMessagesPerContext: avgMessagesPerContext,
 	}
+}
+
+// EnqueueTask adds a task to the processing queue
+func (s *InMemoryStorage) EnqueueTask(task *types.Task, requestID interface{}) error {
+	if task == nil {
+		return fmt.Errorf("task cannot be nil")
+	}
+
+	queuedTask := &QueuedTask{
+		Task:      task,
+		RequestID: requestID,
+	}
+
+	s.queueMu.Lock()
+	s.taskQueue = append(s.taskQueue, queuedTask)
+	queueLength := len(s.taskQueue)
+	s.queueMu.Unlock()
+
+	s.activeTasksMu.Lock()
+	taskCopy := *task
+	s.activeTasksMetadata[task.ID] = &taskCopy
+	s.activeTasksMu.Unlock()
+
+	select {
+	case s.queueNotify <- struct{}{}:
+	default:
+		// Channel is full, but that's OK - multiple notifications for the same state are redundant
+	}
+
+	s.logger.Info("task enqueued for processing",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID),
+		zap.Int("queue_length", queueLength))
+
+	return nil
+}
+
+// DequeueTask retrieves and removes the next task from the processing queue
+// Blocks until a task is available or context is cancelled
+func (s *InMemoryStorage) DequeueTask(ctx context.Context) (*QueuedTask, error) {
+	for {
+		s.queueMu.Lock()
+		if len(s.taskQueue) > 0 {
+			task := s.taskQueue[0]
+			s.taskQueue = s.taskQueue[1:]
+			remainingQueueLength := len(s.taskQueue)
+			s.queueMu.Unlock()
+
+			s.logger.Info("task dequeued for processing",
+				zap.String("task_id", task.Task.ID),
+				zap.String("context_id", task.Task.ContextID),
+				zap.Int("remaining_queue_length", remainingQueueLength))
+
+			return task, nil
+		}
+		s.queueMu.Unlock()
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-s.queueNotify:
+			continue
+		}
+	}
+}
+
+// GetQueueLength returns the current number of tasks in the queue
+func (s *InMemoryStorage) GetQueueLength() int {
+	s.queueMu.RLock()
+	defer s.queueMu.RUnlock()
+	return len(s.taskQueue)
+}
+
+// ClearQueue removes all tasks from the queue
+func (s *InMemoryStorage) ClearQueue() error {
+	s.queueMu.Lock()
+	defer s.queueMu.Unlock()
+
+	queueLength := len(s.taskQueue)
+	s.taskQueue = make([]*QueuedTask, 0)
+
+	s.logger.Info("task queue cleared", zap.Int("removed_tasks", queueLength))
+	return nil
 }

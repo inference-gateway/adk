@@ -2,6 +2,7 @@
 package mocks
 
 import (
+	"context"
 	"sync"
 
 	"github.com/inference-gateway/adk/server"
@@ -9,18 +10,6 @@ import (
 )
 
 type FakeStorage struct {
-	AddMessageToConversationStub        func(string, types.Message) error
-	addMessageToConversationMutex       sync.RWMutex
-	addMessageToConversationArgsForCall []struct {
-		arg1 string
-		arg2 types.Message
-	}
-	addMessageToConversationReturns struct {
-		result1 error
-	}
-	addMessageToConversationReturnsOnCall map[int]struct {
-		result1 error
-	}
 	CleanupCompletedTasksStub        func() int
 	cleanupCompletedTasksMutex       sync.RWMutex
 	cleanupCompletedTasksArgsForCall []struct {
@@ -31,16 +20,27 @@ type FakeStorage struct {
 	cleanupCompletedTasksReturnsOnCall map[int]struct {
 		result1 int
 	}
-	CleanupOldConversationsStub        func(int64) int
-	cleanupOldConversationsMutex       sync.RWMutex
-	cleanupOldConversationsArgsForCall []struct {
-		arg1 int64
+	CleanupTasksWithRetentionStub        func(int, int) int
+	cleanupTasksWithRetentionMutex       sync.RWMutex
+	cleanupTasksWithRetentionArgsForCall []struct {
+		arg1 int
+		arg2 int
 	}
-	cleanupOldConversationsReturns struct {
+	cleanupTasksWithRetentionReturns struct {
 		result1 int
 	}
-	cleanupOldConversationsReturnsOnCall map[int]struct {
+	cleanupTasksWithRetentionReturnsOnCall map[int]struct {
 		result1 int
+	}
+	ClearQueueStub        func() error
+	clearQueueMutex       sync.RWMutex
+	clearQueueArgsForCall []struct {
+	}
+	clearQueueReturns struct {
+		result1 error
+	}
+	clearQueueReturnsOnCall map[int]struct {
+		result1 error
 	}
 	DeleteContextStub        func(string) error
 	deleteContextMutex       sync.RWMutex
@@ -75,6 +75,44 @@ type FakeStorage struct {
 	deleteTaskReturnsOnCall map[int]struct {
 		result1 error
 	}
+	DequeueTaskStub        func(context.Context) (*server.QueuedTask, error)
+	dequeueTaskMutex       sync.RWMutex
+	dequeueTaskArgsForCall []struct {
+		arg1 context.Context
+	}
+	dequeueTaskReturns struct {
+		result1 *server.QueuedTask
+		result2 error
+	}
+	dequeueTaskReturnsOnCall map[int]struct {
+		result1 *server.QueuedTask
+		result2 error
+	}
+	EnqueueTaskStub        func(*types.Task, interface{}) error
+	enqueueTaskMutex       sync.RWMutex
+	enqueueTaskArgsForCall []struct {
+		arg1 *types.Task
+		arg2 interface{}
+	}
+	enqueueTaskReturns struct {
+		result1 error
+	}
+	enqueueTaskReturnsOnCall map[int]struct {
+		result1 error
+	}
+	GetActiveTaskStub        func(string) (*types.Task, error)
+	getActiveTaskMutex       sync.RWMutex
+	getActiveTaskArgsForCall []struct {
+		arg1 string
+	}
+	getActiveTaskReturns struct {
+		result1 *types.Task
+		result2 error
+	}
+	getActiveTaskReturnsOnCall map[int]struct {
+		result1 *types.Task
+		result2 error
+	}
 	GetContextsStub        func() []string
 	getContextsMutex       sync.RWMutex
 	getContextsArgsForCall []struct {
@@ -95,16 +133,15 @@ type FakeStorage struct {
 	getContextsWithTasksReturnsOnCall map[int]struct {
 		result1 []string
 	}
-	GetConversationHistoryStub        func(string) []types.Message
-	getConversationHistoryMutex       sync.RWMutex
-	getConversationHistoryArgsForCall []struct {
-		arg1 string
+	GetQueueLengthStub        func() int
+	getQueueLengthMutex       sync.RWMutex
+	getQueueLengthArgsForCall []struct {
 	}
-	getConversationHistoryReturns struct {
-		result1 []types.Message
+	getQueueLengthReturns struct {
+		result1 int
 	}
-	getConversationHistoryReturnsOnCall map[int]struct {
-		result1 []types.Message
+	getQueueLengthReturnsOnCall map[int]struct {
+		result1 int
 	}
 	GetStatsStub        func() server.StorageStats
 	getStatsMutex       sync.RWMutex
@@ -170,110 +207,30 @@ type FakeStorage struct {
 		result1 []*types.Task
 		result2 error
 	}
-	StoreTaskStub        func(*types.Task) error
-	storeTaskMutex       sync.RWMutex
-	storeTaskArgsForCall []struct {
+	StoreDeadLetterTaskStub        func(*types.Task) error
+	storeDeadLetterTaskMutex       sync.RWMutex
+	storeDeadLetterTaskArgsForCall []struct {
 		arg1 *types.Task
 	}
-	storeTaskReturns struct {
+	storeDeadLetterTaskReturns struct {
 		result1 error
 	}
-	storeTaskReturnsOnCall map[int]struct {
+	storeDeadLetterTaskReturnsOnCall map[int]struct {
 		result1 error
 	}
-	TrimConversationHistoryStub        func(string, int) error
-	trimConversationHistoryMutex       sync.RWMutex
-	trimConversationHistoryArgsForCall []struct {
-		arg1 string
-		arg2 int
-	}
-	trimConversationHistoryReturns struct {
-		result1 error
-	}
-	trimConversationHistoryReturnsOnCall map[int]struct {
-		result1 error
-	}
-	UpdateConversationHistoryStub        func(string, []types.Message)
-	updateConversationHistoryMutex       sync.RWMutex
-	updateConversationHistoryArgsForCall []struct {
-		arg1 string
-		arg2 []types.Message
-	}
-	UpdateTaskStub        func(*types.Task) error
-	updateTaskMutex       sync.RWMutex
-	updateTaskArgsForCall []struct {
+	UpdateActiveTaskStub        func(*types.Task) error
+	updateActiveTaskMutex       sync.RWMutex
+	updateActiveTaskArgsForCall []struct {
 		arg1 *types.Task
 	}
-	updateTaskReturns struct {
+	updateActiveTaskReturns struct {
 		result1 error
 	}
-	updateTaskReturnsOnCall map[int]struct {
+	updateActiveTaskReturnsOnCall map[int]struct {
 		result1 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *FakeStorage) AddMessageToConversation(arg1 string, arg2 types.Message) error {
-	fake.addMessageToConversationMutex.Lock()
-	ret, specificReturn := fake.addMessageToConversationReturnsOnCall[len(fake.addMessageToConversationArgsForCall)]
-	fake.addMessageToConversationArgsForCall = append(fake.addMessageToConversationArgsForCall, struct {
-		arg1 string
-		arg2 types.Message
-	}{arg1, arg2})
-	stub := fake.AddMessageToConversationStub
-	fakeReturns := fake.addMessageToConversationReturns
-	fake.recordInvocation("AddMessageToConversation", []interface{}{arg1, arg2})
-	fake.addMessageToConversationMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *FakeStorage) AddMessageToConversationCallCount() int {
-	fake.addMessageToConversationMutex.RLock()
-	defer fake.addMessageToConversationMutex.RUnlock()
-	return len(fake.addMessageToConversationArgsForCall)
-}
-
-func (fake *FakeStorage) AddMessageToConversationCalls(stub func(string, types.Message) error) {
-	fake.addMessageToConversationMutex.Lock()
-	defer fake.addMessageToConversationMutex.Unlock()
-	fake.AddMessageToConversationStub = stub
-}
-
-func (fake *FakeStorage) AddMessageToConversationArgsForCall(i int) (string, types.Message) {
-	fake.addMessageToConversationMutex.RLock()
-	defer fake.addMessageToConversationMutex.RUnlock()
-	argsForCall := fake.addMessageToConversationArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *FakeStorage) AddMessageToConversationReturns(result1 error) {
-	fake.addMessageToConversationMutex.Lock()
-	defer fake.addMessageToConversationMutex.Unlock()
-	fake.AddMessageToConversationStub = nil
-	fake.addMessageToConversationReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *FakeStorage) AddMessageToConversationReturnsOnCall(i int, result1 error) {
-	fake.addMessageToConversationMutex.Lock()
-	defer fake.addMessageToConversationMutex.Unlock()
-	fake.AddMessageToConversationStub = nil
-	if fake.addMessageToConversationReturnsOnCall == nil {
-		fake.addMessageToConversationReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.addMessageToConversationReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
 }
 
 func (fake *FakeStorage) CleanupCompletedTasks() int {
@@ -329,18 +286,19 @@ func (fake *FakeStorage) CleanupCompletedTasksReturnsOnCall(i int, result1 int) 
 	}{result1}
 }
 
-func (fake *FakeStorage) CleanupOldConversations(arg1 int64) int {
-	fake.cleanupOldConversationsMutex.Lock()
-	ret, specificReturn := fake.cleanupOldConversationsReturnsOnCall[len(fake.cleanupOldConversationsArgsForCall)]
-	fake.cleanupOldConversationsArgsForCall = append(fake.cleanupOldConversationsArgsForCall, struct {
-		arg1 int64
-	}{arg1})
-	stub := fake.CleanupOldConversationsStub
-	fakeReturns := fake.cleanupOldConversationsReturns
-	fake.recordInvocation("CleanupOldConversations", []interface{}{arg1})
-	fake.cleanupOldConversationsMutex.Unlock()
+func (fake *FakeStorage) CleanupTasksWithRetention(arg1 int, arg2 int) int {
+	fake.cleanupTasksWithRetentionMutex.Lock()
+	ret, specificReturn := fake.cleanupTasksWithRetentionReturnsOnCall[len(fake.cleanupTasksWithRetentionArgsForCall)]
+	fake.cleanupTasksWithRetentionArgsForCall = append(fake.cleanupTasksWithRetentionArgsForCall, struct {
+		arg1 int
+		arg2 int
+	}{arg1, arg2})
+	stub := fake.CleanupTasksWithRetentionStub
+	fakeReturns := fake.cleanupTasksWithRetentionReturns
+	fake.recordInvocation("CleanupTasksWithRetention", []interface{}{arg1, arg2})
+	fake.cleanupTasksWithRetentionMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -348,45 +306,98 @@ func (fake *FakeStorage) CleanupOldConversations(arg1 int64) int {
 	return fakeReturns.result1
 }
 
-func (fake *FakeStorage) CleanupOldConversationsCallCount() int {
-	fake.cleanupOldConversationsMutex.RLock()
-	defer fake.cleanupOldConversationsMutex.RUnlock()
-	return len(fake.cleanupOldConversationsArgsForCall)
+func (fake *FakeStorage) CleanupTasksWithRetentionCallCount() int {
+	fake.cleanupTasksWithRetentionMutex.RLock()
+	defer fake.cleanupTasksWithRetentionMutex.RUnlock()
+	return len(fake.cleanupTasksWithRetentionArgsForCall)
 }
 
-func (fake *FakeStorage) CleanupOldConversationsCalls(stub func(int64) int) {
-	fake.cleanupOldConversationsMutex.Lock()
-	defer fake.cleanupOldConversationsMutex.Unlock()
-	fake.CleanupOldConversationsStub = stub
+func (fake *FakeStorage) CleanupTasksWithRetentionCalls(stub func(int, int) int) {
+	fake.cleanupTasksWithRetentionMutex.Lock()
+	defer fake.cleanupTasksWithRetentionMutex.Unlock()
+	fake.CleanupTasksWithRetentionStub = stub
 }
 
-func (fake *FakeStorage) CleanupOldConversationsArgsForCall(i int) int64 {
-	fake.cleanupOldConversationsMutex.RLock()
-	defer fake.cleanupOldConversationsMutex.RUnlock()
-	argsForCall := fake.cleanupOldConversationsArgsForCall[i]
-	return argsForCall.arg1
+func (fake *FakeStorage) CleanupTasksWithRetentionArgsForCall(i int) (int, int) {
+	fake.cleanupTasksWithRetentionMutex.RLock()
+	defer fake.cleanupTasksWithRetentionMutex.RUnlock()
+	argsForCall := fake.cleanupTasksWithRetentionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeStorage) CleanupOldConversationsReturns(result1 int) {
-	fake.cleanupOldConversationsMutex.Lock()
-	defer fake.cleanupOldConversationsMutex.Unlock()
-	fake.CleanupOldConversationsStub = nil
-	fake.cleanupOldConversationsReturns = struct {
+func (fake *FakeStorage) CleanupTasksWithRetentionReturns(result1 int) {
+	fake.cleanupTasksWithRetentionMutex.Lock()
+	defer fake.cleanupTasksWithRetentionMutex.Unlock()
+	fake.CleanupTasksWithRetentionStub = nil
+	fake.cleanupTasksWithRetentionReturns = struct {
 		result1 int
 	}{result1}
 }
 
-func (fake *FakeStorage) CleanupOldConversationsReturnsOnCall(i int, result1 int) {
-	fake.cleanupOldConversationsMutex.Lock()
-	defer fake.cleanupOldConversationsMutex.Unlock()
-	fake.CleanupOldConversationsStub = nil
-	if fake.cleanupOldConversationsReturnsOnCall == nil {
-		fake.cleanupOldConversationsReturnsOnCall = make(map[int]struct {
+func (fake *FakeStorage) CleanupTasksWithRetentionReturnsOnCall(i int, result1 int) {
+	fake.cleanupTasksWithRetentionMutex.Lock()
+	defer fake.cleanupTasksWithRetentionMutex.Unlock()
+	fake.CleanupTasksWithRetentionStub = nil
+	if fake.cleanupTasksWithRetentionReturnsOnCall == nil {
+		fake.cleanupTasksWithRetentionReturnsOnCall = make(map[int]struct {
 			result1 int
 		})
 	}
-	fake.cleanupOldConversationsReturnsOnCall[i] = struct {
+	fake.cleanupTasksWithRetentionReturnsOnCall[i] = struct {
 		result1 int
+	}{result1}
+}
+
+func (fake *FakeStorage) ClearQueue() error {
+	fake.clearQueueMutex.Lock()
+	ret, specificReturn := fake.clearQueueReturnsOnCall[len(fake.clearQueueArgsForCall)]
+	fake.clearQueueArgsForCall = append(fake.clearQueueArgsForCall, struct {
+	}{})
+	stub := fake.ClearQueueStub
+	fakeReturns := fake.clearQueueReturns
+	fake.recordInvocation("ClearQueue", []interface{}{})
+	fake.clearQueueMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeStorage) ClearQueueCallCount() int {
+	fake.clearQueueMutex.RLock()
+	defer fake.clearQueueMutex.RUnlock()
+	return len(fake.clearQueueArgsForCall)
+}
+
+func (fake *FakeStorage) ClearQueueCalls(stub func() error) {
+	fake.clearQueueMutex.Lock()
+	defer fake.clearQueueMutex.Unlock()
+	fake.ClearQueueStub = stub
+}
+
+func (fake *FakeStorage) ClearQueueReturns(result1 error) {
+	fake.clearQueueMutex.Lock()
+	defer fake.clearQueueMutex.Unlock()
+	fake.ClearQueueStub = nil
+	fake.clearQueueReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeStorage) ClearQueueReturnsOnCall(i int, result1 error) {
+	fake.clearQueueMutex.Lock()
+	defer fake.clearQueueMutex.Unlock()
+	fake.ClearQueueStub = nil
+	if fake.clearQueueReturnsOnCall == nil {
+		fake.clearQueueReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.clearQueueReturnsOnCall[i] = struct {
+		result1 error
 	}{result1}
 }
 
@@ -573,6 +584,196 @@ func (fake *FakeStorage) DeleteTaskReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeStorage) DequeueTask(arg1 context.Context) (*server.QueuedTask, error) {
+	fake.dequeueTaskMutex.Lock()
+	ret, specificReturn := fake.dequeueTaskReturnsOnCall[len(fake.dequeueTaskArgsForCall)]
+	fake.dequeueTaskArgsForCall = append(fake.dequeueTaskArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.DequeueTaskStub
+	fakeReturns := fake.dequeueTaskReturns
+	fake.recordInvocation("DequeueTask", []interface{}{arg1})
+	fake.dequeueTaskMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeStorage) DequeueTaskCallCount() int {
+	fake.dequeueTaskMutex.RLock()
+	defer fake.dequeueTaskMutex.RUnlock()
+	return len(fake.dequeueTaskArgsForCall)
+}
+
+func (fake *FakeStorage) DequeueTaskCalls(stub func(context.Context) (*server.QueuedTask, error)) {
+	fake.dequeueTaskMutex.Lock()
+	defer fake.dequeueTaskMutex.Unlock()
+	fake.DequeueTaskStub = stub
+}
+
+func (fake *FakeStorage) DequeueTaskArgsForCall(i int) context.Context {
+	fake.dequeueTaskMutex.RLock()
+	defer fake.dequeueTaskMutex.RUnlock()
+	argsForCall := fake.dequeueTaskArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeStorage) DequeueTaskReturns(result1 *server.QueuedTask, result2 error) {
+	fake.dequeueTaskMutex.Lock()
+	defer fake.dequeueTaskMutex.Unlock()
+	fake.DequeueTaskStub = nil
+	fake.dequeueTaskReturns = struct {
+		result1 *server.QueuedTask
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeStorage) DequeueTaskReturnsOnCall(i int, result1 *server.QueuedTask, result2 error) {
+	fake.dequeueTaskMutex.Lock()
+	defer fake.dequeueTaskMutex.Unlock()
+	fake.DequeueTaskStub = nil
+	if fake.dequeueTaskReturnsOnCall == nil {
+		fake.dequeueTaskReturnsOnCall = make(map[int]struct {
+			result1 *server.QueuedTask
+			result2 error
+		})
+	}
+	fake.dequeueTaskReturnsOnCall[i] = struct {
+		result1 *server.QueuedTask
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeStorage) EnqueueTask(arg1 *types.Task, arg2 interface{}) error {
+	fake.enqueueTaskMutex.Lock()
+	ret, specificReturn := fake.enqueueTaskReturnsOnCall[len(fake.enqueueTaskArgsForCall)]
+	fake.enqueueTaskArgsForCall = append(fake.enqueueTaskArgsForCall, struct {
+		arg1 *types.Task
+		arg2 interface{}
+	}{arg1, arg2})
+	stub := fake.EnqueueTaskStub
+	fakeReturns := fake.enqueueTaskReturns
+	fake.recordInvocation("EnqueueTask", []interface{}{arg1, arg2})
+	fake.enqueueTaskMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeStorage) EnqueueTaskCallCount() int {
+	fake.enqueueTaskMutex.RLock()
+	defer fake.enqueueTaskMutex.RUnlock()
+	return len(fake.enqueueTaskArgsForCall)
+}
+
+func (fake *FakeStorage) EnqueueTaskCalls(stub func(*types.Task, interface{}) error) {
+	fake.enqueueTaskMutex.Lock()
+	defer fake.enqueueTaskMutex.Unlock()
+	fake.EnqueueTaskStub = stub
+}
+
+func (fake *FakeStorage) EnqueueTaskArgsForCall(i int) (*types.Task, interface{}) {
+	fake.enqueueTaskMutex.RLock()
+	defer fake.enqueueTaskMutex.RUnlock()
+	argsForCall := fake.enqueueTaskArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeStorage) EnqueueTaskReturns(result1 error) {
+	fake.enqueueTaskMutex.Lock()
+	defer fake.enqueueTaskMutex.Unlock()
+	fake.EnqueueTaskStub = nil
+	fake.enqueueTaskReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeStorage) EnqueueTaskReturnsOnCall(i int, result1 error) {
+	fake.enqueueTaskMutex.Lock()
+	defer fake.enqueueTaskMutex.Unlock()
+	fake.EnqueueTaskStub = nil
+	if fake.enqueueTaskReturnsOnCall == nil {
+		fake.enqueueTaskReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.enqueueTaskReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeStorage) GetActiveTask(arg1 string) (*types.Task, error) {
+	fake.getActiveTaskMutex.Lock()
+	ret, specificReturn := fake.getActiveTaskReturnsOnCall[len(fake.getActiveTaskArgsForCall)]
+	fake.getActiveTaskArgsForCall = append(fake.getActiveTaskArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.GetActiveTaskStub
+	fakeReturns := fake.getActiveTaskReturns
+	fake.recordInvocation("GetActiveTask", []interface{}{arg1})
+	fake.getActiveTaskMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeStorage) GetActiveTaskCallCount() int {
+	fake.getActiveTaskMutex.RLock()
+	defer fake.getActiveTaskMutex.RUnlock()
+	return len(fake.getActiveTaskArgsForCall)
+}
+
+func (fake *FakeStorage) GetActiveTaskCalls(stub func(string) (*types.Task, error)) {
+	fake.getActiveTaskMutex.Lock()
+	defer fake.getActiveTaskMutex.Unlock()
+	fake.GetActiveTaskStub = stub
+}
+
+func (fake *FakeStorage) GetActiveTaskArgsForCall(i int) string {
+	fake.getActiveTaskMutex.RLock()
+	defer fake.getActiveTaskMutex.RUnlock()
+	argsForCall := fake.getActiveTaskArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeStorage) GetActiveTaskReturns(result1 *types.Task, result2 error) {
+	fake.getActiveTaskMutex.Lock()
+	defer fake.getActiveTaskMutex.Unlock()
+	fake.GetActiveTaskStub = nil
+	fake.getActiveTaskReturns = struct {
+		result1 *types.Task
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeStorage) GetActiveTaskReturnsOnCall(i int, result1 *types.Task, result2 error) {
+	fake.getActiveTaskMutex.Lock()
+	defer fake.getActiveTaskMutex.Unlock()
+	fake.GetActiveTaskStub = nil
+	if fake.getActiveTaskReturnsOnCall == nil {
+		fake.getActiveTaskReturnsOnCall = make(map[int]struct {
+			result1 *types.Task
+			result2 error
+		})
+	}
+	fake.getActiveTaskReturnsOnCall[i] = struct {
+		result1 *types.Task
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeStorage) GetContexts() []string {
 	fake.getContextsMutex.Lock()
 	ret, specificReturn := fake.getContextsReturnsOnCall[len(fake.getContextsArgsForCall)]
@@ -679,18 +880,17 @@ func (fake *FakeStorage) GetContextsWithTasksReturnsOnCall(i int, result1 []stri
 	}{result1}
 }
 
-func (fake *FakeStorage) GetConversationHistory(arg1 string) []types.Message {
-	fake.getConversationHistoryMutex.Lock()
-	ret, specificReturn := fake.getConversationHistoryReturnsOnCall[len(fake.getConversationHistoryArgsForCall)]
-	fake.getConversationHistoryArgsForCall = append(fake.getConversationHistoryArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	stub := fake.GetConversationHistoryStub
-	fakeReturns := fake.getConversationHistoryReturns
-	fake.recordInvocation("GetConversationHistory", []interface{}{arg1})
-	fake.getConversationHistoryMutex.Unlock()
+func (fake *FakeStorage) GetQueueLength() int {
+	fake.getQueueLengthMutex.Lock()
+	ret, specificReturn := fake.getQueueLengthReturnsOnCall[len(fake.getQueueLengthArgsForCall)]
+	fake.getQueueLengthArgsForCall = append(fake.getQueueLengthArgsForCall, struct {
+	}{})
+	stub := fake.GetQueueLengthStub
+	fakeReturns := fake.getQueueLengthReturns
+	fake.recordInvocation("GetQueueLength", []interface{}{})
+	fake.getQueueLengthMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
@@ -698,45 +898,38 @@ func (fake *FakeStorage) GetConversationHistory(arg1 string) []types.Message {
 	return fakeReturns.result1
 }
 
-func (fake *FakeStorage) GetConversationHistoryCallCount() int {
-	fake.getConversationHistoryMutex.RLock()
-	defer fake.getConversationHistoryMutex.RUnlock()
-	return len(fake.getConversationHistoryArgsForCall)
+func (fake *FakeStorage) GetQueueLengthCallCount() int {
+	fake.getQueueLengthMutex.RLock()
+	defer fake.getQueueLengthMutex.RUnlock()
+	return len(fake.getQueueLengthArgsForCall)
 }
 
-func (fake *FakeStorage) GetConversationHistoryCalls(stub func(string) []types.Message) {
-	fake.getConversationHistoryMutex.Lock()
-	defer fake.getConversationHistoryMutex.Unlock()
-	fake.GetConversationHistoryStub = stub
+func (fake *FakeStorage) GetQueueLengthCalls(stub func() int) {
+	fake.getQueueLengthMutex.Lock()
+	defer fake.getQueueLengthMutex.Unlock()
+	fake.GetQueueLengthStub = stub
 }
 
-func (fake *FakeStorage) GetConversationHistoryArgsForCall(i int) string {
-	fake.getConversationHistoryMutex.RLock()
-	defer fake.getConversationHistoryMutex.RUnlock()
-	argsForCall := fake.getConversationHistoryArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *FakeStorage) GetConversationHistoryReturns(result1 []types.Message) {
-	fake.getConversationHistoryMutex.Lock()
-	defer fake.getConversationHistoryMutex.Unlock()
-	fake.GetConversationHistoryStub = nil
-	fake.getConversationHistoryReturns = struct {
-		result1 []types.Message
+func (fake *FakeStorage) GetQueueLengthReturns(result1 int) {
+	fake.getQueueLengthMutex.Lock()
+	defer fake.getQueueLengthMutex.Unlock()
+	fake.GetQueueLengthStub = nil
+	fake.getQueueLengthReturns = struct {
+		result1 int
 	}{result1}
 }
 
-func (fake *FakeStorage) GetConversationHistoryReturnsOnCall(i int, result1 []types.Message) {
-	fake.getConversationHistoryMutex.Lock()
-	defer fake.getConversationHistoryMutex.Unlock()
-	fake.GetConversationHistoryStub = nil
-	if fake.getConversationHistoryReturnsOnCall == nil {
-		fake.getConversationHistoryReturnsOnCall = make(map[int]struct {
-			result1 []types.Message
+func (fake *FakeStorage) GetQueueLengthReturnsOnCall(i int, result1 int) {
+	fake.getQueueLengthMutex.Lock()
+	defer fake.getQueueLengthMutex.Unlock()
+	fake.GetQueueLengthStub = nil
+	if fake.getQueueLengthReturnsOnCall == nil {
+		fake.getQueueLengthReturnsOnCall = make(map[int]struct {
+			result1 int
 		})
 	}
-	fake.getConversationHistoryReturnsOnCall[i] = struct {
-		result1 []types.Message
+	fake.getQueueLengthReturnsOnCall[i] = struct {
+		result1 int
 	}{result1}
 }
 
@@ -1051,16 +1244,16 @@ func (fake *FakeStorage) ListTasksByContextReturnsOnCall(i int, result1 []*types
 	}{result1, result2}
 }
 
-func (fake *FakeStorage) StoreTask(arg1 *types.Task) error {
-	fake.storeTaskMutex.Lock()
-	ret, specificReturn := fake.storeTaskReturnsOnCall[len(fake.storeTaskArgsForCall)]
-	fake.storeTaskArgsForCall = append(fake.storeTaskArgsForCall, struct {
+func (fake *FakeStorage) StoreDeadLetterTask(arg1 *types.Task) error {
+	fake.storeDeadLetterTaskMutex.Lock()
+	ret, specificReturn := fake.storeDeadLetterTaskReturnsOnCall[len(fake.storeDeadLetterTaskArgsForCall)]
+	fake.storeDeadLetterTaskArgsForCall = append(fake.storeDeadLetterTaskArgsForCall, struct {
 		arg1 *types.Task
 	}{arg1})
-	stub := fake.StoreTaskStub
-	fakeReturns := fake.storeTaskReturns
-	fake.recordInvocation("StoreTask", []interface{}{arg1})
-	fake.storeTaskMutex.Unlock()
+	stub := fake.StoreDeadLetterTaskStub
+	fakeReturns := fake.storeDeadLetterTaskReturns
+	fake.recordInvocation("StoreDeadLetterTask", []interface{}{arg1})
+	fake.storeDeadLetterTaskMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
 	}
@@ -1070,158 +1263,58 @@ func (fake *FakeStorage) StoreTask(arg1 *types.Task) error {
 	return fakeReturns.result1
 }
 
-func (fake *FakeStorage) StoreTaskCallCount() int {
-	fake.storeTaskMutex.RLock()
-	defer fake.storeTaskMutex.RUnlock()
-	return len(fake.storeTaskArgsForCall)
+func (fake *FakeStorage) StoreDeadLetterTaskCallCount() int {
+	fake.storeDeadLetterTaskMutex.RLock()
+	defer fake.storeDeadLetterTaskMutex.RUnlock()
+	return len(fake.storeDeadLetterTaskArgsForCall)
 }
 
-func (fake *FakeStorage) StoreTaskCalls(stub func(*types.Task) error) {
-	fake.storeTaskMutex.Lock()
-	defer fake.storeTaskMutex.Unlock()
-	fake.StoreTaskStub = stub
+func (fake *FakeStorage) StoreDeadLetterTaskCalls(stub func(*types.Task) error) {
+	fake.storeDeadLetterTaskMutex.Lock()
+	defer fake.storeDeadLetterTaskMutex.Unlock()
+	fake.StoreDeadLetterTaskStub = stub
 }
 
-func (fake *FakeStorage) StoreTaskArgsForCall(i int) *types.Task {
-	fake.storeTaskMutex.RLock()
-	defer fake.storeTaskMutex.RUnlock()
-	argsForCall := fake.storeTaskArgsForCall[i]
+func (fake *FakeStorage) StoreDeadLetterTaskArgsForCall(i int) *types.Task {
+	fake.storeDeadLetterTaskMutex.RLock()
+	defer fake.storeDeadLetterTaskMutex.RUnlock()
+	argsForCall := fake.storeDeadLetterTaskArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *FakeStorage) StoreTaskReturns(result1 error) {
-	fake.storeTaskMutex.Lock()
-	defer fake.storeTaskMutex.Unlock()
-	fake.StoreTaskStub = nil
-	fake.storeTaskReturns = struct {
+func (fake *FakeStorage) StoreDeadLetterTaskReturns(result1 error) {
+	fake.storeDeadLetterTaskMutex.Lock()
+	defer fake.storeDeadLetterTaskMutex.Unlock()
+	fake.StoreDeadLetterTaskStub = nil
+	fake.storeDeadLetterTaskReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *FakeStorage) StoreTaskReturnsOnCall(i int, result1 error) {
-	fake.storeTaskMutex.Lock()
-	defer fake.storeTaskMutex.Unlock()
-	fake.StoreTaskStub = nil
-	if fake.storeTaskReturnsOnCall == nil {
-		fake.storeTaskReturnsOnCall = make(map[int]struct {
+func (fake *FakeStorage) StoreDeadLetterTaskReturnsOnCall(i int, result1 error) {
+	fake.storeDeadLetterTaskMutex.Lock()
+	defer fake.storeDeadLetterTaskMutex.Unlock()
+	fake.StoreDeadLetterTaskStub = nil
+	if fake.storeDeadLetterTaskReturnsOnCall == nil {
+		fake.storeDeadLetterTaskReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.storeTaskReturnsOnCall[i] = struct {
+	fake.storeDeadLetterTaskReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *FakeStorage) TrimConversationHistory(arg1 string, arg2 int) error {
-	fake.trimConversationHistoryMutex.Lock()
-	ret, specificReturn := fake.trimConversationHistoryReturnsOnCall[len(fake.trimConversationHistoryArgsForCall)]
-	fake.trimConversationHistoryArgsForCall = append(fake.trimConversationHistoryArgsForCall, struct {
-		arg1 string
-		arg2 int
-	}{arg1, arg2})
-	stub := fake.TrimConversationHistoryStub
-	fakeReturns := fake.trimConversationHistoryReturns
-	fake.recordInvocation("TrimConversationHistory", []interface{}{arg1, arg2})
-	fake.trimConversationHistoryMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	return fakeReturns.result1
-}
-
-func (fake *FakeStorage) TrimConversationHistoryCallCount() int {
-	fake.trimConversationHistoryMutex.RLock()
-	defer fake.trimConversationHistoryMutex.RUnlock()
-	return len(fake.trimConversationHistoryArgsForCall)
-}
-
-func (fake *FakeStorage) TrimConversationHistoryCalls(stub func(string, int) error) {
-	fake.trimConversationHistoryMutex.Lock()
-	defer fake.trimConversationHistoryMutex.Unlock()
-	fake.TrimConversationHistoryStub = stub
-}
-
-func (fake *FakeStorage) TrimConversationHistoryArgsForCall(i int) (string, int) {
-	fake.trimConversationHistoryMutex.RLock()
-	defer fake.trimConversationHistoryMutex.RUnlock()
-	argsForCall := fake.trimConversationHistoryArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *FakeStorage) TrimConversationHistoryReturns(result1 error) {
-	fake.trimConversationHistoryMutex.Lock()
-	defer fake.trimConversationHistoryMutex.Unlock()
-	fake.TrimConversationHistoryStub = nil
-	fake.trimConversationHistoryReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *FakeStorage) TrimConversationHistoryReturnsOnCall(i int, result1 error) {
-	fake.trimConversationHistoryMutex.Lock()
-	defer fake.trimConversationHistoryMutex.Unlock()
-	fake.TrimConversationHistoryStub = nil
-	if fake.trimConversationHistoryReturnsOnCall == nil {
-		fake.trimConversationHistoryReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.trimConversationHistoryReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *FakeStorage) UpdateConversationHistory(arg1 string, arg2 []types.Message) {
-	var arg2Copy []types.Message
-	if arg2 != nil {
-		arg2Copy = make([]types.Message, len(arg2))
-		copy(arg2Copy, arg2)
-	}
-	fake.updateConversationHistoryMutex.Lock()
-	fake.updateConversationHistoryArgsForCall = append(fake.updateConversationHistoryArgsForCall, struct {
-		arg1 string
-		arg2 []types.Message
-	}{arg1, arg2Copy})
-	stub := fake.UpdateConversationHistoryStub
-	fake.recordInvocation("UpdateConversationHistory", []interface{}{arg1, arg2Copy})
-	fake.updateConversationHistoryMutex.Unlock()
-	if stub != nil {
-		fake.UpdateConversationHistoryStub(arg1, arg2)
-	}
-}
-
-func (fake *FakeStorage) UpdateConversationHistoryCallCount() int {
-	fake.updateConversationHistoryMutex.RLock()
-	defer fake.updateConversationHistoryMutex.RUnlock()
-	return len(fake.updateConversationHistoryArgsForCall)
-}
-
-func (fake *FakeStorage) UpdateConversationHistoryCalls(stub func(string, []types.Message)) {
-	fake.updateConversationHistoryMutex.Lock()
-	defer fake.updateConversationHistoryMutex.Unlock()
-	fake.UpdateConversationHistoryStub = stub
-}
-
-func (fake *FakeStorage) UpdateConversationHistoryArgsForCall(i int) (string, []types.Message) {
-	fake.updateConversationHistoryMutex.RLock()
-	defer fake.updateConversationHistoryMutex.RUnlock()
-	argsForCall := fake.updateConversationHistoryArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *FakeStorage) UpdateTask(arg1 *types.Task) error {
-	fake.updateTaskMutex.Lock()
-	ret, specificReturn := fake.updateTaskReturnsOnCall[len(fake.updateTaskArgsForCall)]
-	fake.updateTaskArgsForCall = append(fake.updateTaskArgsForCall, struct {
+func (fake *FakeStorage) UpdateActiveTask(arg1 *types.Task) error {
+	fake.updateActiveTaskMutex.Lock()
+	ret, specificReturn := fake.updateActiveTaskReturnsOnCall[len(fake.updateActiveTaskArgsForCall)]
+	fake.updateActiveTaskArgsForCall = append(fake.updateActiveTaskArgsForCall, struct {
 		arg1 *types.Task
 	}{arg1})
-	stub := fake.UpdateTaskStub
-	fakeReturns := fake.updateTaskReturns
-	fake.recordInvocation("UpdateTask", []interface{}{arg1})
-	fake.updateTaskMutex.Unlock()
+	stub := fake.UpdateActiveTaskStub
+	fakeReturns := fake.updateActiveTaskReturns
+	fake.recordInvocation("UpdateActiveTask", []interface{}{arg1})
+	fake.updateActiveTaskMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
 	}
@@ -1231,44 +1324,44 @@ func (fake *FakeStorage) UpdateTask(arg1 *types.Task) error {
 	return fakeReturns.result1
 }
 
-func (fake *FakeStorage) UpdateTaskCallCount() int {
-	fake.updateTaskMutex.RLock()
-	defer fake.updateTaskMutex.RUnlock()
-	return len(fake.updateTaskArgsForCall)
+func (fake *FakeStorage) UpdateActiveTaskCallCount() int {
+	fake.updateActiveTaskMutex.RLock()
+	defer fake.updateActiveTaskMutex.RUnlock()
+	return len(fake.updateActiveTaskArgsForCall)
 }
 
-func (fake *FakeStorage) UpdateTaskCalls(stub func(*types.Task) error) {
-	fake.updateTaskMutex.Lock()
-	defer fake.updateTaskMutex.Unlock()
-	fake.UpdateTaskStub = stub
+func (fake *FakeStorage) UpdateActiveTaskCalls(stub func(*types.Task) error) {
+	fake.updateActiveTaskMutex.Lock()
+	defer fake.updateActiveTaskMutex.Unlock()
+	fake.UpdateActiveTaskStub = stub
 }
 
-func (fake *FakeStorage) UpdateTaskArgsForCall(i int) *types.Task {
-	fake.updateTaskMutex.RLock()
-	defer fake.updateTaskMutex.RUnlock()
-	argsForCall := fake.updateTaskArgsForCall[i]
+func (fake *FakeStorage) UpdateActiveTaskArgsForCall(i int) *types.Task {
+	fake.updateActiveTaskMutex.RLock()
+	defer fake.updateActiveTaskMutex.RUnlock()
+	argsForCall := fake.updateActiveTaskArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *FakeStorage) UpdateTaskReturns(result1 error) {
-	fake.updateTaskMutex.Lock()
-	defer fake.updateTaskMutex.Unlock()
-	fake.UpdateTaskStub = nil
-	fake.updateTaskReturns = struct {
+func (fake *FakeStorage) UpdateActiveTaskReturns(result1 error) {
+	fake.updateActiveTaskMutex.Lock()
+	defer fake.updateActiveTaskMutex.Unlock()
+	fake.UpdateActiveTaskStub = nil
+	fake.updateActiveTaskReturns = struct {
 		result1 error
 	}{result1}
 }
 
-func (fake *FakeStorage) UpdateTaskReturnsOnCall(i int, result1 error) {
-	fake.updateTaskMutex.Lock()
-	defer fake.updateTaskMutex.Unlock()
-	fake.UpdateTaskStub = nil
-	if fake.updateTaskReturnsOnCall == nil {
-		fake.updateTaskReturnsOnCall = make(map[int]struct {
+func (fake *FakeStorage) UpdateActiveTaskReturnsOnCall(i int, result1 error) {
+	fake.updateActiveTaskMutex.Lock()
+	defer fake.updateActiveTaskMutex.Unlock()
+	fake.UpdateActiveTaskStub = nil
+	if fake.updateActiveTaskReturnsOnCall == nil {
+		fake.updateActiveTaskReturnsOnCall = make(map[int]struct {
 			result1 error
 		})
 	}
-	fake.updateTaskReturnsOnCall[i] = struct {
+	fake.updateActiveTaskReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -1276,24 +1369,30 @@ func (fake *FakeStorage) UpdateTaskReturnsOnCall(i int, result1 error) {
 func (fake *FakeStorage) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.addMessageToConversationMutex.RLock()
-	defer fake.addMessageToConversationMutex.RUnlock()
 	fake.cleanupCompletedTasksMutex.RLock()
 	defer fake.cleanupCompletedTasksMutex.RUnlock()
-	fake.cleanupOldConversationsMutex.RLock()
-	defer fake.cleanupOldConversationsMutex.RUnlock()
+	fake.cleanupTasksWithRetentionMutex.RLock()
+	defer fake.cleanupTasksWithRetentionMutex.RUnlock()
+	fake.clearQueueMutex.RLock()
+	defer fake.clearQueueMutex.RUnlock()
 	fake.deleteContextMutex.RLock()
 	defer fake.deleteContextMutex.RUnlock()
 	fake.deleteContextAndTasksMutex.RLock()
 	defer fake.deleteContextAndTasksMutex.RUnlock()
 	fake.deleteTaskMutex.RLock()
 	defer fake.deleteTaskMutex.RUnlock()
+	fake.dequeueTaskMutex.RLock()
+	defer fake.dequeueTaskMutex.RUnlock()
+	fake.enqueueTaskMutex.RLock()
+	defer fake.enqueueTaskMutex.RUnlock()
+	fake.getActiveTaskMutex.RLock()
+	defer fake.getActiveTaskMutex.RUnlock()
 	fake.getContextsMutex.RLock()
 	defer fake.getContextsMutex.RUnlock()
 	fake.getContextsWithTasksMutex.RLock()
 	defer fake.getContextsWithTasksMutex.RUnlock()
-	fake.getConversationHistoryMutex.RLock()
-	defer fake.getConversationHistoryMutex.RUnlock()
+	fake.getQueueLengthMutex.RLock()
+	defer fake.getQueueLengthMutex.RUnlock()
 	fake.getStatsMutex.RLock()
 	defer fake.getStatsMutex.RUnlock()
 	fake.getTaskMutex.RLock()
@@ -1304,14 +1403,10 @@ func (fake *FakeStorage) Invocations() map[string][][]interface{} {
 	defer fake.listTasksMutex.RUnlock()
 	fake.listTasksByContextMutex.RLock()
 	defer fake.listTasksByContextMutex.RUnlock()
-	fake.storeTaskMutex.RLock()
-	defer fake.storeTaskMutex.RUnlock()
-	fake.trimConversationHistoryMutex.RLock()
-	defer fake.trimConversationHistoryMutex.RUnlock()
-	fake.updateConversationHistoryMutex.RLock()
-	defer fake.updateConversationHistoryMutex.RUnlock()
-	fake.updateTaskMutex.RLock()
-	defer fake.updateTaskMutex.RUnlock()
+	fake.storeDeadLetterTaskMutex.RLock()
+	defer fake.storeDeadLetterTaskMutex.RUnlock()
+	fake.updateActiveTaskMutex.RLock()
+	defer fake.updateActiveTaskMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	uuid "github.com/google/uuid"
+	"github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
 )
@@ -63,24 +64,33 @@ type TaskManager interface {
 
 	// IsTaskPaused checks if a task is currently paused (in input-required state)
 	IsTaskPaused(taskID string) (bool, error)
+
+	// SetRetentionConfig sets the task retention configuration and starts automatic cleanup
+	SetRetentionConfig(retentionConfig config.TaskRetentionConfig)
+
+	// StopCleanup stops the automatic cleanup process
+	StopCleanup()
 }
 
 // DefaultTaskManager implements the TaskManager interface
 type DefaultTaskManager struct {
 	logger                    *zap.Logger
-	storage                   Storage                                                 // centralized storage for tasks and conversation history
-	pushNotificationConfigs   map[string]map[string]*types.TaskPushNotificationConfig // taskID -> configID -> config
-	notificationSender        PushNotificationSender                                  // for sending push notifications
+	storage                   Storage
+	pushNotificationConfigs   map[string]map[string]*types.TaskPushNotificationConfig
+	notificationSender        PushNotificationSender
 	pushNotificationConfigsMu sync.RWMutex
+	retentionConfig           config.TaskRetentionConfig
+	cleanupTicker             *time.Ticker
+	stopCleanup               chan struct{}
 }
 
 // NewDefaultTaskManager creates a new default task manager
-func NewDefaultTaskManager(logger *zap.Logger, maxConversationHistory int) *DefaultTaskManager {
+func NewDefaultTaskManager(logger *zap.Logger) *DefaultTaskManager {
 	return &DefaultTaskManager{
 		logger:                  logger,
-		storage:                 NewInMemoryStorage(logger, maxConversationHistory),
+		storage:                 NewInMemoryStorage(logger, 0),
 		pushNotificationConfigs: make(map[string]map[string]*types.TaskPushNotificationConfig),
-		notificationSender:      nil, // Can be set later with SetNotificationSender
+		notificationSender:      nil,
 	}
 }
 
@@ -90,15 +100,15 @@ func NewDefaultTaskManagerWithStorage(logger *zap.Logger, storage Storage) *Defa
 		logger:                  logger,
 		storage:                 storage,
 		pushNotificationConfigs: make(map[string]map[string]*types.TaskPushNotificationConfig),
-		notificationSender:      nil, // Can be set later with SetNotificationSender
+		notificationSender:      nil,
 	}
 }
 
 // NewDefaultTaskManagerWithNotifications creates a new default task manager with push notification support
-func NewDefaultTaskManagerWithNotifications(logger *zap.Logger, maxConversationHistory int, notificationSender PushNotificationSender) *DefaultTaskManager {
+func NewDefaultTaskManagerWithNotifications(logger *zap.Logger, notificationSender PushNotificationSender) *DefaultTaskManager {
 	return &DefaultTaskManager{
 		logger:                  logger,
-		storage:                 NewInMemoryStorage(logger, maxConversationHistory),
+		storage:                 NewInMemoryStorage(logger, 0),
 		pushNotificationConfigs: make(map[string]map[string]*types.TaskPushNotificationConfig),
 		notificationSender:      notificationSender,
 	}
@@ -114,18 +124,38 @@ func (tm *DefaultTaskManager) GetStorage() Storage {
 	return tm.storage
 }
 
-// CreateTask creates a new task and stores it
+// CreateTask creates a new task with message history managed within the task
 func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState, message *types.Message) *types.Task {
 	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 
-	if message != nil {
-		err := tm.storage.AddMessageToConversation(contextID, *message)
-		if err != nil {
-			tm.logger.Error("failed to add message to conversation", zap.Error(err))
+	var history []types.Message
+
+	filter := TaskFilter{
+		ContextID: &contextID,
+		SortBy:    TaskSortFieldCreatedAt,
+		SortOrder: SortOrderDesc,
+	}
+
+	existingTasks, err := tm.storage.ListTasksByContext(contextID, filter)
+	if err == nil && len(existingTasks) > 0 {
+		// Get the most recent task and use its complete history
+		recentTask := existingTasks[0]
+		history = append(history, recentTask.History...)
+	} else {
+		allTasks, err := tm.storage.ListTasks(filter)
+		if err == nil {
+			for _, task := range allTasks {
+				if task.ContextID == contextID {
+					history = append(history, task.History...)
+					break
+				}
+			}
 		}
 	}
 
-	history := tm.storage.GetConversationHistory(contextID)
+	if message != nil {
+		history = append(history, *message)
+	}
 
 	task := &types.Task{
 		ID:   uuid.New().String(),
@@ -139,13 +169,20 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 		History:   history,
 	}
 
-	err := tm.storage.StoreTask(task)
-	if err != nil {
-		tm.logger.Error("failed to store task", zap.Error(err))
-		return nil
+	switch state {
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+		err = tm.storage.StoreDeadLetterTask(task)
+		if err != nil {
+			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
+		}
+	default:
+		err = tm.storage.EnqueueTask(task, nil)
+		if err != nil {
+			tm.logger.Error("failed to enqueue created task", zap.Error(err))
+		}
 	}
 
-	tm.logger.Debug("task created",
+	tm.logger.Debug("task created and enqueued",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", contextID),
 		zap.String("state", string(state)),
@@ -156,24 +193,49 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 
 // UpdateState updates a task's state
 func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) error {
-	task, exists := tm.storage.GetTask(taskID)
-	if !exists {
-		return NewTaskNotFoundError(taskID)
+	task, err := tm.storage.GetActiveTask(taskID)
+	if err != nil {
+		contexts := tm.storage.GetContexts()
+		var found bool
+		for _, contextID := range contexts {
+			tasks, err := tm.storage.ListTasksByContext(contextID, TaskFilter{})
+			if err != nil {
+				continue
+			}
+			for _, deadTask := range tasks {
+				if deadTask.ID == taskID {
+					task = deadTask
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if !found {
+			return NewTaskNotFoundError(taskID)
+		}
 	}
 
 	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 	task.Status.State = state
 	task.Status.Timestamp = &timestamp
 
-	if (state == types.TaskStateCompleted || state == types.TaskStateInputRequired) && task.ContextID != "" {
-		tm.UpdateConversationHistory(task.ContextID, task.History)
+	if tm.isTaskFinalState(state) {
+		err := tm.storage.StoreDeadLetterTask(task)
+		if err != nil {
+			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
+			return err
+		}
+	} else {
+		err := tm.storage.UpdateActiveTask(task)
+		if err != nil {
+			tm.logger.Error("failed to update active task", zap.Error(err))
+			return err
+		}
 	}
 
-	err := tm.storage.UpdateTask(task)
-	if err != nil {
-		tm.logger.Error("failed to update task in storage", zap.Error(err))
-		return err
-	}
 	tm.logger.Debug("task state updated",
 		zap.String("task_id", taskID),
 		zap.String("context_id", task.ContextID),
@@ -188,7 +250,7 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 
 // UpdateError updates a task to failed state with an error message
 func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message) error {
-	task, exists := tm.storage.GetTask(taskID)
+	task, exists := tm.GetTask(taskID)
 	if !exists {
 		return NewTaskNotFoundError(taskID)
 	}
@@ -198,9 +260,9 @@ func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message)
 	task.Status.Message = message
 	task.Status.Timestamp = &timestamp
 
-	err := tm.storage.UpdateTask(task)
+	err := tm.storage.StoreDeadLetterTask(task)
 	if err != nil {
-		tm.logger.Error("failed to update task in storage", zap.Error(err))
+		tm.logger.Error("failed to store failed task in dead letter queue", zap.Error(err))
 		return err
 	}
 	tm.logger.Debug("task error updated",
@@ -252,7 +314,17 @@ func (tm *DefaultTaskManager) sendPushNotifications(taskID string, task *types.T
 
 // GetTask retrieves a task by ID
 func (tm *DefaultTaskManager) GetTask(taskID string) (*types.Task, bool) {
-	return tm.storage.GetTask(taskID)
+	task, err := tm.storage.GetActiveTask(taskID)
+	if err == nil {
+		return task, true
+	}
+
+	task, found := tm.storage.GetTask(taskID)
+	if found {
+		return task, true
+	}
+
+	return nil, false
 }
 
 // ListTasks retrieves a list of tasks based on the provided parameters
@@ -264,7 +336,6 @@ func (tm *DefaultTaskManager) ListTasks(params types.TaskListParams) (*types.Tas
 		Offset:    params.Offset,
 	}
 
-	// Set default limit if not specified
 	if filter.Limit <= 0 {
 		filter.Limit = 50
 	} else if filter.Limit > 100 {
@@ -277,9 +348,8 @@ func (tm *DefaultTaskManager) ListTasks(params types.TaskListParams) (*types.Tas
 		return nil, err
 	}
 
-	// Count total tasks matching the filter (without pagination)
 	totalFilter := filter
-	totalFilter.Limit = 0 // Get all matching tasks for count
+	totalFilter.Limit = 0
 	totalFilter.Offset = 0
 	totalTasks, err := tm.storage.ListTasks(totalFilter)
 	if err != nil {
@@ -310,12 +380,11 @@ func (tm *DefaultTaskManager) ListTasks(params types.TaskListParams) (*types.Tas
 
 // CancelTask cancels a task
 func (tm *DefaultTaskManager) CancelTask(taskID string) error {
-	task, exists := tm.storage.GetTask(taskID)
+	task, exists := tm.GetTask(taskID)
 	if !exists {
 		return NewTaskNotFoundError(taskID)
 	}
 
-	// Check if task can be canceled based on its current state
 	if !tm.isTaskCancelable(task.Status.State) {
 		return NewTaskNotCancelableError(taskID, task.Status.State)
 	}
@@ -324,9 +393,9 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 	task.Status.State = types.TaskStateCanceled
 	task.Status.Timestamp = &timestamp
 
-	err := tm.storage.UpdateTask(task)
+	err := tm.storage.StoreDeadLetterTask(task)
 	if err != nil {
-		tm.logger.Error("failed to update canceled task in storage", zap.Error(err))
+		tm.logger.Error("failed to store canceled task in dead letter queue", zap.Error(err))
 		return err
 	}
 
@@ -343,13 +412,20 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 func (tm *DefaultTaskManager) isTaskCancelable(state types.TaskState) bool {
 	switch state {
 	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
-		// Cannot cancel tasks that are already in a final state
 		return false
 	case types.TaskStateSubmitted, types.TaskStateWorking, types.TaskStateInputRequired, types.TaskStateAuthRequired, types.TaskStateUnknown:
-		// Can cancel tasks that are still in progress or waiting
 		return true
 	default:
-		// Unknown states cannot be canceled for safety
+		return false
+	}
+}
+
+// isTaskFinalState determines if a task state is final and should move to dead letter queue
+func (tm *DefaultTaskManager) isTaskFinalState(state types.TaskState) bool {
+	switch state {
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+		return true
+	default:
 		return false
 	}
 }
@@ -393,15 +469,64 @@ func (tm *DefaultTaskManager) PollTaskStatus(taskID string, interval time.Durati
 
 // GetConversationHistory retrieves conversation history for a context ID
 func (tm *DefaultTaskManager) GetConversationHistory(contextID string) []types.Message {
-	return tm.storage.GetConversationHistory(contextID)
+	var allMessages []types.Message
+
+	tm.logger.Debug("getting conversation history from task-based storage",
+		zap.String("context_id", contextID))
+
+	filter := TaskFilter{
+		ContextID: &contextID,
+		SortBy:    TaskSortFieldCreatedAt,
+		SortOrder: SortOrderDesc,
+	}
+
+	existingTasks, err := tm.storage.ListTasksByContext(contextID, filter)
+	if err == nil && len(existingTasks) > 0 {
+		allMessages = make([]types.Message, len(existingTasks[0].History))
+		copy(allMessages, existingTasks[0].History)
+	} else {
+		allTasks, err := tm.storage.ListTasks(filter)
+		if err == nil {
+			for _, task := range allTasks {
+				if task.ContextID == contextID {
+					allMessages = make([]types.Message, len(task.History))
+					copy(allMessages, task.History)
+					break
+				}
+			}
+		}
+	}
+
+	return allMessages
 }
 
 // UpdateConversationHistory updates conversation history for a context ID
 func (tm *DefaultTaskManager) UpdateConversationHistory(contextID string, messages []types.Message) {
-	tm.storage.UpdateConversationHistory(contextID, messages)
-	tm.logger.Debug("conversation history updated",
+	tm.logger.Debug("updating conversation history in task-based storage",
 		zap.String("context_id", contextID),
 		zap.Int("message_count", len(messages)))
+
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+
+	historyCopy := make([]types.Message, len(messages))
+	copy(historyCopy, messages)
+
+	task := &types.Task{
+		ID:   uuid.New().String(),
+		Kind: "task",
+		Status: types.TaskStatus{
+			State:     types.TaskStateCompleted,
+			Message:   nil,
+			Timestamp: &timestamp,
+		},
+		ContextID: contextID,
+		History:   historyCopy,
+	}
+
+	err := tm.storage.StoreDeadLetterTask(task)
+	if err != nil {
+		tm.logger.Error("failed to store conversation history task", zap.Error(err))
+	}
 }
 
 // SetTaskPushNotificationConfig sets push notification configuration for a task
@@ -515,7 +640,7 @@ func NewTaskNotCancelableError(taskID string, state types.TaskState) error {
 
 // PauseTaskForInput pauses a task waiting for additional input from the client
 func (tm *DefaultTaskManager) PauseTaskForInput(taskID string, message *types.Message) error {
-	task, exists := tm.storage.GetTask(taskID)
+	task, exists := tm.GetTask(taskID)
 	if !exists {
 		return NewTaskNotFoundError(taskID)
 	}
@@ -530,7 +655,7 @@ func (tm *DefaultTaskManager) PauseTaskForInput(taskID string, message *types.Me
 		tm.UpdateConversationHistory(task.ContextID, task.History)
 	}
 
-	err := tm.storage.UpdateTask(task)
+	err := tm.storage.UpdateActiveTask(task)
 	if err != nil {
 		tm.logger.Error("failed to update paused task in storage", zap.Error(err))
 		return err
@@ -549,7 +674,7 @@ func (tm *DefaultTaskManager) PauseTaskForInput(taskID string, message *types.Me
 
 // ResumeTaskWithInput resumes a paused task with new input from the client
 func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.Message) error {
-	task, exists := tm.storage.GetTask(taskID)
+	task, exists := tm.GetTask(taskID)
 	if !exists {
 		return NewTaskNotFoundError(taskID)
 	}
@@ -568,7 +693,7 @@ func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.
 		tm.UpdateConversationHistory(task.ContextID, task.History)
 	}
 
-	err := tm.storage.UpdateTask(task)
+	err := tm.storage.UpdateActiveTask(task)
 	if err != nil {
 		tm.logger.Error("failed to update resumed task in storage", zap.Error(err))
 		return err
@@ -587,10 +712,72 @@ func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.
 
 // IsTaskPaused checks if a task is currently paused (in input-required state)
 func (tm *DefaultTaskManager) IsTaskPaused(taskID string) (bool, error) {
-	task, exists := tm.storage.GetTask(taskID)
+	task, exists := tm.GetTask(taskID)
 	if !exists {
 		return false, NewTaskNotFoundError(taskID)
 	}
 
 	return task.Status.State == types.TaskStateInputRequired, nil
+}
+
+// SetRetentionConfig sets the task retention configuration and starts automatic cleanup
+func (tm *DefaultTaskManager) SetRetentionConfig(retentionConfig config.TaskRetentionConfig) {
+	tm.retentionConfig = retentionConfig
+
+	// Stop existing cleanup if running
+	tm.StopCleanup()
+
+	// Start automatic cleanup if interval is configured
+	if retentionConfig.CleanupInterval > 0 {
+		tm.stopCleanup = make(chan struct{})
+		tm.cleanupTicker = time.NewTicker(retentionConfig.CleanupInterval)
+
+		go func() {
+			for {
+				select {
+				case <-tm.cleanupTicker.C:
+					tm.cleanupWithRetention()
+				case <-tm.stopCleanup:
+					return
+				}
+			}
+		}()
+
+		tm.logger.Info("started automatic task retention cleanup",
+			zap.Int("max_completed_tasks", retentionConfig.MaxCompletedTasks),
+			zap.Int("max_failed_tasks", retentionConfig.MaxFailedTasks),
+			zap.Duration("cleanup_interval", retentionConfig.CleanupInterval))
+	}
+}
+
+// StopCleanup stops the automatic cleanup process
+func (tm *DefaultTaskManager) StopCleanup() {
+	if tm.cleanupTicker != nil {
+		tm.cleanupTicker.Stop()
+		tm.cleanupTicker = nil
+	}
+
+	if tm.stopCleanup != nil {
+		close(tm.stopCleanup)
+		tm.stopCleanup = nil
+	}
+}
+
+// cleanupWithRetention removes tasks based on retention configuration
+func (tm *DefaultTaskManager) cleanupWithRetention() {
+	if tm.retentionConfig.MaxCompletedTasks <= 0 && tm.retentionConfig.MaxFailedTasks <= 0 {
+		return // No retention limits configured
+	}
+
+	removedCount := tm.storage.CleanupTasksWithRetention(
+		tm.retentionConfig.MaxCompletedTasks,
+		tm.retentionConfig.MaxFailedTasks,
+	)
+
+	if removedCount > 0 {
+		tm.logger.Info("cleaned up tasks based on retention policy",
+			zap.Int("removed_count", removedCount),
+			zap.Int("max_completed_tasks", tm.retentionConfig.MaxCompletedTasks),
+			zap.Int("max_failed_tasks", tm.retentionConfig.MaxFailedTasks))
+	}
 }

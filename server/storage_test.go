@@ -1,326 +1,213 @@
 package server_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	server "github.com/inference-gateway/adk/server"
 	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
-	require "github.com/stretchr/testify/require"
 	zap "go.uber.org/zap"
 )
 
-func TestInMemoryStorage_ConversationHistory(t *testing.T) {
+func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 	logger := zap.NewNop()
-	storage := server.NewInMemoryStorage(logger, 10)
 
-	contextID := "test-context"
-
-	t.Run("empty conversation history", func(t *testing.T) {
-		history := storage.GetConversationHistory(contextID)
-		assert.Empty(t, history)
-	})
-
-	t.Run("add single message", func(t *testing.T) {
-		message := types.Message{
-			Kind:      "message",
-			MessageID: "msg-1",
-			Role:      "user",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "Hello",
-				},
-			},
+	t.Run("enqueue and dequeue tasks", func(t *testing.T) {
+		storage := server.NewInMemoryStorage(logger, 10)
+		task := &types.Task{
+			ID:        "task-1",
+			ContextID: "context-1",
+			Kind:      "task",
+			Status:    types.TaskStatus{State: types.TaskStateSubmitted},
+			History:   []types.Message{},
 		}
 
-		err := storage.AddMessageToConversation(contextID, message)
-		require.NoError(t, err)
+		// Enqueue task
+		err := storage.EnqueueTask(task, "request-1")
+		assert.NoError(t, err)
 
-		history := storage.GetConversationHistory(contextID)
-		assert.Len(t, history, 1)
-		assert.Equal(t, message.MessageID, history[0].MessageID)
-		assert.Equal(t, message.Role, history[0].Role)
+		// Dequeue task
+		ctx := context.Background()
+		queuedTask, err := storage.DequeueTask(ctx)
+		assert.NoError(t, err)
+		assert.NotNil(t, queuedTask)
+		assert.Equal(t, "task-1", queuedTask.Task.ID)
+		assert.Equal(t, "request-1", queuedTask.RequestID)
 	})
 
-	t.Run("prevent duplicate messages", func(t *testing.T) {
-		message := types.Message{
-			Kind:      "message",
-			MessageID: "msg-1",
-			Role:      "user",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "Hello again",
-				},
-			},
+	t.Run("get and update active tasks", func(t *testing.T) {
+		storage := server.NewInMemoryStorage(logger, 10)
+		task := &types.Task{
+			ID:        "task-2",
+			ContextID: "context-2",
+			Kind:      "task",
+			Status:    types.TaskStatus{State: types.TaskStateWorking},
+			History:   []types.Message{},
 		}
 
-		err := storage.AddMessageToConversation(contextID, message)
-		require.NoError(t, err)
+		// Enqueue task (makes it active)
+		err := storage.EnqueueTask(task, "request-2")
+		assert.NoError(t, err)
 
-		history := storage.GetConversationHistory(contextID)
-		assert.Len(t, history, 1, "Should still have only 1 message, duplicate should be prevented")
-		assert.Equal(t, "Hello", history[0].Parts[0].(map[string]interface{})["text"], "Original message should be preserved")
+		// Get active task
+		retrievedTask, err := storage.GetActiveTask("task-2")
+		assert.NoError(t, err)
+		assert.Equal(t, "task-2", retrievedTask.ID)
+
+		// Update active task
+		task.Status.State = types.TaskStateInputRequired
+		err = storage.UpdateActiveTask(task)
+		assert.NoError(t, err)
+
+		// Verify update
+		updatedTask, err := storage.GetActiveTask("task-2")
+		assert.NoError(t, err)
+		assert.Equal(t, types.TaskStateInputRequired, updatedTask.Status.State)
 	})
 
-	t.Run("add different messages", func(t *testing.T) {
-		message2 := types.Message{
-			Kind:      "message",
-			MessageID: "msg-2",
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "Hi there!",
-				},
-			},
+	t.Run("dead letter queue functionality", func(t *testing.T) {
+		storage := server.NewInMemoryStorage(logger, 10)
+		task := &types.Task{
+			ID:        "task-3",
+			ContextID: "context-3",
+			Kind:      "task",
+			Status:    types.TaskStatus{State: types.TaskStateCompleted},
+			History:   []types.Message{},
 		}
 
-		err := storage.AddMessageToConversation(contextID, message2)
-		require.NoError(t, err)
+		// Store task in dead letter queue
+		err := storage.StoreDeadLetterTask(task)
+		assert.NoError(t, err)
 
-		history := storage.GetConversationHistory(contextID)
-		assert.Len(t, history, 2)
-		assert.Equal(t, "msg-1", history[0].MessageID)
-		assert.Equal(t, "msg-2", history[1].MessageID)
-	})
-}
+		// Task should not be in active tasks
+		_, err = storage.GetActiveTask("task-3")
+		assert.Error(t, err) // Should return error because task is not active
 
-func TestInMemoryStorage_ConversationHistoryTrimming(t *testing.T) {
-	logger := zap.NewNop()
-	maxHistory := 3
-	storage := server.NewInMemoryStorage(logger, maxHistory)
-
-	contextID := "test-context"
-
-	for i := 1; i <= 5; i++ {
-		message := types.Message{
-			Kind:      "message",
-			MessageID: fmt.Sprintf("msg-%d", i),
-			Role:      "user",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": fmt.Sprintf("Message %d", i),
-				},
-			},
-		}
-
-		err := storage.AddMessageToConversation(contextID, message)
-		require.NoError(t, err)
-	}
-
-	history := storage.GetConversationHistory(contextID)
-	assert.Len(t, history, maxHistory, "History should be trimmed to max length")
-
-	assert.Equal(t, "msg-3", history[0].MessageID)
-	assert.Equal(t, "msg-4", history[1].MessageID)
-	assert.Equal(t, "msg-5", history[2].MessageID)
-}
-
-func TestInMemoryStorage_UpdateConversationHistory(t *testing.T) {
-	logger := zap.NewNop()
-	storage := server.NewInMemoryStorage(logger, 10)
-
-	contextID := "test-context"
-
-	messages := []types.Message{
-		{
-			Kind:      "message",
-			MessageID: "msg-1",
-			Role:      "user",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "Hello",
-				},
-			},
-		},
-		{
-			Kind:      "message",
-			MessageID: "msg-2",
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "Hi there!",
-				},
-			},
-		},
-	}
-
-	storage.UpdateConversationHistory(contextID, messages)
-
-	history := storage.GetConversationHistory(contextID)
-	assert.Len(t, history, 2)
-	assert.Equal(t, "msg-1", history[0].MessageID)
-	assert.Equal(t, "msg-2", history[1].MessageID)
-}
-
-func TestInMemoryStorage_TaskManagement(t *testing.T) {
-	logger := zap.NewNop()
-	storage := server.NewInMemoryStorage(logger, 10)
-
-	task := &types.Task{
-		ID:   "task-1",
-		Kind: "task",
-		Status: types.TaskStatus{
-			State: types.TaskStateSubmitted,
-		},
-		ContextID: "context-1",
-		History:   []types.Message{},
-	}
-
-	t.Run("store and retrieve task", func(t *testing.T) {
-		err := storage.StoreTask(task)
-		require.NoError(t, err)
-
-		retrievedTask, exists := storage.GetTask("task-1")
-		assert.True(t, exists)
-		assert.Equal(t, task.ID, retrievedTask.ID)
-		assert.Equal(t, task.Status.State, retrievedTask.Status.State)
-	})
-
-	t.Run("update task", func(t *testing.T) {
-		task.Status.State = types.TaskStateCompleted
-		err := storage.UpdateTask(task)
-		require.NoError(t, err)
-
-		retrievedTask, exists := storage.GetTask("task-1")
-		assert.True(t, exists)
+		// Task should be retrievable via GetTask (which checks both active and dead letter)
+		retrievedTask, found := storage.GetTask("task-3")
+		assert.True(t, found)
+		assert.Equal(t, "task-3", retrievedTask.ID)
 		assert.Equal(t, types.TaskStateCompleted, retrievedTask.Status.State)
 	})
 
-	t.Run("list tasks", func(t *testing.T) {
-		filter := server.TaskFilter{
-			Limit:  10,
-			Offset: 0,
+	t.Run("list tasks with filtering", func(t *testing.T) {
+		storage := server.NewInMemoryStorage(logger, 10)
+		// Create tasks with different states
+		workingTask := &types.Task{
+			ID:        "working-task",
+			ContextID: "context-working",
+			Kind:      "task",
+			Status:    types.TaskStatus{State: types.TaskStateWorking},
+			History:   []types.Message{},
 		}
 
-		tasks, err := storage.ListTasks(filter)
-		require.NoError(t, err)
-		assert.Len(t, tasks, 1)
-		assert.Equal(t, "task-1", tasks[0].ID)
+		completedTask := &types.Task{
+			ID:        "completed-task",
+			ContextID: "context-completed",
+			Kind:      "task",
+			Status:    types.TaskStatus{State: types.TaskStateCompleted},
+			History:   []types.Message{},
+		}
+
+		// Enqueue working task
+		err := storage.EnqueueTask(workingTask, "request-working")
+		assert.NoError(t, err)
+
+		// Store completed task in dead letter queue
+		err = storage.StoreDeadLetterTask(completedTask)
+		assert.NoError(t, err)
+
+		// List all tasks
+		allTasks, err := storage.ListTasks(server.TaskFilter{})
+		assert.NoError(t, err)
+		assert.Len(t, allTasks, 2)
+
+		// List working tasks
+		workingState := types.TaskStateWorking
+		workingTasks, err := storage.ListTasks(server.TaskFilter{State: &workingState})
+		assert.NoError(t, err)
+		assert.Len(t, workingTasks, 1)
+		assert.Equal(t, "working-task", workingTasks[0].ID)
+
+		// List completed tasks
+		completedState := types.TaskStateCompleted
+		completedTasks, err := storage.ListTasks(server.TaskFilter{State: &completedState})
+		assert.NoError(t, err)
+		assert.Len(t, completedTasks, 1)
+		assert.Equal(t, "completed-task", completedTasks[0].ID)
 	})
 
-	t.Run("delete task", func(t *testing.T) {
-		err := storage.DeleteTask("task-1")
-		require.NoError(t, err)
+	t.Run("queue management", func(t *testing.T) {
+		freshStorage := server.NewInMemoryStorage(logger, 10)
 
-		_, exists := storage.GetTask("task-1")
-		assert.False(t, exists)
+		// Test basic queue operations
+		for i := 0; i < 3; i++ {
+			task := &types.Task{
+				ID:        fmt.Sprintf("queue-task-%d", i),
+				ContextID: fmt.Sprintf("context-%d", i),
+				Kind:      "task",
+				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
+				History:   []types.Message{},
+			}
+
+			err := freshStorage.EnqueueTask(task, fmt.Sprintf("request-%d", i))
+			assert.NoError(t, err)
+		}
+
+		// Test queue size
+		size := freshStorage.GetQueueLength()
+		assert.Equal(t, 3, size)
+
+		// Test dequeue operations
+		ctx := context.Background()
+		ctxTimeout, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+		defer cancel()
+		
+		// Should dequeue successfully while tasks exist
+		for i := 0; i < 3; i++ {
+			queuedTask, err := freshStorage.DequeueTask(ctxTimeout)
+			assert.NoError(t, err)
+			assert.NotNil(t, queuedTask)
+		}
+
+		// Should timeout when trying to dequeue from empty queue
+		_, err := freshStorage.DequeueTask(ctxTimeout)
+		assert.Error(t, err) // Should return timeout error
 	})
-}
 
-func TestInMemoryStorage_ContextManagement(t *testing.T) {
-	logger := zap.NewNop()
-	storage := server.NewInMemoryStorage(logger, 10)
+	t.Run("context management", func(t *testing.T) {
+		storage := server.NewInMemoryStorage(logger, 10)
+		// Create tasks with different contexts
+		task1 := &types.Task{
+			ID:        "ctx-task-1",
+			ContextID: "context-alpha",
+			Kind:      "task",
+			Status:    types.TaskStatus{State: types.TaskStateWorking},
+			History:   []types.Message{},
+		}
 
-	contextID1 := "context-1"
-	contextID2 := "context-2"
+		task2 := &types.Task{
+			ID:        "ctx-task-2",
+			ContextID: "context-beta",
+			Kind:      "task",
+			Status:    types.TaskStatus{State: types.TaskStateCompleted},
+			History:   []types.Message{},
+		}
 
-	message1 := types.Message{
-		Kind:      "message",
-		MessageID: "msg-1",
-		Role:      "user",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "Hello from context 1",
-			},
-		},
-	}
+		// Enqueue and store tasks
+		err := storage.EnqueueTask(task1, "request-alpha")
+		assert.NoError(t, err)
 
-	message2 := types.Message{
-		Kind:      "message",
-		MessageID: "msg-2",
-		Role:      "user",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "Hello from context 2",
-			},
-		},
-	}
+		err = storage.StoreDeadLetterTask(task2)
+		assert.NoError(t, err)
 
-	err := storage.AddMessageToConversation(contextID1, message1)
-	require.NoError(t, err)
-
-	err = storage.AddMessageToConversation(contextID2, message2)
-	require.NoError(t, err)
-
-	t.Run("get contexts", func(t *testing.T) {
+		// Get contexts
 		contexts := storage.GetContexts()
-		assert.Len(t, contexts, 2)
-		assert.Contains(t, contexts, contextID1)
-		assert.Contains(t, contexts, contextID2)
-	})
-
-	t.Run("delete context", func(t *testing.T) {
-		err := storage.DeleteContext(contextID1)
-		require.NoError(t, err)
-
-		history := storage.GetConversationHistory(contextID1)
-		assert.Empty(t, history)
-
-		history = storage.GetConversationHistory(contextID2)
-		assert.Len(t, history, 1)
-	})
-}
-
-func TestInMemoryStorage_CleanupOperations(t *testing.T) {
-	logger := zap.NewNop()
-	storage := server.NewInMemoryStorage(logger, 10)
-
-	completedTask := &types.Task{
-		ID:   "completed-task",
-		Kind: "task",
-		Status: types.TaskStatus{
-			State: types.TaskStateCompleted,
-		},
-		ContextID: "context-1",
-	}
-
-	workingTask := &types.Task{
-		ID:   "working-task",
-		Kind: "task",
-		Status: types.TaskStatus{
-			State: types.TaskStateWorking,
-		},
-		ContextID: "context-2",
-	}
-
-	failedTask := &types.Task{
-		ID:   "failed-task",
-		Kind: "task",
-		Status: types.TaskStatus{
-			State: types.TaskStateFailed,
-		},
-		ContextID: "context-3",
-	}
-
-	err := storage.StoreTask(completedTask)
-	require.NoError(t, err)
-
-	err = storage.StoreTask(workingTask)
-	require.NoError(t, err)
-
-	err = storage.StoreTask(failedTask)
-	require.NoError(t, err)
-
-	t.Run("cleanup completed tasks", func(t *testing.T) {
-		cleanedCount := storage.CleanupCompletedTasks()
-		assert.Equal(t, 2, cleanedCount)
-
-		_, exists := storage.GetTask("working-task")
-		assert.True(t, exists)
-
-		_, exists = storage.GetTask("completed-task")
-		assert.False(t, exists)
-
-		_, exists = storage.GetTask("failed-task")
-		assert.False(t, exists)
+		assert.Contains(t, contexts, "context-alpha")
+		assert.Contains(t, contexts, "context-beta")
+		assert.GreaterOrEqual(t, len(contexts), 2)
 	})
 }

@@ -6,9 +6,9 @@ import (
 	"time"
 
 	server "github.com/inference-gateway/adk/server"
+	"github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
-	require "github.com/stretchr/testify/require"
 	zap "go.uber.org/zap"
 )
 
@@ -104,7 +104,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger, 20)
+			taskManager := server.NewDefaultTaskManager(logger)
 
 			task := taskManager.CreateTask(tt.contextID, tt.state, tt.message)
 
@@ -126,7 +126,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 
 func TestDefaultTaskManager_GetTask(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	message := &types.Message{
 		Kind:      "message",
@@ -160,7 +160,7 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 
 func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	submittedTask := taskManager.CreateTask("context-1", types.TaskStateSubmitted, nil)
 	workingTask := taskManager.CreateTask("context-2", types.TaskStateWorking, nil)
@@ -190,7 +190,7 @@ func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 
 func TestDefaultTaskManager_ConcurrentAccess(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	numGoroutines := 10
 	tasksChan := make(chan *types.Task, numGoroutines)
@@ -225,21 +225,21 @@ func TestDefaultTaskManager_ConcurrentAccess(t *testing.T) {
 
 func TestNewDefaultTaskManager(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	assert.NotNil(t, taskManager)
 }
 
 func TestNewDefaultTaskManager_WithNilLogger(t *testing.T) {
 	assert.NotPanics(t, func() {
-		taskManager := server.NewDefaultTaskManager(nil, 20)
+		taskManager := server.NewDefaultTaskManager(nil)
 		assert.NotNil(t, taskManager)
 	})
 }
 
 func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-conversation-context"
 
@@ -274,7 +274,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	}
 
 	task1.History = append(task1.History, *assistantResponse1)
-	err := taskManager.GetStorage().UpdateTask(task1)
+	err := taskManager.GetStorage().UpdateActiveTask(task1)
 	assert.NoError(t, err)
 
 	err = taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
@@ -321,7 +321,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	}
 
 	task2.History = append(task2.History, *assistantResponse2)
-	err = taskManager.GetStorage().UpdateTask(task2)
+	err = taskManager.GetStorage().UpdateActiveTask(task2)
 	assert.NoError(t, err)
 
 	err = taskManager.UpdateState(task2.ID, types.TaskStateCompleted)
@@ -361,7 +361,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 
 func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID1 := "context-1"
 	contextID2 := "context-2"
@@ -412,7 +412,7 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	}
 
 	task1.History = append(task1.History, *response1)
-	err := taskManager.GetStorage().UpdateTask(task1)
+	err := taskManager.GetStorage().UpdateActiveTask(task1)
 	assert.NoError(t, err)
 
 	err = taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
@@ -458,7 +458,7 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 
 func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
 
@@ -492,7 +492,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	}
 
 	task.History = append(task.History, *response)
-	err := taskManager.GetStorage().UpdateTask(task)
+	err := taskManager.GetStorage().UpdateActiveTask(task)
 	assert.NoError(t, err)
 
 	err = taskManager.UpdateState(task.ID, types.TaskStateCompleted)
@@ -517,7 +517,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 
 func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
 
@@ -564,35 +564,77 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 	assert.Equal(t, "First message", freshHistory[0].Parts[0].(map[string]interface{})["text"])
 }
 
-func TestDefaultTaskManager_ConversationHistoryLimit(t *testing.T) {
+func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 	logger := zap.NewNop()
-	maxHistory := 3
-	taskManager := server.NewDefaultTaskManager(logger, maxHistory)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
 
-	messages := []types.Message{
-		{Kind: "message", MessageID: "msg-1", Role: "user", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Message 1"}}},
-		{Kind: "message", MessageID: "msg-2", Role: "assistant", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Response 1"}}},
-		{Kind: "message", MessageID: "msg-3", Role: "user", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Message 2"}}},
-		{Kind: "message", MessageID: "msg-4", Role: "assistant", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Response 2"}}},
-		{Kind: "message", MessageID: "msg-5", Role: "user", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Message 3"}}},
+	// Create some completed tasks
+	for i := 0; i < 5; i++ {
+		message := &types.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("completed-msg-%d", i),
+			Role:      "user",
+			Parts:     []types.Part{map[string]interface{}{"kind": "text", "text": fmt.Sprintf("Completed message %d", i)}},
+		}
+		task := taskManager.CreateTask(contextID, types.TaskStateCompleted, message)
+		assert.NotNil(t, task)
 	}
 
-	taskManager.UpdateConversationHistory(contextID, messages)
+	// Create some failed tasks
+	for i := 0; i < 3; i++ {
+		message := &types.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("failed-msg-%d", i),
+			Role:      "user",
+			Parts:     []types.Part{map[string]interface{}{"kind": "text", "text": fmt.Sprintf("Failed message %d", i)}},
+		}
+		task := taskManager.CreateTask(contextID, types.TaskStateFailed, message)
+		assert.NotNil(t, task)
+	}
 
-	history := taskManager.GetConversationHistory(contextID)
-	assert.Len(t, history, maxHistory)
+	// Configure retention to keep only 2 completed and 1 failed task
+	retentionConfig := config.TaskRetentionConfig{
+		MaxCompletedTasks: 2,
+		MaxFailedTasks:    1,
+		CleanupInterval:   0, // No automatic cleanup for this test
+	}
+	taskManager.SetRetentionConfig(retentionConfig)
 
-	assert.Equal(t, "msg-3", history[0].MessageID)
-	assert.Equal(t, "msg-4", history[1].MessageID)
-	assert.Equal(t, "msg-5", history[2].MessageID)
+	// Manually trigger cleanup
+	storage := taskManager.GetStorage()
+	removedCount := storage.CleanupTasksWithRetention(retentionConfig.MaxCompletedTasks, retentionConfig.MaxFailedTasks)
+
+	// Should have removed 3 completed tasks (5-2) and 2 failed tasks (3-1)
+	assert.Equal(t, 5, removedCount)
+
+	// Verify remaining task counts
+	allTasks, err := taskManager.ListTasks(types.TaskListParams{
+		ContextID: &contextID,
+		Limit:     100,
+	})
+	assert.NoError(t, err)
+
+	completedCount := 0
+	failedCount := 0
+	for _, task := range allTasks.Tasks {
+		switch task.Status.State {
+		case types.TaskStateCompleted:
+			completedCount++
+		case types.TaskStateFailed:
+			failedCount++
+		}
+	}
+
+	assert.Equal(t, 2, completedCount, "should keep only 2 completed tasks")
+	assert.Equal(t, 1, failedCount, "should keep only 1 failed task")
 }
 
 func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) {
 	logger := zap.NewNop()
 	maxHistory := 2
-	taskManager := server.NewDefaultTaskManager(logger, maxHistory)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
 
@@ -643,35 +685,9 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	assert.Equal(t, "msg-3", task3.History[len(task3.History)-1].MessageID)
 }
 
-func TestDefaultTaskManager_ConversationHistoryLimitZeroDirectInstantiation(t *testing.T) {
-	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 0)
-
-	contextID := "test-context"
-	messages := make([]types.Message, 5)
-	for i := 0; i < 5; i++ {
-		messages[i] = types.Message{
-			Kind:      "message",
-			MessageID: fmt.Sprintf("msg-%d", i),
-			Role:      "user",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": fmt.Sprintf("Message %d", i),
-				},
-			},
-		}
-	}
-
-	taskManager.UpdateConversationHistory(contextID, messages)
-	history := taskManager.GetConversationHistory(contextID)
-
-	assert.Len(t, history, 0)
-}
-
 func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 10)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	tests := []struct {
 		name          string
@@ -766,7 +782,7 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 
 func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 10)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	t.Run("pause existing task successfully", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
@@ -826,7 +842,7 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 
 func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 10)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	t.Run("resume paused task successfully", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
@@ -875,7 +891,7 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 
 func TestDefaultTaskManager_IsTaskPaused(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 10)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	t.Run("check paused task", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
@@ -902,7 +918,7 @@ func TestDefaultTaskManager_IsTaskPaused(t *testing.T) {
 
 func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 10)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	t.Run("polling returns when task reaches input-required state", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
@@ -937,7 +953,7 @@ func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 
 func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 10)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	initialMessage := &types.Message{
 		Kind:      "message",
@@ -1003,105 +1019,4 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	assert.Equal(t, "initial-msg", retrievedTask.History[0].MessageID)
 	assert.Equal(t, "pause-msg", retrievedTask.History[1].MessageID)
 	assert.Equal(t, "resume-msg", retrievedTask.History[2].MessageID)
-}
-
-func TestDefaultTaskManager_MessageDuplicationPrevention(t *testing.T) {
-	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
-
-	contextID := "test-duplication-context"
-
-	userMessage := &types.Message{
-		Kind:      "message",
-		MessageID: "msg-1754236662",
-		Role:      "user",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "What can you help me with?",
-			},
-		},
-	}
-
-	task1 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, userMessage)
-	require.NotNil(t, task1)
-
-	assert.Len(t, task1.History, 1, "Task history should contain exactly one message")
-	assert.Equal(t, userMessage.MessageID, task1.History[0].MessageID)
-	assert.Equal(t, userMessage.Role, task1.History[0].Role)
-
-	history := taskManager.GetConversationHistory(contextID)
-	assert.Len(t, history, 1, "Conversation history should contain exactly one message")
-	assert.Equal(t, userMessage.MessageID, history[0].MessageID)
-
-	messageIDCount := 0
-	for _, msg := range history {
-		if msg.MessageID == userMessage.MessageID {
-			messageIDCount++
-		}
-	}
-	assert.Equal(t, 1, messageIDCount, "Message ID should appear exactly once in conversation history")
-
-	assistantMessage := &types.Message{
-		Kind:      "message",
-		MessageID: "assistant-response-1",
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "I can help you with many things!",
-			},
-		},
-	}
-
-	task1.History = append(task1.History, *assistantMessage)
-	err := taskManager.GetStorage().UpdateTask(task1)
-	require.NoError(t, err)
-	err = taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
-	require.NoError(t, err)
-
-	history = taskManager.GetConversationHistory(contextID)
-	assert.Len(t, history, 2, "Conversation history should contain exactly two messages")
-
-	userMessageCount := 0
-	assistantMessageCount := 0
-	for _, msg := range history {
-		if msg.MessageID == userMessage.MessageID && msg.Role == "user" {
-			userMessageCount++
-		}
-		if msg.MessageID == assistantMessage.MessageID && msg.Role == "assistant" {
-			assistantMessageCount++
-		}
-	}
-	assert.Equal(t, 1, userMessageCount, "User message should appear exactly once")
-	assert.Equal(t, 1, assistantMessageCount, "Assistant message should appear exactly once")
-
-	userMessage2 := &types.Message{
-		Kind:      "message",
-		MessageID: "msg-second-user",
-		Role:      "user",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "Tell me more about Go programming",
-			},
-		},
-	}
-
-	task2 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, userMessage2)
-	require.NotNil(t, task2)
-
-	assert.Len(t, task2.History, 3, "Second task should have complete conversation history")
-
-	finalHistory := taskManager.GetConversationHistory(contextID)
-	assert.Len(t, finalHistory, 3, "Final conversation history should have 3 messages")
-
-	messageIDCounts := make(map[string]int)
-	for _, msg := range finalHistory {
-		messageIDCounts[msg.MessageID]++
-	}
-
-	for messageID, count := range messageIDCounts {
-		assert.Equal(t, 1, count, "Message ID %s should appear exactly once, but appeared %d times", messageID, count)
-	}
 }

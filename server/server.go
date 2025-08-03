@@ -86,12 +86,6 @@ const (
 	ErrServerError    JRPCErrorCode = -32000
 )
 
-// QueuedTask represents a task in the processing queue
-type QueuedTask struct {
-	Task      *types.Task
-	RequestID interface{}
-}
-
 type A2AServerImpl struct {
 	cfg            *config.Config
 	logger         *zap.Logger
@@ -105,7 +99,6 @@ type A2AServerImpl struct {
 	// Server state
 	httpServer    *http.Server
 	metricsServer *http.Server
-	taskQueue     chan *QueuedTask
 
 	// Optional processors
 	taskResultProcessor TaskResultProcessor
@@ -133,11 +126,10 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 	storage := NewInMemoryStorage(logger, maxConversationHistory)
 
 	server := &A2AServerImpl{
-		cfg:       cfg,
-		logger:    logger,
-		storage:   storage,
-		otel:      otel,
-		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
+		cfg:     cfg,
+		logger:  logger,
+		storage: storage,
+		otel:    otel,
 	}
 
 	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
@@ -204,10 +196,9 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 	}
 
 	server := &A2AServerImpl{
-		cfg:       cfg,
-		logger:    logger,
-		otel:      otel,
-		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
+		cfg:    cfg,
+		logger: logger,
+		otel:   otel,
 	}
 
 	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
@@ -475,8 +466,21 @@ func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 		case <-ctx.Done():
 			s.logger.Info("task processor shutting down")
 			return
-		case queuedTask := <-s.taskQueue:
-			s.processQueuedTask(ctx, queuedTask)
+		default:
+			// Try to dequeue a task from storage
+			queuedTask, err := s.storage.DequeueTask(ctx)
+			if err != nil {
+				if err == context.Canceled || err == context.DeadlineExceeded {
+					s.logger.Info("task processor shutting down due to context cancellation")
+					return
+				}
+				s.logger.Error("failed to dequeue task", zap.Error(err))
+				continue
+			}
+
+			if queuedTask != nil {
+				s.processQueuedTask(ctx, queuedTask)
+			}
 		}
 	}
 }
@@ -647,18 +651,10 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCReque
 		return
 	}
 
-	queuedTask := &QueuedTask{
-		Task:      task,
-		RequestID: req.ID,
-	}
-
-	select {
-	case s.taskQueue <- queuedTask:
-		s.logger.Info("task queued for processing",
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
-	default:
-		s.logger.Error("task queue is full")
+	// Enqueue task using storage layer for horizontal scaling
+	err = s.storage.EnqueueTask(task, req.ID)
+	if err != nil {
+		s.logger.Error("failed to enqueue task", zap.Error(err))
 		err := s.taskManager.UpdateError(task.ID, &types.Message{
 			Kind:      "message",
 			MessageID: uuid.New().String(),
@@ -666,16 +662,18 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCReque
 			Parts: []types.Part{
 				map[string]interface{}{
 					"kind": "text",
-					"text": "Task queue is full. Please try again later.",
+					"text": "Failed to queue task for processing. Please try again later.",
 				},
 			},
 		})
 		if err != nil {
-			s.logger.Error("failed to update task to failed state due to full queue",
+			s.logger.Error("failed to update task to failed state due to enqueue failure",
 				zap.Error(err),
 				zap.String("task_id", task.ID),
 				zap.String("context_id", task.ContextID))
 		}
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), "Failed to queue task")
+		return
 	}
 
 	s.responseSender.SendSuccess(c, req.ID, *task)

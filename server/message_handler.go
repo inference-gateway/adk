@@ -253,7 +253,7 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 				task.History = append(task.History, msg)
 			}
 		}
-		mh.storage.UpdateConversationHistory(task.ContextID, task.History)
+
 		mh.logger.Info("agent streaming completed successfully",
 			zap.String("task_id", task.ID))
 
@@ -322,7 +322,6 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 			finalMessage := assistantMessage
 			if finalMessage != nil {
 				task.Status.Message = finalMessage
-				mh.storage.UpdateConversationHistory(task.ContextID, task.History)
 			}
 
 			mh.logger.Info("streaming task completed successfully",
@@ -349,8 +348,6 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 		mh.logger.Debug("tool calls executed, continuing to next iteration",
 			zap.Int("iteration", iteration),
 			zap.String("task_id", task.ID))
-
-		mh.storage.UpdateConversationHistory(task.ContextID, task.History)
 	}
 
 	mh.logger.Warn("max streaming iterations reached",

@@ -84,7 +84,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger, 20)
+			taskManager := server.NewDefaultTaskManager(logger)
 
 			task := taskManager.CreateTask(tt.contextID, tt.state, tt.message)
 
@@ -100,7 +100,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 
 func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	message := &types.Message{
 		Kind:      "message",
@@ -108,6 +108,9 @@ func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 		Role:      "user",
 	}
 	task := taskManager.CreateTask("test-context", types.TaskStateSubmitted, message)
+
+	err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+	assert.NoError(t, err)
 
 	retrievedTask, exists := taskManager.GetTask(task.ID)
 	assert.True(t, exists)
@@ -152,7 +155,7 @@ func TestA2AServer_ResponseSender_SendError(t *testing.T) {
 
 func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 	maxHistory := 3
 	storage := server.NewInMemoryStorage(logger, maxHistory)
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/inference-gateway/adk/server"
+	"github.com/inference-gateway/adk/server/config"
 	"github.com/inference-gateway/adk/types"
 )
 
@@ -164,6 +165,11 @@ type FakeTaskManager struct {
 	resumeTaskWithInputReturnsOnCall map[int]struct {
 		result1 error
 	}
+	SetRetentionConfigStub        func(config.TaskRetentionConfig)
+	setRetentionConfigMutex       sync.RWMutex
+	setRetentionConfigArgsForCall []struct {
+		arg1 config.TaskRetentionConfig
+	}
 	SetTaskPushNotificationConfigStub        func(types.TaskPushNotificationConfig) (*types.TaskPushNotificationConfig, error)
 	setTaskPushNotificationConfigMutex       sync.RWMutex
 	setTaskPushNotificationConfigArgsForCall []struct {
@@ -176,6 +182,10 @@ type FakeTaskManager struct {
 	setTaskPushNotificationConfigReturnsOnCall map[int]struct {
 		result1 *types.TaskPushNotificationConfig
 		result2 error
+	}
+	StopCleanupStub        func()
+	stopCleanupMutex       sync.RWMutex
+	stopCleanupArgsForCall []struct {
 	}
 	UpdateConversationHistoryStub        func(string, []types.Message)
 	updateConversationHistoryMutex       sync.RWMutex
@@ -991,6 +1001,38 @@ func (fake *FakeTaskManager) ResumeTaskWithInputReturnsOnCall(i int, result1 err
 	}{result1}
 }
 
+func (fake *FakeTaskManager) SetRetentionConfig(arg1 config.TaskRetentionConfig) {
+	fake.setRetentionConfigMutex.Lock()
+	fake.setRetentionConfigArgsForCall = append(fake.setRetentionConfigArgsForCall, struct {
+		arg1 config.TaskRetentionConfig
+	}{arg1})
+	stub := fake.SetRetentionConfigStub
+	fake.recordInvocation("SetRetentionConfig", []interface{}{arg1})
+	fake.setRetentionConfigMutex.Unlock()
+	if stub != nil {
+		fake.SetRetentionConfigStub(arg1)
+	}
+}
+
+func (fake *FakeTaskManager) SetRetentionConfigCallCount() int {
+	fake.setRetentionConfigMutex.RLock()
+	defer fake.setRetentionConfigMutex.RUnlock()
+	return len(fake.setRetentionConfigArgsForCall)
+}
+
+func (fake *FakeTaskManager) SetRetentionConfigCalls(stub func(config.TaskRetentionConfig)) {
+	fake.setRetentionConfigMutex.Lock()
+	defer fake.setRetentionConfigMutex.Unlock()
+	fake.SetRetentionConfigStub = stub
+}
+
+func (fake *FakeTaskManager) SetRetentionConfigArgsForCall(i int) config.TaskRetentionConfig {
+	fake.setRetentionConfigMutex.RLock()
+	defer fake.setRetentionConfigMutex.RUnlock()
+	argsForCall := fake.setRetentionConfigArgsForCall[i]
+	return argsForCall.arg1
+}
+
 func (fake *FakeTaskManager) SetTaskPushNotificationConfig(arg1 types.TaskPushNotificationConfig) (*types.TaskPushNotificationConfig, error) {
 	fake.setTaskPushNotificationConfigMutex.Lock()
 	ret, specificReturn := fake.setTaskPushNotificationConfigReturnsOnCall[len(fake.setTaskPushNotificationConfigArgsForCall)]
@@ -1053,6 +1095,30 @@ func (fake *FakeTaskManager) SetTaskPushNotificationConfigReturnsOnCall(i int, r
 		result1 *types.TaskPushNotificationConfig
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) StopCleanup() {
+	fake.stopCleanupMutex.Lock()
+	fake.stopCleanupArgsForCall = append(fake.stopCleanupArgsForCall, struct {
+	}{})
+	stub := fake.StopCleanupStub
+	fake.recordInvocation("StopCleanup", []interface{}{})
+	fake.stopCleanupMutex.Unlock()
+	if stub != nil {
+		fake.StopCleanupStub()
+	}
+}
+
+func (fake *FakeTaskManager) StopCleanupCallCount() int {
+	fake.stopCleanupMutex.RLock()
+	defer fake.stopCleanupMutex.RUnlock()
+	return len(fake.stopCleanupArgsForCall)
+}
+
+func (fake *FakeTaskManager) StopCleanupCalls(stub func()) {
+	fake.stopCleanupMutex.Lock()
+	defer fake.stopCleanupMutex.Unlock()
+	fake.StopCleanupStub = stub
 }
 
 func (fake *FakeTaskManager) UpdateConversationHistory(arg1 string, arg2 []types.Message) {
@@ -1246,8 +1312,12 @@ func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	defer fake.pollTaskStatusMutex.RUnlock()
 	fake.resumeTaskWithInputMutex.RLock()
 	defer fake.resumeTaskWithInputMutex.RUnlock()
+	fake.setRetentionConfigMutex.RLock()
+	defer fake.setRetentionConfigMutex.RUnlock()
 	fake.setTaskPushNotificationConfigMutex.RLock()
 	defer fake.setTaskPushNotificationConfigMutex.RUnlock()
+	fake.stopCleanupMutex.RLock()
+	defer fake.stopCleanupMutex.RUnlock()
 	fake.updateConversationHistoryMutex.RLock()
 	defer fake.updateConversationHistoryMutex.RUnlock()
 	fake.updateErrorMutex.RLock()
