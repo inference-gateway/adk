@@ -22,16 +22,19 @@ type AgentResponse struct {
 	AdditionalMessages []types.Message
 }
 
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 . OpenAICompatibleAgent
+
 // OpenAICompatibleAgent represents an agent that can interact with OpenAI-compatible LLM APIs and execute tools
 // The agent is stateless and does not maintain conversation history
+// Tools are configured during agent creation via the toolbox
 type OpenAICompatibleAgent interface {
 	// Run processes a conversation and returns the assistant's response along with any additional messages
-	// Takes conversation messages and available tools, returns the response and additional context messages
-	Run(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (*AgentResponse, error)
+	// Uses the agent's configured toolbox for tool execution
+	Run(ctx context.Context, messages []types.Message) (*AgentResponse, error)
 
 	// RunWithStream processes a conversation and returns a streaming response
-	// Takes conversation messages and available tools, returns a stream of response chunks
-	RunWithStream(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (<-chan *types.Message, error)
+	// Uses the agent's configured toolbox for tool execution
+	RunWithStream(ctx context.Context, messages []types.Message) (<-chan *types.Message, error)
 }
 
 // OpenAICompatibleAgentImpl is the implementation of OpenAICompatibleAgent
@@ -96,7 +99,7 @@ func (a *OpenAICompatibleAgentImpl) SetToolBox(toolBox ToolBox) {
 }
 
 // Run processes a conversation and returns the assistant's response along with additional messages
-func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (*AgentResponse, error) {
+func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Message) (*AgentResponse, error) {
 	if a.llmClient == nil {
 		return nil, fmt.Errorf("no LLM client configured for agent")
 	}
@@ -119,7 +122,11 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 		maxIterations = a.config.MaxChatCompletionIterations
 	}
 
-	// Track additional messages generated during tool execution
+	var tools []sdk.ChatCompletionTool
+	if a.toolBox != nil {
+		tools = a.toolBox.GetTools()
+	}
+
 	var additionalMessages []types.Message
 
 	for iteration := 0; iteration < maxIterations; iteration++ {
@@ -141,7 +148,6 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 			return nil, fmt.Errorf("failed to convert assistant message to A2A format: %w", err)
 		}
 
-		// If no tool calls, return the response
 		if assistantMessage.ToolCalls == nil || len(*assistantMessage.ToolCalls) == 0 || a.toolBox == nil {
 			return &AgentResponse{
 				Response:           assistantA2A,
@@ -149,7 +155,6 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 			}, nil
 		}
 
-		// Add the assistant message with tool calls to additional messages
 		additionalMessages = append(additionalMessages, *assistantA2A)
 
 		for _, toolCall := range *assistantMessage.ToolCalls {
@@ -193,9 +198,14 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 }
 
 // RunWithStream processes a conversation and returns a streaming response with iterative tool calling support
-func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (<-chan *types.Message, error) {
+func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages []types.Message) (<-chan *types.Message, error) {
 	if a.llmClient == nil {
 		return nil, fmt.Errorf("no LLM client configured for agent")
+	}
+
+	var tools []sdk.ChatCompletionTool
+	if a.toolBox != nil {
+		tools = a.toolBox.GetTools()
 	}
 
 	outputChan := make(chan *types.Message, 100)

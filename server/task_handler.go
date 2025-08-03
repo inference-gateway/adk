@@ -59,7 +59,7 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 		messages = append(messages, *message)
 	}
 
-	agentResponse, err := agent.Run(ctx, messages, nil)
+	agentResponse, err := agent.Run(ctx, messages)
 	if err != nil {
 		th.logger.Error("agent processing failed", zap.Error(err))
 

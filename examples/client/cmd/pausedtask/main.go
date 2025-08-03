@@ -167,6 +167,45 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 				zap.Int("poll_count", pollCount),
 				zap.Duration("elapsed", elapsed))
 
+			// Debug: Log the entire conversation history for troubleshooting
+			logger.Debug("conversation history debug",
+				zap.String("task_id", taskID),
+				zap.String("state", string(updatedTask.Status.State)),
+				zap.Int("history_count", len(updatedTask.History)))
+
+			// Show detailed conversation history in debug mode
+			if len(updatedTask.History) > 0 {
+				logger.Debug("=== CONVERSATION HISTORY ===")
+				for i, msg := range updatedTask.History {
+					logger.Debug("conversation message",
+						zap.Int("index", i),
+						zap.String("message_id", msg.MessageID),
+						zap.String("role", msg.Role),
+						zap.Int("parts_count", len(msg.Parts)))
+
+					// Extract text content for debugging
+					for j, part := range msg.Parts {
+						if partMap, ok := part.(map[string]interface{}); ok {
+							if textContent, exists := partMap["text"]; exists {
+								if textStr, ok := textContent.(string); ok {
+									logger.Debug("message text content",
+										zap.Int("msg_index", i),
+										zap.Int("part_index", j),
+										zap.String("text", textStr))
+								}
+							}
+							if kind, exists := partMap["kind"]; exists {
+								logger.Debug("message part kind",
+									zap.Int("msg_index", i),
+									zap.Int("part_index", j),
+									zap.Any("kind", kind))
+							}
+						}
+					}
+				}
+				logger.Debug("=== END CONVERSATION HISTORY ===")
+			}
+
 			// Handle different task states
 			switch updatedTask.Status.State {
 			case adk.TaskStateCompleted:
@@ -193,6 +232,29 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 				// Task is paused waiting for user input - this is the key feature we're demonstrating
 				logger.Info("=== TASK PAUSED FOR INPUT ===",
 					zap.String("task_id", taskID))
+
+				// Debug: Show detailed conversation context when task is paused
+				logger.Debug("task paused - conversation context",
+					zap.String("task_id", taskID),
+					zap.Int("total_history_messages", len(updatedTask.History)))
+
+				// Show the recent conversation for context
+				if len(updatedTask.History) > 0 {
+					logger.Info("recent conversation before pause:")
+					recentCount := len(updatedTask.History)
+					if recentCount > 5 {
+						recentCount = 5 // Show last 5 messages
+					}
+
+					for i := len(updatedTask.History) - recentCount; i < len(updatedTask.History); i++ {
+						msg := updatedTask.History[i]
+						textContent := extractTextFromMessage(&msg)
+						logger.Info("conversation message",
+							zap.String("role", msg.Role),
+							zap.String("message_id", msg.MessageID),
+							zap.String("content", textContent))
+					}
+				}
 
 				// Debug: log the task status to see what we're getting
 				logger.Debug("task status details",
@@ -292,6 +354,21 @@ func getUserInput() (string, error) {
 	}
 
 	return strings.TrimSpace(string(input)), nil
+}
+
+// extractTextFromMessage extracts text content from a message for debugging
+func extractTextFromMessage(message *adk.Message) string {
+	var textContent string
+	for _, part := range message.Parts {
+		if partMap, ok := part.(map[string]interface{}); ok {
+			if text, exists := partMap["text"]; exists {
+				if textStr, ok := text.(string); ok {
+					textContent += textStr
+				}
+			}
+		}
+	}
+	return textContent
 }
 
 // displayMessage extracts and displays text content from a message

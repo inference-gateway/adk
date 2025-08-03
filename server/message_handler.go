@@ -193,23 +193,27 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 	message *types.Message,
 	responseChan chan<- types.SendStreamingMessageResponse,
 ) {
-	messages := make([]types.Message, 0)
-
-	if message != nil {
-		messages = append(messages, *message)
-	}
-
-	messages = append(messages, task.History...)
-
-	var tools []sdk.ChatCompletionTool
-	if mh.toolBox != nil {
-		tools = mh.toolBox.GetTools()
-	}
+	// Use task history directly as it already contains all messages in chronological order,
+	// including the current message that was added during task creation
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
 
 	mh.logger.Debug("starting agent streaming",
-		zap.String("task_id", task.ID))
+		zap.String("task_id", task.ID),
+		zap.Int("conversation_messages", len(messages)))
 
-	streamChan, err := mh.agent.RunWithStream(ctx, messages, tools)
+	// Debug log the conversation being sent to the agent
+	if len(messages) > 0 {
+		mh.logger.Debug("conversation being sent to agent:")
+		for i, msg := range messages {
+			mh.logger.Debug("conversation message",
+				zap.Int("index", i),
+				zap.String("role", msg.Role),
+				zap.String("message_id", msg.MessageID))
+		}
+	}
+
+	streamChan, err := mh.agent.RunWithStream(ctx, messages)
 	if err != nil {
 		mh.logger.Error("agent streaming failed", zap.Error(err))
 		mh.sendErrorResponse(ctx, task, fmt.Sprintf("Agent streaming failed: %v", err), responseChan)

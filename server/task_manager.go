@@ -156,8 +156,11 @@ func (tm *DefaultTaskManager) UpdateTask(taskID string, state types.TaskState, m
 	task.Status.Message = message
 	task.Status.Timestamp = &timestamp
 
-	if state == types.TaskStateCompleted && message != nil && task.ContextID != "" {
+	if message != nil {
 		task.History = append(task.History, *message)
+	}
+
+	if (state == types.TaskStateCompleted || state == types.TaskStateInputRequired) && task.ContextID != "" {
 		tm.UpdateConversationHistory(task.ContextID, task.History)
 	}
 
@@ -219,7 +222,6 @@ func (tm *DefaultTaskManager) GetTask(taskID string) (*types.Task, bool) {
 		return nil, false
 	}
 
-	// Return a copy to prevent data races
 	taskCopy := *task
 	return &taskCopy, true
 }
@@ -374,13 +376,10 @@ func (tm *DefaultTaskManager) PollTaskStatus(taskID string, interval time.Durati
 				return nil, NewTaskNotFoundError(taskID)
 			}
 
-			// Task is complete when it reaches a final state
 			switch task.Status.State {
 			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
 				return task, nil
 			case types.TaskStateInputRequired:
-				// Task is paused waiting for input, this is also a "completion" for polling purposes
-				// The client should resume the task with new input
 				return task, nil
 			}
 

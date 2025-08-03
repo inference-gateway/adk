@@ -6,7 +6,6 @@ replace github.com/inference-gateway/adk => ../..
 
 require (
 	github.com/inference-gateway/adk v0.0.0-00010101000000-000000000000
-	github.com/inference-gateway/sdk v1.9.0
 	github.com/sethvargo/go-envconfig v1.3.0
 	go.uber.org/zap v1.27.0
 )
@@ -31,6 +30,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.3 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/inference-gateway/sdk v1.9.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
