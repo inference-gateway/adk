@@ -129,9 +129,7 @@ For example:
 - If someone asks for weather without a location, call the input_required function  
 - If someone asks for advice without context, call the input_required function
 
-CRITICAL: You have access to function calling. When you need more information, you MUST call the input_required function using proper function calling, NOT just mention it in text. Actually invoke the function with the required parameters.
-
-When you determine that you need more information to provide a quality response, immediately call the input_required function with a clear message explaining what details you need.`
+IMPORTANT: Always use JSON for tool calls.`
 
 	agent, err := server.NewAgentBuilder(logger).
 		WithConfig(&cfg.AgentConfig).

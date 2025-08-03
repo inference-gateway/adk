@@ -218,6 +218,18 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 			"kind": string(types.MessagePartKindText),
 			"text": response.Content,
 		})
+
+		if response.ReasoningContent != nil && *response.ReasoningContent != "" {
+			message.Parts = append(message.Parts, map[string]interface{}{
+				"kind": string(types.MessagePartKindText),
+				"text": *response.ReasoningContent,
+			})
+		} else if response.Reasoning != nil && *response.Reasoning != "" {
+			message.Parts = append(message.Parts, map[string]interface{}{
+				"kind": string(types.MessagePartKindText),
+				"text": *response.Reasoning,
+			})
+		}
 	}
 
 	if response.ToolCalls != nil && len(*response.ToolCalls) > 0 {
@@ -230,10 +242,14 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 		})
 	}
 
+	hasReasoning := (response.ReasoningContent != nil && *response.ReasoningContent != "") ||
+		(response.Reasoning != nil && *response.Reasoning != "")
+
 	c.logger.Debug("converted SDK message to A2A format",
 		zap.String("role", role),
 		zap.String("content", response.Content),
-		zap.Bool("has_tool_calls", response.ToolCalls != nil))
+		zap.Bool("has_tool_calls", response.ToolCalls != nil),
+		zap.Bool("has_reasoning", hasReasoning))
 
 	return message, nil
 }

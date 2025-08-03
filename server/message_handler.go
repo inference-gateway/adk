@@ -159,7 +159,7 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 	go func() {
 		defer close(done)
 		defer func() {
-			if err := mh.taskManager.UpdateTask(task.ID, types.TaskStateCompleted, nil); err != nil {
+			if err := mh.taskManager.UpdateState(task.ID, types.TaskStateCompleted); err != nil {
 				mh.logger.Error("failed to update streaming task", zap.Error(err))
 			}
 		}()

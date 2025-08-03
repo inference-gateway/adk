@@ -114,7 +114,7 @@ func TestDefaultMessageHandler_HandleMessageStream(t *testing.T) {
 		},
 	}
 	mockTaskManager.CreateTaskReturns(expectedTask)
-	mockTaskManager.UpdateTaskReturns(nil)
+	mockTaskManager.UpdateStateReturns(nil)
 
 	cfg := &config.Config{
 		AgentConfig: config.AgentConfig{
@@ -187,7 +187,7 @@ func TestDefaultMessageHandler_HandleMessageStream(t *testing.T) {
 	}
 
 	assert.Eventually(t, func() bool {
-		return mockTaskManager.UpdateTaskCallCount() > 0
+		return mockTaskManager.UpdateStateCallCount() > 0
 	}, 200*time.Millisecond, 10*time.Millisecond)
 }
 

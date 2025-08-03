@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/inference-gateway/adk/client"
 	adk "github.com/inference-gateway/adk/types"
 	"github.com/sethvargo/go-envconfig"
-	"go.uber.org/zap"
 )
 
 // Config represents the application configuration
@@ -25,41 +26,49 @@ type Config struct {
 
 func main() {
 	// Load configuration from environment variables
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	
 	var config Config
 	if err := envconfig.Process(ctx, &config); err != nil {
-		log.Fatal("failed to process configuration", zap.Error(err))
+		log.Fatalf("failed to process configuration: %v", err)
 	}
 
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to initialize logger: %v", err)
-	}
-	defer logger.Sync()
-
-	logger.Info("starting A2A paused task (input-required) example",
-		zap.String("server_url", config.ServerURL),
-		zap.Duration("poll_interval", config.PollInterval),
-		zap.Duration("max_poll_timeout", config.MaxPollTimeout))
+	fmt.Printf("🚀 Starting A2A Paused Task Example\n")
+	fmt.Printf("📡 Server: %s\n", config.ServerURL)
+	fmt.Printf("⏱️  Poll interval: %v\n\n", config.PollInterval)
 
 	// Create A2A client
-	a2aClient := client.NewClientWithLogger(config.ServerURL, logger)
+	a2aClient := client.NewClient(config.ServerURL)
+
+	// Setup signal handling for graceful interruption
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	
+	var currentTaskID string
+	
+	go func() {
+		<-sigChan
+		fmt.Printf("\n\n🛑 Interrupted! Showing conversation history...\n")
+		if currentTaskID != "" {
+			showConversationHistory(ctx, a2aClient, currentTaskID)
+		}
+		cancel()
+		os.Exit(0)
+	}()
 
 	// Check agent capabilities first
-	logger.Info("checking agent capabilities")
+	fmt.Printf("🔍 Checking agent capabilities...\n")
 	agentCard, err := a2aClient.GetAgentCard(ctx)
 	if err != nil {
-		logger.Fatal("failed to get agent card", zap.Error(err))
+		log.Fatalf("failed to get agent card: %v", err)
 	}
 
-	logger.Info("agent card retrieved",
-		zap.String("agent_name", agentCard.Name),
-		zap.String("agent_version", agentCard.Version),
-		zap.String("agent_description", agentCard.Description))
+	fmt.Printf("✅ Connected to agent: %s v%s\n", agentCard.Name, agentCard.Version)
+	fmt.Printf("📝 Description: %s\n\n", agentCard.Description)
 
 	// Submit initial task - one that might require user input
-	logger.Info("submitting task that may require user input")
+	fmt.Printf("📨 Submitting task that requires user input...\n")
 
 	msgParams := adk.MessageSendParams{
 		Message: adk.Message{
@@ -82,45 +91,41 @@ func main() {
 	// Send the task using A2A client
 	resp, err := a2aClient.SendTask(ctx, msgParams)
 	if err != nil {
-		logger.Fatal("failed to send task", zap.Error(err))
+		log.Fatalf("failed to send task: %v", err)
 	}
 
 	// Parse task from response
 	var task adk.Task
 	resultBytes, ok := resp.Result.(json.RawMessage)
 	if !ok {
-		logger.Fatal("unexpected response result type")
+		log.Fatal("unexpected response result type")
 	}
 	if err := json.Unmarshal(resultBytes, &task); err != nil {
-		logger.Fatal("failed to parse task response", zap.Error(err))
+		log.Fatalf("failed to parse task response: %v", err)
 	}
 
-	logger.Info("task submitted successfully",
-		zap.String("task_id", task.ID),
-		zap.String("state", string(task.Status.State)))
+	currentTaskID = task.ID
+	fmt.Printf("✅ Task submitted: %s\n", task.ID)
+	fmt.Printf("📊 Initial state: %s\n\n", task.Status.State)
 
 	// Monitor task with special handling for input-required state
-	if err := monitorTaskWithInputHandling(ctx, a2aClient, task.ID, config, logger); err != nil {
-		logger.Fatal("task monitoring failed", zap.Error(err))
+	if err := monitorTaskWithInputHandling(ctx, a2aClient, task.ID, config); err != nil {
+		log.Fatalf("task monitoring failed: %v", err)
 	}
 
-	logger.Info("paused task example completed successfully")
+	fmt.Printf("🎉 Task completed successfully!\n")
 }
 
 // monitorTaskWithInputHandling polls task status and handles input-required state
-func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClient, taskID string, config Config, logger *zap.Logger) error {
+func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClient, taskID string, config Config) error {
 	ticker := time.NewTicker(config.PollInterval)
 	defer ticker.Stop()
 
 	timeoutTimer := time.NewTimer(config.MaxPollTimeout)
 	defer timeoutTimer.Stop()
 
-	pollCount := 0
 	startTime := time.Now()
-
-	logger.Info("starting task monitoring with input-required handling",
-		zap.String("task_id", taskID),
-		zap.Duration("poll_interval", config.PollInterval))
+	fmt.Printf("🔄 Monitoring task progress...\n")
 
 	for {
 		select {
@@ -131,95 +136,38 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 			return fmt.Errorf("task monitoring timed out after %v", config.MaxPollTimeout)
 
 		case <-ticker.C:
-			pollCount++
-			elapsed := time.Since(startTime)
-
 			// Get current task status
-			taskResp, err := a2aClient.GetTask(ctx, adk.TaskQueryParams{
-				ID: taskID,
-			})
+			taskResp, err := a2aClient.GetTask(ctx, adk.TaskQueryParams{ID: taskID})
 			if err != nil {
-				logger.Error("failed to get task status",
-					zap.Error(err),
-					zap.String("task_id", taskID),
-					zap.Int("poll_count", pollCount))
-				continue // Continue polling on error
+				fmt.Printf("⚠️  Failed to get task status: %v\n", err)
+				continue
 			}
 
 			// Parse updated task
-			var updatedTask adk.Task
+			var task adk.Task
 			taskResultBytes, ok := taskResp.Result.(json.RawMessage)
 			if !ok {
-				logger.Error("unexpected task response result type",
-					zap.String("task_id", taskID))
+				fmt.Printf("⚠️  Unexpected task response format\n")
 				continue
 			}
-			if err := json.Unmarshal(taskResultBytes, &updatedTask); err != nil {
-				logger.Error("failed to parse task response",
-					zap.Error(err),
-					zap.String("task_id", taskID))
+			if err := json.Unmarshal(taskResultBytes, &task); err != nil {
+				fmt.Printf("⚠️  Failed to parse task response: %v\n", err)
 				continue
 			}
 
-			logger.Info("poll status update",
-				zap.String("task_id", taskID),
-				zap.String("state", string(updatedTask.Status.State)),
-				zap.Int("poll_count", pollCount),
-				zap.Duration("elapsed", elapsed))
-
-			// Debug: Log the entire conversation history for troubleshooting
-			logger.Debug("conversation history debug",
-				zap.String("task_id", taskID),
-				zap.String("state", string(updatedTask.Status.State)),
-				zap.Int("history_count", len(updatedTask.History)))
-
-			// Show detailed conversation history in debug mode
-			if len(updatedTask.History) > 0 {
-				logger.Debug("=== CONVERSATION HISTORY ===")
-				for i, msg := range updatedTask.History {
-					logger.Debug("conversation message",
-						zap.Int("index", i),
-						zap.String("message_id", msg.MessageID),
-						zap.String("role", msg.Role),
-						zap.Int("parts_count", len(msg.Parts)))
-
-					// Extract text content for debugging
-					for j, part := range msg.Parts {
-						if partMap, ok := part.(map[string]interface{}); ok {
-							if textContent, exists := partMap["text"]; exists {
-								if textStr, ok := textContent.(string); ok {
-									logger.Debug("message text content",
-										zap.Int("msg_index", i),
-										zap.Int("part_index", j),
-										zap.String("text", textStr))
-								}
-							}
-							if kind, exists := partMap["kind"]; exists {
-								logger.Debug("message part kind",
-									zap.Int("msg_index", i),
-									zap.Int("part_index", j),
-									zap.Any("kind", kind))
-							}
-						}
-					}
-				}
-				logger.Debug("=== END CONVERSATION HISTORY ===")
-			}
+			fmt.Printf("📊 Task state: %s (elapsed: %v)\n", task.Status.State, time.Since(startTime).Round(time.Second))
 
 			// Handle different task states
-			switch updatedTask.Status.State {
+			switch task.Status.State {
 			case adk.TaskStateCompleted:
-				logger.Info("task completed successfully",
-					zap.String("task_id", taskID),
-					zap.Duration("total_time", elapsed),
-					zap.Int("total_polls", pollCount))
-
-				// Display final response
-				displayTaskResponse(&updatedTask, logger)
+				fmt.Printf("✅ Task completed successfully!\n\n")
+				displayTaskResponse(&task)
+				fmt.Printf("\n📜 Complete Conversation History:\n")
+				showConversationHistory(ctx, a2aClient, taskID)
 				return nil
 
 			case adk.TaskStateFailed:
-				errorMsg := extractErrorMessage(&updatedTask)
+				errorMsg := extractErrorMessage(&task)
 				return fmt.Errorf("task failed: %s", errorMsg)
 
 			case adk.TaskStateCanceled:
@@ -229,50 +177,17 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 				return fmt.Errorf("task was rejected")
 
 			case adk.TaskStateInputRequired:
-				// Task is paused waiting for user input - this is the key feature we're demonstrating
-				logger.Info("=== TASK PAUSED FOR INPUT ===",
-					zap.String("task_id", taskID))
-
-				// Debug: Show detailed conversation context when task is paused
-				logger.Debug("task paused - conversation context",
-					zap.String("task_id", taskID),
-					zap.Int("total_history_messages", len(updatedTask.History)))
-
-				// Show the recent conversation for context
-				if len(updatedTask.History) > 0 {
-					logger.Info("recent conversation before pause:")
-					recentCount := len(updatedTask.History)
-					if recentCount > 5 {
-						recentCount = 5 // Show last 5 messages
-					}
-
-					for i := len(updatedTask.History) - recentCount; i < len(updatedTask.History); i++ {
-						msg := updatedTask.History[i]
-						textContent := extractTextFromMessage(&msg)
-						logger.Info("conversation message",
-							zap.String("role", msg.Role),
-							zap.String("message_id", msg.MessageID),
-							zap.String("content", textContent))
-					}
-				}
-
-				// Debug: log the task status to see what we're getting
-				logger.Debug("task status details",
-					zap.String("task_id", taskID),
-					zap.Bool("has_status_message", updatedTask.Status.Message != nil))
+				fmt.Printf("\n⏸️  Task paused - agent needs input!\n")
+				
+				// Show recent conversation for context
+				showRecentConversation(&task, 3)
 
 				// Display any message from the agent asking for input
-				if updatedTask.Status.Message != nil {
-					fmt.Println("\n" + strings.Repeat("=", 50))
-					fmt.Println("🤖 AGENT NEEDS INPUT:")
-					fmt.Println(strings.Repeat("=", 50))
-					displayMessage(updatedTask.Status.Message)
-					fmt.Println(strings.Repeat("=", 50))
-				} else {
-					// Debug: if no message, show that we didn't get one
-					fmt.Println("\n⚠️  Task is paused for input but no message was provided by the agent.")
-					logger.Warn("task paused for input but no status message available",
-						zap.String("task_id", taskID))
+				if task.Status.Message != nil {
+					fmt.Printf("\n🤖 Agent's question:\n")
+					fmt.Printf("%s\n", strings.Repeat("-", 40))
+					displayMessage(task.Status.Message)
+					fmt.Printf("%s\n", strings.Repeat("-", 40))
 				}
 
 				// Get user input
@@ -282,19 +197,16 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 				}
 
 				if userInput == "" {
-					logger.Info("user chose to cancel, canceling task")
+					fmt.Printf("🚫 Canceling task...\n")
 					_, cancelErr := a2aClient.CancelTask(ctx, adk.TaskIdParams{ID: taskID})
 					if cancelErr != nil {
-						logger.Error("failed to cancel task", zap.Error(cancelErr))
+						fmt.Printf("⚠️  Failed to cancel task: %v\n", cancelErr)
 					}
 					return fmt.Errorf("task canceled by user")
 				}
 
-				// Resume task with user input by sending a new message
-				logger.Info("resuming task with user input",
-					zap.String("task_id", taskID),
-					zap.String("user_input", userInput))
-
+				// Resume task with user input
+				fmt.Printf("▶️  Resuming task with your input...\n\n")
 				resumeParams := adk.MessageSendParams{
 					Message: adk.Message{
 						Kind:      "message",
@@ -306,8 +218,7 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 								"text": userInput,
 							},
 						},
-						TaskID: &taskID, // Resume the existing task
-
+						TaskID: &taskID,
 					},
 					Configuration: &adk.MessageSendConfiguration{
 						Blocking:            boolPtr(false),
@@ -315,37 +226,103 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 					},
 				}
 
-				// Send the resume message
 				_, err = a2aClient.SendTask(ctx, resumeParams)
 				if err != nil {
 					return fmt.Errorf("failed to resume task with input: %w", err)
 				}
 
-				logger.Info("task resumed successfully, continuing monitoring")
-				// Continue polling to monitor the resumed task
-
 			case adk.TaskStateSubmitted, adk.TaskStateWorking, adk.TaskStateAuthRequired:
 				// Continue polling for these states
 				continue
 
-			case adk.TaskStateUnknown:
-				logger.Warn("task in unknown state, continuing to poll",
-					zap.String("task_id", taskID))
-				continue
-
 			default:
-				logger.Warn("unexpected task state",
-					zap.String("task_id", taskID),
-					zap.String("state", string(updatedTask.Status.State)))
+				fmt.Printf("⚠️  Unexpected task state: %s\n", task.Status.State)
 				continue
 			}
 		}
 	}
 }
 
+// showConversationHistory displays the full conversation history (used on interrupt)
+func showConversationHistory(ctx context.Context, a2aClient client.A2AClient, taskID string) {
+	taskResp, err := a2aClient.GetTask(ctx, adk.TaskQueryParams{ID: taskID})
+	if err != nil {
+		fmt.Printf("❌ Failed to get task for history: %v\n", err)
+		return
+	}
+
+	var task adk.Task
+	taskResultBytes, ok := taskResp.Result.(json.RawMessage)
+	if !ok {
+		fmt.Printf("❌ Failed to parse task response\n")
+		return
+	}
+	if err := json.Unmarshal(taskResultBytes, &task); err != nil {
+		fmt.Printf("❌ Failed to unmarshal task: %v\n", err)
+		return
+	}
+
+	fmt.Printf("\n📜 Conversation History for Task %s:\n", taskID)
+	fmt.Printf("%s\n", strings.Repeat("=", 60))
+	
+	if len(task.History) == 0 {
+		fmt.Printf("(No conversation history available)\n")
+		return
+	}
+
+	for i, msg := range task.History {
+		role := "👤 User"
+		if msg.Role == "assistant" {
+			role = "🤖 Assistant"
+		}
+		
+		fmt.Printf("\n[%d] %s:\n", i+1, role)
+		fmt.Printf("%s\n", strings.Repeat("-", 30))
+		
+		textContent := extractTextFromMessage(&msg)
+		if textContent != "" {
+			fmt.Printf("%s\n", textContent)
+		} else {
+			fmt.Printf("(No text content)\n")
+		}
+	}
+	fmt.Printf("\n%s\n", strings.Repeat("=", 60))
+}
+
+// showRecentConversation displays the last N messages from the conversation
+func showRecentConversation(task *adk.Task, count int) {
+	if len(task.History) == 0 {
+		return
+	}
+
+	fmt.Printf("\n📝 Recent conversation:\n")
+	
+	start := len(task.History) - count
+	if start < 0 {
+		start = 0
+	}
+
+	for i := start; i < len(task.History); i++ {
+		msg := task.History[i]
+		role := "👤"
+		if msg.Role == "assistant" {
+			role = "🤖"
+		}
+		
+		textContent := extractTextFromMessage(&msg)
+		if textContent != "" {
+			// Truncate long messages for context
+			if len(textContent) > 100 {
+				textContent = textContent[:97] + "..."
+			}
+			fmt.Printf("  %s %s\n", role, textContent)
+		}
+	}
+}
+
 // getUserInput prompts the user for input when task is paused
 func getUserInput() (string, error) {
-	fmt.Print("\n💬 Please provide your input (or press Enter to cancel): ")
+	fmt.Print("\n💬 Your response (or press Enter to cancel): ")
 
 	reader := bufio.NewReader(os.Stdin)
 	input, _, err := reader.ReadLine()
@@ -356,7 +333,7 @@ func getUserInput() (string, error) {
 	return strings.TrimSpace(string(input)), nil
 }
 
-// extractTextFromMessage extracts text content from a message for debugging
+// extractTextFromMessage extracts text content from a message
 func extractTextFromMessage(message *adk.Message) string {
 	var textContent string
 	for _, part := range message.Parts {
@@ -389,34 +366,19 @@ func displayMessage(message *adk.Message) {
 }
 
 // displayTaskResponse shows the final task response
-func displayTaskResponse(task *adk.Task, logger *zap.Logger) {
-	logger.Info("=== Task Completed ===")
-	logger.Info("task details",
-		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
-		zap.String("final_state", string(task.Status.State)))
+func displayTaskResponse(task *adk.Task) {
+	fmt.Printf("🎯 Task completed: %s\n", task.ID)
 
 	// Display final response if available
 	if len(task.History) > 0 {
 		lastMessage := task.History[len(task.History)-1]
 		if lastMessage.Role == "assistant" {
-			// Extract text from final response
-			var responseText string
-			for _, part := range lastMessage.Parts {
-				if partMap, ok := part.(map[string]interface{}); ok {
-					if textContent, exists := partMap["text"]; exists {
-						if textStr, ok := textContent.(string); ok {
-							responseText += textStr
-						}
-					}
-				}
-			}
+			responseText := extractTextFromMessage(&lastMessage)
 			if responseText != "" {
-				fmt.Println("\n" + strings.Repeat("=", 50))
-				fmt.Println("🤖 FINAL ASSISTANT RESPONSE:")
-				fmt.Println(strings.Repeat("=", 50))
-				fmt.Println(responseText)
-				fmt.Println(strings.Repeat("=", 50))
+				fmt.Printf("\n🤖 Final response:\n")
+				fmt.Printf("%s\n", strings.Repeat("-", 40))
+				fmt.Printf("%s\n", responseText)
+				fmt.Printf("%s\n", strings.Repeat("-", 40))
 			}
 		}
 	}
@@ -426,16 +388,7 @@ func displayTaskResponse(task *adk.Task, logger *zap.Logger) {
 func extractErrorMessage(task *adk.Task) string {
 	errorMsg := "unknown error"
 	if task.Status.Message != nil {
-		// Extract text from error message
-		for _, part := range task.Status.Message.Parts {
-			if partMap, ok := part.(map[string]interface{}); ok {
-				if textContent, exists := partMap["text"]; exists {
-					if textStr, ok := textContent.(string); ok {
-						errorMsg = textStr
-					}
-				}
-			}
-		}
+		errorMsg = extractTextFromMessage(task.Status.Message)
 	}
 	return errorMsg
 }

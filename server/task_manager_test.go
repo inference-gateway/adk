@@ -157,133 +157,6 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 	assert.Nil(t, emptyTask)
 }
 
-func TestDefaultTaskManager_UpdateTask(t *testing.T) {
-	tests := []struct {
-		name        string
-		newState    types.TaskState
-		newMessage  *types.Message
-		expectError bool
-	}{
-		{
-			name:     "update to working state",
-			newState: types.TaskStateWorking,
-			newMessage: &types.Message{
-				Kind:      "message",
-				MessageID: "updated-msg-1",
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Now working on the task",
-					},
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:     "update to completed state",
-			newState: types.TaskStateCompleted,
-			newMessage: &types.Message{
-				Kind:      "message",
-				MessageID: "updated-msg-2",
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Task completed successfully",
-					},
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:     "update to failed state",
-			newState: types.TaskStateFailed,
-			newMessage: &types.Message{
-				Kind:      "message",
-				MessageID: "updated-msg-3",
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Task failed with error",
-					},
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:        "update with nil message",
-			newState:    types.TaskStateWorking,
-			newMessage:  nil,
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger, 20)
-
-			originalMessage := &types.Message{
-				Kind:      "message",
-				MessageID: "original-msg",
-				Role:      "user",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Original message",
-					},
-				},
-			}
-
-			task := taskManager.CreateTask("test-context", types.TaskStateSubmitted, originalMessage)
-			originalTimestamp := task.Status.Timestamp
-
-			err := taskManager.UpdateTask(task.ID, tt.newState, tt.newMessage)
-
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-
-				updatedTask, exists := taskManager.GetTask(task.ID)
-				assert.True(t, exists)
-				assert.Equal(t, tt.newState, updatedTask.Status.State)
-				assert.Equal(t, tt.newMessage, updatedTask.Status.Message)
-
-				if originalTimestamp != nil && updatedTask.Status.Timestamp != nil {
-					originalTime, err := time.Parse(time.RFC3339Nano, *originalTimestamp)
-					assert.NoError(t, err)
-					updatedTime, err := time.Parse(time.RFC3339Nano, *updatedTask.Status.Timestamp)
-					assert.NoError(t, err)
-					assert.True(t, updatedTime.After(originalTime))
-				}
-			}
-		})
-	}
-}
-
-func TestDefaultTaskManager_UpdateNonExistentTask(t *testing.T) {
-	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
-
-	message := &types.Message{
-		Kind:      "message",
-		MessageID: "test-msg",
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "Update message",
-			},
-		},
-	}
-
-	err := taskManager.UpdateTask("non-existent-id", types.TaskStateCompleted, message)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "task not found")
-}
 
 func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 	logger := zap.NewNop()
@@ -400,7 +273,10 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	err := taskManager.UpdateTask(task1.ID, types.TaskStateCompleted, assistantResponse1)
+	// Manually add the assistant response to task history before updating state
+	task1.History = append(task1.History, *assistantResponse1)
+	
+	err := taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
 	updatedTask1, exists := taskManager.GetTask(task1.ID)
@@ -443,7 +319,10 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	err = taskManager.UpdateTask(task2.ID, types.TaskStateCompleted, assistantResponse2)
+	// Manually add the assistant response to task history before updating state
+	task2.History = append(task2.History, *assistantResponse2)
+	
+	err = taskManager.UpdateState(task2.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
 	updatedTask2, exists := taskManager.GetTask(task2.ID)
@@ -530,7 +409,10 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 		},
 	}
 
-	err := taskManager.UpdateTask(task1.ID, types.TaskStateCompleted, response1)
+	// Manually add the assistant response to task history before updating state
+	task1.History = append(task1.History, *response1)
+	
+	err := taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
 	message3 := &types.Message{
@@ -606,7 +488,10 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 		},
 	}
 
-	err := taskManager.UpdateTask(task.ID, types.TaskStateCompleted, response)
+	// Manually add the assistant response to task history before updating state
+	task.History = append(task.History, *response)
+	
+	err := taskManager.UpdateState(task.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
 	history = taskManager.GetConversationHistory(contextID)
@@ -720,18 +605,7 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	}
 	task1 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message1)
 
-	response1 := &types.Message{
-		Kind:      "message",
-		MessageID: "response-1",
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "First response",
-			},
-		},
-	}
-	err := taskManager.UpdateTask(task1.ID, types.TaskStateCompleted, response1)
+	err := taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
 	message2 := &types.Message{

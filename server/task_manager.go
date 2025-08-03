@@ -16,8 +16,11 @@ type TaskManager interface {
 	// CreateTask creates a new task and stores it
 	CreateTask(contextID string, state types.TaskState, message *types.Message) *types.Task
 
-	// UpdateTask updates an existing task
-	UpdateTask(taskID string, state types.TaskState, message *types.Message) error
+	// UpdateState updates a task's state
+	UpdateState(taskID string, state types.TaskState) error
+
+	// UpdateError updates a task to failed state with an error message
+	UpdateError(taskID string, message *types.Message) error
 
 	// GetTask retrieves a task by ID
 	GetTask(taskID string) (*types.Task, bool)
@@ -141,8 +144,8 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 	return task
 }
 
-// UpdateTask updates an existing task
-func (tm *DefaultTaskManager) UpdateTask(taskID string, state types.TaskState, message *types.Message) error {
+// UpdateState updates a task's state
+func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) error {
 	tm.tasksMu.Lock()
 	defer tm.tasksMu.Unlock()
 
@@ -153,22 +156,46 @@ func (tm *DefaultTaskManager) UpdateTask(taskID string, state types.TaskState, m
 
 	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 	task.Status.State = state
-	task.Status.Message = message
 	task.Status.Timestamp = &timestamp
 
-	if message != nil {
-		task.History = append(task.History, *message)
-	}
-
+	// Update conversation history for terminal states (history is managed elsewhere during processing)
 	if (state == types.TaskStateCompleted || state == types.TaskStateInputRequired) && task.ContextID != "" {
 		tm.UpdateConversationHistory(task.ContextID, task.History)
 	}
 
 	tm.tasks[taskID] = task
-	tm.logger.Debug("task updated",
+	tm.logger.Debug("task state updated",
 		zap.String("task_id", taskID),
 		zap.String("context_id", task.ContextID),
-		zap.String("state", string(state)),
+		zap.String("state", string(state)))
+
+	if tm.notificationSender != nil {
+		go tm.sendPushNotifications(taskID, task)
+	}
+
+	return nil
+}
+
+// UpdateError updates a task to failed state with an error message
+func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message) error {
+	tm.tasksMu.Lock()
+	defer tm.tasksMu.Unlock()
+
+	task, exists := tm.tasks[taskID]
+	if !exists {
+		return NewTaskNotFoundError(taskID)
+	}
+
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+	task.Status.State = types.TaskStateFailed
+	task.Status.Message = message
+	task.Status.Timestamp = &timestamp
+
+	tm.tasks[taskID] = task
+	tm.logger.Debug("task error updated",
+		zap.String("task_id", taskID),
+		zap.String("context_id", task.ContextID),
+		zap.String("state", string(types.TaskStateFailed)),
 		zap.Int("history_count", len(task.History)))
 
 	if tm.notificationSender != nil {

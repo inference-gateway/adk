@@ -494,7 +494,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
 
-	err := s.taskManager.UpdateTask(task.ID, types.TaskStateWorking, nil)
+	err := s.taskManager.UpdateState(task.ID, types.TaskStateWorking)
 	if err != nil {
 		s.logger.Error("failed to update task state", zap.Error(err))
 		return
@@ -506,7 +506,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 			zap.Error(err),
 			zap.String("task_id", task.ID),
 			zap.String("context_id", task.ContextID))
-		updateErr := s.taskManager.UpdateTask(task.ID, types.TaskStateFailed, &types.Message{
+		updateErr := s.taskManager.UpdateError(task.ID, &types.Message{
 			Kind:      "message",
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
@@ -526,7 +526,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		return
 	}
 
-	if err := s.taskManager.UpdateTask(updatedTask.ID, updatedTask.Status.State, updatedTask.Status.Message); err != nil {
+	if err := s.taskManager.UpdateState(updatedTask.ID, updatedTask.Status.State); err != nil {
 		s.logger.Error("failed to update task status",
 			zap.Error(err),
 			zap.String("task_id", updatedTask.ID),
@@ -652,7 +652,7 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCReque
 			zap.String("context_id", task.ContextID))
 	default:
 		s.logger.Error("task queue is full")
-		err := s.taskManager.UpdateTask(task.ID, types.TaskStateFailed, &types.Message{
+		err := s.taskManager.UpdateError(task.ID, &types.Message{
 			Kind:      "message",
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
