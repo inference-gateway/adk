@@ -498,7 +498,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	result, err := serverInstance.ProcessTask(ctx, task, originalMessage)
+	result, err := serverInstance.GetTaskHandler().HandleTask(ctx, task, originalMessage, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -590,7 +590,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	result, err := serverInstance.ProcessTask(ctx, task, originalUserMessage)
+	result, err := serverInstance.GetTaskHandler().HandleTask(ctx, task, originalUserMessage, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)

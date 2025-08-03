@@ -13,29 +13,35 @@ import (
 	zap "go.uber.org/zap"
 )
 
+// AgentResponse contains the response and any additional messages generated during agent execution
+type AgentResponse struct {
+	// Response is the main assistant response message
+	Response *types.Message
+	// AdditionalMessages contains any tool calls, tool responses, or intermediate messages
+	// that should be added to the conversation history
+	AdditionalMessages []types.Message
+}
+
 // OpenAICompatibleAgent represents an agent that can interact with OpenAI-compatible LLM APIs and execute tools
+// The agent is stateless and does not maintain conversation history
 type OpenAICompatibleAgent interface {
-	// Run processes a conversation and returns the assistant's response
-	// Takes conversation messages and available tools, returns the response message
-	Run(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (*types.Message, error)
+	// Run processes a conversation and returns the assistant's response along with any additional messages
+	// Takes conversation messages and available tools, returns the response and additional context messages
+	Run(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (*AgentResponse, error)
 
 	// RunWithStream processes a conversation and returns a streaming response
 	// Takes conversation messages and available tools, returns a stream of response chunks
 	RunWithStream(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (<-chan *types.Message, error)
-
-	// GetConversationHistory returns the full conversation history including tool calls and results
-	// from the last Run() execution
-	GetConversationHistory() []types.Message
 }
 
 // OpenAICompatibleAgentImpl is the implementation of OpenAICompatibleAgent
+// This implementation is stateless and does not maintain conversation history
 type OpenAICompatibleAgentImpl struct {
-	logger              *zap.Logger
-	llmClient           LLMClient
-	toolBox             ToolBox
-	converter           utils.MessageConverter
-	config              *config.AgentConfig
-	conversationHistory []types.Message
+	logger    *zap.Logger
+	llmClient LLMClient
+	toolBox   ToolBox
+	converter utils.MessageConverter
+	config    *config.AgentConfig
 }
 
 // NewOpenAICompatibleAgent creates a new OpenAICompatibleAgentImpl
@@ -89,8 +95,8 @@ func (a *OpenAICompatibleAgentImpl) SetToolBox(toolBox ToolBox) {
 	a.toolBox = toolBox
 }
 
-// Run processes a conversation and returns the assistant's response
-func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (*types.Message, error) {
+// Run processes a conversation and returns the assistant's response along with additional messages
+func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (*AgentResponse, error) {
 	if a.llmClient == nil {
 		return nil, fmt.Errorf("no LLM client configured for agent")
 	}
@@ -113,8 +119,8 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 		maxIterations = a.config.MaxChatCompletionIterations
 	}
 
-	a.conversationHistory = make([]types.Message, len(messages))
-	copy(a.conversationHistory, messages)
+	// Track additional messages generated during tool execution
+	var additionalMessages []types.Message
 
 	for iteration := 0; iteration < maxIterations; iteration++ {
 		response, err := a.llmClient.CreateChatCompletion(ctx, conversation, tools...)
@@ -134,11 +140,17 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert assistant message to A2A format: %w", err)
 		}
-		a.conversationHistory = append(a.conversationHistory, *assistantA2A)
 
+		// If no tool calls, return the response
 		if assistantMessage.ToolCalls == nil || len(*assistantMessage.ToolCalls) == 0 || a.toolBox == nil {
-			return assistantA2A, nil
+			return &AgentResponse{
+				Response:           assistantA2A,
+				AdditionalMessages: additionalMessages,
+			}, nil
 		}
+
+		// Add the assistant message with tool calls to additional messages
+		additionalMessages = append(additionalMessages, *assistantA2A)
 
 		for _, toolCall := range *assistantMessage.ToolCalls {
 			var args map[string]interface{}
@@ -173,159 +185,210 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 					},
 				},
 			}
-			a.conversationHistory = append(a.conversationHistory, *toolA2A)
+			additionalMessages = append(additionalMessages, *toolA2A)
 		}
 	}
 
 	return nil, fmt.Errorf("maximum iterations (%d) reached without final response", maxIterations)
 }
 
-// GetConversationHistory returns the full conversation history including tool calls and results
-func (a *OpenAICompatibleAgentImpl) GetConversationHistory() []types.Message {
-	history := make([]types.Message, len(a.conversationHistory))
-	copy(history, a.conversationHistory)
-	return history
-}
-
-// RunWithStream processes a conversation and returns a streaming response
+// RunWithStream processes a conversation and returns a streaming response with iterative tool calling support
 func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages []types.Message, tools []sdk.ChatCompletionTool) (<-chan *types.Message, error) {
 	if a.llmClient == nil {
 		return nil, fmt.Errorf("no LLM client configured for agent")
 	}
 
-	sdkMessages, err := a.converter.ConvertToSDK(messages)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert messages to SDK format: %w", err)
-	}
-
-	if a.config != nil && a.config.SystemPrompt != "" {
-		systemMessage := sdk.Message{
-			Role:    sdk.System,
-			Content: a.config.SystemPrompt,
-		}
-		sdkMessages = append([]sdk.Message{systemMessage}, sdkMessages...)
-	}
-
-	streamResponseChan, streamErrorChan := a.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
-
-	outputChan := make(chan *types.Message, 10)
+	outputChan := make(chan *types.Message, 100)
 
 	go func() {
 		defer close(outputChan)
 
-		var fullContent string
-		var toolCalls []sdk.ChatCompletionMessageToolCall
-		var assistantMessage *types.Message
+		currentMessages := make([]types.Message, len(messages))
+		copy(currentMessages, messages)
 
-		for {
-			select {
-			case <-ctx.Done():
+		for iteration := 1; iteration <= a.config.MaxChatCompletionIterations; iteration++ {
+			a.logger.Debug("starting streaming iteration",
+				zap.Int("iteration", iteration),
+				zap.Int("message_count", len(currentMessages)))
+
+			sdkMessages, err := a.converter.ConvertToSDK(currentMessages)
+			if err != nil {
+				a.logger.Error("failed to convert messages to SDK format", zap.Error(err))
 				return
-			case streamErr := <-streamErrorChan:
-				if streamErr != nil {
-					a.logger.Error("streaming failed", zap.Error(streamErr))
-				}
-				return
-			case streamResp, ok := <-streamResponseChan:
-				if !ok {
-					if assistantMessage != nil && fullContent != "" && len(toolCalls) == 0 {
-						select {
-						case outputChan <- assistantMessage:
-						case <-ctx.Done():
-						}
-					}
-					return
-				}
-
-				if streamResp == nil || len(streamResp.Choices) == 0 {
-					continue
-				}
-
-				choice := streamResp.Choices[0]
-
-				if choice.FinishReason == "tool_calls" && len(toolCalls) > 0 && a.toolBox != nil {
-					a.handleStreamingToolExecutionWithEvents(ctx, messages, assistantMessage, tools, toolCalls, outputChan)
-				}
-
-				if assistantMessage == nil {
-					assistantMessage = &types.Message{
-						Kind:      "message",
-						MessageID: fmt.Sprintf("assistant-stream-%d", len(messages)),
-						Role:      "assistant",
-						Parts:     make([]types.Part, 0),
-					}
-				}
-
-				if choice.Delta.Content != "" {
-					fullContent += choice.Delta.Content
-
-					chunkMessage := &types.Message{
-						Kind:      "message",
-						MessageID: fmt.Sprintf("chunk-%d", len(fullContent)),
-						Role:      "assistant",
-						Parts: []types.Part{
-							map[string]interface{}{
-								"kind": "text",
-								"text": choice.Delta.Content,
-							},
-						},
-					}
-
-					select {
-					case outputChan <- chunkMessage:
-					case <-ctx.Done():
-						return
-					}
-				}
-
-				for _, toolCallChunk := range choice.Delta.ToolCalls {
-					if toolCallChunk.Index >= len(toolCalls) {
-						for len(toolCalls) <= toolCallChunk.Index {
-							toolCalls = append(toolCalls, sdk.ChatCompletionMessageToolCall{
-								Type:     "function",
-								Function: sdk.ChatCompletionMessageToolCallFunction{},
-							})
-						}
-					}
-
-					toolCall := &toolCalls[toolCallChunk.Index]
-					if toolCallChunk.ID != "" {
-						toolCall.Id = toolCallChunk.ID
-					}
-					if toolCallChunk.Function.Name != "" {
-						toolCall.Function.Name = toolCallChunk.Function.Name
-					}
-					if toolCallChunk.Function.Arguments != "" {
-						toolCall.Function.Arguments += toolCallChunk.Function.Arguments
-					}
-				}
-
-				if fullContent != "" {
-					assistantMessage.Parts = []types.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": fullContent,
-						},
-					}
-				}
 			}
+
+			if a.config != nil && a.config.SystemPrompt != "" {
+				systemMessage := sdk.Message{
+					Role:    sdk.System,
+					Content: a.config.SystemPrompt,
+				}
+				sdkMessages = append([]sdk.Message{systemMessage}, sdkMessages...)
+			}
+
+			streamResponseChan, streamErrorChan := a.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
+
+			toolCallsExecuted, assistantMessage, toolResultMessages := a.processStreamIteration(ctx, iteration, streamResponseChan, streamErrorChan, outputChan)
+
+			if assistantMessage != nil {
+				currentMessages = append(currentMessages, *assistantMessage)
+			}
+
+			currentMessages = append(currentMessages, toolResultMessages...)
+
+			if !toolCallsExecuted {
+				a.logger.Debug("streaming completed - no tool calls executed",
+					zap.Int("iteration", iteration),
+					zap.Int("final_message_count", len(currentMessages)))
+				return
+			}
+
+			a.logger.Debug("tool calls executed, continuing to next iteration",
+				zap.Int("iteration", iteration),
+				zap.Int("message_count", len(currentMessages)))
 		}
+
+		a.logger.Warn("max streaming iterations reached", zap.Int("max_iterations", a.config.MaxChatCompletionIterations))
 	}()
 
 	return outputChan, nil
 }
 
-// handleStreamingToolExecutionWithEvents executes tool calls and emits events during streaming
-func (a *OpenAICompatibleAgentImpl) handleStreamingToolExecutionWithEvents(ctx context.Context, originalMessages []types.Message, assistantMessage *types.Message, tools []sdk.ChatCompletionTool, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- *types.Message) {
-	if a.toolBox == nil {
-		a.logger.Error("no toolbox configured for tool execution")
-		return
+// processStreamIteration processes a single streaming iteration and returns whether tool calls were executed
+func (a *OpenAICompatibleAgentImpl) processStreamIteration(
+	ctx context.Context,
+	iteration int,
+	streamResponseChan <-chan *sdk.CreateChatCompletionStreamResponse,
+	streamErrorChan <-chan error,
+	outputChan chan<- *types.Message,
+) (toolCallsExecuted bool, assistantMessage *types.Message, toolResultMessages []types.Message) {
+	var fullContent string
+	toolCallAccumulator := make(map[int]*sdk.ChatCompletionMessageToolCall)
+	toolResultMessages = make([]types.Message, 0)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false, nil, nil
+		case streamErr := <-streamErrorChan:
+			if streamErr != nil {
+				a.logger.Error("streaming failed", zap.Error(streamErr))
+			}
+			return false, nil, nil
+		case streamResp, ok := <-streamResponseChan:
+			if !ok {
+				break
+			}
+
+			if streamResp == nil || len(streamResp.Choices) == 0 {
+				continue
+			}
+
+			choice := streamResp.Choices[0]
+
+			if choice.Delta.Content != "" {
+				fullContent += choice.Delta.Content
+
+				chunkMessage := &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("chunk-%d-%d", iteration, len(fullContent)),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": choice.Delta.Content,
+						},
+					},
+				}
+
+				select {
+				case outputChan <- chunkMessage:
+				case <-ctx.Done():
+					return false, nil, nil
+				}
+			}
+
+			for _, toolCallChunk := range choice.Delta.ToolCalls {
+				if toolCallAccumulator[toolCallChunk.Index] == nil {
+					toolCallAccumulator[toolCallChunk.Index] = &sdk.ChatCompletionMessageToolCall{
+						Type:     "function",
+						Function: sdk.ChatCompletionMessageToolCallFunction{},
+					}
+				}
+
+				toolCall := toolCallAccumulator[toolCallChunk.Index]
+				if toolCallChunk.ID != "" {
+					toolCall.Id = toolCallChunk.ID
+				}
+				if toolCallChunk.Function.Name != "" {
+					toolCall.Function.Name = toolCallChunk.Function.Name
+				}
+				if toolCallChunk.Function.Arguments != "" {
+					toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+				}
+			}
+
+			if choice.FinishReason != "" {
+				assistantMessage = &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("assistant-stream-%d", iteration),
+					Role:      "assistant",
+					Parts:     make([]types.Part, 0),
+				}
+
+				if fullContent != "" {
+					assistantMessage.Parts = append(assistantMessage.Parts, map[string]interface{}{
+						"kind": "text",
+						"text": fullContent,
+					})
+				}
+
+				if len(toolCallAccumulator) > 0 && a.toolBox != nil {
+					toolCalls := make([]sdk.ChatCompletionMessageToolCall, 0, len(toolCallAccumulator))
+					for _, toolCall := range toolCallAccumulator {
+						toolCalls = append(toolCalls, *toolCall)
+					}
+
+					assistantMessage.Parts = append(assistantMessage.Parts, map[string]interface{}{
+						"kind": "data",
+						"data": map[string]interface{}{
+							"tool_calls": toolCalls,
+						},
+					})
+
+					select {
+					case outputChan <- assistantMessage:
+					case <-ctx.Done():
+						return false, nil, nil
+					}
+
+					toolResultMessages = a.executeToolCallsWithEvents(ctx, toolCalls, outputChan)
+
+					return true, assistantMessage, toolResultMessages
+				}
+
+				select {
+				case outputChan <- assistantMessage:
+				case <-ctx.Done():
+				}
+
+				return false, assistantMessage, toolResultMessages
+			}
+		}
 	}
+}
+
+// executeToolCallsWithEvents executes tool calls and emits events, returning tool result messages
+func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- *types.Message) []types.Message {
+	toolResultMessages := make([]types.Message, 0)
 
 	for _, toolCall := range toolCalls {
+		if toolCall.Function.Name == "" || toolCall.Id == "" {
+			continue
+		}
+
 		startEvent := &types.Message{
 			Kind:      "message",
-			MessageID: fmt.Sprintf("tool-start-%s-%d", toolCall.Function.Name, time.Now().UnixNano()),
+			MessageID: fmt.Sprintf("tool-start-%s", toolCall.Id),
 			Role:      "assistant",
 			Parts: []types.Part{
 				map[string]interface{}{
@@ -341,26 +404,64 @@ func (a *OpenAICompatibleAgentImpl) handleStreamingToolExecutionWithEvents(ctx c
 		select {
 		case outputChan <- startEvent:
 		case <-ctx.Done():
-			return
+			return toolResultMessages
 		}
-	}
 
-	for _, toolCall := range toolCalls {
 		var args map[string]interface{}
 		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 			a.logger.Error("failed to parse tool arguments", zap.String("tool", toolCall.Function.Name), zap.Error(err))
+
+			failedEvent := &types.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("tool-failed-%s", toolCall.Id),
+				Role:      "assistant",
+				Parts: []types.Part{
+					map[string]interface{}{
+						"kind": "data",
+						"data": map[string]interface{}{
+							"tool_name": toolCall.Function.Name,
+							"status":    "failed",
+						},
+					},
+				},
+			}
+
+			select {
+			case outputChan <- failedEvent:
+			case <-ctx.Done():
+			}
 			continue
 		}
 
 		result, err := a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
 		if err != nil {
 			a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(err))
+
+			failedEvent := &types.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("tool-failed-%s", toolCall.Id),
+				Role:      "assistant",
+				Parts: []types.Part{
+					map[string]interface{}{
+						"kind": "data",
+						"data": map[string]interface{}{
+							"tool_name": toolCall.Function.Name,
+							"status":    "failed",
+						},
+					},
+				},
+			}
+
+			select {
+			case outputChan <- failedEvent:
+			case <-ctx.Done():
+			}
 			continue
 		}
 
 		completedEvent := &types.Message{
 			Kind:      "message",
-			MessageID: fmt.Sprintf("tool-completed-%s-%d", toolCall.Function.Name, time.Now().UnixNano()),
+			MessageID: fmt.Sprintf("tool-completed-%s", toolCall.Id),
 			Role:      "assistant",
 			Parts: []types.Part{
 				map[string]interface{}{
@@ -376,19 +477,18 @@ func (a *OpenAICompatibleAgentImpl) handleStreamingToolExecutionWithEvents(ctx c
 		select {
 		case outputChan <- completedEvent:
 		case <-ctx.Done():
-			return
+			return toolResultMessages
 		}
 
-		toolResultMessage := &types.Message{
+		toolResultMessage := types.Message{
 			Kind:      "message",
-			MessageID: fmt.Sprintf("tool-result-%s-%d", toolCall.Function.Name, time.Now().UnixNano()),
+			MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
 			Role:      "tool",
 			Parts: []types.Part{
 				map[string]interface{}{
 					"kind": "data",
 					"data": map[string]interface{}{
 						"tool_call_id": toolCall.Id,
-						"tool_name":    toolCall.Function.Name,
 						"result":       result,
 					},
 				},
@@ -396,11 +496,13 @@ func (a *OpenAICompatibleAgentImpl) handleStreamingToolExecutionWithEvents(ctx c
 		}
 
 		select {
-		case outputChan <- toolResultMessage:
+		case outputChan <- &toolResultMessage:
 		case <-ctx.Done():
-			return
+			return toolResultMessages
 		}
 
-		a.conversationHistory = append(a.conversationHistory, *toolResultMessage)
+		toolResultMessages = append(toolResultMessages, toolResultMessage)
 	}
+
+	return toolResultMessages
 }

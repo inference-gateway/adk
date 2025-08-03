@@ -340,7 +340,7 @@ func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 	defer cancel()
 
 	// Process with the agent
-	response, err := activeAgent.Run(llmCtx, messages, tools)
+	agentResponse, err := activeAgent.Run(llmCtx, messages, tools)
 	if err != nil {
 		// Check if this is an InputRequiredError (from our input_required tool)
 		// It might be wrapped, so we need to unwrap it
@@ -402,21 +402,27 @@ func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 		return task, err
 	}
 
-	// Update task history with complete conversation
-	conversationHistory := activeAgent.GetConversationHistory()
-	if len(conversationHistory) > 0 {
-		task.History = conversationHistory
-	} else if response != nil {
-		// Fallback: add just the response to history
+	// Update task history with conversation: add user message first if provided
+	if message != nil {
 		if task.History == nil {
 			task.History = []types.Message{}
 		}
-		task.History = append(task.History, *response)
+		task.History = append(task.History, *message)
+	}
+
+	// Add any additional messages (tool calls, tool responses, etc.)
+	if len(agentResponse.AdditionalMessages) > 0 {
+		task.History = append(task.History, agentResponse.AdditionalMessages...)
+	}
+
+	// Add the final assistant response
+	if agentResponse.Response != nil {
+		task.History = append(task.History, *agentResponse.Response)
 	}
 
 	// Task completed successfully
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = response
+	task.Status.Message = agentResponse.Response
 
 	return task, nil
 }

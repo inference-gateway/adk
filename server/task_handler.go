@@ -52,12 +52,14 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 		zap.String("task_id", task.ID))
 
 	messages := make([]types.Message, 0, len(task.History)+1)
+
+	messages = append(messages, task.History...)
+
 	if message != nil {
 		messages = append(messages, *message)
 	}
-	messages = append(messages, task.History...)
 
-	response, err := agent.Run(ctx, messages, nil)
+	agentResponse, err := agent.Run(ctx, messages, nil)
 	if err != nil {
 		th.logger.Error("agent processing failed", zap.Error(err))
 
@@ -82,27 +84,20 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 		return task, nil
 	}
 
-	// Collect all conversation history added during this task execution
-	// This maintains privacy by only including messages from this specific task
-	conversationHistory := agent.GetConversationHistory()
-	
-	// Calculate new messages added during this execution
-	// Only add messages beyond the original input messages to maintain task isolation
-	if len(conversationHistory) > len(messages) {
-		newMessages := conversationHistory[len(messages):]
-		for _, msg := range newMessages {
-			// Only capture assistant and tool messages (responses), not user messages from other tasks
-			if msg.Role == "assistant" || msg.Role == "tool" {
-				task.History = append(task.History, msg)
-			}
-		}
-	} else if response != nil {
-		// Fallback to just adding the response if conversation history tracking fails
-		task.History = append(task.History, *response)
+	if message != nil {
+		task.History = append(task.History, *message)
+	}
+
+	if len(agentResponse.AdditionalMessages) > 0 {
+		task.History = append(task.History, agentResponse.AdditionalMessages...)
+	}
+
+	if agentResponse.Response != nil {
+		task.History = append(task.History, *agentResponse.Response)
 	}
 
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = response
+	task.Status.Message = agentResponse.Response
 
 	return task, nil
 }

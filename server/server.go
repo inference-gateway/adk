@@ -32,9 +32,6 @@ type A2AServer interface {
 	// Returns nil if no agent card has been explicitly set
 	GetAgentCard() *types.AgentCard
 
-	// ProcessTask processes a task with the given message
-	ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error)
-
 	// StartTaskProcessor starts the background task processor
 	StartTaskProcessor(ctx context.Context)
 
@@ -458,11 +455,6 @@ func (s *A2AServerImpl) Stop(ctx context.Context) error {
 // Returns nil if no agent card has been explicitly set
 func (s *A2AServerImpl) GetAgentCard() *types.AgentCard {
 	return s.customAgentCard
-}
-
-// ProcessTask processes a task with the given message
-func (s *A2AServerImpl) ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	return s.taskHandler.HandleTask(ctx, task, message, s.agent)
 }
 
 // StartTaskProcessor starts the background task processing goroutine

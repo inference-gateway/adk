@@ -64,9 +64,9 @@ func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManag
 		taskManager:   taskManager,
 		agent:         agent,
 		config:        cfg,
-		llmClient:     nil, // Will use agent directly
+		llmClient:     nil,
 		converter:     utils.NewOptimizedMessageConverter(logger),
-		toolBox:       nil, // Will use agent directly
+		toolBox:       nil,
 		maxIterations: cfg.AgentConfig.MaxChatCompletionIterations,
 	}
 }
@@ -77,11 +77,9 @@ func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params t
 		return nil, NewEmptyMessagePartsError()
 	}
 
-	// Check if this is a task resumption (TaskID provided)
 	if params.Message.TaskID != nil {
 		taskID := *params.Message.TaskID
 
-		// Resume the existing task with the new input
 		err := mh.taskManager.ResumeTaskWithInput(taskID, &params.Message)
 		if err != nil {
 			mh.logger.Error("failed to resume task with input",
@@ -90,7 +88,6 @@ func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params t
 			return nil, fmt.Errorf("failed to resume task: %w", err)
 		}
 
-		// Get the updated task to return
 		task, exists := mh.taskManager.GetTask(taskID)
 		if !exists {
 			mh.logger.Error("failed to get resumed task",
@@ -105,7 +102,6 @@ func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params t
 		return task, nil
 	}
 
-	// This is a new task creation
 	contextID := params.Message.ContextID
 	if contextID == nil {
 		newContextID := uuid.New().String()
@@ -169,7 +165,6 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 		}()
 
 		if mh.agent != nil {
-			// Use agent for streaming when available
 			mh.handleAgentStreaming(ctx, task, &params.Message, responseChan)
 			return
 		}
@@ -226,7 +221,6 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 	for msg := range streamChan {
 		if msg != nil {
 			lastMessage = msg
-			// Collect all messages generated during this streaming session
 			generatedMessages = append(generatedMessages, *msg)
 
 			select {
@@ -249,10 +243,8 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 
 	if lastMessage != nil {
 		task.Status.Message = lastMessage
-		// Add all messages generated during this streaming session to task history
-		// This maintains privacy by only including messages from this specific task
+
 		for _, msg := range generatedMessages {
-			// Only add assistant and tool messages (responses), not user messages
 			if msg.Role == "assistant" || msg.Role == "tool" {
 				task.History = append(task.History, msg)
 			}

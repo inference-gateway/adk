@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1405,14 +1406,14 @@ func TestClient_LargeResponses(t *testing.T) {
 }
 
 func TestClient_ConcurrentRequests(t *testing.T) {
-	requestCount := 0
+	var requestCount int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestCount++
+		count := atomic.AddInt64(&requestCount, 1)
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
-			ID:      requestCount,
-			Result:  fmt.Sprintf("response-%d", requestCount),
+			ID:      count,
+			Result:  fmt.Sprintf("response-%d", count),
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -1455,7 +1456,8 @@ func TestClient_ConcurrentRequests(t *testing.T) {
 		assert.NoError(t, err, "Concurrent request %d failed", i)
 	}
 
-	assert.Equal(t, numGoroutines, requestCount, "Expected %d requests, got %d", numGoroutines, requestCount)
+	finalCount := atomic.LoadInt64(&requestCount)
+	assert.Equal(t, int64(numGoroutines), finalCount, "Expected %d requests, got %d", numGoroutines, finalCount)
 }
 
 func TestClient_GetAgentCard(t *testing.T) {

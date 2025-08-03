@@ -215,7 +215,13 @@ func (tm *DefaultTaskManager) GetTask(taskID string) (*types.Task, bool) {
 	defer tm.tasksMu.RUnlock()
 
 	task, exists := tm.tasks[taskID]
-	return task, exists
+	if !exists {
+		return nil, false
+	}
+
+	// Return a copy to prevent data races
+	taskCopy := *task
+	return &taskCopy, true
 }
 
 // ListTasks retrieves a list of tasks based on the provided parameters
@@ -568,8 +574,8 @@ func (tm *DefaultTaskManager) PauseTaskForInput(taskID string, message *types.Me
 	}
 
 	tm.tasks[taskID] = task
-	tm.logger.Info("task paused for input", 
-		zap.String("task_id", taskID), 
+	tm.logger.Info("task paused for input",
+		zap.String("task_id", taskID),
 		zap.String("context_id", task.ContextID))
 
 	if tm.notificationSender != nil {
@@ -604,8 +610,8 @@ func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.
 	}
 
 	tm.tasks[taskID] = task
-	tm.logger.Info("task resumed with input", 
-		zap.String("task_id", taskID), 
+	tm.logger.Info("task resumed with input",
+		zap.String("task_id", taskID),
 		zap.String("context_id", task.ContextID))
 
 	if tm.notificationSender != nil {
