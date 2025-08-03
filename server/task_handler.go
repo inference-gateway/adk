@@ -51,13 +51,8 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 	th.logger.Info("processing task with agent capabilities",
 		zap.String("task_id", task.ID))
 
-	messages := make([]types.Message, 0, len(task.History)+1)
-
-	messages = append(messages, task.History...)
-
-	if message != nil {
-		messages = append(messages, *message)
-	}
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
 
 	agentResponse, err := agent.Run(ctx, messages)
 	if err != nil {
@@ -82,10 +77,6 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 			},
 		}
 		return task, nil
-	}
-
-	if message != nil {
-		task.History = append(task.History, *message)
 	}
 
 	if len(agentResponse.AdditionalMessages) > 0 {

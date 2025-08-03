@@ -95,6 +95,7 @@ type QueuedTask struct {
 type A2AServerImpl struct {
 	cfg            *config.Config
 	logger         *zap.Logger
+	storage        Storage
 	taskHandler    TaskHandler
 	taskManager    TaskManager
 	messageHandler MessageHandler
@@ -128,16 +129,19 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		cfg.AgentVersion = BuildAgentVersion
 	}
 
+	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
+	storage := NewInMemoryStorage(logger, maxConversationHistory)
+
 	server := &A2AServerImpl{
 		cfg:       cfg,
 		logger:    logger,
+		storage:   storage,
 		otel:      otel,
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
-	server.taskManager = NewDefaultTaskManager(logger, maxConversationHistory)
-	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, cfg)
+	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
+	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, storage, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
@@ -150,8 +154,7 @@ func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.Ope
 
 	if agent != nil {
 		server.agent = agent
-		// Keep using the default task handler, agent will be passed as parameter
-		server.messageHandler = NewDefaultMessageHandlerWithAgent(logger, server.taskManager, agent, cfg)
+		server.messageHandler = NewDefaultMessageHandlerWithAgent(logger, server.taskManager, server.storage, agent, cfg)
 	}
 
 	return server
@@ -207,8 +210,12 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
 	}
 
-	server.taskManager = NewDefaultTaskManager(logger, cfg.AgentConfig.MaxConversationHistory)
-	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, cfg)
+	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
+	storage := NewInMemoryStorage(logger, maxConversationHistory)
+	server.storage = storage
+
+	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
+	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, storage, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
@@ -228,7 +235,7 @@ func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
 // SetAgent sets the OpenAI-compatible agent for processing tasks
 func (s *A2AServerImpl) SetAgent(agent OpenAICompatibleAgent) {
 	s.agent = agent
-	s.messageHandler = NewDefaultMessageHandlerWithAgent(s.logger, s.taskManager, agent, s.cfg)
+	s.messageHandler = NewDefaultMessageHandlerWithAgent(s.logger, s.taskManager, s.storage, agent, s.cfg)
 }
 
 // GetAgent returns the configured OpenAI-compatible agent

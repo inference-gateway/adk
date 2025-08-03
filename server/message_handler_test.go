@@ -82,7 +82,8 @@ func TestDefaultMessageHandler_HandleMessageSend(t *testing.T) {
 				},
 			}
 
-			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
+			mockStorage := &mocks.FakeStorage{}
+			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, mockStorage, cfg)
 			ctx := context.Background()
 
 			task, err := messageHandler.HandleMessageSend(ctx, tt.params)
@@ -98,7 +99,6 @@ func TestDefaultMessageHandler_HandleMessageSend(t *testing.T) {
 		})
 	}
 }
-
 
 func TestDefaultMessageHandler_ValidateMessage(t *testing.T) {
 	tests := []struct {
@@ -136,7 +136,8 @@ func TestDefaultMessageHandler_ValidateMessage(t *testing.T) {
 				},
 			}
 
-			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
+			mockStorage := &mocks.FakeStorage{}
+			messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, mockStorage, cfg)
 
 			params := types.MessageSendParams{Message: tt.message}
 			ctx := context.Background()
@@ -166,4 +167,3 @@ func TestDefaultMessageHandler_ValidateMessage(t *testing.T) {
 		})
 	}
 }
-

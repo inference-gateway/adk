@@ -98,7 +98,6 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 	}
 }
 
-
 func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 20)
@@ -154,6 +153,8 @@ func TestA2AServer_ResponseSender_SendError(t *testing.T) {
 func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 20)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
 
 	cfg := &config.Config{
 		AgentConfig: config.AgentConfig{
@@ -162,7 +163,7 @@ func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 		},
 	}
 
-	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, cfg)
+	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, storage, cfg)
 
 	contextID := "test-context"
 	params := types.MessageSendParams{

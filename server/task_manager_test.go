@@ -8,6 +8,7 @@ import (
 	server "github.com/inference-gateway/adk/server"
 	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 	zap "go.uber.org/zap"
 )
 
@@ -157,7 +158,6 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 	assert.Nil(t, emptyTask)
 }
 
-
 func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 20)
@@ -273,10 +273,11 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	// Manually add the assistant response to task history before updating state
 	task1.History = append(task1.History, *assistantResponse1)
-	
-	err := taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
+	err := taskManager.GetStorage().UpdateTask(task1)
+	assert.NoError(t, err)
+
+	err = taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
 	updatedTask1, exists := taskManager.GetTask(task1.ID)
@@ -319,9 +320,10 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	// Manually add the assistant response to task history before updating state
 	task2.History = append(task2.History, *assistantResponse2)
-	
+	err = taskManager.GetStorage().UpdateTask(task2)
+	assert.NoError(t, err)
+
 	err = taskManager.UpdateState(task2.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
@@ -409,10 +411,11 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 		},
 	}
 
-	// Manually add the assistant response to task history before updating state
 	task1.History = append(task1.History, *response1)
-	
-	err := taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
+	err := taskManager.GetStorage().UpdateTask(task1)
+	assert.NoError(t, err)
+
+	err = taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
 	message3 := &types.Message{
@@ -488,10 +491,11 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 		},
 	}
 
-	// Manually add the assistant response to task history before updating state
 	task.History = append(task.History, *response)
-	
-	err := taskManager.UpdateState(task.ID, types.TaskStateCompleted)
+	err := taskManager.GetStorage().UpdateTask(task)
+	assert.NoError(t, err)
+
+	err = taskManager.UpdateState(task.ID, types.TaskStateCompleted)
 	assert.NoError(t, err)
 
 	history = taskManager.GetConversationHistory(contextID)
@@ -665,7 +669,6 @@ func TestDefaultTaskManager_ConversationHistoryLimitZeroDirectInstantiation(t *t
 	assert.Len(t, history, 0)
 }
 
-// TestDefaultTaskManager_CancelTask_StateValidation tests the new cancellation state validation
 func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 10)
@@ -729,7 +732,6 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a task in the specified initial state
 			task := taskManager.CreateTask("test-context", tt.initialState, &types.Message{
 				Kind:      "message",
 				MessageID: "test-msg",
@@ -742,21 +744,18 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 				},
 			})
 
-			// Try to cancel the task
 			err := taskManager.CancelTask(task.ID)
 
 			if tt.shouldSucceed {
 				assert.NoError(t, err)
-				
-				// Verify task was actually canceled
+
 				retrievedTask, exists := taskManager.GetTask(task.ID)
 				assert.True(t, exists)
 				assert.Equal(t, types.TaskStateCanceled, retrievedTask.Status.State)
 			} else {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMsg)
-				
-				// Verify task state didn't change
+
 				retrievedTask, exists := taskManager.GetTask(task.ID)
 				assert.True(t, exists)
 				assert.Equal(t, tt.initialState, retrievedTask.Status.State)
@@ -765,13 +764,11 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 	}
 }
 
-// TestDefaultTaskManager_PauseTaskForInput tests the task pausing functionality
 func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
 	t.Run("pause existing task successfully", func(t *testing.T) {
-		// Create a working task
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
 			Kind:      "message",
 			MessageID: "initial-msg",
@@ -784,7 +781,6 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 			},
 		})
 
-		// Pause the task
 		pauseMessage := &types.Message{
 			Kind:      "message",
 			MessageID: "pause-msg",
@@ -800,14 +796,12 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 		err := taskManager.PauseTaskForInput(task.ID, pauseMessage)
 		assert.NoError(t, err)
 
-		// Verify task state changed to input-required
 		retrievedTask, exists := taskManager.GetTask(task.ID)
 		assert.True(t, exists)
 		assert.Equal(t, types.TaskStateInputRequired, retrievedTask.Status.State)
 		assert.Equal(t, pauseMessage, retrievedTask.Status.Message)
 
-		// Verify message was added to history
-		assert.Len(t, retrievedTask.History, 2) // initial + pause message
+		assert.Len(t, retrievedTask.History, 2)
 		assert.Equal(t, pauseMessage.MessageID, retrievedTask.History[1].MessageID)
 	})
 
@@ -830,18 +824,15 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 	})
 }
 
-// TestDefaultTaskManager_ResumeTaskWithInput tests the task resumption functionality
 func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
 	t.Run("resume paused task successfully", func(t *testing.T) {
-		// Create and pause a task
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
 		err := taskManager.PauseTaskForInput(task.ID, nil)
 		assert.NoError(t, err)
 
-		// Resume the task
 		resumeMessage := &types.Message{
 			Kind:      "message",
 			MessageID: "resume-msg",
@@ -857,14 +848,12 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 		err = taskManager.ResumeTaskWithInput(task.ID, resumeMessage)
 		assert.NoError(t, err)
 
-		// Verify task state changed to working
 		retrievedTask, exists := taskManager.GetTask(task.ID)
 		assert.True(t, exists)
 		assert.Equal(t, types.TaskStateWorking, retrievedTask.Status.State)
 		assert.Equal(t, resumeMessage, retrievedTask.Status.Message)
 
-		// Verify message was added to history
-		assert.Len(t, retrievedTask.History, 1) // resume message
+		assert.Len(t, retrievedTask.History, 1)
 		assert.Equal(t, resumeMessage.MessageID, retrievedTask.History[0].MessageID)
 	})
 
@@ -884,24 +873,20 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 	})
 }
 
-// TestDefaultTaskManager_IsTaskPaused tests the task pause check functionality
 func TestDefaultTaskManager_IsTaskPaused(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
 	t.Run("check paused task", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
-		
-		// Initially not paused
+
 		isPaused, err := taskManager.IsTaskPaused(task.ID)
 		assert.NoError(t, err)
 		assert.False(t, isPaused)
 
-		// Pause the task
 		err = taskManager.PauseTaskForInput(task.ID, nil)
 		assert.NoError(t, err)
 
-		// Now should be paused
 		isPaused, err = taskManager.IsTaskPaused(task.ID)
 		assert.NoError(t, err)
 		assert.True(t, isPaused)
@@ -915,7 +900,6 @@ func TestDefaultTaskManager_IsTaskPaused(t *testing.T) {
 	})
 }
 
-// TestDefaultTaskManager_PollTaskStatus_InputRequired tests polling behavior with input-required state
 func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 10)
@@ -923,7 +907,6 @@ func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 	t.Run("polling returns when task reaches input-required state", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
 
-		// Start polling in a goroutine
 		resultChan := make(chan *types.Task, 1)
 		errorChan := make(chan error, 1)
 
@@ -936,14 +919,11 @@ func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 			}
 		}()
 
-		// Give polling a moment to start
 		time.Sleep(50 * time.Millisecond)
 
-		// Pause the task (set to input-required)
 		err := taskManager.PauseTaskForInput(task.ID, nil)
 		assert.NoError(t, err)
 
-		// Polling should complete
 		select {
 		case result := <-resultChan:
 			assert.Equal(t, types.TaskStateInputRequired, result.Status.State)
@@ -955,12 +935,10 @@ func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 	})
 }
 
-// TestDefaultTaskManager_InputRequiredWorkflow tests the complete input-required workflow
 func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	logger := zap.NewNop()
 	taskManager := server.NewDefaultTaskManager(logger, 10)
 
-	// Create initial task
 	initialMessage := &types.Message{
 		Kind:      "message",
 		MessageID: "initial-msg",
@@ -974,7 +952,6 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	}
 	task := taskManager.CreateTask("test-context", types.TaskStateWorking, initialMessage)
 
-	// 1. Pause task for input
 	pauseMessage := &types.Message{
 		Kind:      "message",
 		MessageID: "pause-msg",
@@ -989,21 +966,17 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	err := taskManager.PauseTaskForInput(task.ID, pauseMessage)
 	assert.NoError(t, err)
 
-	// 2. Verify task is paused
 	isPaused, err := taskManager.IsTaskPaused(task.ID)
 	assert.NoError(t, err)
 	assert.True(t, isPaused)
 
-	// 3. Try to cancel paused task (should succeed)
 	cancelErr := taskManager.CancelTask(task.ID)
 	assert.NoError(t, cancelErr)
 
-	// 4. Create another task for resumption test
 	task2 := taskManager.CreateTask("test-context-2", types.TaskStateWorking, initialMessage)
 	err = taskManager.PauseTaskForInput(task2.ID, pauseMessage)
 	assert.NoError(t, err)
 
-	// 5. Resume with user input
 	resumeMessage := &types.Message{
 		Kind:      "message",
 		MessageID: "resume-msg",
@@ -1018,19 +991,117 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	err = taskManager.ResumeTaskWithInput(task2.ID, resumeMessage)
 	assert.NoError(t, err)
 
-	// 6. Verify task is no longer paused
 	isPaused, err = taskManager.IsTaskPaused(task2.ID)
 	assert.NoError(t, err)
 	assert.False(t, isPaused)
 
-	// 7. Verify complete conversation history
 	retrievedTask, exists := taskManager.GetTask(task2.ID)
 	assert.True(t, exists)
 	assert.Equal(t, types.TaskStateWorking, retrievedTask.Status.State)
-	assert.Len(t, retrievedTask.History, 3) // initial + pause + resume messages
-	
-	// Verify message order
+	assert.Len(t, retrievedTask.History, 3)
+
 	assert.Equal(t, "initial-msg", retrievedTask.History[0].MessageID)
 	assert.Equal(t, "pause-msg", retrievedTask.History[1].MessageID)
 	assert.Equal(t, "resume-msg", retrievedTask.History[2].MessageID)
+}
+
+func TestDefaultTaskManager_MessageDuplicationPrevention(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger, 20)
+
+	contextID := "test-duplication-context"
+
+	userMessage := &types.Message{
+		Kind:      "message",
+		MessageID: "msg-1754236662",
+		Role:      "user",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "What can you help me with?",
+			},
+		},
+	}
+
+	task1 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, userMessage)
+	require.NotNil(t, task1)
+
+	assert.Len(t, task1.History, 1, "Task history should contain exactly one message")
+	assert.Equal(t, userMessage.MessageID, task1.History[0].MessageID)
+	assert.Equal(t, userMessage.Role, task1.History[0].Role)
+
+	history := taskManager.GetConversationHistory(contextID)
+	assert.Len(t, history, 1, "Conversation history should contain exactly one message")
+	assert.Equal(t, userMessage.MessageID, history[0].MessageID)
+
+	messageIDCount := 0
+	for _, msg := range history {
+		if msg.MessageID == userMessage.MessageID {
+			messageIDCount++
+		}
+	}
+	assert.Equal(t, 1, messageIDCount, "Message ID should appear exactly once in conversation history")
+
+	assistantMessage := &types.Message{
+		Kind:      "message",
+		MessageID: "assistant-response-1",
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I can help you with many things!",
+			},
+		},
+	}
+
+	task1.History = append(task1.History, *assistantMessage)
+	err := taskManager.GetStorage().UpdateTask(task1)
+	require.NoError(t, err)
+	err = taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
+	require.NoError(t, err)
+
+	history = taskManager.GetConversationHistory(contextID)
+	assert.Len(t, history, 2, "Conversation history should contain exactly two messages")
+
+	userMessageCount := 0
+	assistantMessageCount := 0
+	for _, msg := range history {
+		if msg.MessageID == userMessage.MessageID && msg.Role == "user" {
+			userMessageCount++
+		}
+		if msg.MessageID == assistantMessage.MessageID && msg.Role == "assistant" {
+			assistantMessageCount++
+		}
+	}
+	assert.Equal(t, 1, userMessageCount, "User message should appear exactly once")
+	assert.Equal(t, 1, assistantMessageCount, "Assistant message should appear exactly once")
+
+	userMessage2 := &types.Message{
+		Kind:      "message",
+		MessageID: "msg-second-user",
+		Role:      "user",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "Tell me more about Go programming",
+			},
+		},
+	}
+
+	task2 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, userMessage2)
+	require.NotNil(t, task2)
+
+	assert.Len(t, task2.History, 3, "Second task should have complete conversation history")
+
+	finalHistory := taskManager.GetConversationHistory(contextID)
+	assert.Len(t, finalHistory, 3, "Final conversation history should have 3 messages")
+
+	messageIDCounts := make(map[string]int)
+	for _, msg := range finalHistory {
+		messageIDCounts[msg.MessageID]++
+	}
+
+	for messageID, count := range messageIDCounts {
+		assert.Equal(t, 1, count, "Message ID %s should appear exactly once, but appeared %d times", messageID, count)
+	}
 }

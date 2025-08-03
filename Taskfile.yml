@@ -53,6 +53,7 @@ tasks:
       - task: generate:mock:task-handler
       - task: generate:mock:message-handler
       - task: generate:mock:task-manager
+      - task: generate:mock:storage
       - task: generate:mock:response-sender
       - task: generate:mock:oidc-authenticator
       - task: generate:mock:task-result-processor
@@ -95,6 +96,11 @@ tasks:
     desc: 'Generate mock for TaskManager interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_task_manager.go server TaskManager
+
+  generate:mock:storage:
+    desc: 'Generate mock for Storage interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_storage.go server Storage
 
   generate:mock:response-sender:
     desc: 'Generate mock for ResponseSender interface'

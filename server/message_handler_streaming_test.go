@@ -69,7 +69,9 @@ func TestMessageHandler_HandleMessageStream_AgentStreaming_Success(t *testing.T)
 	}()
 
 	agent.RunWithStreamReturns(streamChan, nil)
-	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, mockTaskManager, agent, cfg)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, mockTaskManager, storage, agent, cfg)
 
 	params := types.MessageSendParams{
 		Message: types.Message{
@@ -159,7 +161,9 @@ func TestMessageHandler_HandleMessageStream_AgentStreamingError(t *testing.T) {
 	agent := &mocks.FakeOpenAICompatibleAgent{}
 	agent.RunWithStreamReturns(nil, fmt.Errorf("agent streaming failed"))
 
-	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, mockTaskManager, agent, cfg)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, mockTaskManager, storage, agent, cfg)
 
 	params := types.MessageSendParams{
 		Message: types.Message{
@@ -248,7 +252,9 @@ func TestMessageHandler_HandleMessageStream_IterativeStreaming(t *testing.T) {
 		},
 	}
 
-	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
+	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, storage, cfg)
 
 	llmClient := &mocks.FakeLLMClient{}
 	respChan := make(chan *sdk.CreateChatCompletionStreamResponse, 3)
@@ -366,7 +372,9 @@ func TestMessageHandler_HandleMessageStream_MockStreaming(t *testing.T) {
 		},
 	}
 
-	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
+	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, storage, cfg)
 
 	params := types.MessageSendParams{
 		Message: types.Message{
@@ -471,7 +479,9 @@ func TestMessageHandler_HandleMessageStream_ContextCancellation(t *testing.T) {
 		},
 	}
 
-	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
+	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, storage, cfg)
 
 	params := types.MessageSendParams{
 		Message: types.Message{
@@ -512,7 +522,9 @@ func TestMessageHandler_HandleMessageStream_EmptyParts(t *testing.T) {
 		},
 	}
 
-	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, cfg)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
+	messageHandler := server.NewDefaultMessageHandler(logger, mockTaskManager, storage, cfg)
 
 	params := types.MessageSendParams{
 		Message: types.Message{
@@ -599,7 +611,9 @@ func TestMessageHandler_HandleMessageStream_WithToolCalls(t *testing.T) {
 	}()
 
 	agent.RunWithStreamReturns(streamChan, nil)
-	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, mockTaskManager, agent, cfg)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
+	messageHandler := server.NewDefaultMessageHandlerWithAgent(logger, mockTaskManager, storage, agent, cfg)
 
 	params := types.MessageSendParams{
 		Message: types.Message{

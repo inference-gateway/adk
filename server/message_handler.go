@@ -27,6 +27,7 @@ type MessageHandler interface {
 type DefaultMessageHandler struct {
 	logger        *zap.Logger
 	taskManager   TaskManager
+	storage       Storage
 	agent         OpenAICompatibleAgent
 	config        *config.Config
 	llmClient     LLMClient
@@ -36,7 +37,7 @@ type DefaultMessageHandler struct {
 }
 
 // NewDefaultMessageHandler creates a new default message handler
-func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, cfg *config.Config) *DefaultMessageHandler {
+func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, storage Storage, cfg *config.Config) *DefaultMessageHandler {
 	if cfg == nil {
 		logger.Fatal("config is required but was nil")
 	}
@@ -44,6 +45,7 @@ func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, cfg *
 	return &DefaultMessageHandler{
 		logger:        logger,
 		taskManager:   taskManager,
+		storage:       storage,
 		agent:         nil,
 		config:        cfg,
 		llmClient:     nil,
@@ -54,7 +56,7 @@ func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, cfg *
 }
 
 // NewDefaultMessageHandlerWithAgent creates a new default message handler with an agent for streaming
-func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManager, agent OpenAICompatibleAgent, cfg *config.Config) *DefaultMessageHandler {
+func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManager, storage Storage, agent OpenAICompatibleAgent, cfg *config.Config) *DefaultMessageHandler {
 	if cfg == nil {
 		logger.Fatal("config is required but was nil")
 	}
@@ -62,6 +64,7 @@ func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManag
 	return &DefaultMessageHandler{
 		logger:        logger,
 		taskManager:   taskManager,
+		storage:       storage,
 		agent:         agent,
 		config:        cfg,
 		llmClient:     nil,
@@ -193,8 +196,6 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 	message *types.Message,
 	responseChan chan<- types.SendStreamingMessageResponse,
 ) {
-	// Use task history directly as it already contains all messages in chronological order,
-	// including the current message that was added during task creation
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
@@ -202,7 +203,6 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 		zap.String("task_id", task.ID),
 		zap.Int("conversation_messages", len(messages)))
 
-	// Debug log the conversation being sent to the agent
 	if len(messages) > 0 {
 		mh.logger.Debug("conversation being sent to agent:")
 		for i, msg := range messages {
@@ -253,7 +253,7 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 				task.History = append(task.History, msg)
 			}
 		}
-		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
+		mh.storage.UpdateConversationHistory(task.ContextID, task.History)
 		mh.logger.Info("agent streaming completed successfully",
 			zap.String("task_id", task.ID))
 
@@ -283,13 +283,10 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 	message *types.Message,
 	responseChan chan<- types.SendStreamingMessageResponse,
 ) {
-	messages := make([]types.Message, 0)
-
-	if message != nil {
-		messages = append(messages, *message)
-	}
-
-	messages = append(messages, task.History...)
+	// Use task.History directly since it already contains the current message
+	// (added in CreateTask), so we don't need to add the message separately
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
 
 	var tools []sdk.ChatCompletionTool
 	if mh.toolBox != nil {
@@ -325,7 +322,7 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 			finalMessage := assistantMessage
 			if finalMessage != nil {
 				task.Status.Message = finalMessage
-				mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
+				mh.storage.UpdateConversationHistory(task.ContextID, task.History)
 			}
 
 			mh.logger.Info("streaming task completed successfully",
@@ -353,7 +350,7 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 			zap.Int("iteration", iteration),
 			zap.String("task_id", task.ID))
 
-		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
+		mh.storage.UpdateConversationHistory(task.ContextID, task.History)
 	}
 
 	mh.logger.Warn("max streaming iterations reached",
