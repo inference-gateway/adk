@@ -537,8 +537,8 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		return
 	}
 
-	if err := s.taskManager.UpdateState(updatedTask.ID, updatedTask.Status.State); err != nil {
-		s.logger.Error("failed to update task status",
+	if err := s.taskManager.UpdateTask(updatedTask); err != nil {
+		s.logger.Error("failed to update task",
 			zap.Error(err),
 			zap.String("task_id", updatedTask.ID),
 			zap.String("context_id", updatedTask.ContextID))

@@ -39,6 +39,20 @@ type FakeTaskManager struct {
 	createTaskReturnsOnCall map[int]struct {
 		result1 *types.Task
 	}
+	CreateTaskWithHistoryStub        func(string, types.TaskState, *types.Message, []types.Message) *types.Task
+	createTaskWithHistoryMutex       sync.RWMutex
+	createTaskWithHistoryArgsForCall []struct {
+		arg1 string
+		arg2 types.TaskState
+		arg3 *types.Message
+		arg4 []types.Message
+	}
+	createTaskWithHistoryReturns struct {
+		result1 *types.Task
+	}
+	createTaskWithHistoryReturnsOnCall map[int]struct {
+		result1 *types.Task
+	}
 	DeleteTaskPushNotificationConfigStub        func(types.DeleteTaskPushNotificationConfigParams) error
 	deleteTaskPushNotificationConfigMutex       sync.RWMutex
 	deleteTaskPushNotificationConfigArgsForCall []struct {
@@ -217,6 +231,17 @@ type FakeTaskManager struct {
 	updateStateReturnsOnCall map[int]struct {
 		result1 error
 	}
+	UpdateTaskStub        func(*types.Task) error
+	updateTaskMutex       sync.RWMutex
+	updateTaskArgsForCall []struct {
+		arg1 *types.Task
+	}
+	updateTaskReturns struct {
+		result1 error
+	}
+	updateTaskReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -365,6 +390,75 @@ func (fake *FakeTaskManager) CreateTaskReturnsOnCall(i int, result1 *types.Task)
 		})
 	}
 	fake.createTaskReturnsOnCall[i] = struct {
+		result1 *types.Task
+	}{result1}
+}
+
+func (fake *FakeTaskManager) CreateTaskWithHistory(arg1 string, arg2 types.TaskState, arg3 *types.Message, arg4 []types.Message) *types.Task {
+	var arg4Copy []types.Message
+	if arg4 != nil {
+		arg4Copy = make([]types.Message, len(arg4))
+		copy(arg4Copy, arg4)
+	}
+	fake.createTaskWithHistoryMutex.Lock()
+	ret, specificReturn := fake.createTaskWithHistoryReturnsOnCall[len(fake.createTaskWithHistoryArgsForCall)]
+	fake.createTaskWithHistoryArgsForCall = append(fake.createTaskWithHistoryArgsForCall, struct {
+		arg1 string
+		arg2 types.TaskState
+		arg3 *types.Message
+		arg4 []types.Message
+	}{arg1, arg2, arg3, arg4Copy})
+	stub := fake.CreateTaskWithHistoryStub
+	fakeReturns := fake.createTaskWithHistoryReturns
+	fake.recordInvocation("CreateTaskWithHistory", []interface{}{arg1, arg2, arg3, arg4Copy})
+	fake.createTaskWithHistoryMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2, arg3, arg4)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeTaskManager) CreateTaskWithHistoryCallCount() int {
+	fake.createTaskWithHistoryMutex.RLock()
+	defer fake.createTaskWithHistoryMutex.RUnlock()
+	return len(fake.createTaskWithHistoryArgsForCall)
+}
+
+func (fake *FakeTaskManager) CreateTaskWithHistoryCalls(stub func(string, types.TaskState, *types.Message, []types.Message) *types.Task) {
+	fake.createTaskWithHistoryMutex.Lock()
+	defer fake.createTaskWithHistoryMutex.Unlock()
+	fake.CreateTaskWithHistoryStub = stub
+}
+
+func (fake *FakeTaskManager) CreateTaskWithHistoryArgsForCall(i int) (string, types.TaskState, *types.Message, []types.Message) {
+	fake.createTaskWithHistoryMutex.RLock()
+	defer fake.createTaskWithHistoryMutex.RUnlock()
+	argsForCall := fake.createTaskWithHistoryArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+}
+
+func (fake *FakeTaskManager) CreateTaskWithHistoryReturns(result1 *types.Task) {
+	fake.createTaskWithHistoryMutex.Lock()
+	defer fake.createTaskWithHistoryMutex.Unlock()
+	fake.CreateTaskWithHistoryStub = nil
+	fake.createTaskWithHistoryReturns = struct {
+		result1 *types.Task
+	}{result1}
+}
+
+func (fake *FakeTaskManager) CreateTaskWithHistoryReturnsOnCall(i int, result1 *types.Task) {
+	fake.createTaskWithHistoryMutex.Lock()
+	defer fake.createTaskWithHistoryMutex.Unlock()
+	fake.CreateTaskWithHistoryStub = nil
+	if fake.createTaskWithHistoryReturnsOnCall == nil {
+		fake.createTaskWithHistoryReturnsOnCall = make(map[int]struct {
+			result1 *types.Task
+		})
+	}
+	fake.createTaskWithHistoryReturnsOnCall[i] = struct {
 		result1 *types.Task
 	}{result1}
 }
@@ -1283,6 +1377,67 @@ func (fake *FakeTaskManager) UpdateStateReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeTaskManager) UpdateTask(arg1 *types.Task) error {
+	fake.updateTaskMutex.Lock()
+	ret, specificReturn := fake.updateTaskReturnsOnCall[len(fake.updateTaskArgsForCall)]
+	fake.updateTaskArgsForCall = append(fake.updateTaskArgsForCall, struct {
+		arg1 *types.Task
+	}{arg1})
+	stub := fake.UpdateTaskStub
+	fakeReturns := fake.updateTaskReturns
+	fake.recordInvocation("UpdateTask", []interface{}{arg1})
+	fake.updateTaskMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeTaskManager) UpdateTaskCallCount() int {
+	fake.updateTaskMutex.RLock()
+	defer fake.updateTaskMutex.RUnlock()
+	return len(fake.updateTaskArgsForCall)
+}
+
+func (fake *FakeTaskManager) UpdateTaskCalls(stub func(*types.Task) error) {
+	fake.updateTaskMutex.Lock()
+	defer fake.updateTaskMutex.Unlock()
+	fake.UpdateTaskStub = stub
+}
+
+func (fake *FakeTaskManager) UpdateTaskArgsForCall(i int) *types.Task {
+	fake.updateTaskMutex.RLock()
+	defer fake.updateTaskMutex.RUnlock()
+	argsForCall := fake.updateTaskArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskManager) UpdateTaskReturns(result1 error) {
+	fake.updateTaskMutex.Lock()
+	defer fake.updateTaskMutex.Unlock()
+	fake.UpdateTaskStub = nil
+	fake.updateTaskReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeTaskManager) UpdateTaskReturnsOnCall(i int, result1 error) {
+	fake.updateTaskMutex.Lock()
+	defer fake.updateTaskMutex.Unlock()
+	fake.UpdateTaskStub = nil
+	if fake.updateTaskReturnsOnCall == nil {
+		fake.updateTaskReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.updateTaskReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -1292,6 +1447,8 @@ func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	defer fake.cleanupCompletedTasksMutex.RUnlock()
 	fake.createTaskMutex.RLock()
 	defer fake.createTaskMutex.RUnlock()
+	fake.createTaskWithHistoryMutex.RLock()
+	defer fake.createTaskWithHistoryMutex.RUnlock()
 	fake.deleteTaskPushNotificationConfigMutex.RLock()
 	defer fake.deleteTaskPushNotificationConfigMutex.RUnlock()
 	fake.getConversationHistoryMutex.RLock()
@@ -1324,6 +1481,8 @@ func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	defer fake.updateErrorMutex.RUnlock()
 	fake.updateStateMutex.RLock()
 	defer fake.updateStateMutex.RUnlock()
+	fake.updateTaskMutex.RLock()
+	defer fake.updateTaskMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

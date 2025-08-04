@@ -142,6 +142,9 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 
 	createdTask := taskManager.CreateTask("test-context", types.TaskStateSubmitted, message)
 
+	err := taskManager.GetStorage().EnqueueTask(createdTask, "test-request-id")
+	assert.NoError(t, err)
+
 	retrievedTask, exists := taskManager.GetTask(createdTask.ID)
 	assert.True(t, exists)
 	assert.NotNil(t, retrievedTask)
@@ -167,6 +170,16 @@ func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 	completedTask := taskManager.CreateTask("context-3", types.TaskStateCompleted, nil)
 	failedTask := taskManager.CreateTask("context-4", types.TaskStateFailed, nil)
 
+	storage := taskManager.GetStorage()
+	err := storage.EnqueueTask(submittedTask, "req-1")
+	assert.NoError(t, err)
+	err = storage.EnqueueTask(workingTask, "req-2")
+	assert.NoError(t, err)
+	err = storage.EnqueueTask(completedTask, "req-3")
+	assert.NoError(t, err)
+	err = storage.EnqueueTask(failedTask, "req-4")
+	assert.NoError(t, err)
+
 	_, exists := taskManager.GetTask(submittedTask.ID)
 	assert.True(t, exists)
 	_, exists = taskManager.GetTask(workingTask.ID)
@@ -176,12 +189,18 @@ func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 	_, exists = taskManager.GetTask(failedTask.ID)
 	assert.True(t, exists)
 
+	err = taskManager.UpdateTask(completedTask)
+	assert.NoError(t, err)
+	err = taskManager.UpdateTask(failedTask)
+	assert.NoError(t, err)
+
 	taskManager.CleanupCompletedTasks()
 
 	_, exists = taskManager.GetTask(submittedTask.ID)
 	assert.True(t, exists, "submitted task should remain")
 	_, exists = taskManager.GetTask(workingTask.ID)
 	assert.True(t, exists, "working task should remain")
+
 	_, exists = taskManager.GetTask(completedTask.ID)
 	assert.False(t, exists, "completed task should be cleaned up")
 	_, exists = taskManager.GetTask(failedTask.ID)
@@ -274,17 +293,15 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	}
 
 	task1.History = append(task1.History, *assistantResponse1)
-	err := taskManager.GetStorage().UpdateActiveTask(task1)
+
+	task1.Status.State = types.TaskStateCompleted
+	err := taskManager.UpdateTask(task1)
 	assert.NoError(t, err)
 
-	err = taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
-	assert.NoError(t, err)
-
-	updatedTask1, exists := taskManager.GetTask(task1.ID)
-	assert.True(t, exists)
-	assert.Len(t, updatedTask1.History, 2)
-	assert.Equal(t, *firstMessage, updatedTask1.History[0])
-	assert.Equal(t, *assistantResponse1, updatedTask1.History[1])
+	completedHistory := taskManager.GetConversationHistory(contextID)
+	assert.Len(t, completedHistory, 2)
+	assert.Equal(t, *firstMessage, completedHistory[0])
+	assert.Equal(t, *assistantResponse1, completedHistory[1])
 
 	secondMessage := &types.Message{
 		Kind:      "message",
@@ -298,7 +315,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	task2 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, secondMessage)
+	task2 := taskManager.CreateTaskWithHistory(contextID, types.TaskStateSubmitted, secondMessage, completedHistory)
 	assert.NotNil(t, task2)
 	assert.Equal(t, contextID, task2.ContextID)
 	assert.NotEqual(t, task1.ID, task2.ID)
@@ -321,19 +338,17 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	}
 
 	task2.History = append(task2.History, *assistantResponse2)
-	err = taskManager.GetStorage().UpdateActiveTask(task2)
+
+	task2.Status.State = types.TaskStateCompleted
+	err = taskManager.UpdateTask(task2)
 	assert.NoError(t, err)
 
-	err = taskManager.UpdateState(task2.ID, types.TaskStateCompleted)
-	assert.NoError(t, err)
-
-	updatedTask2, exists := taskManager.GetTask(task2.ID)
-	assert.True(t, exists)
-	assert.Len(t, updatedTask2.History, 4)
-	assert.Equal(t, *firstMessage, updatedTask2.History[0])
-	assert.Equal(t, *assistantResponse1, updatedTask2.History[1])
-	assert.Equal(t, *secondMessage, updatedTask2.History[2])
-	assert.Equal(t, *assistantResponse2, updatedTask2.History[3])
+	finalHistory := taskManager.GetConversationHistory(contextID)
+	assert.Len(t, finalHistory, 4)
+	assert.Equal(t, *firstMessage, finalHistory[0])
+	assert.Equal(t, *assistantResponse1, finalHistory[1])
+	assert.Equal(t, *secondMessage, finalHistory[2])
+	assert.Equal(t, *assistantResponse2, finalHistory[3])
 
 	thirdMessage := &types.Message{
 		Kind:      "message",
@@ -351,12 +366,8 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.NotNil(t, task3)
 	assert.Equal(t, contextID, task3.ContextID)
 
-	assert.Len(t, task3.History, 5)
-	assert.Equal(t, *firstMessage, task3.History[0])
-	assert.Equal(t, *assistantResponse1, task3.History[1])
-	assert.Equal(t, *secondMessage, task3.History[2])
-	assert.Equal(t, *assistantResponse2, task3.History[3])
-	assert.Equal(t, *thirdMessage, task3.History[4])
+	assert.Len(t, task3.History, 1)
+	assert.Equal(t, *thirdMessage, task3.History[0])
 }
 
 func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
@@ -412,10 +423,14 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	}
 
 	task1.History = append(task1.History, *response1)
-	err := taskManager.GetStorage().UpdateActiveTask(task1)
+
+	task1.Status.State = types.TaskStateCompleted
+	var err error
+	err = taskManager.UpdateTask(task1)
 	assert.NoError(t, err)
 
-	err = taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
+	task2.Status.State = types.TaskStateCompleted
+	err = taskManager.UpdateTask(task2)
 	assert.NoError(t, err)
 
 	message3 := &types.Message{
@@ -432,10 +447,8 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 
 	task3 := taskManager.CreateTask(contextID1, types.TaskStateSubmitted, message3)
 
-	assert.Len(t, task3.History, 3)
-	assert.Equal(t, *message1, task3.History[0])
-	assert.Equal(t, *response1, task3.History[1])
-	assert.Equal(t, *message3, task3.History[2])
+	assert.Len(t, task3.History, 1)
+	assert.Equal(t, *message3, task3.History[0])
 
 	message4 := &types.Message{
 		Kind:      "message",
@@ -451,9 +464,17 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 
 	task4 := taskManager.CreateTask(contextID2, types.TaskStateSubmitted, message4)
 
-	assert.Len(t, task4.History, 2)
-	assert.Equal(t, *message2, task4.History[0])
-	assert.Equal(t, *message4, task4.History[1])
+	assert.Len(t, task4.History, 1)
+	assert.Equal(t, *message4, task4.History[0])
+
+	history1 := taskManager.GetConversationHistory(contextID1)
+	assert.Len(t, history1, 2)
+	assert.Equal(t, *message1, history1[0])
+	assert.Equal(t, *response1, history1[1])
+
+	history2 := taskManager.GetConversationHistory(contextID2)
+	assert.Len(t, history2, 1)
+	assert.Equal(t, *message2, history2[0])
 }
 
 func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
@@ -492,10 +513,9 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	}
 
 	task.History = append(task.History, *response)
-	err := taskManager.GetStorage().UpdateActiveTask(task)
-	assert.NoError(t, err)
 
-	err = taskManager.UpdateState(task.ID, types.TaskStateCompleted)
+	task.Status.State = types.TaskStateCompleted
+	err := taskManager.UpdateTask(task)
 	assert.NoError(t, err)
 
 	history = taskManager.GetConversationHistory(contextID)
@@ -570,7 +590,6 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 
 	contextID := "test-context"
 
-	// Create some completed tasks
 	for i := 0; i < 5; i++ {
 		message := &types.Message{
 			Kind:      "message",
@@ -582,7 +601,6 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 		assert.NotNil(t, task)
 	}
 
-	// Create some failed tasks
 	for i := 0; i < 3; i++ {
 		message := &types.Message{
 			Kind:      "message",
@@ -594,22 +612,18 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 		assert.NotNil(t, task)
 	}
 
-	// Configure retention to keep only 2 completed and 1 failed task
 	retentionConfig := config.TaskRetentionConfig{
 		MaxCompletedTasks: 2,
 		MaxFailedTasks:    1,
-		CleanupInterval:   0, // No automatic cleanup for this test
+		CleanupInterval:   0,
 	}
 	taskManager.SetRetentionConfig(retentionConfig)
 
-	// Manually trigger cleanup
 	storage := taskManager.GetStorage()
 	removedCount := storage.CleanupTasksWithRetention(retentionConfig.MaxCompletedTasks, retentionConfig.MaxFailedTasks)
 
-	// Should have removed 3 completed tasks (5-2) and 2 failed tasks (3-1)
 	assert.Equal(t, 5, removedCount)
 
-	// Verify remaining task counts
 	allTasks, err := taskManager.ListTasks(types.TaskListParams{
 		ContextID: &contextID,
 		Limit:     100,
@@ -633,7 +647,6 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 
 func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) {
 	logger := zap.NewNop()
-	maxHistory := 2
 	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
@@ -651,7 +664,8 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	}
 	task1 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message1)
 
-	err := taskManager.UpdateState(task1.ID, types.TaskStateCompleted)
+	task1.Status.State = types.TaskStateCompleted
+	err := taskManager.UpdateTask(task1)
 	assert.NoError(t, err)
 
 	message2 := &types.Message{
@@ -665,7 +679,7 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 			},
 		},
 	}
-	_ = taskManager.CreateTask(contextID, types.TaskStateSubmitted, message2)
+	task2 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message2)
 
 	message3 := &types.Message{
 		Kind:      "message",
@@ -680,9 +694,14 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	}
 	task3 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message3)
 
-	assert.LessOrEqual(t, len(task3.History), maxHistory)
+	assert.Len(t, task1.History, 1)
+	assert.Equal(t, "msg-1", task1.History[0].MessageID)
 
-	assert.Equal(t, "msg-3", task3.History[len(task3.History)-1].MessageID)
+	assert.Len(t, task2.History, 1)
+	assert.Equal(t, "msg-2", task2.History[0].MessageID)
+
+	assert.Len(t, task3.History, 1)
+	assert.Equal(t, "msg-3", task3.History[0].MessageID)
 }
 
 func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
@@ -760,7 +779,10 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 				},
 			})
 
-			err := taskManager.CancelTask(task.ID)
+			err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+			assert.NoError(t, err)
+
+			err = taskManager.CancelTask(task.ID)
 
 			if tt.shouldSucceed {
 				assert.NoError(t, err)
@@ -797,6 +819,9 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 			},
 		})
 
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		assert.NoError(t, err)
+
 		pauseMessage := &types.Message{
 			Kind:      "message",
 			MessageID: "pause-msg",
@@ -809,7 +834,7 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 			},
 		}
 
-		err := taskManager.PauseTaskForInput(task.ID, pauseMessage)
+		err = taskManager.PauseTaskForInput(task.ID, pauseMessage)
 		assert.NoError(t, err)
 
 		retrievedTask, exists := taskManager.GetTask(task.ID)
@@ -824,7 +849,10 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 	t.Run("pause with nil message", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
 
-		err := taskManager.PauseTaskForInput(task.ID, nil)
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-2")
+		assert.NoError(t, err)
+
+		err = taskManager.PauseTaskForInput(task.ID, nil)
 		assert.NoError(t, err)
 
 		retrievedTask, exists := taskManager.GetTask(task.ID)
@@ -846,7 +874,11 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 
 	t.Run("resume paused task successfully", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
-		err := taskManager.PauseTaskForInput(task.ID, nil)
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		assert.NoError(t, err)
+
+		err = taskManager.PauseTaskForInput(task.ID, nil)
 		assert.NoError(t, err)
 
 		resumeMessage := &types.Message{
@@ -876,7 +908,10 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 	t.Run("resume task not in input-required state", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
 
-		err := taskManager.ResumeTaskWithInput(task.ID, nil)
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-2")
+		assert.NoError(t, err)
+
+		err = taskManager.ResumeTaskWithInput(task.ID, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not in input-required state")
 		assert.Contains(t, err.Error(), "current state: working")
@@ -895,6 +930,9 @@ func TestDefaultTaskManager_IsTaskPaused(t *testing.T) {
 
 	t.Run("check paused task", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		assert.NoError(t, err)
 
 		isPaused, err := taskManager.IsTaskPaused(task.ID)
 		assert.NoError(t, err)
@@ -923,6 +961,9 @@ func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 	t.Run("polling returns when task reaches input-required state", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
 
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		assert.NoError(t, err)
+
 		resultChan := make(chan *types.Task, 1)
 		errorChan := make(chan error, 1)
 
@@ -937,7 +978,7 @@ func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 
 		time.Sleep(50 * time.Millisecond)
 
-		err := taskManager.PauseTaskForInput(task.ID, nil)
+		err = taskManager.PauseTaskForInput(task.ID, nil)
 		assert.NoError(t, err)
 
 		select {
@@ -968,6 +1009,9 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	}
 	task := taskManager.CreateTask("test-context", types.TaskStateWorking, initialMessage)
 
+	err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+	assert.NoError(t, err)
+
 	pauseMessage := &types.Message{
 		Kind:      "message",
 		MessageID: "pause-msg",
@@ -979,7 +1023,7 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 			},
 		},
 	}
-	err := taskManager.PauseTaskForInput(task.ID, pauseMessage)
+	err = taskManager.PauseTaskForInput(task.ID, pauseMessage)
 	assert.NoError(t, err)
 
 	isPaused, err := taskManager.IsTaskPaused(task.ID)
@@ -990,6 +1034,10 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	assert.NoError(t, cancelErr)
 
 	task2 := taskManager.CreateTask("test-context-2", types.TaskStateWorking, initialMessage)
+
+	err = taskManager.GetStorage().EnqueueTask(task2, "test-request-id-2")
+	assert.NoError(t, err)
+
 	err = taskManager.PauseTaskForInput(task2.ID, pauseMessage)
 	assert.NoError(t, err)
 

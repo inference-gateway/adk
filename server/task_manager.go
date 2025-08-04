@@ -17,8 +17,14 @@ type TaskManager interface {
 	// CreateTask creates a new task and stores it
 	CreateTask(contextID string, state types.TaskState, message *types.Message) *types.Task
 
+	// CreateTaskWithHistory creates a new task with existing conversation history
+	CreateTaskWithHistory(contextID string, state types.TaskState, message *types.Message, history []types.Message) *types.Task
+
 	// UpdateState updates a task's state
 	UpdateState(taskID string, state types.TaskState) error
+
+	// UpdateTask updates a complete task (including history, state, and message)
+	UpdateTask(task *types.Task) error
 
 	// UpdateError updates a task to failed state with an error message
 	UpdateError(taskID string, message *types.Message) error
@@ -130,29 +136,7 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 
 	var history []types.Message
 
-	filter := TaskFilter{
-		ContextID: &contextID,
-		SortBy:    TaskSortFieldCreatedAt,
-		SortOrder: SortOrderDesc,
-	}
-
-	existingTasks, err := tm.storage.ListTasksByContext(contextID, filter)
-	if err == nil && len(existingTasks) > 0 {
-		// Get the most recent task and use its complete history
-		recentTask := existingTasks[0]
-		history = append(history, recentTask.History...)
-	} else {
-		allTasks, err := tm.storage.ListTasks(filter)
-		if err == nil {
-			for _, task := range allTasks {
-				if task.ContextID == contextID {
-					history = append(history, task.History...)
-					break
-				}
-			}
-		}
-	}
-
+	// For a new task, start with a fresh history
 	if message != nil {
 		history = append(history, *message)
 	}
@@ -171,22 +155,72 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 
 	switch state {
 	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
-		err = tm.storage.StoreDeadLetterTask(task)
+		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
 		}
 	default:
-		err = tm.storage.EnqueueTask(task, nil)
+		// Store the task but don't automatically enqueue it
+		// The caller is responsible for enqueueing when appropriate
+		err := tm.storage.UpdateActiveTask(task)
 		if err != nil {
-			tm.logger.Error("failed to enqueue created task", zap.Error(err))
+			tm.logger.Error("failed to store created task", zap.Error(err))
 		}
 	}
 
-	tm.logger.Debug("task created and enqueued",
+	tm.logger.Debug("task created and stored",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", contextID),
 		zap.String("state", string(state)),
 		zap.Int("history_count", len(history)))
+
+	return task
+}
+
+// CreateTaskWithHistory creates a new task with existing conversation history
+func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state types.TaskState, message *types.Message, history []types.Message) *types.Task {
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+
+	// Use provided history and add the new message if provided
+	taskHistory := make([]types.Message, len(history))
+	copy(taskHistory, history)
+
+	if message != nil {
+		taskHistory = append(taskHistory, *message)
+	}
+
+	task := &types.Task{
+		ID:   uuid.New().String(),
+		Kind: "task",
+		Status: types.TaskStatus{
+			State:     state,
+			Message:   message,
+			Timestamp: &timestamp,
+		},
+		ContextID: contextID,
+		History:   taskHistory,
+	}
+
+	switch state {
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+		err := tm.storage.StoreDeadLetterTask(task)
+		if err != nil {
+			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
+		}
+	default:
+		// Store the task but don't automatically enqueue it
+		// The caller is responsible for enqueueing when appropriate
+		err := tm.storage.UpdateActiveTask(task)
+		if err != nil {
+			tm.logger.Error("failed to store created task", zap.Error(err))
+		}
+	}
+
+	tm.logger.Debug("task created with history and stored",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", contextID),
+		zap.String("state", string(state)),
+		zap.Int("history_count", len(taskHistory)))
 
 	return task
 }
@@ -243,6 +277,42 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 
 	if tm.notificationSender != nil {
 		go tm.sendPushNotifications(taskID, task)
+	}
+
+	return nil
+}
+
+// UpdateTask updates a complete task (including history, state, and message)
+func (tm *DefaultTaskManager) UpdateTask(task *types.Task) error {
+	if task == nil {
+		return fmt.Errorf("task cannot be nil")
+	}
+
+	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
+	task.Status.Timestamp = &timestamp
+
+	if tm.isTaskFinalState(task.Status.State) {
+		err := tm.storage.StoreDeadLetterTask(task)
+		if err != nil {
+			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
+			return err
+		}
+	} else {
+		err := tm.storage.UpdateActiveTask(task)
+		if err != nil {
+			tm.logger.Error("failed to update active task", zap.Error(err))
+			return err
+		}
+	}
+
+	tm.logger.Debug("task updated completely",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID),
+		zap.String("state", string(task.Status.State)),
+		zap.Int("history_count", len(task.History)))
+
+	if tm.notificationSender != nil {
+		go tm.sendPushNotifications(task.ID, task)
 	}
 
 	return nil

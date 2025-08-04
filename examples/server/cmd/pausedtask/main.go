@@ -242,7 +242,9 @@ func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 		return p.handleWithoutAgent(ctx, task, message)
 	}
 
-	messages := append(task.History, *message)
+	// Create a copy of the task history to pass to the agent
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
 
 	agentResponse, err := activeAgent.Run(ctx, messages)
 	if err != nil {
@@ -253,9 +255,7 @@ func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 		return task, err
 	}
 
-	if message != nil {
-		task.History = append(task.History, *message)
-	}
+	// Note: User message is already in task.History from task creation, no need to add it again
 	if len(agentResponse.AdditionalMessages) > 0 {
 		task.History = append(task.History, agentResponse.AdditionalMessages...)
 	}
