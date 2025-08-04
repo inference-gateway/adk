@@ -252,9 +252,6 @@ func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 	if agentResponse.Response != nil {
 		lastMessage := agentResponse.Response
 		if lastMessage.Kind == "input_required" {
-			p.logger.Info("Agent requested input, pausing task for user input",
-				zap.String("task_id", task.ID),
-				zap.String("input_message", lastMessage.Parts[0].(map[string]interface{})["text"].(string)))
 			inputMessage := "Please provide more information to continue."
 			if len(lastMessage.Parts) > 0 {
 				if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
