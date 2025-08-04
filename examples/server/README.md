@@ -9,6 +9,7 @@ This directory contains examples demonstrating how to create A2A (Agent-to-Agent
    1. [Minimal Server (No AI Required)](#1-minimal-server-no-ai-required)
    2. [AI-Powered Server (API Key Required)](#2-ai-powered-server-api-key-required)
    3. [Pausable Task Server (API Key Required)](#3-pausable-task-server-api-key-required)
+   4. [Travel Planning Server (Domain Expert)](#4-travel-planning-server-domain-expert)
 3. [Example Usage](#example-usage)
 
 ## Overview
@@ -18,6 +19,7 @@ The A2A protocol enables agents to communicate with each other using JSON-RPC ov
 1. **Minimal Server** - A working server with custom task handler that provides simple responses without AI
 2. **AI-Powered Server** - A full-featured server with LLM integration and tool calling capabilities
 3. **Pausable Task Server** - An AI-powered server that demonstrates intelligent task pausing with the `input-required` state
+4. **Travel Planning Server** - A specialized domain expert agent for vacation planning with streaming and paused tasks
 
 ## Quick Start
 
@@ -92,6 +94,30 @@ This pausable task example:
 - ✅ Demonstrates complete input-required workflow (submit → pause → resume → complete)
 - ✅ Works with existing pausedtask client example
 - ✅ Production-ready pattern for human-in-the-loop AI workflows
+
+### 4. Travel Planning Server (Domain Expert)
+
+A specialized travel planning agent that demonstrates domain expertise with streaming and paused task capabilities:
+
+```bash
+# Configure the Inference Gateway (same as above)
+export AGENT_CLIENT_BASE_URL=http://localhost:8081/v1
+export AGENT_CLIENT_PROVIDER='deepseek'
+export AGENT_CLIENT_MODEL='deepseek-chat'
+
+go run cmd/travelplanner/main.go
+```
+
+This travel planning example:
+
+- ✅ **Domain Expertise** - Specialized in vacation planning with travel-specific tools
+- ✅ **Smart Travel Tools** - Weather data, budget estimation, activity recommendations
+- ✅ **Interactive Planning** - Intelligently gathers preferences through conversation
+- ✅ **Perfect Match** - Designed specifically for the `pausedtask-streaming` client example
+- ✅ **Comprehensive Output** - Creates detailed day-by-day itineraries with budget breakdowns
+- ✅ **Real-world Pattern** - Shows how to build domain-specific A2A agents
+
+**Perfect for testing with**: `examples/client/cmd/pausedtask-streaming` - Send "I need help planning a vacation" to see the full interactive planning process!
 
 ## Example Usage
 

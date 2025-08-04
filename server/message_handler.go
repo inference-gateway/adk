@@ -260,13 +260,22 @@ func (mh *DefaultMessageHandler) handleAgentStreaming(
 		mh.logger.Info("agent streaming completed successfully",
 			zap.String("task_id", task.ID))
 
+		// Determine final task state based on the last message
+		finalState := types.TaskStateCompleted
+		if lastMessage.Kind == "input_required" {
+			finalState = "input-required"
+			mh.logger.Debug("task requires input - setting state to input-required",
+				zap.String("task_id", task.ID),
+				zap.String("message_kind", lastMessage.Kind))
+		}
+
 		select {
 		case responseChan <- types.TaskStatusUpdateEvent{
 			Kind:      "status-update",
 			TaskID:    task.ID,
 			ContextID: task.ContextID,
 			Status: types.TaskStatus{
-				State:     types.TaskStateCompleted,
+				State:     finalState,
 				Message:   lastMessage,
 				Timestamp: StringPtr(mh.getCurrentTimestamp()),
 			},

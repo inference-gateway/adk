@@ -41,6 +41,21 @@ go run main.go
 
 **Best for:** Interactive workflows, multi-step processes, tasks requiring user clarification
 
+### Paused Task Streaming (`cmd/pausedtask-streaming`)
+
+Combines paused task handling with real-time streaming. Features:
+- Start streaming conversations that may pause for input
+- Handle real-time streaming chunks during task execution
+- Resume paused tasks with continued streaming
+- Show live conversation flow throughout the process
+
+```bash
+cd cmd/pausedtask-streaming
+go run main.go
+```
+
+**Best for:** Interactive streaming applications, real-time multi-step workflows, conversational agents that need user input
+
 ## Configuration
 
 Environment variables:
@@ -54,13 +69,14 @@ Environment variables:
 
 ## Quick Comparison
 
-| Aspect            | Async Pattern         | Streaming Pattern          | Paused Task Pattern          |
-| ----------------- | --------------------- | -------------------------- | ---------------------------- |
-| **Compatibility** | Any A2A agent         | Requires streaming support | Any A2A agent                |
-| **Use Case**      | Background processing | Interactive applications   | Multi-step interactions     |
-| **Network**       | Multiple requests     | Single connection          | Multiple requests with pauses|
-| **Latency**       | Higher                | Lower                      | Variable (user-dependent)    |
-| **User Input**    | No                    | No                         | Yes (on demand)              |
+| Aspect            | Async Pattern         | Streaming Pattern          | Paused Task Pattern          | Paused Task Streaming       |
+| ----------------- | --------------------- | -------------------------- | ---------------------------- | --------------------------- |
+| **Compatibility** | Any A2A agent         | Requires streaming support | Any A2A agent                | Requires streaming support   |
+| **Use Case**      | Background processing | Interactive applications   | Multi-step interactions     | Real-time multi-step flows  |
+| **Network**       | Multiple requests     | Single connection          | Multiple requests with pauses| Streaming with pause/resume |
+| **Latency**       | Higher                | Lower                      | Variable (user-dependent)    | Low + user interaction      |
+| **User Input**    | No                    | No                         | Yes (on demand)              | Yes (during streaming)      |
+| **Real-time**     | No                    | Yes                        | No                           | Yes                         |
 
 ## Troubleshooting
 
