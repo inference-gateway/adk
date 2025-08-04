@@ -681,8 +681,8 @@ agent, err = server.NewAgentBuilder(logger).
 ```go
 cfg := &config.AgentConfig{
     Provider:                    "openai",
-    Model:                       "gpt-4",
-    APIKey:                      "your-api-key",
+    Model:                       "openai/gpt-4",
+    APIKey:                      "your-inference-gateway-api-key-if-authentication-is-enabled",
     MaxTokens:                   4096,
     Temperature:                 0.7,
     MaxChatCompletionIterations: 10,
@@ -1228,7 +1228,7 @@ AGENT_CARD_FILE_PATH="./.well-known/agent.json"    # Path to JSON AgentCard file
 
 # LLM client configuration
 AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
-AGENT_CLIENT_MODEL="gpt-4"                  # Model name
+AGENT_CLIENT_MODEL="openai/gpt-4"                  # Model name
 INFERENCE_GATEWAY_URL="http://localhost:3000/v1"  # Required for AI features
 AGENT_CLIENT_BASE_URL="https://api.openai.com/v1"  # Custom endpoint
 AGENT_CLIENT_MAX_TOKENS="4096"              # Max tokens for completion
