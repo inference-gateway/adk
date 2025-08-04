@@ -204,19 +204,7 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
 			if toolErr != nil {
 				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
-				return &AgentResponse{
-					Response: &types.Message{
-						Kind:      "message",
-						MessageID: fmt.Sprintf("tool-error-%s", toolCall.Id),
-						Role:      "tool",
-						Parts: []types.Part{
-							map[string]interface{}{
-								"kind": "text",
-								"text": fmt.Sprintf("Tool execution failed: %s", toolErr.Error()),
-							},
-						},
-					},
-				}, toolErr
+				result = fmt.Sprintf("Tool execution failed: %s", toolErr.Error())
 			}
 
 			toolMessage := sdk.Message{
