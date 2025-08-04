@@ -44,35 +44,8 @@ func main() {
 		logger.Fatal("failed to process environment config", zap.Error(err))
 	}
 
-	// Step 3: Create toolbox with input_required tool
+	// Step 3: Create toolbox with built-in input_required tool
 	toolBox := server.NewDefaultToolBox()
-
-	// Add input_required tool that the LLM can call to pause task execution
-	// TODO - maybe just add it to the default toolbox instead of defining it here, it seems like a built-in feature
-	inputRequiredTool := server.NewBasicTool(
-		"input_required",
-		"Request additional input from the user when current information is insufficient to complete the task",
-		map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"message": map[string]interface{}{
-					"type":        "string",
-					"description": "The message to display to the user explaining what information is needed",
-				},
-			},
-			"required": []string{"message"},
-		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
-			message := args["message"].(string)
-
-			logger.Info("LLM called input_required tool - this will pause the task",
-				zap.String("message", message))
-
-			// Return success response indicating input is required
-			return fmt.Sprintf("Input requested from user: %s", message), nil
-		},
-	)
-	toolBox.AddTool(inputRequiredTool)
 
 	// Add helper tools that might be useful
 	weatherTool := server.NewBasicTool(

@@ -746,11 +746,23 @@ if err != nil {
 
 ### Custom Tools
 
-Create custom tools to extend your agent's capabilities:
+Create custom tools to extend your agent's capabilities.
+
+#### Toolbox Creation
+
+The ADK provides two ways to create a toolbox:
+
+- **`NewDefaultToolBox()`** - Creates a toolbox with built-in tools including:
+  - `input_required` - Allows agents to pause tasks and request additional user input when needed
+
+- **`NewToolBox()`** - Creates an empty toolbox for complete customization
 
 ```go
-// Create a toolbox
+// Option 1: Use default toolbox (includes input_required tool)
 toolBox := server.NewDefaultToolBox()
+
+// Option 2: Create empty toolbox
+toolBox := server.NewToolBox()
 
 // Create a custom tool using NewBasicTool
 weatherTool := server.NewBasicTool(
