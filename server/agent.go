@@ -159,13 +159,64 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 
 		for _, toolCall := range *assistantMessage.ToolCalls {
 			var args map[string]interface{}
-			if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
-				return nil, fmt.Errorf("failed to parse tool arguments for %s: %w", toolCall.Function.Name, err)
+			var result string
+			var toolErr error
+
+			err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
+			if err != nil {
+				a.logger.Error("failed to parse tool arguments", zap.String("tool", toolCall.Function.Name), zap.Error(err))
+				return &AgentResponse{
+					Response: &types.Message{
+						Kind:      "message",
+						MessageID: fmt.Sprintf("tool-error-%s", toolCall.Id),
+						Role:      "tool",
+						Parts: []types.Part{
+							map[string]interface{}{
+								"kind": "text",
+								"text": fmt.Sprintf("Error parsing tool arguments: %s", err.Error()),
+							},
+						},
+					},
+				}, err
 			}
 
-			result, err := a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
-			if err != nil {
-				return nil, fmt.Errorf("failed to execute tool %s: %w", toolCall.Function.Name, err)
+			if toolCall.Function.Name == "input_required" {
+				a.logger.Debug("input_required tool called",
+					zap.String("tool_call_id", toolCall.Id),
+					zap.String("message", toolCall.Function.Arguments))
+				inputMessage := args["message"].(string)
+				return &AgentResponse{
+					Response: &types.Message{
+						Kind:      "input_required",
+						MessageID: fmt.Sprintf("input-required-%s", toolCall.Id),
+						Role:      "assistant",
+						Parts: []types.Part{
+							map[string]interface{}{
+								"kind": "text",
+								"text": inputMessage,
+							},
+						},
+					},
+				}, nil
+
+			}
+
+			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			if toolErr != nil {
+				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
+				return &AgentResponse{
+					Response: &types.Message{
+						Kind:      "message",
+						MessageID: fmt.Sprintf("tool-error-%s", toolCall.Id),
+						Role:      "tool",
+						Parts: []types.Part{
+							map[string]interface{}{
+								"kind": "text",
+								"text": fmt.Sprintf("Tool execution failed: %s", toolErr.Error()),
+							},
+						},
+					},
+				}, toolErr
 			}
 
 			toolMessage := sdk.Message{
@@ -186,6 +237,7 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 							"tool_call_id": toolCall.Id,
 							"tool_name":    toolCall.Function.Name,
 							"result":       result,
+							"error":        toolErr != nil,
 						},
 					},
 				},
@@ -418,8 +470,13 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 		}
 
 		var args map[string]interface{}
+		var result string
+		var toolErr error
+
 		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 			a.logger.Error("failed to parse tool arguments", zap.String("tool", toolCall.Function.Name), zap.Error(err))
+			result = fmt.Sprintf("Error parsing tool arguments: %s", err.Error())
+			toolErr = err
 
 			failedEvent := &types.Message{
 				Kind:      "message",
@@ -440,56 +497,56 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			case outputChan <- failedEvent:
 			case <-ctx.Done():
 			}
-			continue
-		}
+		} else {
+			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			if toolErr != nil {
+				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
+				result = fmt.Sprintf("Tool execution failed: %s", toolErr.Error())
 
-		result, err := a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
-		if err != nil {
-			a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(err))
-
-			failedEvent := &types.Message{
-				Kind:      "message",
-				MessageID: fmt.Sprintf("tool-failed-%s", toolCall.Id),
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "data",
-						"data": map[string]interface{}{
-							"tool_name": toolCall.Function.Name,
-							"status":    "failed",
+				failedEvent := &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-failed-%s", toolCall.Id),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_name": toolCall.Function.Name,
+								"status":    "failed",
+							},
 						},
 					},
-				},
-			}
+				}
 
-			select {
-			case outputChan <- failedEvent:
-			case <-ctx.Done():
-			}
-			continue
-		}
-
-		completedEvent := &types.Message{
-			Kind:      "message",
-			MessageID: fmt.Sprintf("tool-completed-%s", toolCall.Id),
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "data",
-					"data": map[string]interface{}{
-						"tool_name": toolCall.Function.Name,
-						"status":    "completed",
+				select {
+				case outputChan <- failedEvent:
+				case <-ctx.Done():
+				}
+			} else {
+				completedEvent := &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-completed-%s", toolCall.Id),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_name": toolCall.Function.Name,
+								"status":    "completed",
+							},
+						},
 					},
-				},
-			},
+				}
+
+				select {
+				case outputChan <- completedEvent:
+				case <-ctx.Done():
+					return toolResultMessages
+				}
+			}
 		}
 
-		select {
-		case outputChan <- completedEvent:
-		case <-ctx.Done():
-			return toolResultMessages
-		}
-
+		// Always add a tool result message, regardless of success or failure
 		toolResultMessage := types.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
@@ -500,6 +557,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 					"data": map[string]interface{}{
 						"tool_call_id": toolCall.Id,
 						"result":       result,
+						"error":        toolErr != nil,
 					},
 				},
 			},

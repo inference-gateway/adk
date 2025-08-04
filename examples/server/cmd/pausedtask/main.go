@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -68,8 +67,8 @@ func main() {
 			logger.Info("LLM called input_required tool - this will pause the task",
 				zap.String("message", message))
 
-			// Return a special error that our task handler will catch
-			return "", &InputRequiredError{Message: message}
+			// Return success response indicating input is required
+			return fmt.Sprintf("Input requested from user: %s", message), nil
 		},
 	)
 	toolBox.AddTool(inputRequiredTool)
@@ -242,20 +241,33 @@ func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 		return p.handleWithoutAgent(ctx, task, message)
 	}
 
-	// Create a copy of the task history to pass to the agent
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
 	agentResponse, err := activeAgent.Run(ctx, messages)
 	if err != nil {
-		var inputErr *InputRequiredError
-		if errors.As(err, &inputErr) {
-			return p.pauseTaskForInput(task, inputErr.Message), nil
-		}
 		return task, err
 	}
 
-	// Note: User message is already in task.History from task creation, no need to add it again
+	if agentResponse.Response != nil {
+		lastMessage := agentResponse.Response
+		if lastMessage.Kind == "input_required" {
+			p.logger.Info("Agent requested input, pausing task for user input",
+				zap.String("task_id", task.ID),
+				zap.String("input_message", lastMessage.Parts[0].(map[string]interface{})["text"].(string)))
+			inputMessage := "Please provide more information to continue."
+			if len(lastMessage.Parts) > 0 {
+				if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
+					if text, exists := textPart["text"].(string); exists && text != "" {
+						inputMessage = text
+					}
+				}
+			}
+			task.History = append(task.History, *agentResponse.Response)
+			return p.pauseTaskForInput(task, inputMessage), nil
+		}
+	}
+
 	if len(agentResponse.AdditionalMessages) > 0 {
 		task.History = append(task.History, agentResponse.AdditionalMessages...)
 	}
@@ -328,13 +340,4 @@ func (p *PausableTaskHandler) pauseTaskForInput(task *types.Task, inputMessage s
 		zap.Int("conversation_history_count", len(task.History)))
 
 	return task
-}
-
-// InputRequiredError signals that the agent should pause for user input
-type InputRequiredError struct {
-	Message string
-}
-
-func (e *InputRequiredError) Error() string {
-	return fmt.Sprintf("INPUT_REQUIRED: %s", e.Message)
 }
