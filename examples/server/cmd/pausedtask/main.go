@@ -48,6 +48,7 @@ func main() {
 	toolBox := server.NewDefaultToolBox()
 
 	// Add input_required tool that the LLM can call to pause task execution
+	// TODO - maybe just add it to the default toolbox instead of defining it here, it seems like a built-in feature
 	inputRequiredTool := server.NewBasicTool(
 		"input_required",
 		"Request additional input from the user when current information is insufficient to complete the task",
