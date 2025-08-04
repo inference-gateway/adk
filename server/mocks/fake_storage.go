@@ -42,6 +42,17 @@ type FakeStorage struct {
 	clearQueueReturnsOnCall map[int]struct {
 		result1 error
 	}
+	CreateActiveTaskStub        func(*types.Task) error
+	createActiveTaskMutex       sync.RWMutex
+	createActiveTaskArgsForCall []struct {
+		arg1 *types.Task
+	}
+	createActiveTaskReturns struct {
+		result1 error
+	}
+	createActiveTaskReturnsOnCall map[int]struct {
+		result1 error
+	}
 	DeleteContextStub        func(string) error
 	deleteContextMutex       sync.RWMutex
 	deleteContextArgsForCall []struct {
@@ -397,6 +408,67 @@ func (fake *FakeStorage) ClearQueueReturnsOnCall(i int, result1 error) {
 		})
 	}
 	fake.clearQueueReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeStorage) CreateActiveTask(arg1 *types.Task) error {
+	fake.createActiveTaskMutex.Lock()
+	ret, specificReturn := fake.createActiveTaskReturnsOnCall[len(fake.createActiveTaskArgsForCall)]
+	fake.createActiveTaskArgsForCall = append(fake.createActiveTaskArgsForCall, struct {
+		arg1 *types.Task
+	}{arg1})
+	stub := fake.CreateActiveTaskStub
+	fakeReturns := fake.createActiveTaskReturns
+	fake.recordInvocation("CreateActiveTask", []interface{}{arg1})
+	fake.createActiveTaskMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeStorage) CreateActiveTaskCallCount() int {
+	fake.createActiveTaskMutex.RLock()
+	defer fake.createActiveTaskMutex.RUnlock()
+	return len(fake.createActiveTaskArgsForCall)
+}
+
+func (fake *FakeStorage) CreateActiveTaskCalls(stub func(*types.Task) error) {
+	fake.createActiveTaskMutex.Lock()
+	defer fake.createActiveTaskMutex.Unlock()
+	fake.CreateActiveTaskStub = stub
+}
+
+func (fake *FakeStorage) CreateActiveTaskArgsForCall(i int) *types.Task {
+	fake.createActiveTaskMutex.RLock()
+	defer fake.createActiveTaskMutex.RUnlock()
+	argsForCall := fake.createActiveTaskArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeStorage) CreateActiveTaskReturns(result1 error) {
+	fake.createActiveTaskMutex.Lock()
+	defer fake.createActiveTaskMutex.Unlock()
+	fake.CreateActiveTaskStub = nil
+	fake.createActiveTaskReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeStorage) CreateActiveTaskReturnsOnCall(i int, result1 error) {
+	fake.createActiveTaskMutex.Lock()
+	defer fake.createActiveTaskMutex.Unlock()
+	fake.CreateActiveTaskStub = nil
+	if fake.createActiveTaskReturnsOnCall == nil {
+		fake.createActiveTaskReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.createActiveTaskReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -1375,6 +1447,8 @@ func (fake *FakeStorage) Invocations() map[string][][]interface{} {
 	defer fake.cleanupTasksWithRetentionMutex.RUnlock()
 	fake.clearQueueMutex.RLock()
 	defer fake.clearQueueMutex.RUnlock()
+	fake.createActiveTaskMutex.RLock()
+	defer fake.createActiveTaskMutex.RUnlock()
 	fake.deleteContextMutex.RLock()
 	defer fake.deleteContextMutex.RUnlock()
 	fake.deleteContextAndTasksMutex.RLock()

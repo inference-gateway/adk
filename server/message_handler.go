@@ -162,8 +162,11 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 	go func() {
 		defer close(done)
 		defer func() {
-			if err := mh.taskManager.UpdateState(task.ID, types.TaskStateCompleted); err != nil {
+			task.Status.State = types.TaskStateCompleted
+			if err := mh.taskManager.UpdateTask(task); err != nil {
 				mh.logger.Error("failed to update streaming task", zap.Error(err))
+			} else {
+				mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
 			}
 		}()
 

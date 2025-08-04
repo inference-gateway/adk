@@ -136,7 +136,6 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 
 	var history []types.Message
 
-	// For a new task, start with a fresh history
 	if message != nil {
 		history = append(history, *message)
 	}
@@ -160,9 +159,7 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
 		}
 	default:
-		// Store the task but don't automatically enqueue it
-		// The caller is responsible for enqueueing when appropriate
-		err := tm.storage.UpdateActiveTask(task)
+		err := tm.storage.CreateActiveTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store created task", zap.Error(err))
 		}
@@ -181,7 +178,6 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state types.TaskState, message *types.Message, history []types.Message) *types.Task {
 	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 
-	// Use provided history and add the new message if provided
 	taskHistory := make([]types.Message, len(history))
 	copy(taskHistory, history)
 
@@ -208,9 +204,7 @@ func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state type
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
 		}
 	default:
-		// Store the task but don't automatically enqueue it
-		// The caller is responsible for enqueueing when appropriate
-		err := tm.storage.UpdateActiveTask(task)
+		err := tm.storage.CreateActiveTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store created task", zap.Error(err))
 		}

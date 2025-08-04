@@ -26,6 +26,7 @@ type Storage interface {
 
 	// Active Task Queries (for tasks currently in queue or being processed)
 	GetActiveTask(taskID string) (*types.Task, error)
+	CreateActiveTask(task *types.Task) error
 	UpdateActiveTask(task *types.Task) error
 
 	// Dead Letter Queue (completed/failed tasks with full history for audit)
@@ -136,6 +137,30 @@ func (s *InMemoryStorage) GetActiveTask(taskID string) (*types.Task, error) {
 
 	taskCopy := *task
 	return &taskCopy, nil
+}
+
+// CreateActiveTask creates a new active task in the active tasks storage
+func (s *InMemoryStorage) CreateActiveTask(task *types.Task) error {
+	if task == nil {
+		return fmt.Errorf("task cannot be nil")
+	}
+
+	s.activeTasksMu.Lock()
+	defer s.activeTasksMu.Unlock()
+
+	if _, exists := s.activeTasksMetadata[task.ID]; exists {
+		return fmt.Errorf("active task already exists: %s", task.ID)
+	}
+
+	taskCopy := *task
+	s.activeTasksMetadata[task.ID] = &taskCopy
+
+	s.logger.Debug("active task created",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID),
+		zap.String("state", string(task.Status.State)))
+
+	return nil
 }
 
 // UpdateActiveTask updates an active task's metadata

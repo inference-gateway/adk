@@ -198,7 +198,6 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 						},
 					},
 				}, nil
-
 			}
 
 			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
