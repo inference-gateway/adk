@@ -71,12 +71,12 @@ Environment variables:
 
 | Aspect            | Async Pattern         | Streaming Pattern          | Paused Task Pattern          | Paused Task Streaming       |
 | ----------------- | --------------------- | -------------------------- | ---------------------------- | --------------------------- |
-| **Compatibility** | Any A2A agent         | Requires streaming support | Any A2A agent                | Requires streaming support   |
-| **Use Case**      | Background processing | Interactive applications   | Multi-step interactions     | Real-time multi-step flows  |
+| **Compatibility** | Any A2A agent         | Requires streaming support | Any A2A agent                | Requires streaming support  |
+| **Use Case**      | Background processing | Interactive applications   | Multi-step interactions      | Real-time multi-step flows  |
 | **Network**       | Multiple requests     | Single connection          | Multiple requests with pauses| Streaming with pause/resume |
 | **Latency**       | Higher                | Lower                      | Variable (user-dependent)    | Low + user interaction      |
 | **User Input**    | No                    | No                         | Yes (on demand)              | Yes (during streaming)      |
-| **Real-time**     | No                    | Yes                        | No                           | Yes                         |
+| **Real-time**     | No                    | Yes                        | No (polling for updates)     | Yes                         |
 
 ## Troubleshooting
 
