@@ -56,6 +56,26 @@ type FakeA2AServerBuilder struct {
 	withAgentCardFromFileReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
+	WithDefaultPollingTaskHandlerStub        func() server.A2AServerBuilder
+	withDefaultPollingTaskHandlerMutex       sync.RWMutex
+	withDefaultPollingTaskHandlerArgsForCall []struct {
+	}
+	withDefaultPollingTaskHandlerReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withDefaultPollingTaskHandlerReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
+	WithDefaultStreamingTaskHandlerStub        func() server.A2AServerBuilder
+	withDefaultStreamingTaskHandlerMutex       sync.RWMutex
+	withDefaultStreamingTaskHandlerArgsForCall []struct {
+	}
+	withDefaultStreamingTaskHandlerReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withDefaultStreamingTaskHandlerReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
 	WithLoggerStub        func(*zap.Logger) server.A2AServerBuilder
 	withLoggerMutex       sync.RWMutex
 	withLoggerArgsForCall []struct {
@@ -333,6 +353,112 @@ func (fake *FakeA2AServerBuilder) WithAgentCardFromFileReturnsOnCall(i int, resu
 	}{result1}
 }
 
+func (fake *FakeA2AServerBuilder) WithDefaultPollingTaskHandler() server.A2AServerBuilder {
+	fake.withDefaultPollingTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.withDefaultPollingTaskHandlerReturnsOnCall[len(fake.withDefaultPollingTaskHandlerArgsForCall)]
+	fake.withDefaultPollingTaskHandlerArgsForCall = append(fake.withDefaultPollingTaskHandlerArgsForCall, struct {
+	}{})
+	stub := fake.WithDefaultPollingTaskHandlerStub
+	fakeReturns := fake.withDefaultPollingTaskHandlerReturns
+	fake.recordInvocation("WithDefaultPollingTaskHandler", []interface{}{})
+	fake.withDefaultPollingTaskHandlerMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultPollingTaskHandlerCallCount() int {
+	fake.withDefaultPollingTaskHandlerMutex.RLock()
+	defer fake.withDefaultPollingTaskHandlerMutex.RUnlock()
+	return len(fake.withDefaultPollingTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultPollingTaskHandlerCalls(stub func() server.A2AServerBuilder) {
+	fake.withDefaultPollingTaskHandlerMutex.Lock()
+	defer fake.withDefaultPollingTaskHandlerMutex.Unlock()
+	fake.WithDefaultPollingTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultPollingTaskHandlerReturns(result1 server.A2AServerBuilder) {
+	fake.withDefaultPollingTaskHandlerMutex.Lock()
+	defer fake.withDefaultPollingTaskHandlerMutex.Unlock()
+	fake.WithDefaultPollingTaskHandlerStub = nil
+	fake.withDefaultPollingTaskHandlerReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultPollingTaskHandlerReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withDefaultPollingTaskHandlerMutex.Lock()
+	defer fake.withDefaultPollingTaskHandlerMutex.Unlock()
+	fake.WithDefaultPollingTaskHandlerStub = nil
+	if fake.withDefaultPollingTaskHandlerReturnsOnCall == nil {
+		fake.withDefaultPollingTaskHandlerReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withDefaultPollingTaskHandlerReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandler() server.A2AServerBuilder {
+	fake.withDefaultStreamingTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.withDefaultStreamingTaskHandlerReturnsOnCall[len(fake.withDefaultStreamingTaskHandlerArgsForCall)]
+	fake.withDefaultStreamingTaskHandlerArgsForCall = append(fake.withDefaultStreamingTaskHandlerArgsForCall, struct {
+	}{})
+	stub := fake.WithDefaultStreamingTaskHandlerStub
+	fakeReturns := fake.withDefaultStreamingTaskHandlerReturns
+	fake.recordInvocation("WithDefaultStreamingTaskHandler", []interface{}{})
+	fake.withDefaultStreamingTaskHandlerMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandlerCallCount() int {
+	fake.withDefaultStreamingTaskHandlerMutex.RLock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.RUnlock()
+	return len(fake.withDefaultStreamingTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandlerCalls(stub func() server.A2AServerBuilder) {
+	fake.withDefaultStreamingTaskHandlerMutex.Lock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.Unlock()
+	fake.WithDefaultStreamingTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandlerReturns(result1 server.A2AServerBuilder) {
+	fake.withDefaultStreamingTaskHandlerMutex.Lock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.Unlock()
+	fake.WithDefaultStreamingTaskHandlerStub = nil
+	fake.withDefaultStreamingTaskHandlerReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandlerReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withDefaultStreamingTaskHandlerMutex.Lock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.Unlock()
+	fake.WithDefaultStreamingTaskHandlerStub = nil
+	if fake.withDefaultStreamingTaskHandlerReturnsOnCall == nil {
+		fake.withDefaultStreamingTaskHandlerReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withDefaultStreamingTaskHandlerReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
 func (fake *FakeA2AServerBuilder) WithLogger(arg1 *zap.Logger) server.A2AServerBuilder {
 	fake.withLoggerMutex.Lock()
 	ret, specificReturn := fake.withLoggerReturnsOnCall[len(fake.withLoggerArgsForCall)]
@@ -527,6 +653,10 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.withAgentCardMutex.RUnlock()
 	fake.withAgentCardFromFileMutex.RLock()
 	defer fake.withAgentCardFromFileMutex.RUnlock()
+	fake.withDefaultPollingTaskHandlerMutex.RLock()
+	defer fake.withDefaultPollingTaskHandlerMutex.RUnlock()
+	fake.withDefaultStreamingTaskHandlerMutex.RLock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.RUnlock()
 	fake.withLoggerMutex.RLock()
 	defer fake.withLoggerMutex.RUnlock()
 	fake.withTaskHandlerMutex.RLock()
