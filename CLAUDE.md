@@ -27,11 +27,11 @@ This is a Go project that uses Task for build automation. Common commands:
 - `task precommit:install` - Install Git pre-commit hook
 - `task precommit:uninstall` - Uninstall Git pre-commit hook
 
-The pre-commit hook automatically runs on `git commit` and performs:
-- Code formatting (`task format`)
-- Module tidying (`task tidy`)
-- Linting (`task lint`)
-- Tests (`task test`)
+The pre-commit hook automatically runs on `git commit` with smart checks:
+
+- **Go files**: Full workflow (formatting, tidying, linting, tests)
+- **Markdown files only**: Just formatting
+- **Mixed files**: Full workflow
 
 Use `git commit --no-verify` to skip the pre-commit hook if needed.
 

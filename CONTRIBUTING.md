@@ -89,20 +89,22 @@ task tidy
 task precommit:install
 ```
 
-The pre-commit hook will automatically run these checks when you commit:
-- Code formatting (`task format`)
-- Module tidying (`task tidy`)
-- Linting (`task lint`)
-- Tests (`task test`)
+The pre-commit hook will automatically run smart checks based on file types:
+
+- **Go files**: Full workflow (formatting, tidying, linting, tests)
+- **Markdown files only**: Just formatting
+- **Mixed files**: Full workflow
 
 This ensures consistent code quality and reduces CI failures.
 
 **To bypass the hook if needed (not recommended):**
+
 ```bash
 git commit --no-verify
 ```
 
 **To uninstall the hook:**
+
 ```bash
 task precommit:uninstall
 ```

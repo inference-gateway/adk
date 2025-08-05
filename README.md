@@ -421,23 +421,26 @@ For complete working examples, see the [examples](./examples/) directory:
 The project includes a Git pre-commit hook that automatically runs quality checks before commits:
 
 **Installation:**
+
 ```bash
 task precommit:install
 ```
 
-**What the hook does:**
-- Formats Go code (`task format`)
-- Tidies Go modules (`task tidy`)
-- Runs linting (`task lint`)
-- Runs tests (`task test`)
-- Only runs when Go files are being committed
+**What the hook does (smart checks):**
+
+- **Go files committed**: Full workflow - formatting, tidying, linting, and tests
+- **Markdown files only**: Only formatting (`task format`)
+- **Mixed Go and Markdown**: Full workflow
+- **Other files**: No checks run
 
 **Bypass if needed:**
+
 ```bash
 git commit --no-verify  # Skip pre-commit hook (not recommended)
 ```
 
 **Uninstall:**
+
 ```bash
 task precommit:uninstall
 ```
