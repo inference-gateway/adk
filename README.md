@@ -1217,7 +1217,7 @@ a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 Optimized for streaming scenarios with automatic input-required pausing:
 
 ```go
-// Create a server with default streaming task handler  
+// Create a server with default streaming task handler
 a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
     WithDefaultStreamingTaskHandler().
     WithAgentCardFromFile(".well-known/agent.json").
@@ -1225,6 +1225,7 @@ a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 ```
 
 These handlers automatically:
+
 - Handle input-required pausing when agents call the `input_required` tool
 - Manage conversation history appropriately for polling vs streaming contexts
 - Provide appropriate error handling and logging

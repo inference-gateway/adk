@@ -239,7 +239,8 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 	a2aServer := server.NewDefaultA2AServer(customConfig)
 
 	mockTaskHandler := &mocks.FakeTaskHandler{}
-	a2aServer.SetTaskHandler(mockTaskHandler)
+	a2aServer.SetBackgroundTaskHandler(mockTaskHandler)
+	a2aServer.SetStreamingTaskHandler(mockTaskHandler)
 
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 	a2aServer.SetTaskResultProcessor(mockProcessor)
@@ -411,7 +412,8 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	require.NoError(t, err)
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
-	serverInstance.SetTaskHandler(mockTaskHandler)
+	serverInstance.SetBackgroundTaskHandler(mockTaskHandler)
+	serverInstance.SetStreamingTaskHandler(mockTaskHandler)
 
 	originalMessage := &types.Message{
 		Kind:      "message",
@@ -435,14 +437,14 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	result, err := serverInstance.GetTaskHandler().HandleTask(ctx, task, originalMessage, nil)
+	result, err := serverInstance.GetBackgroundTaskHandler().HandleTask(ctx, task, originalMessage)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
-	_, actualTask, actualMessage, _ := mockTaskHandler.HandleTaskArgsForCall(0)
+	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
 	assert.NotNil(t, actualTask)
 	assert.NotNil(t, actualMessage)
 
@@ -496,7 +498,8 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 	require.NoError(t, err)
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
-	serverInstance.SetTaskHandler(mockTaskHandler)
+	serverInstance.SetBackgroundTaskHandler(mockTaskHandler)
+	serverInstance.SetStreamingTaskHandler(mockTaskHandler)
 
 	originalUserMessage := &types.Message{
 		Kind:      "message",
@@ -527,7 +530,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	result, err := serverInstance.GetTaskHandler().HandleTask(ctx, task, originalUserMessage, nil)
+	result, err := serverInstance.GetBackgroundTaskHandler().HandleTask(ctx, task, originalUserMessage)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -535,7 +538,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
-	_, actualTask, actualMessage, _ := mockTaskHandler.HandleTaskArgsForCall(0)
+	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
 
 	assert.NotNil(t, actualTask)
 	assert.NotNil(t, actualMessage)
@@ -908,7 +911,11 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 				},
 			}
 
-			result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
+			taskHandler := server.NewDefaultTaskHandler(logger)
+			if agent != nil {
+				taskHandler.SetAgent(agent)
+			}
+			result, err := taskHandler.HandleTask(context.Background(), task, message)
 
 			if tt.expectedStates[0] == types.TaskStateFailed {
 				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
@@ -1272,7 +1279,11 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 				},
 			}
 
-			result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
+			taskHandler := server.NewDefaultTaskHandler(logger)
+			if agent != nil {
+				taskHandler.SetAgent(agent)
+			}
+			result, err := taskHandler.HandleTask(context.Background(), task, message)
 
 			if tt.expectedFinalState == types.TaskStateFailed {
 				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
@@ -1350,7 +1361,11 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			},
 		}
 
-		result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
+		taskHandler := server.NewDefaultTaskHandler(logger)
+		if agent != nil {
+			taskHandler.SetAgent(agent)
+		}
+		result, err := taskHandler.HandleTask(context.Background(), task, message)
 
 		assert.NoError(t, err)
 		assert.Equal(t, types.TaskStateCompleted, result.Status.State)
@@ -1466,7 +1481,11 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			},
 		}
 
-		result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
+		taskHandler := server.NewDefaultTaskHandler(logger)
+		if agent != nil {
+			taskHandler.SetAgent(agent)
+		}
+		result, err := taskHandler.HandleTask(context.Background(), task, message)
 
 		assert.NoError(t, err)
 		assert.Equal(t, types.TaskStateCompleted, result.Status.State)

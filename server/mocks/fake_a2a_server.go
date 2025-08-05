@@ -30,14 +30,24 @@ type FakeA2AServer struct {
 	getAgentCardReturnsOnCall map[int]struct {
 		result1 *types.AgentCard
 	}
-	GetTaskHandlerStub        func() server.TaskHandler
-	getTaskHandlerMutex       sync.RWMutex
-	getTaskHandlerArgsForCall []struct {
+	GetBackgroundTaskHandlerStub        func() server.TaskHandler
+	getBackgroundTaskHandlerMutex       sync.RWMutex
+	getBackgroundTaskHandlerArgsForCall []struct {
 	}
-	getTaskHandlerReturns struct {
+	getBackgroundTaskHandlerReturns struct {
 		result1 server.TaskHandler
 	}
-	getTaskHandlerReturnsOnCall map[int]struct {
+	getBackgroundTaskHandlerReturnsOnCall map[int]struct {
+		result1 server.TaskHandler
+	}
+	GetStreamingTaskHandlerStub        func() server.TaskHandler
+	getStreamingTaskHandlerMutex       sync.RWMutex
+	getStreamingTaskHandlerArgsForCall []struct {
+	}
+	getStreamingTaskHandlerReturns struct {
+		result1 server.TaskHandler
+	}
+	getStreamingTaskHandlerReturnsOnCall map[int]struct {
 		result1 server.TaskHandler
 	}
 	LoadAgentCardFromFileStub        func(string, map[string]interface{}) error
@@ -82,9 +92,14 @@ type FakeA2AServer struct {
 	setAgentVersionArgsForCall []struct {
 		arg1 string
 	}
-	SetTaskHandlerStub        func(server.TaskHandler)
-	setTaskHandlerMutex       sync.RWMutex
-	setTaskHandlerArgsForCall []struct {
+	SetBackgroundTaskHandlerStub        func(server.TaskHandler)
+	setBackgroundTaskHandlerMutex       sync.RWMutex
+	setBackgroundTaskHandlerArgsForCall []struct {
+		arg1 server.TaskHandler
+	}
+	SetStreamingTaskHandlerStub        func(server.TaskHandler)
+	setStreamingTaskHandlerMutex       sync.RWMutex
+	setStreamingTaskHandlerArgsForCall []struct {
 		arg1 server.TaskHandler
 	}
 	StartStub        func(context.Context) error
@@ -224,15 +239,15 @@ func (fake *FakeA2AServer) GetAgentCardReturnsOnCall(i int, result1 *types.Agent
 	}{result1}
 }
 
-func (fake *FakeA2AServer) GetTaskHandler() server.TaskHandler {
-	fake.getTaskHandlerMutex.Lock()
-	ret, specificReturn := fake.getTaskHandlerReturnsOnCall[len(fake.getTaskHandlerArgsForCall)]
-	fake.getTaskHandlerArgsForCall = append(fake.getTaskHandlerArgsForCall, struct {
+func (fake *FakeA2AServer) GetBackgroundTaskHandler() server.TaskHandler {
+	fake.getBackgroundTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.getBackgroundTaskHandlerReturnsOnCall[len(fake.getBackgroundTaskHandlerArgsForCall)]
+	fake.getBackgroundTaskHandlerArgsForCall = append(fake.getBackgroundTaskHandlerArgsForCall, struct {
 	}{})
-	stub := fake.GetTaskHandlerStub
-	fakeReturns := fake.getTaskHandlerReturns
-	fake.recordInvocation("GetTaskHandler", []interface{}{})
-	fake.getTaskHandlerMutex.Unlock()
+	stub := fake.GetBackgroundTaskHandlerStub
+	fakeReturns := fake.getBackgroundTaskHandlerReturns
+	fake.recordInvocation("GetBackgroundTaskHandler", []interface{}{})
+	fake.getBackgroundTaskHandlerMutex.Unlock()
 	if stub != nil {
 		return stub()
 	}
@@ -242,37 +257,90 @@ func (fake *FakeA2AServer) GetTaskHandler() server.TaskHandler {
 	return fakeReturns.result1
 }
 
-func (fake *FakeA2AServer) GetTaskHandlerCallCount() int {
-	fake.getTaskHandlerMutex.RLock()
-	defer fake.getTaskHandlerMutex.RUnlock()
-	return len(fake.getTaskHandlerArgsForCall)
+func (fake *FakeA2AServer) GetBackgroundTaskHandlerCallCount() int {
+	fake.getBackgroundTaskHandlerMutex.RLock()
+	defer fake.getBackgroundTaskHandlerMutex.RUnlock()
+	return len(fake.getBackgroundTaskHandlerArgsForCall)
 }
 
-func (fake *FakeA2AServer) GetTaskHandlerCalls(stub func() server.TaskHandler) {
-	fake.getTaskHandlerMutex.Lock()
-	defer fake.getTaskHandlerMutex.Unlock()
-	fake.GetTaskHandlerStub = stub
+func (fake *FakeA2AServer) GetBackgroundTaskHandlerCalls(stub func() server.TaskHandler) {
+	fake.getBackgroundTaskHandlerMutex.Lock()
+	defer fake.getBackgroundTaskHandlerMutex.Unlock()
+	fake.GetBackgroundTaskHandlerStub = stub
 }
 
-func (fake *FakeA2AServer) GetTaskHandlerReturns(result1 server.TaskHandler) {
-	fake.getTaskHandlerMutex.Lock()
-	defer fake.getTaskHandlerMutex.Unlock()
-	fake.GetTaskHandlerStub = nil
-	fake.getTaskHandlerReturns = struct {
+func (fake *FakeA2AServer) GetBackgroundTaskHandlerReturns(result1 server.TaskHandler) {
+	fake.getBackgroundTaskHandlerMutex.Lock()
+	defer fake.getBackgroundTaskHandlerMutex.Unlock()
+	fake.GetBackgroundTaskHandlerStub = nil
+	fake.getBackgroundTaskHandlerReturns = struct {
 		result1 server.TaskHandler
 	}{result1}
 }
 
-func (fake *FakeA2AServer) GetTaskHandlerReturnsOnCall(i int, result1 server.TaskHandler) {
-	fake.getTaskHandlerMutex.Lock()
-	defer fake.getTaskHandlerMutex.Unlock()
-	fake.GetTaskHandlerStub = nil
-	if fake.getTaskHandlerReturnsOnCall == nil {
-		fake.getTaskHandlerReturnsOnCall = make(map[int]struct {
+func (fake *FakeA2AServer) GetBackgroundTaskHandlerReturnsOnCall(i int, result1 server.TaskHandler) {
+	fake.getBackgroundTaskHandlerMutex.Lock()
+	defer fake.getBackgroundTaskHandlerMutex.Unlock()
+	fake.GetBackgroundTaskHandlerStub = nil
+	if fake.getBackgroundTaskHandlerReturnsOnCall == nil {
+		fake.getBackgroundTaskHandlerReturnsOnCall = make(map[int]struct {
 			result1 server.TaskHandler
 		})
 	}
-	fake.getTaskHandlerReturnsOnCall[i] = struct {
+	fake.getBackgroundTaskHandlerReturnsOnCall[i] = struct {
+		result1 server.TaskHandler
+	}{result1}
+}
+
+func (fake *FakeA2AServer) GetStreamingTaskHandler() server.TaskHandler {
+	fake.getStreamingTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.getStreamingTaskHandlerReturnsOnCall[len(fake.getStreamingTaskHandlerArgsForCall)]
+	fake.getStreamingTaskHandlerArgsForCall = append(fake.getStreamingTaskHandlerArgsForCall, struct {
+	}{})
+	stub := fake.GetStreamingTaskHandlerStub
+	fakeReturns := fake.getStreamingTaskHandlerReturns
+	fake.recordInvocation("GetStreamingTaskHandler", []interface{}{})
+	fake.getStreamingTaskHandlerMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServer) GetStreamingTaskHandlerCallCount() int {
+	fake.getStreamingTaskHandlerMutex.RLock()
+	defer fake.getStreamingTaskHandlerMutex.RUnlock()
+	return len(fake.getStreamingTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServer) GetStreamingTaskHandlerCalls(stub func() server.TaskHandler) {
+	fake.getStreamingTaskHandlerMutex.Lock()
+	defer fake.getStreamingTaskHandlerMutex.Unlock()
+	fake.GetStreamingTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServer) GetStreamingTaskHandlerReturns(result1 server.TaskHandler) {
+	fake.getStreamingTaskHandlerMutex.Lock()
+	defer fake.getStreamingTaskHandlerMutex.Unlock()
+	fake.GetStreamingTaskHandlerStub = nil
+	fake.getStreamingTaskHandlerReturns = struct {
+		result1 server.TaskHandler
+	}{result1}
+}
+
+func (fake *FakeA2AServer) GetStreamingTaskHandlerReturnsOnCall(i int, result1 server.TaskHandler) {
+	fake.getStreamingTaskHandlerMutex.Lock()
+	defer fake.getStreamingTaskHandlerMutex.Unlock()
+	fake.GetStreamingTaskHandlerStub = nil
+	if fake.getStreamingTaskHandlerReturnsOnCall == nil {
+		fake.getStreamingTaskHandlerReturnsOnCall = make(map[int]struct {
+			result1 server.TaskHandler
+		})
+	}
+	fake.getStreamingTaskHandlerReturnsOnCall[i] = struct {
 		result1 server.TaskHandler
 	}{result1}
 }
@@ -531,35 +599,67 @@ func (fake *FakeA2AServer) SetAgentVersionArgsForCall(i int) string {
 	return argsForCall.arg1
 }
 
-func (fake *FakeA2AServer) SetTaskHandler(arg1 server.TaskHandler) {
-	fake.setTaskHandlerMutex.Lock()
-	fake.setTaskHandlerArgsForCall = append(fake.setTaskHandlerArgsForCall, struct {
+func (fake *FakeA2AServer) SetBackgroundTaskHandler(arg1 server.TaskHandler) {
+	fake.setBackgroundTaskHandlerMutex.Lock()
+	fake.setBackgroundTaskHandlerArgsForCall = append(fake.setBackgroundTaskHandlerArgsForCall, struct {
 		arg1 server.TaskHandler
 	}{arg1})
-	stub := fake.SetTaskHandlerStub
-	fake.recordInvocation("SetTaskHandler", []interface{}{arg1})
-	fake.setTaskHandlerMutex.Unlock()
+	stub := fake.SetBackgroundTaskHandlerStub
+	fake.recordInvocation("SetBackgroundTaskHandler", []interface{}{arg1})
+	fake.setBackgroundTaskHandlerMutex.Unlock()
 	if stub != nil {
-		fake.SetTaskHandlerStub(arg1)
+		fake.SetBackgroundTaskHandlerStub(arg1)
 	}
 }
 
-func (fake *FakeA2AServer) SetTaskHandlerCallCount() int {
-	fake.setTaskHandlerMutex.RLock()
-	defer fake.setTaskHandlerMutex.RUnlock()
-	return len(fake.setTaskHandlerArgsForCall)
+func (fake *FakeA2AServer) SetBackgroundTaskHandlerCallCount() int {
+	fake.setBackgroundTaskHandlerMutex.RLock()
+	defer fake.setBackgroundTaskHandlerMutex.RUnlock()
+	return len(fake.setBackgroundTaskHandlerArgsForCall)
 }
 
-func (fake *FakeA2AServer) SetTaskHandlerCalls(stub func(server.TaskHandler)) {
-	fake.setTaskHandlerMutex.Lock()
-	defer fake.setTaskHandlerMutex.Unlock()
-	fake.SetTaskHandlerStub = stub
+func (fake *FakeA2AServer) SetBackgroundTaskHandlerCalls(stub func(server.TaskHandler)) {
+	fake.setBackgroundTaskHandlerMutex.Lock()
+	defer fake.setBackgroundTaskHandlerMutex.Unlock()
+	fake.SetBackgroundTaskHandlerStub = stub
 }
 
-func (fake *FakeA2AServer) SetTaskHandlerArgsForCall(i int) server.TaskHandler {
-	fake.setTaskHandlerMutex.RLock()
-	defer fake.setTaskHandlerMutex.RUnlock()
-	argsForCall := fake.setTaskHandlerArgsForCall[i]
+func (fake *FakeA2AServer) SetBackgroundTaskHandlerArgsForCall(i int) server.TaskHandler {
+	fake.setBackgroundTaskHandlerMutex.RLock()
+	defer fake.setBackgroundTaskHandlerMutex.RUnlock()
+	argsForCall := fake.setBackgroundTaskHandlerArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServer) SetStreamingTaskHandler(arg1 server.TaskHandler) {
+	fake.setStreamingTaskHandlerMutex.Lock()
+	fake.setStreamingTaskHandlerArgsForCall = append(fake.setStreamingTaskHandlerArgsForCall, struct {
+		arg1 server.TaskHandler
+	}{arg1})
+	stub := fake.SetStreamingTaskHandlerStub
+	fake.recordInvocation("SetStreamingTaskHandler", []interface{}{arg1})
+	fake.setStreamingTaskHandlerMutex.Unlock()
+	if stub != nil {
+		fake.SetStreamingTaskHandlerStub(arg1)
+	}
+}
+
+func (fake *FakeA2AServer) SetStreamingTaskHandlerCallCount() int {
+	fake.setStreamingTaskHandlerMutex.RLock()
+	defer fake.setStreamingTaskHandlerMutex.RUnlock()
+	return len(fake.setStreamingTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServer) SetStreamingTaskHandlerCalls(stub func(server.TaskHandler)) {
+	fake.setStreamingTaskHandlerMutex.Lock()
+	defer fake.setStreamingTaskHandlerMutex.Unlock()
+	fake.SetStreamingTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServer) SetStreamingTaskHandlerArgsForCall(i int) server.TaskHandler {
+	fake.setStreamingTaskHandlerMutex.RLock()
+	defer fake.setStreamingTaskHandlerMutex.RUnlock()
+	argsForCall := fake.setStreamingTaskHandlerArgsForCall[i]
 	return argsForCall.arg1
 }
 
@@ -724,8 +824,10 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.getAgentMutex.RUnlock()
 	fake.getAgentCardMutex.RLock()
 	defer fake.getAgentCardMutex.RUnlock()
-	fake.getTaskHandlerMutex.RLock()
-	defer fake.getTaskHandlerMutex.RUnlock()
+	fake.getBackgroundTaskHandlerMutex.RLock()
+	defer fake.getBackgroundTaskHandlerMutex.RUnlock()
+	fake.getStreamingTaskHandlerMutex.RLock()
+	defer fake.getStreamingTaskHandlerMutex.RUnlock()
 	fake.loadAgentCardFromFileMutex.RLock()
 	defer fake.loadAgentCardFromFileMutex.RUnlock()
 	fake.setAgentMutex.RLock()
@@ -740,8 +842,10 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.setAgentURLMutex.RUnlock()
 	fake.setAgentVersionMutex.RLock()
 	defer fake.setAgentVersionMutex.RUnlock()
-	fake.setTaskHandlerMutex.RLock()
-	defer fake.setTaskHandlerMutex.RUnlock()
+	fake.setBackgroundTaskHandlerMutex.RLock()
+	defer fake.setBackgroundTaskHandlerMutex.RUnlock()
+	fake.setStreamingTaskHandlerMutex.RLock()
+	defer fake.setStreamingTaskHandlerMutex.RUnlock()
 	fake.startMutex.RLock()
 	defer fake.startMutex.RUnlock()
 	fake.startTaskProcessorMutex.RLock()

@@ -63,7 +63,7 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 
 			ctx := context.Background()
 			message := tt.task.Status.Message
-			result, err := taskHandler.HandleTask(ctx, tt.task, message, nil)
+			result, err := taskHandler.HandleTask(ctx, tt.task, message)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -81,16 +81,16 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 	}
 }
 
-func TestDefaultPollingTaskHandler_HandleTask(t *testing.T) {
+func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 	logger := zap.NewNop()
 	ctx := context.Background()
-	
+
 	tests := []struct {
-		name            string
-		task            *types.Task
-		agent           server.OpenAICompatibleAgent
-		expectedState   types.TaskState
-		expectInputReq  bool
+		name           string
+		task           *types.Task
+		agent          server.OpenAICompatibleAgent
+		expectedState  types.TaskState
+		expectInputReq bool
 	}{
 		{
 			name: "successful polling task without agent",
@@ -100,8 +100,8 @@ func TestDefaultPollingTaskHandler_HandleTask(t *testing.T) {
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
-			agent:         nil,
-			expectedState: types.TaskStateCompleted,
+			agent:          nil,
+			expectedState:  types.TaskStateCompleted,
 			expectInputReq: false,
 		},
 		{
@@ -112,15 +112,18 @@ func TestDefaultPollingTaskHandler_HandleTask(t *testing.T) {
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
-			agent:         createMockAgentWithInputRequired(),
-			expectedState: types.TaskStateInputRequired,
+			agent:          createMockAgentWithInputRequired(),
+			expectedState:  types.TaskStateInputRequired,
 			expectInputReq: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			taskHandler := server.NewDefaultPollingTaskHandler(logger)
+			taskHandler := server.NewDefaultBackgroundTaskHandler(logger)
+			if tt.agent != nil {
+				taskHandler.SetAgent(tt.agent)
+			}
 			message := &types.Message{
 				Kind: "message",
 				Role: "user",
@@ -132,12 +135,12 @@ func TestDefaultPollingTaskHandler_HandleTask(t *testing.T) {
 				},
 			}
 
-			result, err := taskHandler.HandleTask(ctx, tt.task, message, tt.agent)
+			result, err := taskHandler.HandleTask(ctx, tt.task, message)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 			assert.Equal(t, tt.expectedState, result.Status.State)
-			
+
 			if tt.expectInputReq {
 				assert.Equal(t, types.TaskStateInputRequired, result.Status.State)
 				assert.NotNil(t, result.Status.Message)
@@ -152,13 +155,13 @@ func TestDefaultPollingTaskHandler_HandleTask(t *testing.T) {
 func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 	logger := zap.NewNop()
 	ctx := context.Background()
-	
+
 	tests := []struct {
-		name            string
-		task            *types.Task
-		agent           server.OpenAICompatibleAgent
-		expectedState   types.TaskState
-		expectInputReq  bool
+		name           string
+		task           *types.Task
+		agent          server.OpenAICompatibleAgent
+		expectedState  types.TaskState
+		expectInputReq bool
 	}{
 		{
 			name: "successful streaming task without agent",
@@ -168,20 +171,20 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
-			agent:         nil,
-			expectedState: types.TaskStateCompleted,
+			agent:          nil,
+			expectedState:  types.TaskStateCompleted,
 			expectInputReq: false,
 		},
 		{
 			name: "streaming task with agent requiring input",
 			task: &types.Task{
-				ID:        "test-task-2", 
+				ID:        "test-task-2",
 				ContextID: "test-context-2",
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
-			agent:         createMockAgentWithInputRequired(),
-			expectedState: types.TaskStateInputRequired,
+			agent:          createMockAgentWithInputRequired(),
+			expectedState:  types.TaskStateInputRequired,
 			expectInputReq: true,
 		},
 	}
@@ -189,6 +192,7 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			taskHandler := server.NewDefaultStreamingTaskHandler(logger)
+			taskHandler.SetAgent(tt.agent)
 			message := &types.Message{
 				Kind: "message",
 				Role: "user",
@@ -200,12 +204,12 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 				},
 			}
 
-			result, err := taskHandler.HandleTask(ctx, tt.task, message, tt.agent)
+			result, err := taskHandler.HandleTask(ctx, tt.task, message)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 			assert.Equal(t, tt.expectedState, result.Status.State)
-			
+
 			if tt.expectInputReq {
 				assert.Equal(t, types.TaskStateInputRequired, result.Status.State)
 				assert.NotNil(t, result.Status.Message)
@@ -222,7 +226,7 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 // createMockAgentWithInputRequired creates a mock agent that returns an input_required response
 func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	mockAgent := &mocks.FakeOpenAICompatibleAgent{}
-	
+
 	// Mock the Run method to return an input_required response
 	inputRequiredResponse := &server.AgentResponse{
 		Response: &types.Message{
@@ -238,7 +242,7 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 		},
 		AdditionalMessages: []types.Message{},
 	}
-	
+
 	mockAgent.RunReturns(inputRequiredResponse, nil)
 	return mockAgent
 }

@@ -10,13 +10,22 @@ import (
 )
 
 type FakeTaskHandler struct {
-	HandleTaskStub        func(context.Context, *types.Task, *types.Message, server.OpenAICompatibleAgent) (*types.Task, error)
+	GetAgentStub        func() server.OpenAICompatibleAgent
+	getAgentMutex       sync.RWMutex
+	getAgentArgsForCall []struct {
+	}
+	getAgentReturns struct {
+		result1 server.OpenAICompatibleAgent
+	}
+	getAgentReturnsOnCall map[int]struct {
+		result1 server.OpenAICompatibleAgent
+	}
+	HandleTaskStub        func(context.Context, *types.Task, *types.Message) (*types.Task, error)
 	handleTaskMutex       sync.RWMutex
 	handleTaskArgsForCall []struct {
 		arg1 context.Context
 		arg2 *types.Task
 		arg3 *types.Message
-		arg4 server.OpenAICompatibleAgent
 	}
 	handleTaskReturns struct {
 		result1 *types.Task
@@ -26,25 +35,82 @@ type FakeTaskHandler struct {
 		result1 *types.Task
 		result2 error
 	}
+	SetAgentStub        func(server.OpenAICompatibleAgent)
+	setAgentMutex       sync.RWMutex
+	setAgentArgsForCall []struct {
+		arg1 server.OpenAICompatibleAgent
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeTaskHandler) HandleTask(arg1 context.Context, arg2 *types.Task, arg3 *types.Message, arg4 server.OpenAICompatibleAgent) (*types.Task, error) {
+func (fake *FakeTaskHandler) GetAgent() server.OpenAICompatibleAgent {
+	fake.getAgentMutex.Lock()
+	ret, specificReturn := fake.getAgentReturnsOnCall[len(fake.getAgentArgsForCall)]
+	fake.getAgentArgsForCall = append(fake.getAgentArgsForCall, struct {
+	}{})
+	stub := fake.GetAgentStub
+	fakeReturns := fake.getAgentReturns
+	fake.recordInvocation("GetAgent", []interface{}{})
+	fake.getAgentMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeTaskHandler) GetAgentCallCount() int {
+	fake.getAgentMutex.RLock()
+	defer fake.getAgentMutex.RUnlock()
+	return len(fake.getAgentArgsForCall)
+}
+
+func (fake *FakeTaskHandler) GetAgentCalls(stub func() server.OpenAICompatibleAgent) {
+	fake.getAgentMutex.Lock()
+	defer fake.getAgentMutex.Unlock()
+	fake.GetAgentStub = stub
+}
+
+func (fake *FakeTaskHandler) GetAgentReturns(result1 server.OpenAICompatibleAgent) {
+	fake.getAgentMutex.Lock()
+	defer fake.getAgentMutex.Unlock()
+	fake.GetAgentStub = nil
+	fake.getAgentReturns = struct {
+		result1 server.OpenAICompatibleAgent
+	}{result1}
+}
+
+func (fake *FakeTaskHandler) GetAgentReturnsOnCall(i int, result1 server.OpenAICompatibleAgent) {
+	fake.getAgentMutex.Lock()
+	defer fake.getAgentMutex.Unlock()
+	fake.GetAgentStub = nil
+	if fake.getAgentReturnsOnCall == nil {
+		fake.getAgentReturnsOnCall = make(map[int]struct {
+			result1 server.OpenAICompatibleAgent
+		})
+	}
+	fake.getAgentReturnsOnCall[i] = struct {
+		result1 server.OpenAICompatibleAgent
+	}{result1}
+}
+
+func (fake *FakeTaskHandler) HandleTask(arg1 context.Context, arg2 *types.Task, arg3 *types.Message) (*types.Task, error) {
 	fake.handleTaskMutex.Lock()
 	ret, specificReturn := fake.handleTaskReturnsOnCall[len(fake.handleTaskArgsForCall)]
 	fake.handleTaskArgsForCall = append(fake.handleTaskArgsForCall, struct {
 		arg1 context.Context
 		arg2 *types.Task
 		arg3 *types.Message
-		arg4 server.OpenAICompatibleAgent
-	}{arg1, arg2, arg3, arg4})
+	}{arg1, arg2, arg3})
 	stub := fake.HandleTaskStub
 	fakeReturns := fake.handleTaskReturns
-	fake.recordInvocation("HandleTask", []interface{}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("HandleTask", []interface{}{arg1, arg2, arg3})
 	fake.handleTaskMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4)
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -58,17 +124,17 @@ func (fake *FakeTaskHandler) HandleTaskCallCount() int {
 	return len(fake.handleTaskArgsForCall)
 }
 
-func (fake *FakeTaskHandler) HandleTaskCalls(stub func(context.Context, *types.Task, *types.Message, server.OpenAICompatibleAgent) (*types.Task, error)) {
+func (fake *FakeTaskHandler) HandleTaskCalls(stub func(context.Context, *types.Task, *types.Message) (*types.Task, error)) {
 	fake.handleTaskMutex.Lock()
 	defer fake.handleTaskMutex.Unlock()
 	fake.HandleTaskStub = stub
 }
 
-func (fake *FakeTaskHandler) HandleTaskArgsForCall(i int) (context.Context, *types.Task, *types.Message, server.OpenAICompatibleAgent) {
+func (fake *FakeTaskHandler) HandleTaskArgsForCall(i int) (context.Context, *types.Task, *types.Message) {
 	fake.handleTaskMutex.RLock()
 	defer fake.handleTaskMutex.RUnlock()
 	argsForCall := fake.handleTaskArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeTaskHandler) HandleTaskReturns(result1 *types.Task, result2 error) {
@@ -97,11 +163,47 @@ func (fake *FakeTaskHandler) HandleTaskReturnsOnCall(i int, result1 *types.Task,
 	}{result1, result2}
 }
 
+func (fake *FakeTaskHandler) SetAgent(arg1 server.OpenAICompatibleAgent) {
+	fake.setAgentMutex.Lock()
+	fake.setAgentArgsForCall = append(fake.setAgentArgsForCall, struct {
+		arg1 server.OpenAICompatibleAgent
+	}{arg1})
+	stub := fake.SetAgentStub
+	fake.recordInvocation("SetAgent", []interface{}{arg1})
+	fake.setAgentMutex.Unlock()
+	if stub != nil {
+		fake.SetAgentStub(arg1)
+	}
+}
+
+func (fake *FakeTaskHandler) SetAgentCallCount() int {
+	fake.setAgentMutex.RLock()
+	defer fake.setAgentMutex.RUnlock()
+	return len(fake.setAgentArgsForCall)
+}
+
+func (fake *FakeTaskHandler) SetAgentCalls(stub func(server.OpenAICompatibleAgent)) {
+	fake.setAgentMutex.Lock()
+	defer fake.setAgentMutex.Unlock()
+	fake.SetAgentStub = stub
+}
+
+func (fake *FakeTaskHandler) SetAgentArgsForCall(i int) server.OpenAICompatibleAgent {
+	fake.setAgentMutex.RLock()
+	defer fake.setAgentMutex.RUnlock()
+	argsForCall := fake.setAgentArgsForCall[i]
+	return argsForCall.arg1
+}
+
 func (fake *FakeTaskHandler) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.getAgentMutex.RLock()
+	defer fake.getAgentMutex.RUnlock()
 	fake.handleTaskMutex.RLock()
 	defer fake.handleTaskMutex.RUnlock()
+	fake.setAgentMutex.RLock()
+	defer fake.setAgentMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
