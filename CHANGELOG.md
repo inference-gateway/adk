@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0](https://github.com/inference-gateway/adk/compare/v0.7.4...v0.8.0) (2025-08-05)
+
+### ✨ Features
+
+* Implement complete TaskState handling with input-required pausing ([#32](https://github.com/inference-gateway/adk/issues/32)) ([c47130f](https://github.com/inference-gateway/adk/commit/c47130f3bfaa72ba75e6e302ed7ac19741083450)), closes [#31](https://github.com/inference-gateway/adk/issues/31)
+
+### ♻️ Improvements
+
+* **examples:** Update import statements to use 'adk/types' for consistency ([c1f7510](https://github.com/inference-gateway/adk/commit/c1f7510097706d44832b5f4049c6a0ef8d56b755))
+
+### 📚 Documentation
+
+* Improve main documentation and clean up codebase ([#36](https://github.com/inference-gateway/adk/issues/36)) ([1d1ce8e](https://github.com/inference-gateway/adk/commit/1d1ce8eb43cf9f27821d491dbb8fb52f1bd842fd))
+
+### 🔧 Miscellaneous
+
+* Add issue templates for bug reports, feature requests, and refactor requests ([d7307a4](https://github.com/inference-gateway/adk/commit/d7307a402e7e9ac7b8d24390b8b35d894b2dd6dc))
+* Download the latest schema from A2A and  generate the go types ([25be465](https://github.com/inference-gateway/adk/commit/25be4650b92219bc1c28cced22c60db5893fad62))
+
 ## [0.7.4](https://github.com/inference-gateway/adk/compare/v0.7.3...v0.7.4) (2025-07-29)
 
 ### ♻️ Improvements
