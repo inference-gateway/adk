@@ -685,6 +685,8 @@ Configure your A2A agent using environment variables. All configuration is optio
 
 #### Example Configuration
 
+**Environment Variables:**
+
 ```bash
 # Basic AI-powered agent
 export PORT="8080"
@@ -705,6 +707,104 @@ export AUTH_CLIENT_ID="your-client-id"
 # Optional: Configure task retention
 export TASK_RETENTION_MAX_COMPLETED_TASKS="200"
 export TASK_RETENTION_CLEANUP_INTERVAL="10m"
+```
+
+**Go Code Example:**
+
+You can create your own config struct and embed the ADK config with custom prefixes:
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+
+    "github.com/inference-gateway/adk/server"
+    "github.com/inference-gateway/adk/server/config"
+    "github.com/sethvargo/go-envconfig"
+    "go.uber.org/zap"
+)
+
+// MyAppConfig embeds ADK config with custom prefixes
+type MyAppConfig struct {
+    // Your application-specific config
+    AppName     string `env:"APP_NAME,default=MyAgent"`
+    Environment string `env:"ENVIRONMENT,default=development"`
+
+    // Embed ADK config with A2A prefix
+    A2A config.Config `env:",prefix=A2A_"`
+}
+
+func main() {
+    logger, _ := zap.NewDevelopment()
+    defer logger.Sync()
+
+    // Create your config struct
+    cfg := MyAppConfig{}
+
+    // Load configuration from environment
+    ctx := context.Background()
+    if err := envconfig.Process(ctx, &cfg); err != nil {
+        log.Fatal("Failed to load config:", err)
+    }
+
+    // Use the embedded A2A config
+    a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
+        WithAgentCardFromFile(".well-known/agent.json").
+        Build()
+    if err != nil {
+        log.Fatal("Failed to create server:", err)
+    }
+
+    // Override specific settings programmatically
+    cfg.A2A.AgentConfig.SystemPrompt = "You are " + cfg.AppName + " running in " + cfg.Environment
+
+    // Start server
+    if err := a2aServer.Start(ctx); err != nil {
+        log.Fatal("Server failed to start:", err)
+    }
+}
+```
+
+**Environment Variables with Custom Prefix:**
+
+```bash
+# Your application config
+export APP_NAME="WeatherBot"
+export ENVIRONMENT="production"
+
+# ADK config with A2A_ prefix
+export A2A_PORT="8080"
+export A2A_AGENT_CLIENT_PROVIDER="openai"
+export A2A_AGENT_CLIENT_MODEL="openai/gpt-4"
+export A2A_AGENT_CLIENT_API_KEY="your-api-key"
+export A2A_CAPABILITIES_STREAMING="true"
+export A2A_CAPABILITIES_PUSH_NOTIFICATIONS="true"
+```
+
+**Alternative: Override Specific Components:**
+
+```go
+// Create base config
+cfg := config.Config{
+    Port: "8080",
+}
+
+// Load from environment
+if err := envconfig.Process(ctx, &cfg); err != nil {
+    log.Fatal("Failed to load config:", err)
+}
+
+// Override specific settings programmatically
+cfg.AgentConfig.Temperature = 0.3
+cfg.AgentConfig.MaxTokens = 2048
+cfg.CapabilitiesConfig.Streaming = true
+
+// Use the modified config
+a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+    WithAgentCardFromFile(".well-known/agent.json").
+    Build()
 ```
 
 ## 🔧 Advanced Usage
