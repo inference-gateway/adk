@@ -159,20 +159,20 @@ func (b *A2AServerBuilderImpl) WithStreamingTaskHandler(handler TaskHandler) A2A
 
 // WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios
 func (b *A2AServerBuilderImpl) WithDefaultBackgroundTaskHandler() A2AServerBuilder {
-	b.pollingTaskHandler = NewDefaultBackgroundTaskHandler(b.logger)
+	b.pollingTaskHandler = NewDefaultBackgroundTaskHandler(b.logger, b.agent)
 	return b
 }
 
 // WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios
 func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilder {
-	b.streamingTaskHandler = NewDefaultStreamingTaskHandler(b.logger)
+	b.streamingTaskHandler = NewDefaultStreamingTaskHandler(b.logger, b.agent)
 	return b
 }
 
 // WithDefaultTaskHandlers sets both default background and streaming task handlers
 func (b *A2AServerBuilderImpl) WithDefaultTaskHandlers() A2AServerBuilder {
-	b.pollingTaskHandler = NewDefaultBackgroundTaskHandler(b.logger)
-	b.streamingTaskHandler = NewDefaultStreamingTaskHandler(b.logger)
+	b.pollingTaskHandler = NewDefaultBackgroundTaskHandler(b.logger, b.agent)
+	b.streamingTaskHandler = NewDefaultStreamingTaskHandler(b.logger, b.agent)
 	return b
 }
 

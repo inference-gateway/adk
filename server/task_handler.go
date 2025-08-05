@@ -154,9 +154,10 @@ type DefaultBackgroundTaskHandler struct {
 }
 
 // NewDefaultBackgroundTaskHandler creates a new default background task handler
-func NewDefaultBackgroundTaskHandler(logger *zap.Logger) *DefaultBackgroundTaskHandler {
+func NewDefaultBackgroundTaskHandler(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultBackgroundTaskHandler {
 	return &DefaultBackgroundTaskHandler{
 		logger: logger,
+		agent:  agent,
 	}
 }
 
@@ -317,10 +318,10 @@ type DefaultStreamingTaskHandler struct {
 }
 
 // NewDefaultStreamingTaskHandler creates a new default streaming task handler
-func NewDefaultStreamingTaskHandler(logger *zap.Logger, agent ...OpenAICompatibleAgent) *DefaultStreamingTaskHandler {
+func NewDefaultStreamingTaskHandler(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultStreamingTaskHandler {
 	var agentInstance OpenAICompatibleAgent
-	if len(agent) > 0 {
-		agentInstance = agent[0]
+	if agent != nil {
+		agentInstance = agent
 	}
 
 	return &DefaultStreamingTaskHandler{
@@ -361,9 +362,9 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	agentResponse, err := sth.agent.Run(ctx, messages)
+	streamChan, err := sth.agent.RunWithStream(ctx, messages)
 	if err != nil {
-		sth.logger.Error("agent processing failed in streaming context", zap.Error(err))
+		sth.logger.Error("agent streaming failed", zap.Error(err))
 
 		task.Status.State = types.TaskStateFailed
 
@@ -386,31 +387,38 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		return task, nil
 	}
 
-	if agentResponse.Response != nil {
-		lastMessage := agentResponse.Response
-		if lastMessage.Kind == "input_required" {
-			inputMessage := "Please provide more information to continue streaming."
-			if len(lastMessage.Parts) > 0 {
-				if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
-					if text, exists := textPart["text"].(string); exists && text != "" {
-						inputMessage = text
-					}
-				}
-			}
-			task.History = append(task.History, *agentResponse.Response)
-			return sth.pauseTaskForStreamingInput(task, inputMessage), nil
+	// Collect all streaming messages
+	var additionalMessages []types.Message
+	var lastMessage *types.Message
+
+	for streamMessage := range streamChan {
+		if streamMessage != nil {
+			additionalMessages = append(additionalMessages, *streamMessage)
+			lastMessage = streamMessage
 		}
 	}
 
-	if len(agentResponse.AdditionalMessages) > 0 {
-		task.History = append(task.History, agentResponse.AdditionalMessages...)
+	// Check for input required in the last message
+	if lastMessage != nil && lastMessage.Kind == "input_required" {
+		inputMessage := "Please provide more information to continue streaming."
+		if len(lastMessage.Parts) > 0 {
+			if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
+				if text, exists := textPart["text"].(string); exists && text != "" {
+					inputMessage = text
+				}
+			}
+		}
+		task.History = append(task.History, additionalMessages...)
+		return sth.pauseTaskForStreamingInput(task, inputMessage), nil
 	}
-	if agentResponse.Response != nil {
-		task.History = append(task.History, *agentResponse.Response)
+
+	// Add all messages to history
+	if len(additionalMessages) > 0 {
+		task.History = append(task.History, additionalMessages...)
 	}
 
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = agentResponse.Response
+	task.Status.Message = lastMessage
 
 	return task, nil
 }

@@ -142,8 +142,8 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 
 	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
 	server.responseSender = NewDefaultResponseSender(logger)
-	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger)
-	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger)
+	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger, server.agent)
+	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger, server.agent)
 
 	return server
 }
@@ -214,8 +214,8 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 
 	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
 	server.responseSender = NewDefaultResponseSender(logger)
-	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger)
-	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger)
+	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger, server.agent)
+	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger, server.agent)
 
 	return server
 }
@@ -845,6 +845,11 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 		}
 	}
 
+	if s.agent != nil {
+		s.handleAgentStreaming(c, req, task, message)
+		return
+	}
+
 	updatedTask, err := s.streamingTaskHandler.HandleTask(ctx, task, message)
 	if err != nil {
 		s.logger.Error("failed to process streaming task",
@@ -866,7 +871,6 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 		return
 	}
 
-	// Update the task
 	if err := s.taskManager.UpdateTask(updatedTask); err != nil {
 		s.logger.Error("failed to update streaming task",
 			zap.Error(err),
@@ -874,12 +878,132 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 			zap.String("context_id", updatedTask.ContextID))
 	}
 
-	// Send the final result as a streaming response
 	finalResponse := types.TaskStatusUpdateEvent{
 		Kind:      "status-update",
 		TaskID:    updatedTask.ID,
 		ContextID: updatedTask.ContextID,
 		Status:    updatedTask.Status,
+		Final:     true,
+	}
+
+	jsonRPCResponse := types.JSONRPCSuccessResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result:  finalResponse,
+	}
+
+	if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+		s.logger.Error("failed to write final streaming response", zap.Error(err))
+	}
+
+	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+		s.logger.Error("failed to write stream termination signal", zap.Error(err))
+	} else {
+		c.Writer.Flush()
+		s.logger.Debug("sent stream termination signal [DONE]")
+	}
+
+	s.logger.Info("streaming task processed successfully",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
+}
+
+// handleAgentStreaming processes streaming tasks using direct agent streaming capabilities
+func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRequest, task *types.Task, message *types.Message) {
+	ctx := c.Request.Context()
+
+	s.logger.Info("starting agent streaming",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
+
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
+
+	streamChan, err := s.agent.RunWithStream(ctx, messages)
+	if err != nil {
+		s.logger.Error("failed to start agent streaming", zap.Error(err))
+		errorResponse := types.JSONRPCErrorResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &types.JSONRPCError{
+				Code:    int(ErrInternalError),
+				Message: fmt.Sprintf("Failed to start streaming: %v", err),
+			},
+		}
+		if writeErr := s.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+			s.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+		}
+		return
+	}
+
+	var allMessages []types.Message
+	var lastMessage *types.Message
+	messageCount := 0
+
+	for streamMessage := range streamChan {
+		if streamMessage != nil {
+			messageCount++
+			allMessages = append(allMessages, *streamMessage)
+			lastMessage = streamMessage
+
+			s.logger.Debug("received streaming message",
+				zap.String("task_id", task.ID),
+				zap.Int("message_count", messageCount),
+				zap.String("message_id", streamMessage.MessageID))
+
+			// Create status update for this streaming message
+			task.Status.State = types.TaskStateWorking
+			task.Status.Message = streamMessage
+
+			statusUpdate := types.TaskStatusUpdateEvent{
+				Kind:      "status-update",
+				TaskID:    task.ID,
+				ContextID: task.ContextID,
+				Status:    task.Status,
+				Final:     false,
+			}
+
+			jsonRPCResponse := types.JSONRPCSuccessResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  statusUpdate,
+			}
+
+			if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+				s.logger.Error("failed to write streaming response", zap.Error(err))
+				return
+			}
+			c.Writer.Flush()
+		}
+	}
+
+	s.logger.Info("agent streaming completed",
+		zap.String("task_id", task.ID),
+		zap.Int("total_messages", messageCount))
+
+	if len(allMessages) > 0 {
+		task.History = append(task.History, allMessages...)
+	}
+
+	if lastMessage != nil && lastMessage.Kind == "input_required" {
+		task.Status.State = types.TaskStateInputRequired
+	} else {
+		task.Status.State = types.TaskStateCompleted
+	}
+	task.Status.Message = lastMessage
+
+	if err := s.taskManager.UpdateTask(task); err != nil {
+		s.logger.Error("failed to update streaming task",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
+	}
+
+	finalResponse := types.TaskStatusUpdateEvent{
+		Kind:      "status-update",
+		TaskID:    task.ID,
+		ContextID: task.ContextID,
+		Status:    task.Status,
 		Final:     true,
 	}
 
@@ -935,7 +1059,6 @@ func (s *A2AServerImpl) writeStreamingErrorResponse(c *gin.Context, response *ty
 		return fmt.Errorf("failed to marshal error response: %w", err)
 	}
 
-	// Write in SSE format: "data: <json>\n\n"
 	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
 		return fmt.Errorf("failed to write data prefix: %w", err)
 	}

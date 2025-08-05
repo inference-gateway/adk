@@ -33,6 +33,11 @@ func main() {
 		AgentName:        server.BuildAgentName,
 		AgentDescription: server.BuildAgentDescription,
 		AgentVersion:     server.BuildAgentVersion,
+		CapabilitiesConfig: config.CapabilitiesConfig{
+			Streaming:              true,
+			PushNotifications:      false,
+			StateTransitionHistory: false,
+		},
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
@@ -103,44 +108,24 @@ func main() {
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Create and start server
-	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, agent, types.AgentCard{
-		Name:        cfg.AgentName,
-		Description: cfg.AgentDescription,
-		URL:         cfg.AgentURL,
-		Version:     cfg.AgentVersion,
-		Capabilities: types.AgentCapabilities{
-			Streaming:              &cfg.CapabilitiesConfig.Streaming,
-			PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
-			StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
-		},
-		DefaultInputModes:  []string{"text/plain"},
-		DefaultOutputModes: []string{"text/plain"},
-	})
-
-	// Alternative: Use NewA2AServerBuilder with JSON AgentCard file
-	// You can also load an agent card from a JSON file with optional overrides:
-	//
-	// Example 1: Load without overrides
-	// a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
-	//	WithAgent(agent).
-	//	WithAgentCardFromFile(os.Getenv("AGENT_CARD_FILE_PATH"), nil).
-	//	Build()
-	//
-	// Example 2: Load with runtime overrides (useful for deployment environments)
-	// overrides := map[string]interface{}{
-	//	"name": cfg.AgentName,           // Override with environment-specific name
-	//	"version": cfg.AgentVersion,     // Override with build-time version
-	//	"url": cfg.AgentURL,             // Override with deployment URL
-	//	"capabilities": map[string]interface{}{
-	//		"streaming": cfg.CapabilitiesConfig.Streaming,
-	//		"pushNotifications": cfg.CapabilitiesConfig.PushNotifications,
-	//	},
-	// }
-	// a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
-	//	WithAgent(agent).
-	//	WithAgentCardFromFile("./.well-known/agent.json", overrides).
-	//	Build()
+	// Create and start server with default background task handler
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+		WithAgent(agent).
+		WithDefaultTaskHandlers().
+		WithAgentCard(types.AgentCard{
+			Name:        cfg.AgentName,
+			Description: cfg.AgentDescription,
+			URL:         cfg.AgentURL,
+			Version:     cfg.AgentVersion,
+			Capabilities: types.AgentCapabilities{
+				Streaming:              &cfg.CapabilitiesConfig.Streaming,
+				PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
+				StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+		}).
+		Build()
 	if err != nil {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
@@ -165,30 +150,6 @@ func main() {
 			logger.Fatal("server failed to start", zap.Error(err))
 		}
 	}()
-
-	logger.Info("🌐 server running", zap.String("port", cfg.ServerConfig.Port))
-	fmt.Printf("\n🎯 Test with curl:\n")
-	fmt.Printf(`curl -X POST http://localhost:%s/a2a \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "message/send",
-    "params": {
-      "message": {
-        "kind": "message",
-        "messageId": "msg-123",
-        "role": "user",
-        "parts": [
-          {
-            "kind": "text",
-            "text": "What'\''s the weather in Tokyo?"
-          }
-        ]
-      }
-    },
-    "id": 1
-  }'`, cfg.ServerConfig.Port)
-	fmt.Println()
 
 	// Wait for shutdown
 	quit := make(chan os.Signal, 1)

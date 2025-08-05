@@ -120,7 +120,7 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			taskHandler := server.NewDefaultBackgroundTaskHandler(logger)
+			taskHandler := server.NewDefaultBackgroundTaskHandler(logger, tt.agent)
 			if tt.agent != nil {
 				taskHandler.SetAgent(tt.agent)
 			}
@@ -191,7 +191,7 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			taskHandler := server.NewDefaultStreamingTaskHandler(logger)
+			taskHandler := server.NewDefaultStreamingTaskHandler(logger, tt.agent)
 			taskHandler.SetAgent(tt.agent)
 			message := &types.Message{
 				Kind: "message",
@@ -213,11 +213,9 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 			if tt.expectInputReq {
 				assert.Equal(t, types.TaskStateInputRequired, result.Status.State)
 				assert.NotNil(t, result.Status.Message)
-				// Check that streaming-specific message ID is used
 				assert.Contains(t, result.Status.Message.MessageID, "stream-input-request")
 			}
 
-			// Check that history contains at least one message
 			assert.Greater(t, len(result.History), 0)
 		})
 	}
@@ -227,7 +225,6 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	mockAgent := &mocks.FakeOpenAICompatibleAgent{}
 
-	// Mock the Run method to return an input_required response
 	inputRequiredResponse := &server.AgentResponse{
 		Response: &types.Message{
 			Kind:      "input_required",
@@ -244,5 +241,21 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	}
 
 	mockAgent.RunReturns(inputRequiredResponse, nil)
+
+	streamChan := make(chan *types.Message, 1)
+	streamChan <- &types.Message{
+		Kind:      "input_required",
+		MessageID: "stream-input-req-123",
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I need more information from you to continue.",
+			},
+		},
+	}
+	close(streamChan)
+
+	mockAgent.RunWithStreamReturns(streamChan, nil)
 	return mockAgent
 }
