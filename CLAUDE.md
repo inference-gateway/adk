@@ -33,6 +33,12 @@ The pre-commit hook automatically runs on `git commit` with smart checks:
 - **Markdown files only**: Just formatting
 - **Mixed files**: Full workflow
 
+The hook will **fail** if:
+
+- Tests fail
+- Linting fails
+- Files need formatting (you'll need to stage the formatted files and commit again)
+
 Use `git commit --no-verify` to skip the pre-commit hook if needed.
 
 ## Architecture Overview

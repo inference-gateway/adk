@@ -433,6 +433,12 @@ task precommit:install
 - **Mixed Go and Markdown**: Full workflow
 - **Other files**: No checks run
 
+**Hook behavior:**
+
+- ✅ **Passes**: If all checks pass and no files need formatting
+- ❌ **Fails**: If tests fail, linting fails, or files need formatting
+- 📝 **After failure**: Review changes, stage them (`git add .`), and commit again
+
 **Bypass if needed:**
 
 ```bash

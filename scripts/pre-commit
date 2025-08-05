@@ -22,18 +22,31 @@ if [ -n "$go_files" ]; then
     echo "  🧪 Running tests..."
     task test
     
-    echo "$go_files" | xargs git add
+    if ! git diff --exit-code; then
+        echo ""
+        echo "❌ Files were modified by formatting or tidying!"
+        echo "   Please review the changes, stage them, and commit again:"
+        echo "   git add ."
+        echo "   git commit"
+        exit 1
+    fi
 fi
 
 if [ -n "$md_files" ]; then
     if [ -z "$go_files" ]; then
         echo "📝 Only Markdown files detected - running formatting..."
         task format
+        
+        if ! git diff --exit-code; then
+            echo ""
+            echo "❌ Markdown files were modified by formatting!"
+            echo "   Please review the changes, stage them, and commit again:"
+            echo "   git add ."
+            echo "   git commit"
+            exit 1
+        fi
     fi
-    
-    echo "$md_files" | xargs git add
 fi
-
 
 if [ -z "$go_files" ] && [ -z "$md_files" ]; then
     echo "ℹ️  No Go or Markdown files to check"

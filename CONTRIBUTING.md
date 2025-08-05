@@ -95,6 +95,10 @@ The pre-commit hook will automatically run smart checks based on file types:
 - **Markdown files only**: Just formatting
 - **Mixed files**: Full workflow
 
+**Important**: The hook will **fail** if any checks fail or files need formatting. You'll need to review the changes, stage them, and commit again.
+
+- **Mixed files**: Full workflow
+
 This ensures consistent code quality and reduces CI failures.
 
 **To bypass the hook if needed (not recommended):**
