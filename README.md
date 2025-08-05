@@ -4,12 +4,16 @@
   <strong>Build powerful, interoperable AI agents with the Agent-to-Agent (A2A) protocol</strong>
 </p>
 
-> ⚠️ **Early Stage Warning**: This project is in its early stages of development. Breaking changes are expected as we iterate and improve the API. Please use pinned versions in production environments and be prepared to update your code when upgrading versions.
+> ⚠️ **Early Stage Warning**: This project is in its early stages of development. Breaking changes are expected as the API evolves and improves. Please use pinned versions in production environments and be prepared to update your code when upgrading versions.
 
 <p align="center">
   <!-- CI Status Badge -->
   <a href="https://github.com/inference-gateway/adk/actions/workflows/ci.yml?query=branch%3Amain">
     <img src="https://github.com/inference-gateway/adk/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI Status"/>
+  </a>
+  <!-- Release Workflow Badge -->
+  <a href="https://github.com/inference-gateway/adk/actions/workflows/release.yml">
+    <img src="https://github.com/inference-gateway/adk/actions/workflows/release.yml/badge.svg" alt="Release"/>
   </a>
   <!-- Version Badge -->
   <a href="https://github.com/inference-gateway/adk/releases">
@@ -21,6 +25,10 @@
   </a>
   <!-- Go Version -->
   <img src="https://img.shields.io/github/go-mod/go-version/inference-gateway/adk?style=flat-square" alt="Go Version"/>
+  <!-- Go Report Card -->
+  <a href="https://goreportcard.com/report/github.com/inference-gateway/adk">
+    <img src="https://goreportcard.com/badge/github.com/inference-gateway/adk?style=flat-square" alt="Go Report Card"/>
+  </a>
 </p>
 
 ---
@@ -358,98 +366,29 @@ For complete working examples, see the [examples](./examples/) directory:
 
 ## 🛠️ Development
 
-### Prerequisites
-
-- Go 1.24 or later
-- [Task](https://taskfile.dev/) for build automation
-- [golangci-lint](https://golangci-lint.run/) for linting
-
-### Development Workflow
-
-1. **Download latest A2A schema**:
-
-   ```bash
-   task a2a:download-schema
-   ```
-
-2. **Generate types from schema**:
-
-   ```bash
-   task a2a:generate-types
-   ```
-
-3. **Generate testing mocks**:
-
-   ```bash
-   task generate:mocks
-   ```
-
-4. **Run formatting**:
-
-   ```bash
-   task format
-   ```
-
-5. **Run linting**:
-
-   ```bash
-   task lint
-   ```
-
-6. **Run tests**:
-   ```bash
-   task test
-   ```
-
-### Available Tasks
-
-| Task                       | Description                       |
-| -------------------------- | --------------------------------- |
-| `task a2a:download-schema` | Download the latest A2A schema    |
-| `task a2a:generate-types`  | Generate Go types from A2A schema |
-| `task generate:mocks`      | Generate all testing mocks        |
-| `task format`              | Format all Go and Markdown files  |
-| `task lint`                | Run static analysis and linting   |
-| `task test`                | Run all tests                     |
-| `task tidy`                | Tidy Go modules                   |
-| `task clean`               | Clean up build artifacts          |
-| `task precommit:install`   | Install Git pre-commit hook       |
-| `task precommit:uninstall` | Uninstall Git pre-commit hook     |
-
-### Pre-commit Hooks
-
-The project includes a Git pre-commit hook that automatically runs quality checks before commits:
-
-**Installation:**
+### Quick Setup
 
 ```bash
+# Clone the repository
+git clone https://github.com/inference-gateway/adk.git
+cd adk
+
+# Install dependencies
+go mod download
+
+# Install pre-commit hook
 task precommit:install
 ```
 
-**What the hook does (smart checks):**
+### Essential Tasks
 
-- **Go files committed**: Full workflow - formatting, tidying, linting, and tests
-- **Markdown files only**: Only formatting (`task format`)
-- **Mixed Go and Markdown**: Full workflow
-- **Other files**: No checks run
-
-**Hook behavior:**
-
-- ✅ **Passes**: If all checks pass and no files need formatting
-- ❌ **Fails**: If tests fail, linting fails, or files need formatting
-- 📝 **After failure**: Review changes, stage them (`git add .`), and commit again
-
-**Bypass if needed:**
-
-```bash
-git commit --no-verify  # Skip pre-commit hook (not recommended)
-```
-
-**Uninstall:**
-
-```bash
-task precommit:uninstall
-```
+| Task                       | Description                               |
+| -------------------------- | ----------------------------------------- |
+| `task a2a:download-schema` | Download the latest A2A schema            |
+| `task a2a:generate-types`  | Generate Go types from A2A schema         |
+| `task lint`                | Run linting and code quality checks       |
+| `task test`                | Run all tests                             |
+| `task precommit:install`   | Install Git pre-commit hook (recommended) |
 
 ### Build-Time Agent Metadata
 
@@ -502,6 +441,10 @@ WORKDIR /root/
 COPY --from=builder /app/bin/agent .
 CMD ["./agent"]
 ```
+
+---
+
+**For detailed development workflows, testing guidelines, and contribution processes, see the [Contributing Guide](./CONTRIBUTING.md).**
 
 ## 📖 API Reference
 
@@ -1438,48 +1381,29 @@ This project is licensed under the MIT License. See the [LICENSE](./LICENSE) fil
 
 ## 🤝 Contributing
 
-We welcome contributions! Here's how you can help:
+Contributions to the A2A ADK are welcome! Whether you're fixing bugs, adding features, improving documentation, or helping with testing, your contributions make the project better for everyone.
 
-### Getting Started
+**Please see the [Contributing Guide](./CONTRIBUTING.md) for:**
 
-1. **Fork the repository**
-2. **Clone your fork**:
+- 🚀 **Getting Started** - Development environment setup and prerequisites
+- 📋 **Development Workflow** - Step-by-step development process and tools
+- 🎯 **Coding Guidelines** - Code style, testing patterns, and best practices
+- 🛠️ **Making Changes** - Branch naming, commit format, and submission process
+- 🧪 **Testing Guidelines** - Test structure, mocking, and coverage requirements
+- 🔄 **Pull Request Process** - Review process and submission checklist
 
-   ```bash
-   git clone https://github.com/your-username/a2a.git
-   cd a2a
-   ```
+**Quick Start for Contributors:**
 
-3. **Create a feature branch**:
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
+```bash
+# Fork the repo and clone it
+git clone https://github.com/your-username/adk.git
+cd adk
 
-### Development Guidelines
+# Install pre-commit hook
+task precommit:install
+```
 
-- Follow the established code style and conventions
-- Write table-driven tests for new functionality
-- Use early returns to simplify logic and avoid deep nesting
-- Prefer switch statements over if-else chains
-- Ensure type safety with proper interfaces
-- Use lowercase log messages for consistency
-
-### Before Submitting
-
-1. **Download latest schema**: `task a2a:download-schema`
-2. **Generate types**: `task a2a:generate-types`
-3. **Generate mocks** (if interfaces changed): `task generate:mocks`
-4. **Run linting**: `task lint`
-5. **All tests pass**: `task test`
-
-### Pull Request Process
-
-1. Update documentation for any new features
-2. Add tests for new functionality
-3. Ensure all CI checks pass
-4. Request review from maintainers
-
-For more details, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+For questions or help getting started, please [open a discussion](https://github.com/inference-gateway/adk/discussions) or check out the [contributing guide](./CONTRIBUTING.md).
 
 ## 📞 Support
 
