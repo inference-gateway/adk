@@ -84,7 +84,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger, 20)
+			taskManager := server.NewDefaultTaskManager(logger)
 
 			task := taskManager.CreateTask(tt.contextID, tt.state, tt.message)
 
@@ -98,77 +98,9 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 	}
 }
 
-func TestA2AServer_TaskManager_UpdateTask(t *testing.T) {
-	tests := []struct {
-		name        string
-		newState    types.TaskState
-		newMessage  *types.Message
-		expectError bool
-	}{
-		{
-			name:     "update to completed state",
-			newState: types.TaskStateCompleted,
-			newMessage: &types.Message{
-				Kind:      "message",
-				MessageID: "test-message-updated",
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Task completed successfully",
-					},
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:     "update to failed state",
-			newState: types.TaskStateFailed,
-			newMessage: &types.Message{
-				Kind:      "message",
-				MessageID: "test-message-error",
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Task failed",
-					},
-				},
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger, 20)
-
-			task := taskManager.CreateTask("test-context", types.TaskStateSubmitted, &types.Message{
-				Kind:      "message",
-				MessageID: "initial-message",
-				Role:      "user",
-			})
-
-			err := taskManager.UpdateTask(task.ID, tt.newState, tt.newMessage)
-
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-
-				updatedTask, exists := taskManager.GetTask(task.ID)
-				assert.True(t, exists)
-				assert.Equal(t, tt.newState, updatedTask.Status.State)
-				assert.Equal(t, tt.newMessage, updatedTask.Status.Message)
-			}
-		})
-	}
-}
-
 func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	message := &types.Message{
 		Kind:      "message",
@@ -176,6 +108,9 @@ func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 		Role:      "user",
 	}
 	task := taskManager.CreateTask("test-context", types.TaskStateSubmitted, message)
+
+	err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+	assert.NoError(t, err)
 
 	retrievedTask, exists := taskManager.GetTask(task.ID)
 	assert.True(t, exists)
@@ -220,7 +155,9 @@ func TestA2AServer_ResponseSender_SendError(t *testing.T) {
 
 func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
+	maxHistory := 3
+	storage := server.NewInMemoryStorage(logger, maxHistory)
 
 	cfg := &config.Config{
 		AgentConfig: config.AgentConfig{
@@ -229,7 +166,7 @@ func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 		},
 	}
 
-	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, cfg)
+	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, storage, cfg)
 
 	contextID := "test-context"
 	params := types.MessageSendParams{
@@ -333,7 +270,7 @@ func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
 
 	agentCard := serverInstance.GetAgentCard()
 	assert.NotNil(t, agentCard, "Expected agent card to be set")
-	assert.Equal(t, "test-agent", agentCard.Name) // From createTestAgentCard()
+	assert.Equal(t, "test-agent", agentCard.Name)
 }
 
 func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
@@ -352,7 +289,6 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 
 	logger := zap.NewNop()
 
-	// Create a custom agent card for testing
 	testAgentCard := types.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
@@ -499,14 +435,14 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	result, err := serverInstance.ProcessTask(ctx, task, originalMessage)
+	result, err := serverInstance.GetTaskHandler().HandleTask(ctx, task, originalMessage, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
-	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
+	_, actualTask, actualMessage, _ := mockTaskHandler.HandleTaskArgsForCall(0)
 	assert.NotNil(t, actualTask)
 	assert.NotNil(t, actualMessage)
 
@@ -556,7 +492,6 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		},
 	}
 
-	// Apply defaults to the config
 	cfg, err := config.NewWithDefaults(context.Background(), baseCfg)
 	require.NoError(t, err)
 
@@ -592,7 +527,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	result, err := serverInstance.ProcessTask(ctx, task, originalUserMessage)
+	result, err := serverInstance.GetTaskHandler().HandleTask(ctx, task, originalUserMessage, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -600,7 +535,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
-	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
+	_, actualTask, actualMessage, _ := mockTaskHandler.HandleTaskArgsForCall(0)
 
 	assert.NotNil(t, actualTask)
 	assert.NotNil(t, actualMessage)
@@ -973,7 +908,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 				},
 			}
 
-			result, err := agent.ProcessTask(context.Background(), task, message)
+			result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
 
 			if tt.expectedStates[0] == types.TaskStateFailed {
 				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
@@ -1337,7 +1272,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 				},
 			}
 
-			result, err := agent.ProcessTask(context.Background(), task, message)
+			result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
 
 			if tt.expectedFinalState == types.TaskStateFailed {
 				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
@@ -1415,7 +1350,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			},
 		}
 
-		result, err := agent.ProcessTask(context.Background(), task, message)
+		result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
 
 		assert.NoError(t, err)
 		assert.Equal(t, types.TaskStateCompleted, result.Status.State)
@@ -1531,7 +1466,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			},
 		}
 
-		result, err := agent.ProcessTask(context.Background(), task, message)
+		result, err := server.NewDefaultTaskHandler(logger).HandleTask(context.Background(), task, message, agent)
 
 		assert.NoError(t, err)
 		assert.Equal(t, types.TaskStateCompleted, result.Status.State)

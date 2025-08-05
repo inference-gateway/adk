@@ -49,9 +49,11 @@ tasks:
       - task: generate:mock:a2a-server
       - task: generate:mock:a2a-server-builder
       - task: generate:mock:agent-builder
+      - task: generate:mock:openai-compatible-agent
       - task: generate:mock:task-handler
       - task: generate:mock:message-handler
       - task: generate:mock:task-manager
+      - task: generate:mock:storage
       - task: generate:mock:response-sender
       - task: generate:mock:oidc-authenticator
       - task: generate:mock:task-result-processor
@@ -95,6 +97,11 @@ tasks:
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_task_manager.go server TaskManager
 
+  generate:mock:storage:
+    desc: 'Generate mock for Storage interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_storage.go server Storage
+
   generate:mock:response-sender:
     desc: 'Generate mock for ResponseSender interface'
     cmds:
@@ -134,3 +141,8 @@ tasks:
     desc: 'Generate mock for AgentBuilder interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_agent_builder.go server AgentBuilder
+
+  generate:mock:openai-compatible-agent:
+    desc: 'Generate mock for OpenAICompatibleAgent interface'
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_openai_compatible_agent.go server OpenAICompatibleAgent

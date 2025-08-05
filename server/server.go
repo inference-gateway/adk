@@ -32,9 +32,6 @@ type A2AServer interface {
 	// Returns nil if no agent card has been explicitly set
 	GetAgentCard() *types.AgentCard
 
-	// ProcessTask processes a task with the given message
-	ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error)
-
 	// StartTaskProcessor starts the background task processor
 	StartTaskProcessor(ctx context.Context)
 
@@ -89,15 +86,10 @@ const (
 	ErrServerError    JRPCErrorCode = -32000
 )
 
-// QueuedTask represents a task in the processing queue
-type QueuedTask struct {
-	Task      *types.Task
-	RequestID interface{}
-}
-
 type A2AServerImpl struct {
 	cfg            *config.Config
 	logger         *zap.Logger
+	storage        Storage
 	taskHandler    TaskHandler
 	taskManager    TaskManager
 	messageHandler MessageHandler
@@ -107,7 +99,6 @@ type A2AServerImpl struct {
 	// Server state
 	httpServer    *http.Server
 	metricsServer *http.Server
-	taskQueue     chan *QueuedTask
 
 	// Optional processors
 	taskResultProcessor TaskResultProcessor
@@ -131,16 +122,18 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		cfg.AgentVersion = BuildAgentVersion
 	}
 
+	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
+	storage := NewInMemoryStorage(logger, maxConversationHistory)
+
 	server := &A2AServerImpl{
-		cfg:       cfg,
-		logger:    logger,
-		otel:      otel,
-		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
+		cfg:     cfg,
+		logger:  logger,
+		storage: storage,
+		otel:    otel,
 	}
 
-	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
-	server.taskManager = NewDefaultTaskManager(logger, maxConversationHistory)
-	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, cfg)
+	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
+	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, storage, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
@@ -153,8 +146,7 @@ func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.Ope
 
 	if agent != nil {
 		server.agent = agent
-		server.taskHandler = NewAgentTaskHandler(logger, agent)
-		server.messageHandler = NewDefaultMessageHandlerWithAgent(logger, server.taskManager, agent, cfg)
+		server.messageHandler = NewDefaultMessageHandlerWithAgent(logger, server.taskManager, server.storage, agent, cfg)
 	}
 
 	return server
@@ -204,14 +196,17 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 	}
 
 	server := &A2AServerImpl{
-		cfg:       cfg,
-		logger:    logger,
-		otel:      otel,
-		taskQueue: make(chan *QueuedTask, cfg.QueueConfig.MaxSize),
+		cfg:    cfg,
+		logger: logger,
+		otel:   otel,
 	}
 
-	server.taskManager = NewDefaultTaskManager(logger, cfg.AgentConfig.MaxConversationHistory)
-	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, cfg)
+	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
+	storage := NewInMemoryStorage(logger, maxConversationHistory)
+	server.storage = storage
+
+	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
+	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, storage, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.taskHandler = NewDefaultTaskHandler(logger)
 
@@ -231,7 +226,7 @@ func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
 // SetAgent sets the OpenAI-compatible agent for processing tasks
 func (s *A2AServerImpl) SetAgent(agent OpenAICompatibleAgent) {
 	s.agent = agent
-	s.messageHandler = NewDefaultMessageHandlerWithAgent(s.logger, s.taskManager, agent, s.cfg)
+	s.messageHandler = NewDefaultMessageHandlerWithAgent(s.logger, s.taskManager, s.storage, agent, s.cfg)
 }
 
 // GetAgent returns the configured OpenAI-compatible agent
@@ -460,18 +455,6 @@ func (s *A2AServerImpl) GetAgentCard() *types.AgentCard {
 	return s.customAgentCard
 }
 
-// ProcessTask processes a task with the given message
-func (s *A2AServerImpl) ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	if s.agent != nil {
-		s.logger.Info("processing task with openai-compatible agent",
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
-		return s.agent.ProcessTask(ctx, task, message)
-	}
-
-	return s.taskHandler.HandleTask(ctx, task, message)
-}
-
 // StartTaskProcessor starts the background task processing goroutine
 func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 	s.logger.Info("starting task processor")
@@ -483,8 +466,21 @@ func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 		case <-ctx.Done():
 			s.logger.Info("task processor shutting down")
 			return
-		case queuedTask := <-s.taskQueue:
-			s.processQueuedTask(ctx, queuedTask)
+		default:
+			// Try to dequeue a task from storage
+			queuedTask, err := s.storage.DequeueTask(ctx)
+			if err != nil {
+				if err == context.Canceled || err == context.DeadlineExceeded {
+					s.logger.Info("task processor shutting down due to context cancellation")
+					return
+				}
+				s.logger.Error("failed to dequeue task", zap.Error(err))
+				continue
+			}
+
+			if queuedTask != nil {
+				s.processQueuedTask(ctx, queuedTask)
+			}
 		}
 	}
 }
@@ -509,19 +505,19 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
 
-	err := s.taskManager.UpdateTask(task.ID, types.TaskStateWorking, nil)
+	err := s.taskManager.UpdateState(task.ID, types.TaskStateWorking)
 	if err != nil {
 		s.logger.Error("failed to update task state", zap.Error(err))
 		return
 	}
 
-	updatedTask, err := s.taskHandler.HandleTask(ctx, task, message)
+	updatedTask, err := s.taskHandler.HandleTask(ctx, task, message, s.agent)
 	if err != nil {
 		s.logger.Error("failed to process task",
 			zap.Error(err),
 			zap.String("task_id", task.ID),
 			zap.String("context_id", task.ContextID))
-		updateErr := s.taskManager.UpdateTask(task.ID, types.TaskStateFailed, &types.Message{
+		updateErr := s.taskManager.UpdateError(task.ID, &types.Message{
 			Kind:      "message",
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
@@ -541,8 +537,8 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		return
 	}
 
-	if err := s.taskManager.UpdateTask(updatedTask.ID, updatedTask.Status.State, nil); err != nil {
-		s.logger.Error("failed to update task status",
+	if err := s.taskManager.UpdateTask(updatedTask); err != nil {
+		s.logger.Error("failed to update task",
 			zap.Error(err),
 			zap.String("task_id", updatedTask.ID),
 			zap.String("context_id", updatedTask.ContextID))
@@ -555,7 +551,6 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 // startTaskCleanup starts the background task cleanup process
 func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
-	// Get cleanup interval from config (defaults applied in NewWithDefaults)
 	cleanupInterval := s.cfg.QueueConfig.CleanupInterval
 
 	ticker := time.NewTicker(cleanupInterval)
@@ -656,35 +651,29 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCReque
 		return
 	}
 
-	queuedTask := &QueuedTask{
-		Task:      task,
-		RequestID: req.ID,
-	}
-
-	select {
-	case s.taskQueue <- queuedTask:
-		s.logger.Info("task queued for processing",
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
-	default:
-		s.logger.Error("task queue is full")
-		err := s.taskManager.UpdateTask(task.ID, types.TaskStateFailed, &types.Message{
+	// Enqueue task using storage layer for horizontal scaling
+	err = s.storage.EnqueueTask(task, req.ID)
+	if err != nil {
+		s.logger.Error("failed to enqueue task", zap.Error(err))
+		err := s.taskManager.UpdateError(task.ID, &types.Message{
 			Kind:      "message",
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
 			Parts: []types.Part{
 				map[string]interface{}{
 					"kind": "text",
-					"text": "Task queue is full. Please try again later.",
+					"text": "Failed to queue task for processing. Please try again later.",
 				},
 			},
 		})
 		if err != nil {
-			s.logger.Error("failed to update task to failed state due to full queue",
+			s.logger.Error("failed to update task to failed state due to enqueue failure",
 				zap.Error(err),
 				zap.String("task_id", task.ID),
 				zap.String("context_id", task.ContextID))
 		}
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), "Failed to queue task")
+		return
 	}
 
 	s.responseSender.SendSuccess(c, req.ID, *task)

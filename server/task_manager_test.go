@@ -6,6 +6,7 @@ import (
 	"time"
 
 	server "github.com/inference-gateway/adk/server"
+	"github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	zap "go.uber.org/zap"
@@ -103,7 +104,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger, 20)
+			taskManager := server.NewDefaultTaskManager(logger)
 
 			task := taskManager.CreateTask(tt.contextID, tt.state, tt.message)
 
@@ -125,7 +126,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 
 func TestDefaultTaskManager_GetTask(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	message := &types.Message{
 		Kind:      "message",
@@ -140,6 +141,9 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 	}
 
 	createdTask := taskManager.CreateTask("test-context", types.TaskStateSubmitted, message)
+
+	err := taskManager.GetStorage().EnqueueTask(createdTask, "test-request-id")
+	assert.NoError(t, err)
 
 	retrievedTask, exists := taskManager.GetTask(createdTask.ID)
 	assert.True(t, exists)
@@ -157,142 +161,24 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 	assert.Nil(t, emptyTask)
 }
 
-func TestDefaultTaskManager_UpdateTask(t *testing.T) {
-	tests := []struct {
-		name        string
-		newState    types.TaskState
-		newMessage  *types.Message
-		expectError bool
-	}{
-		{
-			name:     "update to working state",
-			newState: types.TaskStateWorking,
-			newMessage: &types.Message{
-				Kind:      "message",
-				MessageID: "updated-msg-1",
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Now working on the task",
-					},
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:     "update to completed state",
-			newState: types.TaskStateCompleted,
-			newMessage: &types.Message{
-				Kind:      "message",
-				MessageID: "updated-msg-2",
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Task completed successfully",
-					},
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:     "update to failed state",
-			newState: types.TaskStateFailed,
-			newMessage: &types.Message{
-				Kind:      "message",
-				MessageID: "updated-msg-3",
-				Role:      "assistant",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Task failed with error",
-					},
-				},
-			},
-			expectError: false,
-		},
-		{
-			name:        "update with nil message",
-			newState:    types.TaskStateWorking,
-			newMessage:  nil,
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logger := zap.NewNop()
-			taskManager := server.NewDefaultTaskManager(logger, 20)
-
-			originalMessage := &types.Message{
-				Kind:      "message",
-				MessageID: "original-msg",
-				Role:      "user",
-				Parts: []types.Part{
-					map[string]interface{}{
-						"kind": "text",
-						"text": "Original message",
-					},
-				},
-			}
-
-			task := taskManager.CreateTask("test-context", types.TaskStateSubmitted, originalMessage)
-			originalTimestamp := task.Status.Timestamp
-
-			err := taskManager.UpdateTask(task.ID, tt.newState, tt.newMessage)
-
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-
-				updatedTask, exists := taskManager.GetTask(task.ID)
-				assert.True(t, exists)
-				assert.Equal(t, tt.newState, updatedTask.Status.State)
-				assert.Equal(t, tt.newMessage, updatedTask.Status.Message)
-
-				if originalTimestamp != nil && updatedTask.Status.Timestamp != nil {
-					originalTime, err := time.Parse(time.RFC3339Nano, *originalTimestamp)
-					assert.NoError(t, err)
-					updatedTime, err := time.Parse(time.RFC3339Nano, *updatedTask.Status.Timestamp)
-					assert.NoError(t, err)
-					assert.True(t, updatedTime.After(originalTime))
-				}
-			}
-		})
-	}
-}
-
-func TestDefaultTaskManager_UpdateNonExistentTask(t *testing.T) {
-	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
-
-	message := &types.Message{
-		Kind:      "message",
-		MessageID: "test-msg",
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "Update message",
-			},
-		},
-	}
-
-	err := taskManager.UpdateTask("non-existent-id", types.TaskStateCompleted, message)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "task not found")
-}
-
 func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	submittedTask := taskManager.CreateTask("context-1", types.TaskStateSubmitted, nil)
 	workingTask := taskManager.CreateTask("context-2", types.TaskStateWorking, nil)
 	completedTask := taskManager.CreateTask("context-3", types.TaskStateCompleted, nil)
 	failedTask := taskManager.CreateTask("context-4", types.TaskStateFailed, nil)
+
+	storage := taskManager.GetStorage()
+	err := storage.EnqueueTask(submittedTask, "req-1")
+	assert.NoError(t, err)
+	err = storage.EnqueueTask(workingTask, "req-2")
+	assert.NoError(t, err)
+	err = storage.EnqueueTask(completedTask, "req-3")
+	assert.NoError(t, err)
+	err = storage.EnqueueTask(failedTask, "req-4")
+	assert.NoError(t, err)
 
 	_, exists := taskManager.GetTask(submittedTask.ID)
 	assert.True(t, exists)
@@ -303,12 +189,18 @@ func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 	_, exists = taskManager.GetTask(failedTask.ID)
 	assert.True(t, exists)
 
+	err = taskManager.UpdateTask(completedTask)
+	assert.NoError(t, err)
+	err = taskManager.UpdateTask(failedTask)
+	assert.NoError(t, err)
+
 	taskManager.CleanupCompletedTasks()
 
 	_, exists = taskManager.GetTask(submittedTask.ID)
 	assert.True(t, exists, "submitted task should remain")
 	_, exists = taskManager.GetTask(workingTask.ID)
 	assert.True(t, exists, "working task should remain")
+
 	_, exists = taskManager.GetTask(completedTask.ID)
 	assert.False(t, exists, "completed task should be cleaned up")
 	_, exists = taskManager.GetTask(failedTask.ID)
@@ -317,7 +209,7 @@ func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 
 func TestDefaultTaskManager_ConcurrentAccess(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	numGoroutines := 10
 	tasksChan := make(chan *types.Task, numGoroutines)
@@ -352,21 +244,21 @@ func TestDefaultTaskManager_ConcurrentAccess(t *testing.T) {
 
 func TestNewDefaultTaskManager(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	assert.NotNil(t, taskManager)
 }
 
 func TestNewDefaultTaskManager_WithNilLogger(t *testing.T) {
 	assert.NotPanics(t, func() {
-		taskManager := server.NewDefaultTaskManager(nil, 20)
+		taskManager := server.NewDefaultTaskManager(nil)
 		assert.NotNil(t, taskManager)
 	})
 }
 
 func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-conversation-context"
 
@@ -400,14 +292,16 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	err := taskManager.UpdateTask(task1.ID, types.TaskStateCompleted, assistantResponse1)
+	task1.History = append(task1.History, *assistantResponse1)
+
+	task1.Status.State = types.TaskStateCompleted
+	err := taskManager.UpdateTask(task1)
 	assert.NoError(t, err)
 
-	updatedTask1, exists := taskManager.GetTask(task1.ID)
-	assert.True(t, exists)
-	assert.Len(t, updatedTask1.History, 2)
-	assert.Equal(t, *firstMessage, updatedTask1.History[0])
-	assert.Equal(t, *assistantResponse1, updatedTask1.History[1])
+	completedHistory := taskManager.GetConversationHistory(contextID)
+	assert.Len(t, completedHistory, 2)
+	assert.Equal(t, *firstMessage, completedHistory[0])
+	assert.Equal(t, *assistantResponse1, completedHistory[1])
 
 	secondMessage := &types.Message{
 		Kind:      "message",
@@ -421,7 +315,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	task2 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, secondMessage)
+	task2 := taskManager.CreateTaskWithHistory(contextID, types.TaskStateSubmitted, secondMessage, completedHistory)
 	assert.NotNil(t, task2)
 	assert.Equal(t, contextID, task2.ContextID)
 	assert.NotEqual(t, task1.ID, task2.ID)
@@ -443,16 +337,18 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		},
 	}
 
-	err = taskManager.UpdateTask(task2.ID, types.TaskStateCompleted, assistantResponse2)
+	task2.History = append(task2.History, *assistantResponse2)
+
+	task2.Status.State = types.TaskStateCompleted
+	err = taskManager.UpdateTask(task2)
 	assert.NoError(t, err)
 
-	updatedTask2, exists := taskManager.GetTask(task2.ID)
-	assert.True(t, exists)
-	assert.Len(t, updatedTask2.History, 4)
-	assert.Equal(t, *firstMessage, updatedTask2.History[0])
-	assert.Equal(t, *assistantResponse1, updatedTask2.History[1])
-	assert.Equal(t, *secondMessage, updatedTask2.History[2])
-	assert.Equal(t, *assistantResponse2, updatedTask2.History[3])
+	finalHistory := taskManager.GetConversationHistory(contextID)
+	assert.Len(t, finalHistory, 4)
+	assert.Equal(t, *firstMessage, finalHistory[0])
+	assert.Equal(t, *assistantResponse1, finalHistory[1])
+	assert.Equal(t, *secondMessage, finalHistory[2])
+	assert.Equal(t, *assistantResponse2, finalHistory[3])
 
 	thirdMessage := &types.Message{
 		Kind:      "message",
@@ -470,17 +366,13 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.NotNil(t, task3)
 	assert.Equal(t, contextID, task3.ContextID)
 
-	assert.Len(t, task3.History, 5)
-	assert.Equal(t, *firstMessage, task3.History[0])
-	assert.Equal(t, *assistantResponse1, task3.History[1])
-	assert.Equal(t, *secondMessage, task3.History[2])
-	assert.Equal(t, *assistantResponse2, task3.History[3])
-	assert.Equal(t, *thirdMessage, task3.History[4])
+	assert.Len(t, task3.History, 1)
+	assert.Equal(t, *thirdMessage, task3.History[0])
 }
 
 func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID1 := "context-1"
 	contextID2 := "context-2"
@@ -530,7 +422,15 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 		},
 	}
 
-	err := taskManager.UpdateTask(task1.ID, types.TaskStateCompleted, response1)
+	task1.History = append(task1.History, *response1)
+
+	task1.Status.State = types.TaskStateCompleted
+	var err error
+	err = taskManager.UpdateTask(task1)
+	assert.NoError(t, err)
+
+	task2.Status.State = types.TaskStateCompleted
+	err = taskManager.UpdateTask(task2)
 	assert.NoError(t, err)
 
 	message3 := &types.Message{
@@ -547,10 +447,8 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 
 	task3 := taskManager.CreateTask(contextID1, types.TaskStateSubmitted, message3)
 
-	assert.Len(t, task3.History, 3)
-	assert.Equal(t, *message1, task3.History[0])
-	assert.Equal(t, *response1, task3.History[1])
-	assert.Equal(t, *message3, task3.History[2])
+	assert.Len(t, task3.History, 1)
+	assert.Equal(t, *message3, task3.History[0])
 
 	message4 := &types.Message{
 		Kind:      "message",
@@ -566,14 +464,22 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 
 	task4 := taskManager.CreateTask(contextID2, types.TaskStateSubmitted, message4)
 
-	assert.Len(t, task4.History, 2)
-	assert.Equal(t, *message2, task4.History[0])
-	assert.Equal(t, *message4, task4.History[1])
+	assert.Len(t, task4.History, 1)
+	assert.Equal(t, *message4, task4.History[0])
+
+	history1 := taskManager.GetConversationHistory(contextID1)
+	assert.Len(t, history1, 2)
+	assert.Equal(t, *message1, history1[0])
+	assert.Equal(t, *response1, history1[1])
+
+	history2 := taskManager.GetConversationHistory(contextID2)
+	assert.Len(t, history2, 1)
+	assert.Equal(t, *message2, history2[0])
 }
 
 func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
 
@@ -606,7 +512,10 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 		},
 	}
 
-	err := taskManager.UpdateTask(task.ID, types.TaskStateCompleted, response)
+	task.History = append(task.History, *response)
+
+	task.Status.State = types.TaskStateCompleted
+	err := taskManager.UpdateTask(task)
 	assert.NoError(t, err)
 
 	history = taskManager.GetConversationHistory(contextID)
@@ -628,7 +537,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 
 func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 20)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
 
@@ -675,35 +584,70 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 	assert.Equal(t, "First message", freshHistory[0].Parts[0].(map[string]interface{})["text"])
 }
 
-func TestDefaultTaskManager_ConversationHistoryLimit(t *testing.T) {
+func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 	logger := zap.NewNop()
-	maxHistory := 3
-	taskManager := server.NewDefaultTaskManager(logger, maxHistory)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
 
-	messages := []types.Message{
-		{Kind: "message", MessageID: "msg-1", Role: "user", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Message 1"}}},
-		{Kind: "message", MessageID: "msg-2", Role: "assistant", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Response 1"}}},
-		{Kind: "message", MessageID: "msg-3", Role: "user", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Message 2"}}},
-		{Kind: "message", MessageID: "msg-4", Role: "assistant", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Response 2"}}},
-		{Kind: "message", MessageID: "msg-5", Role: "user", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "Message 3"}}},
+	for i := 0; i < 5; i++ {
+		message := &types.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("completed-msg-%d", i),
+			Role:      "user",
+			Parts:     []types.Part{map[string]interface{}{"kind": "text", "text": fmt.Sprintf("Completed message %d", i)}},
+		}
+		task := taskManager.CreateTask(contextID, types.TaskStateCompleted, message)
+		assert.NotNil(t, task)
 	}
 
-	taskManager.UpdateConversationHistory(contextID, messages)
+	for i := 0; i < 3; i++ {
+		message := &types.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("failed-msg-%d", i),
+			Role:      "user",
+			Parts:     []types.Part{map[string]interface{}{"kind": "text", "text": fmt.Sprintf("Failed message %d", i)}},
+		}
+		task := taskManager.CreateTask(contextID, types.TaskStateFailed, message)
+		assert.NotNil(t, task)
+	}
 
-	history := taskManager.GetConversationHistory(contextID)
-	assert.Len(t, history, maxHistory)
+	retentionConfig := config.TaskRetentionConfig{
+		MaxCompletedTasks: 2,
+		MaxFailedTasks:    1,
+		CleanupInterval:   0,
+	}
+	taskManager.SetRetentionConfig(retentionConfig)
 
-	assert.Equal(t, "msg-3", history[0].MessageID)
-	assert.Equal(t, "msg-4", history[1].MessageID)
-	assert.Equal(t, "msg-5", history[2].MessageID)
+	storage := taskManager.GetStorage()
+	removedCount := storage.CleanupTasksWithRetention(retentionConfig.MaxCompletedTasks, retentionConfig.MaxFailedTasks)
+
+	assert.Equal(t, 5, removedCount)
+
+	allTasks, err := taskManager.ListTasks(types.TaskListParams{
+		ContextID: &contextID,
+		Limit:     100,
+	})
+	assert.NoError(t, err)
+
+	completedCount := 0
+	failedCount := 0
+	for _, task := range allTasks.Tasks {
+		switch task.Status.State {
+		case types.TaskStateCompleted:
+			completedCount++
+		case types.TaskStateFailed:
+			failedCount++
+		}
+	}
+
+	assert.Equal(t, 2, completedCount, "should keep only 2 completed tasks")
+	assert.Equal(t, 1, failedCount, "should keep only 1 failed task")
 }
 
 func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) {
 	logger := zap.NewNop()
-	maxHistory := 2
-	taskManager := server.NewDefaultTaskManager(logger, maxHistory)
+	taskManager := server.NewDefaultTaskManager(logger)
 
 	contextID := "test-context"
 
@@ -720,18 +664,8 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	}
 	task1 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message1)
 
-	response1 := &types.Message{
-		Kind:      "message",
-		MessageID: "response-1",
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "First response",
-			},
-		},
-	}
-	err := taskManager.UpdateTask(task1.ID, types.TaskStateCompleted, response1)
+	task1.Status.State = types.TaskStateCompleted
+	err := taskManager.UpdateTask(task1)
 	assert.NoError(t, err)
 
 	message2 := &types.Message{
@@ -745,7 +679,7 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 			},
 		},
 	}
-	_ = taskManager.CreateTask(contextID, types.TaskStateSubmitted, message2)
+	task2 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message2)
 
 	message3 := &types.Message{
 		Kind:      "message",
@@ -760,33 +694,377 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	}
 	task3 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message3)
 
-	assert.LessOrEqual(t, len(task3.History), maxHistory)
+	assert.Len(t, task1.History, 1)
+	assert.Equal(t, "msg-1", task1.History[0].MessageID)
 
-	assert.Equal(t, "msg-3", task3.History[len(task3.History)-1].MessageID)
+	assert.Len(t, task2.History, 1)
+	assert.Equal(t, "msg-2", task2.History[0].MessageID)
+
+	assert.Len(t, task3.History, 1)
+	assert.Equal(t, "msg-3", task3.History[0].MessageID)
 }
 
-func TestDefaultTaskManager_ConversationHistoryLimitZeroDirectInstantiation(t *testing.T) {
+func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger, 0)
+	taskManager := server.NewDefaultTaskManager(logger)
 
-	contextID := "test-context"
-	messages := make([]types.Message, 5)
-	for i := 0; i < 5; i++ {
-		messages[i] = types.Message{
+	tests := []struct {
+		name          string
+		initialState  types.TaskState
+		shouldSucceed bool
+		errorMsg      string
+	}{
+		{
+			name:          "can cancel submitted task",
+			initialState:  types.TaskStateSubmitted,
+			shouldSucceed: true,
+		},
+		{
+			name:          "can cancel working task",
+			initialState:  types.TaskStateWorking,
+			shouldSucceed: true,
+		},
+		{
+			name:          "can cancel input-required task",
+			initialState:  types.TaskStateInputRequired,
+			shouldSucceed: true,
+		},
+		{
+			name:          "can cancel auth-required task",
+			initialState:  types.TaskStateAuthRequired,
+			shouldSucceed: true,
+		},
+		{
+			name:          "can cancel unknown task",
+			initialState:  types.TaskStateUnknown,
+			shouldSucceed: true,
+		},
+		{
+			name:          "cannot cancel completed task",
+			initialState:  types.TaskStateCompleted,
+			shouldSucceed: false,
+			errorMsg:      "cannot be canceled: current state is completed",
+		},
+		{
+			name:          "cannot cancel failed task",
+			initialState:  types.TaskStateFailed,
+			shouldSucceed: false,
+			errorMsg:      "cannot be canceled: current state is failed",
+		},
+		{
+			name:          "cannot cancel already canceled task",
+			initialState:  types.TaskStateCanceled,
+			shouldSucceed: false,
+			errorMsg:      "cannot be canceled: current state is canceled",
+		},
+		{
+			name:          "cannot cancel rejected task",
+			initialState:  types.TaskStateRejected,
+			shouldSucceed: false,
+			errorMsg:      "cannot be canceled: current state is rejected",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := taskManager.CreateTask("test-context", tt.initialState, &types.Message{
+				Kind:      "message",
+				MessageID: "test-msg",
+				Role:      "user",
+				Parts: []types.Part{
+					map[string]interface{}{
+						"kind": "text",
+						"text": "Test message",
+					},
+				},
+			})
+
+			err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+			assert.NoError(t, err)
+
+			err = taskManager.CancelTask(task.ID)
+
+			if tt.shouldSucceed {
+				assert.NoError(t, err)
+
+				retrievedTask, exists := taskManager.GetTask(task.ID)
+				assert.True(t, exists)
+				assert.Equal(t, types.TaskStateCanceled, retrievedTask.Status.State)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+
+				retrievedTask, exists := taskManager.GetTask(task.ID)
+				assert.True(t, exists)
+				assert.Equal(t, tt.initialState, retrievedTask.Status.State)
+			}
+		})
+	}
+}
+
+func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger)
+
+	t.Run("pause existing task successfully", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
 			Kind:      "message",
-			MessageID: fmt.Sprintf("msg-%d", i),
+			MessageID: "initial-msg",
 			Role:      "user",
 			Parts: []types.Part{
 				map[string]interface{}{
 					"kind": "text",
-					"text": fmt.Sprintf("Message %d", i),
+					"text": "Initial message",
+				},
+			},
+		})
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		assert.NoError(t, err)
+
+		pauseMessage := &types.Message{
+			Kind:      "message",
+			MessageID: "pause-msg",
+			Role:      "assistant",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "Please provide more information",
 				},
 			},
 		}
+
+		err = taskManager.PauseTaskForInput(task.ID, pauseMessage)
+		assert.NoError(t, err)
+
+		retrievedTask, exists := taskManager.GetTask(task.ID)
+		assert.True(t, exists)
+		assert.Equal(t, types.TaskStateInputRequired, retrievedTask.Status.State)
+		assert.Equal(t, pauseMessage, retrievedTask.Status.Message)
+
+		assert.Len(t, retrievedTask.History, 2)
+		assert.Equal(t, pauseMessage.MessageID, retrievedTask.History[1].MessageID)
+	})
+
+	t.Run("pause with nil message", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-2")
+		assert.NoError(t, err)
+
+		err = taskManager.PauseTaskForInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		retrievedTask, exists := taskManager.GetTask(task.ID)
+		assert.True(t, exists)
+		assert.Equal(t, types.TaskStateInputRequired, retrievedTask.Status.State)
+		assert.Nil(t, retrievedTask.Status.Message)
+	})
+
+	t.Run("pause non-existent task", func(t *testing.T) {
+		err := taskManager.PauseTaskForInput("non-existent-id", nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "task not found")
+	})
+}
+
+func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger)
+
+	t.Run("resume paused task successfully", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		assert.NoError(t, err)
+
+		err = taskManager.PauseTaskForInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		resumeMessage := &types.Message{
+			Kind:      "message",
+			MessageID: "resume-msg",
+			Role:      "user",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": "Here is the additional information",
+				},
+			},
+		}
+
+		err = taskManager.ResumeTaskWithInput(task.ID, resumeMessage)
+		assert.NoError(t, err)
+
+		retrievedTask, exists := taskManager.GetTask(task.ID)
+		assert.True(t, exists)
+		assert.Equal(t, types.TaskStateWorking, retrievedTask.Status.State)
+		assert.Equal(t, resumeMessage, retrievedTask.Status.Message)
+
+		assert.Len(t, retrievedTask.History, 1)
+		assert.Equal(t, resumeMessage.MessageID, retrievedTask.History[0].MessageID)
+	})
+
+	t.Run("resume task not in input-required state", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-2")
+		assert.NoError(t, err)
+
+		err = taskManager.ResumeTaskWithInput(task.ID, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not in input-required state")
+		assert.Contains(t, err.Error(), "current state: working")
+	})
+
+	t.Run("resume non-existent task", func(t *testing.T) {
+		err := taskManager.ResumeTaskWithInput("non-existent-id", nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "task not found")
+	})
+}
+
+func TestDefaultTaskManager_IsTaskPaused(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger)
+
+	t.Run("check paused task", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		assert.NoError(t, err)
+
+		isPaused, err := taskManager.IsTaskPaused(task.ID)
+		assert.NoError(t, err)
+		assert.False(t, isPaused)
+
+		err = taskManager.PauseTaskForInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		isPaused, err = taskManager.IsTaskPaused(task.ID)
+		assert.NoError(t, err)
+		assert.True(t, isPaused)
+	})
+
+	t.Run("check non-existent task", func(t *testing.T) {
+		isPaused, err := taskManager.IsTaskPaused("non-existent-id")
+		assert.Error(t, err)
+		assert.False(t, isPaused)
+		assert.Contains(t, err.Error(), "task not found")
+	})
+}
+
+func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger)
+
+	t.Run("polling returns when task reaches input-required state", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		assert.NoError(t, err)
+
+		resultChan := make(chan *types.Task, 1)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			result, err := taskManager.PollTaskStatus(task.ID, 10*time.Millisecond, 1*time.Second)
+			if err != nil {
+				errorChan <- err
+			} else {
+				resultChan <- result
+			}
+		}()
+
+		time.Sleep(50 * time.Millisecond)
+
+		err = taskManager.PauseTaskForInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		select {
+		case result := <-resultChan:
+			assert.Equal(t, types.TaskStateInputRequired, result.Status.State)
+		case err := <-errorChan:
+			t.Fatalf("Polling failed with error: %v", err)
+		case <-time.After(2 * time.Second):
+			t.Fatal("Polling did not complete within timeout")
+		}
+	})
+}
+
+func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger)
+
+	initialMessage := &types.Message{
+		Kind:      "message",
+		MessageID: "initial-msg",
+		Role:      "user",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "Process this request",
+			},
+		},
 	}
+	task := taskManager.CreateTask("test-context", types.TaskStateWorking, initialMessage)
 
-	taskManager.UpdateConversationHistory(contextID, messages)
-	history := taskManager.GetConversationHistory(contextID)
+	err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+	assert.NoError(t, err)
 
-	assert.Len(t, history, 0)
+	pauseMessage := &types.Message{
+		Kind:      "message",
+		MessageID: "pause-msg",
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I need more information. What is your preference?",
+			},
+		},
+	}
+	err = taskManager.PauseTaskForInput(task.ID, pauseMessage)
+	assert.NoError(t, err)
+
+	isPaused, err := taskManager.IsTaskPaused(task.ID)
+	assert.NoError(t, err)
+	assert.True(t, isPaused)
+
+	cancelErr := taskManager.CancelTask(task.ID)
+	assert.NoError(t, cancelErr)
+
+	task2 := taskManager.CreateTask("test-context-2", types.TaskStateWorking, initialMessage)
+
+	err = taskManager.GetStorage().EnqueueTask(task2, "test-request-id-2")
+	assert.NoError(t, err)
+
+	err = taskManager.PauseTaskForInput(task2.ID, pauseMessage)
+	assert.NoError(t, err)
+
+	resumeMessage := &types.Message{
+		Kind:      "message",
+		MessageID: "resume-msg",
+		Role:      "user",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I prefer option A",
+			},
+		},
+	}
+	err = taskManager.ResumeTaskWithInput(task2.ID, resumeMessage)
+	assert.NoError(t, err)
+
+	isPaused, err = taskManager.IsTaskPaused(task2.ID)
+	assert.NoError(t, err)
+	assert.False(t, isPaused)
+
+	retrievedTask, exists := taskManager.GetTask(task2.ID)
+	assert.True(t, exists)
+	assert.Equal(t, types.TaskStateWorking, retrievedTask.Status.State)
+	assert.Len(t, retrievedTask.History, 3)
+
+	assert.Equal(t, "initial-msg", retrievedTask.History[0].MessageID)
+	assert.Equal(t, "pause-msg", retrievedTask.History[1].MessageID)
+	assert.Equal(t, "resume-msg", retrievedTask.History[2].MessageID)
 }

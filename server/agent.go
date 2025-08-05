@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	config "github.com/inference-gateway/adk/server/config"
 	utils "github.com/inference-gateway/adk/server/utils"
@@ -12,23 +13,33 @@ import (
 	zap "go.uber.org/zap"
 )
 
-// OpenAICompatibleAgent represents an agent that can interact with OpenAI-compatible LLM APIs and execute tools
-type OpenAICompatibleAgent interface {
-	// ProcessTask processes a task with optional tool calling capabilities
-	ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error)
-
-	// GetLLMClient returns the LLM client for external use (e.g., streaming)
-	GetLLMClient() LLMClient
-
-	// GetToolBox returns the tool box for external use (e.g., streaming)
-	GetToolBox() ToolBox
-
-	// GetSystemPrompt returns the system prompt configured for the agent
-	GetSystemPrompt() string
+// AgentResponse contains the response and any additional messages generated during agent execution
+type AgentResponse struct {
+	// Response is the main assistant response message
+	Response *types.Message
+	// AdditionalMessages contains any tool calls, tool responses, or intermediate messages
+	// that should be added to the conversation history
+	AdditionalMessages []types.Message
 }
 
-// DefaultOpenAICompatibleAgent is the default implementation of OpenAICompatibleAgent
-type DefaultOpenAICompatibleAgent struct {
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 . OpenAICompatibleAgent
+
+// OpenAICompatibleAgent represents an agent that can interact with OpenAI-compatible LLM APIs and execute tools
+// The agent is stateless and does not maintain conversation history
+// Tools are configured during agent creation via the toolbox
+type OpenAICompatibleAgent interface {
+	// Run processes a conversation and returns the assistant's response along with any additional messages
+	// Uses the agent's configured toolbox for tool execution
+	Run(ctx context.Context, messages []types.Message) (*AgentResponse, error)
+
+	// RunWithStream processes a conversation and returns a streaming response
+	// Uses the agent's configured toolbox for tool execution
+	RunWithStream(ctx context.Context, messages []types.Message) (<-chan *types.Message, error)
+}
+
+// OpenAICompatibleAgentImpl is the implementation of OpenAICompatibleAgent
+// This implementation is stateless and does not maintain conversation history
+type OpenAICompatibleAgentImpl struct {
 	logger    *zap.Logger
 	llmClient LLMClient
 	toolBox   ToolBox
@@ -36,22 +47,22 @@ type DefaultOpenAICompatibleAgent struct {
 	config    *config.AgentConfig
 }
 
-// NewDefaultOpenAICompatibleAgent creates a new DefaultOpenAICompatibleAgent
-func NewDefaultOpenAICompatibleAgent(logger *zap.Logger) *DefaultOpenAICompatibleAgent {
+// NewOpenAICompatibleAgent creates a new OpenAICompatibleAgentImpl
+func NewOpenAICompatibleAgent(logger *zap.Logger) *OpenAICompatibleAgentImpl {
 	defaultConfig := &config.AgentConfig{
 		MaxChatCompletionIterations: 10,
 		SystemPrompt:                "You are a helpful AI assistant.",
 	}
-	return &DefaultOpenAICompatibleAgent{
+	return &OpenAICompatibleAgentImpl{
 		logger:    logger,
 		converter: utils.NewOptimizedMessageConverter(logger),
 		config:    defaultConfig,
 	}
 }
 
-// NewDefaultOpenAICompatibleAgentWithConfig creates a new DefaultOpenAICompatibleAgent with configuration
-func NewDefaultOpenAICompatibleAgentWithConfig(logger *zap.Logger, cfg *config.AgentConfig) *DefaultOpenAICompatibleAgent {
-	return &DefaultOpenAICompatibleAgent{
+// NewOpenAICompatibleAgentWithConfig creates a new OpenAICompatibleAgentImpl with configuration
+func NewOpenAICompatibleAgentWithConfig(logger *zap.Logger, cfg *config.AgentConfig) *OpenAICompatibleAgentImpl {
+	return &OpenAICompatibleAgentImpl{
 		logger:    logger,
 		converter: utils.NewOptimizedMessageConverter(logger),
 		config:    cfg,
@@ -59,332 +70,562 @@ func NewDefaultOpenAICompatibleAgentWithConfig(logger *zap.Logger, cfg *config.A
 }
 
 // NewOpenAICompatibleAgentWithLLM creates a new agent with an LLM client
-func NewOpenAICompatibleAgentWithLLM(logger *zap.Logger, llmClient LLMClient) *DefaultOpenAICompatibleAgent {
-	agent := NewDefaultOpenAICompatibleAgent(logger)
+func NewOpenAICompatibleAgentWithLLM(logger *zap.Logger, llmClient LLMClient) *OpenAICompatibleAgentImpl {
+	agent := NewOpenAICompatibleAgent(logger)
 	agent.llmClient = llmClient
 	return agent
 }
 
-// NewOpenAICompatibleAgentWithConfig creates a new agent with LLM configuration
-func NewOpenAICompatibleAgentWithConfig(logger *zap.Logger, config *config.AgentConfig) (*DefaultOpenAICompatibleAgent, error) {
+// NewOpenAICompatibleAgentWithLLMConfig creates a new agent with LLM configuration
+func NewOpenAICompatibleAgentWithLLMConfig(logger *zap.Logger, config *config.AgentConfig) (*OpenAICompatibleAgentImpl, error) {
 	client, err := NewOpenAICompatibleLLMClient(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create llm client: %w", err)
 	}
 
-	agent := NewDefaultOpenAICompatibleAgentWithConfig(logger, config)
+	agent := NewOpenAICompatibleAgentWithConfig(logger, config)
 	agent.llmClient = client
 	return agent, nil
 }
 
-// ProcessTask processes a task with optional tool calling capabilities
-func (a *DefaultOpenAICompatibleAgent) ProcessTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+// SetLLMClient sets the LLM client for the agent
+func (a *OpenAICompatibleAgentImpl) SetLLMClient(client LLMClient) {
+	a.llmClient = client
+}
+
+// SetToolBox sets the tool box for the agent
+func (a *OpenAICompatibleAgentImpl) SetToolBox(toolBox ToolBox) {
+	a.toolBox = toolBox
+}
+
+// Run processes a conversation and returns the assistant's response along with additional messages
+func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Message) (*AgentResponse, error) {
 	if a.llmClient == nil {
-		return a.processWithoutLLM(task, message), nil
+		return nil, fmt.Errorf("no LLM client configured for agent")
 	}
 
-	messages := make([]types.Message, 0)
-
-	if a.config.SystemPrompt != "" {
-		systemMessage := types.Message{
-			Kind:      "message",
-			MessageID: "system-prompt",
-			Role:      "system",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": a.config.SystemPrompt,
-				},
-			},
-		}
-		messages = append(messages, systemMessage)
-	}
-
-	messages = append(messages, task.History...)
-
-	messages = append(messages, *message)
-
-	if a.toolBox != nil && len(a.toolBox.GetTools()) > 0 {
-		return a.processWithToolCalling(ctx, task, messages)
-	}
-
-	return a.processWithoutToolCalling(ctx, task, messages)
-}
-
-// processWithoutToolCalling processes the task without tool calling
-func (a *DefaultOpenAICompatibleAgent) processWithoutToolCalling(ctx context.Context, task *types.Task, messages []types.Message) (*types.Task, error) {
-	sdkMessages, err := a.converter.ConvertToSDK(messages)
+	conversation, err := a.converter.ConvertToSDK(messages)
 	if err != nil {
-		a.logger.Error("failed to convert A2A messages to SDK format", zap.Error(err))
-		task.Status.State = types.TaskStateFailed
-		errorMessage := &types.Message{
-			Kind:      "message",
-			MessageID: "error-" + task.ID,
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": fmt.Sprintf("Message conversion failed: %v", err),
-				},
-			},
+		return nil, fmt.Errorf("failed to convert messages to SDK format: %w", err)
+	}
+
+	if a.config != nil && a.config.SystemPrompt != "" {
+		systemMessage := sdk.Message{
+			Role:    sdk.System,
+			Content: a.config.SystemPrompt,
 		}
-		task.Status.Message = errorMessage
-		return task, nil
+		conversation = append([]sdk.Message{systemMessage}, conversation...)
 	}
 
-	result, err := a.llmClient.CreateChatCompletion(ctx, sdkMessages)
-	if err != nil {
-		a.logger.Error("llm completion failed",
-			zap.Error(err),
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
-		task.Status.State = types.TaskStateFailed
-		errorMessage := &types.Message{
-			Kind:      "message",
-			MessageID: "error-" + task.ID,
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": fmt.Sprintf("LLM request failed: %v", err),
-				},
-			},
-		}
-		task.Status.Message = errorMessage
-		return task, nil
+	maxIterations := 10
+	if a.config != nil && a.config.MaxChatCompletionIterations > 0 {
+		maxIterations = a.config.MaxChatCompletionIterations
 	}
 
-	if len(result.Choices) == 0 {
-		a.logger.Error("no choices returned from llm",
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
-		task.Status.State = types.TaskStateFailed
-		errorMessage := &types.Message{
-			Kind:      "message",
-			MessageID: "error-" + task.ID,
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "No response received from LLM",
-				},
-			},
-		}
-		task.Status.Message = errorMessage
-		return task, nil
+	var tools []sdk.ChatCompletionTool
+	if a.toolBox != nil {
+		tools = a.toolBox.GetTools()
 	}
 
-	sdkMessage := sdk.Message{
-		Role:    result.Choices[0].Message.Role,
-		Content: result.Choices[0].Message.Content,
-	}
+	var additionalMessages []types.Message
 
-	response, err := a.converter.ConvertFromSDK(sdkMessage)
-	if err != nil {
-		a.logger.Error("failed to convert SDK response to A2A format", zap.Error(err))
-		task.Status.State = types.TaskStateFailed
-		errorMessage := &types.Message{
-			Kind:      "message",
-			MessageID: "error-" + task.ID,
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": fmt.Sprintf("Response conversion failed: %v", err),
-				},
-			},
-		}
-		task.Status.Message = errorMessage
-		return task, nil
-	}
-
-	response.MessageID = "response-" + task.ID
-
-	task.History = append(task.History, *response)
-	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = response
-
-	a.logger.Info("task completed with llm response",
-		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
-	return task, nil
-}
-
-// processWithToolCalling processes the task with tool calling capability using iterative approach
-func (a *DefaultOpenAICompatibleAgent) processWithToolCalling(ctx context.Context, task *types.Task, messages []types.Message) (*types.Task, error) {
-	tools := a.toolBox.GetTools()
-	currentMessages := messages
-	iteration := 0
-
-	for iteration < a.config.MaxChatCompletionIterations {
-		iteration++
-		a.logger.Debug("starting chat completion iteration",
-			zap.Int("iteration", iteration),
-			zap.Int("max_iterations", a.config.MaxChatCompletionIterations))
-
-		sdkMessages, err := a.converter.ConvertToSDK(currentMessages)
+	for iteration := 0; iteration < maxIterations; iteration++ {
+		response, err := a.llmClient.CreateChatCompletion(ctx, conversation, tools...)
 		if err != nil {
-			a.logger.Error("failed to convert A2A messages to SDK format", zap.Error(err))
-			return a.createErrorTask(task, fmt.Sprintf("Message conversion failed: %v", err)), nil
+			return nil, fmt.Errorf("failed to create chat completion: %w", err)
 		}
 
-		result, err := a.llmClient.CreateChatCompletion(ctx, sdkMessages, tools...)
+		if len(response.Choices) == 0 {
+			return nil, fmt.Errorf("no choices returned from LLM")
+		}
+
+		assistantMessage := response.Choices[0].Message
+
+		conversation = append(conversation, assistantMessage)
+
+		assistantA2A, err := a.converter.ConvertFromSDK(assistantMessage)
 		if err != nil {
-			a.logger.Error("llm completion failed",
-				zap.Error(err),
-				zap.String("task_id", task.ID),
-				zap.String("context_id", task.ContextID),
-				zap.Int("iteration", iteration))
-			return a.createErrorTask(task, fmt.Sprintf("LLM request failed: %v", err)), nil
+			return nil, fmt.Errorf("failed to convert assistant message to A2A format: %w", err)
 		}
 
-		if len(result.Choices) == 0 {
-			a.logger.Error("no choices in llm response",
-				zap.String("task_id", task.ID),
-				zap.String("context_id", task.ContextID),
-				zap.Int("iteration", iteration))
-			return a.createErrorTask(task, "No response received from LLM"), nil
+		if assistantMessage.ToolCalls == nil || len(*assistantMessage.ToolCalls) == 0 || a.toolBox == nil {
+			return &AgentResponse{
+				Response:           assistantA2A,
+				AdditionalMessages: additionalMessages,
+			}, nil
 		}
 
-		choice := result.Choices[0]
+		additionalMessages = append(additionalMessages, *assistantA2A)
 
-		if choice.Message.ToolCalls != nil && len(*choice.Message.ToolCalls) > 0 {
-			a.logger.Info("processing tool calls",
-				zap.Int("count", len(*choice.Message.ToolCalls)),
-				zap.Int("iteration", iteration))
+		for _, toolCall := range *assistantMessage.ToolCalls {
+			var args map[string]interface{}
+			var result string
+			var toolErr error
 
-			assistantMessage := &types.Message{
+			err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args)
+			if err != nil {
+				a.logger.Error("failed to parse tool arguments", zap.String("tool", toolCall.Function.Name), zap.Error(err))
+				return &AgentResponse{
+					Response: &types.Message{
+						Kind:      "message",
+						MessageID: fmt.Sprintf("tool-error-%s", toolCall.Id),
+						Role:      "tool",
+						Parts: []types.Part{
+							map[string]interface{}{
+								"kind": "text",
+								"text": fmt.Sprintf("Error parsing tool arguments: %s", err.Error()),
+							},
+						},
+					},
+				}, err
+			}
+
+			if toolCall.Function.Name == "input_required" {
+				a.logger.Debug("input_required tool called",
+					zap.String("tool_call_id", toolCall.Id),
+					zap.String("message", toolCall.Function.Arguments))
+				inputMessage := args["message"].(string)
+				return &AgentResponse{
+					Response: &types.Message{
+						Kind:      "input_required",
+						MessageID: fmt.Sprintf("input-required-%s", toolCall.Id),
+						Role:      "assistant",
+						Parts: []types.Part{
+							map[string]interface{}{
+								"kind": "text",
+								"text": inputMessage,
+							},
+						},
+					},
+				}, nil
+			}
+
+			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			if toolErr != nil {
+				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
+				result = fmt.Sprintf("Tool execution failed: %s", toolErr.Error())
+			}
+
+			toolMessage := sdk.Message{
+				Role:       sdk.Tool,
+				Content:    result,
+				ToolCallId: &toolCall.Id,
+			}
+			conversation = append(conversation, toolMessage)
+
+			toolA2A := &types.Message{
 				Kind:      "message",
-				MessageID: fmt.Sprintf("assistant-%s-%d", task.ID, iteration),
+				MessageID: fmt.Sprintf("tool-%s-%d", toolCall.Function.Name, time.Now().UnixNano()),
+				Role:      "tool",
+				Parts: []types.Part{
+					map[string]interface{}{
+						"kind": "data",
+						"data": map[string]interface{}{
+							"tool_call_id": toolCall.Id,
+							"tool_name":    toolCall.Function.Name,
+							"result":       result,
+							"error":        toolErr != nil,
+						},
+					},
+				},
+			}
+			additionalMessages = append(additionalMessages, *toolA2A)
+		}
+	}
+
+	return nil, fmt.Errorf("maximum iterations (%d) reached without final response", maxIterations)
+}
+
+// RunWithStream processes a conversation and returns a streaming response with iterative tool calling support
+func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages []types.Message) (<-chan *types.Message, error) {
+	if a.llmClient == nil {
+		return nil, fmt.Errorf("no LLM client configured for agent")
+	}
+
+	var tools []sdk.ChatCompletionTool
+	if a.toolBox != nil {
+		tools = a.toolBox.GetTools()
+	}
+
+	outputChan := make(chan *types.Message, 100)
+
+	go func() {
+		defer close(outputChan)
+
+		currentMessages := make([]types.Message, len(messages))
+		copy(currentMessages, messages)
+
+		for iteration := 1; iteration <= a.config.MaxChatCompletionIterations; iteration++ {
+			a.logger.Debug("starting streaming iteration",
+				zap.Int("iteration", iteration),
+				zap.Int("message_count", len(currentMessages)))
+
+			sdkMessages, err := a.converter.ConvertToSDK(currentMessages)
+			if err != nil {
+				a.logger.Error("failed to convert messages to SDK format", zap.Error(err))
+				return
+			}
+
+			if a.config != nil && a.config.SystemPrompt != "" {
+				systemMessage := sdk.Message{
+					Role:    sdk.System,
+					Content: a.config.SystemPrompt,
+				}
+				sdkMessages = append([]sdk.Message{systemMessage}, sdkMessages...)
+			}
+
+			streamResponseChan, streamErrorChan := a.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
+
+			toolCallsExecuted, assistantMessage, toolResultMessages := a.processStreamIteration(ctx, iteration, streamResponseChan, streamErrorChan, outputChan)
+
+			if assistantMessage != nil {
+				currentMessages = append(currentMessages, *assistantMessage)
+			}
+
+			currentMessages = append(currentMessages, toolResultMessages...)
+
+			// Check if the last message sent was an input_required - if so, stop streaming
+			if len(toolResultMessages) > 0 {
+				lastToolMessage := toolResultMessages[len(toolResultMessages)-1]
+				if lastToolMessage.Kind == "input_required" {
+					a.logger.Debug("streaming completed - input required from user",
+						zap.Int("iteration", iteration),
+						zap.Int("final_message_count", len(currentMessages)))
+					return
+				}
+			}
+
+			if !toolCallsExecuted {
+				a.logger.Debug("streaming completed - no tool calls executed",
+					zap.Int("iteration", iteration),
+					zap.Int("final_message_count", len(currentMessages)))
+				return
+			}
+
+			a.logger.Debug("tool calls executed, continuing to next iteration",
+				zap.Int("iteration", iteration),
+				zap.Int("message_count", len(currentMessages)))
+		}
+
+		a.logger.Warn("max streaming iterations reached", zap.Int("max_iterations", a.config.MaxChatCompletionIterations))
+	}()
+
+	return outputChan, nil
+}
+
+// processStreamIteration processes a single streaming iteration and returns whether tool calls were executed
+func (a *OpenAICompatibleAgentImpl) processStreamIteration(
+	ctx context.Context,
+	iteration int,
+	streamResponseChan <-chan *sdk.CreateChatCompletionStreamResponse,
+	streamErrorChan <-chan error,
+	outputChan chan<- *types.Message,
+) (toolCallsExecuted bool, assistantMessage *types.Message, toolResultMessages []types.Message) {
+	var fullContent string
+	toolCallAccumulator := make(map[int]*sdk.ChatCompletionMessageToolCall)
+	toolResultMessages = make([]types.Message, 0)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false, nil, nil
+		case streamErr := <-streamErrorChan:
+			if streamErr != nil {
+				a.logger.Error("streaming failed", zap.Error(streamErr))
+			}
+			return false, nil, nil
+		case streamResp, ok := <-streamResponseChan:
+			if !ok {
+				break
+			}
+
+			if streamResp == nil || len(streamResp.Choices) == 0 {
+				continue
+			}
+
+			choice := streamResp.Choices[0]
+
+			if choice.Delta.Content != "" {
+				fullContent += choice.Delta.Content
+
+				chunkMessage := &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("chunk-%d-%d", iteration, len(fullContent)),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": choice.Delta.Content,
+						},
+					},
+				}
+
+				select {
+				case outputChan <- chunkMessage:
+				case <-ctx.Done():
+					return false, nil, nil
+				}
+			}
+
+			for _, toolCallChunk := range choice.Delta.ToolCalls {
+				if toolCallAccumulator[toolCallChunk.Index] == nil {
+					toolCallAccumulator[toolCallChunk.Index] = &sdk.ChatCompletionMessageToolCall{
+						Type:     "function",
+						Function: sdk.ChatCompletionMessageToolCallFunction{},
+					}
+				}
+
+				toolCall := toolCallAccumulator[toolCallChunk.Index]
+				if toolCallChunk.ID != "" {
+					toolCall.Id = toolCallChunk.ID
+				}
+				if toolCallChunk.Function.Name != "" {
+					toolCall.Function.Name = toolCallChunk.Function.Name
+				}
+				if toolCallChunk.Function.Arguments != "" {
+					toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+				}
+			}
+
+			if choice.FinishReason != "" {
+				assistantMessage = &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("assistant-stream-%d", iteration),
+					Role:      "assistant",
+					Parts:     make([]types.Part, 0),
+				}
+
+				if fullContent != "" {
+					assistantMessage.Parts = append(assistantMessage.Parts, map[string]interface{}{
+						"kind": "text",
+						"text": fullContent,
+					})
+				}
+
+				if len(toolCallAccumulator) > 0 && a.toolBox != nil {
+					toolCalls := make([]sdk.ChatCompletionMessageToolCall, 0, len(toolCallAccumulator))
+					for _, toolCall := range toolCallAccumulator {
+						toolCalls = append(toolCalls, *toolCall)
+					}
+
+					assistantMessage.Parts = append(assistantMessage.Parts, map[string]interface{}{
+						"kind": "data",
+						"data": map[string]interface{}{
+							"tool_calls": toolCalls,
+						},
+					})
+
+					select {
+					case outputChan <- assistantMessage:
+					case <-ctx.Done():
+						return false, nil, nil
+					}
+
+					toolResultMessages = a.executeToolCallsWithEvents(ctx, toolCalls, outputChan)
+
+					return true, assistantMessage, toolResultMessages
+				}
+
+				select {
+				case outputChan <- assistantMessage:
+				case <-ctx.Done():
+				}
+
+				return false, assistantMessage, toolResultMessages
+			}
+		}
+	}
+}
+
+// executeToolCallsWithEvents executes tool calls and emits events, returning tool result messages
+func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- *types.Message) []types.Message {
+	toolResultMessages := make([]types.Message, 0)
+
+	for _, toolCall := range toolCalls {
+		if toolCall.Function.Name == "" || toolCall.Id == "" {
+			continue
+		}
+
+		startEvent := &types.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("tool-start-%s", toolCall.Id),
+			Role:      "assistant",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "data",
+					"data": map[string]interface{}{
+						"tool_name": toolCall.Function.Name,
+						"status":    "started",
+					},
+				},
+			},
+		}
+
+		select {
+		case outputChan <- startEvent:
+		case <-ctx.Done():
+			return toolResultMessages
+		}
+
+		var args map[string]interface{}
+		var result string
+		var toolErr error
+
+		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
+			a.logger.Error("failed to parse tool arguments", zap.String("tool", toolCall.Function.Name), zap.Error(err))
+			result = fmt.Sprintf("Error parsing tool arguments: %s", err.Error())
+			toolErr = err
+
+			failedEvent := &types.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("tool-failed-%s", toolCall.Id),
 				Role:      "assistant",
 				Parts: []types.Part{
 					map[string]interface{}{
 						"kind": "data",
 						"data": map[string]interface{}{
-							"tool_calls": *choice.Message.ToolCalls,
-							"content":    choice.Message.Content,
+							"tool_name": toolCall.Function.Name,
+							"status":    "failed",
 						},
 					},
 				},
 			}
-			task.History = append(task.History, *assistantMessage)
-			currentMessages = append(currentMessages, *assistantMessage)
 
-			toolResults, err := a.executeTools(ctx, task, *choice.Message.ToolCalls)
-			if err != nil {
-				a.logger.Error("tool execution failed", zap.Error(err))
-				return a.createErrorTask(task, fmt.Sprintf("Tool execution failed: %v", err)), nil
+			select {
+			case outputChan <- failedEvent:
+			case <-ctx.Done():
 			}
-
-			currentMessages = append(currentMessages, toolResults...)
-			continue
-		}
-
-		response := &types.Message{
-			Kind:      "message",
-			MessageID: fmt.Sprintf("response-%s-%d", task.ID, iteration),
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": choice.Message.Content,
-				},
-			},
-		}
-
-		task.History = append(task.History, *response)
-		task.Status.State = types.TaskStateCompleted
-		task.Status.Message = response
-
-		a.logger.Info("task completed successfully",
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID),
-			zap.Int("iterations", iteration))
-		return task, nil
-	}
-
-	a.logger.Warn("max chat completion iterations reached",
-		zap.String("task_id", task.ID),
-		zap.Int("max_iterations", a.config.MaxChatCompletionIterations))
-	return a.createErrorTask(task, fmt.Sprintf("Maximum iterations (%d) reached without completion", a.config.MaxChatCompletionIterations)), nil
-}
-
-// processWithoutLLM processes the task without LLM when no client is available
-func (a *DefaultOpenAICompatibleAgent) processWithoutLLM(task *types.Task, message *types.Message) *types.Task {
-	response := &types.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("msg-%d", len(task.History)+1),
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": "I'm an AI assistant, but I don't have access to an LLM client right now. Please configure an LLM client to enable my full capabilities.",
-			},
-		},
-	}
-
-	task.History = append(task.History, *response)
-	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = response
-
-	a.logger.Info("task completed without llm",
-		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
-	return task
-}
-
-// createErrorTask creates a task with error state and message
-func (a *DefaultOpenAICompatibleAgent) createErrorTask(task *types.Task, errorMsg string) *types.Task {
-	task.Status.State = types.TaskStateFailed
-	task.Status.Message = &types.Message{
-		Kind:      "message",
-		MessageID: "error-" + task.ID,
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": errorMsg,
-			},
-		},
-	}
-	return task
-}
-
-// executeTools executes all tool calls and returns the tool result messages
-func (a *DefaultOpenAICompatibleAgent) executeTools(ctx context.Context, task *types.Task, toolCalls []sdk.ChatCompletionMessageToolCall) ([]types.Message, error) {
-	toolResults := make([]types.Message, 0, len(toolCalls))
-
-	for _, toolCall := range toolCalls {
-		if toolCall.Type != "function" {
-			continue
-		}
-
-		function := toolCall.Function
-		if function.Name == "" {
-			continue
-		}
-
-		var args map[string]interface{}
-		if function.Arguments != "" {
-			if err := json.Unmarshal([]byte(function.Arguments), &args); err != nil {
-				a.logger.Error("failed to parse tool arguments",
-					zap.String("tool", function.Name),
-					zap.Error(err))
-				continue
-			}
-		}
-
-		result, err := a.toolBox.ExecuteTool(ctx, function.Name, args)
-		if err != nil {
-			result = fmt.Sprintf("Error executing tool: %v", err)
-			a.logger.Error("tool execution failed",
-				zap.String("tool", function.Name),
-				zap.Error(err))
 		} else {
-			a.logger.Info("tool executed successfully",
-				zap.String("tool", function.Name))
+			// Special handling for input_required tool in streaming mode
+			if toolCall.Function.Name == "input_required" {
+				a.logger.Debug("input_required tool called in streaming mode",
+					zap.String("tool_call_id", toolCall.Id),
+					zap.String("message", toolCall.Function.Arguments))
+
+				// Execute the tool to get the message but then send special input_required message
+				result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+
+				completedEvent := &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-completed-%s", toolCall.Id),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_name": toolCall.Function.Name,
+								"status":    "completed",
+							},
+						},
+					},
+				}
+
+				select {
+				case outputChan <- completedEvent:
+				case <-ctx.Done():
+					return toolResultMessages
+				}
+
+				// Add the tool result message
+				toolResultMessage := types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
+					Role:      "tool",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_call_id": toolCall.Id,
+								"result":       result,
+								"error":        toolErr != nil,
+							},
+						},
+					},
+				}
+
+				select {
+				case outputChan <- &toolResultMessage:
+				case <-ctx.Done():
+					return toolResultMessages
+				}
+
+				toolResultMessages = append(toolResultMessages, toolResultMessage)
+
+				// Now send the special input_required message that will cause task to pause
+				inputMessage := args["message"].(string)
+				inputRequiredMessage := &types.Message{
+					Kind:      "input_required",
+					MessageID: fmt.Sprintf("input-required-%s", toolCall.Id),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "text",
+							"text": inputMessage,
+						},
+					},
+				}
+
+				select {
+				case outputChan <- inputRequiredMessage:
+				case <-ctx.Done():
+				}
+
+				// Add the input_required message to toolResultMessages so the main loop can detect it
+				toolResultMessages = append(toolResultMessages, *inputRequiredMessage)
+
+				// Return immediately - don't process any more tools or continue iterations
+				return toolResultMessages
+			}
+
+			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			if toolErr != nil {
+				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
+				result = fmt.Sprintf("Tool execution failed: %s", toolErr.Error())
+
+				failedEvent := &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-failed-%s", toolCall.Id),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_name": toolCall.Function.Name,
+								"status":    "failed",
+							},
+						},
+					},
+				}
+
+				select {
+				case outputChan <- failedEvent:
+				case <-ctx.Done():
+				}
+			} else {
+				completedEvent := &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("tool-completed-%s", toolCall.Id),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]interface{}{
+							"kind": "data",
+							"data": map[string]interface{}{
+								"tool_name": toolCall.Function.Name,
+								"status":    "completed",
+							},
+						},
+					},
+				}
+
+				select {
+				case outputChan <- completedEvent:
+				case <-ctx.Done():
+					return toolResultMessages
+				}
+			}
 		}
 
+		// Always add a tool result message, regardless of success or failure
 		toolResultMessage := types.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
@@ -394,34 +635,21 @@ func (a *DefaultOpenAICompatibleAgent) executeTools(ctx context.Context, task *t
 					"kind": "data",
 					"data": map[string]interface{}{
 						"tool_call_id": toolCall.Id,
-						"tool_name":    function.Name,
 						"result":       result,
+						"error":        toolErr != nil,
 					},
 				},
 			},
 		}
 
-		toolResults = append(toolResults, toolResultMessage)
-		task.History = append(task.History, toolResultMessage)
+		select {
+		case outputChan <- &toolResultMessage:
+		case <-ctx.Done():
+			return toolResultMessages
+		}
+
+		toolResultMessages = append(toolResultMessages, toolResultMessage)
 	}
 
-	return toolResults, nil
-}
-
-// GetLLMClient returns the LLM client for external use (e.g., streaming)
-func (a *DefaultOpenAICompatibleAgent) GetLLMClient() LLMClient {
-	return a.llmClient
-}
-
-// GetToolBox returns the tool box for external use (e.g., streaming)
-func (a *DefaultOpenAICompatibleAgent) GetToolBox() ToolBox {
-	return a.toolBox
-}
-
-// GetSystemPrompt returns the system prompt configured for the agent
-func (a *DefaultOpenAICompatibleAgent) GetSystemPrompt() string {
-	if a.config == nil {
-		return "You are a helpful AI assistant." // default fallback
-	}
-	return a.config.SystemPrompt
+	return toolResultMessages
 }

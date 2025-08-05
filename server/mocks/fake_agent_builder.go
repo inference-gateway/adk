@@ -9,16 +9,16 @@ import (
 )
 
 type FakeAgentBuilder struct {
-	BuildStub        func() (*server.DefaultOpenAICompatibleAgent, error)
+	BuildStub        func() (*server.OpenAICompatibleAgentImpl, error)
 	buildMutex       sync.RWMutex
 	buildArgsForCall []struct {
 	}
 	buildReturns struct {
-		result1 *server.DefaultOpenAICompatibleAgent
+		result1 *server.OpenAICompatibleAgentImpl
 		result2 error
 	}
 	buildReturnsOnCall map[int]struct {
-		result1 *server.DefaultOpenAICompatibleAgent
+		result1 *server.OpenAICompatibleAgentImpl
 		result2 error
 	}
 	GetConfigStub        func() *config.AgentConfig
@@ -101,7 +101,7 @@ type FakeAgentBuilder struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeAgentBuilder) Build() (*server.DefaultOpenAICompatibleAgent, error) {
+func (fake *FakeAgentBuilder) Build() (*server.OpenAICompatibleAgentImpl, error) {
 	fake.buildMutex.Lock()
 	ret, specificReturn := fake.buildReturnsOnCall[len(fake.buildArgsForCall)]
 	fake.buildArgsForCall = append(fake.buildArgsForCall, struct {
@@ -125,34 +125,34 @@ func (fake *FakeAgentBuilder) BuildCallCount() int {
 	return len(fake.buildArgsForCall)
 }
 
-func (fake *FakeAgentBuilder) BuildCalls(stub func() (*server.DefaultOpenAICompatibleAgent, error)) {
+func (fake *FakeAgentBuilder) BuildCalls(stub func() (*server.OpenAICompatibleAgentImpl, error)) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = stub
 }
 
-func (fake *FakeAgentBuilder) BuildReturns(result1 *server.DefaultOpenAICompatibleAgent, result2 error) {
+func (fake *FakeAgentBuilder) BuildReturns(result1 *server.OpenAICompatibleAgentImpl, result2 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
 	fake.buildReturns = struct {
-		result1 *server.DefaultOpenAICompatibleAgent
+		result1 *server.OpenAICompatibleAgentImpl
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeAgentBuilder) BuildReturnsOnCall(i int, result1 *server.DefaultOpenAICompatibleAgent, result2 error) {
+func (fake *FakeAgentBuilder) BuildReturnsOnCall(i int, result1 *server.OpenAICompatibleAgentImpl, result2 error) {
 	fake.buildMutex.Lock()
 	defer fake.buildMutex.Unlock()
 	fake.BuildStub = nil
 	if fake.buildReturnsOnCall == nil {
 		fake.buildReturnsOnCall = make(map[int]struct {
-			result1 *server.DefaultOpenAICompatibleAgent
+			result1 *server.OpenAICompatibleAgentImpl
 			result2 error
 		})
 	}
 	fake.buildReturnsOnCall[i] = struct {
-		result1 *server.DefaultOpenAICompatibleAgent
+		result1 *server.OpenAICompatibleAgentImpl
 		result2 error
 	}{result1, result2}
 }

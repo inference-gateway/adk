@@ -10,12 +10,13 @@ import (
 )
 
 type FakeTaskHandler struct {
-	HandleTaskStub        func(context.Context, *types.Task, *types.Message) (*types.Task, error)
+	HandleTaskStub        func(context.Context, *types.Task, *types.Message, server.OpenAICompatibleAgent) (*types.Task, error)
 	handleTaskMutex       sync.RWMutex
 	handleTaskArgsForCall []struct {
 		arg1 context.Context
 		arg2 *types.Task
 		arg3 *types.Message
+		arg4 server.OpenAICompatibleAgent
 	}
 	handleTaskReturns struct {
 		result1 *types.Task
@@ -29,20 +30,21 @@ type FakeTaskHandler struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeTaskHandler) HandleTask(arg1 context.Context, arg2 *types.Task, arg3 *types.Message) (*types.Task, error) {
+func (fake *FakeTaskHandler) HandleTask(arg1 context.Context, arg2 *types.Task, arg3 *types.Message, arg4 server.OpenAICompatibleAgent) (*types.Task, error) {
 	fake.handleTaskMutex.Lock()
 	ret, specificReturn := fake.handleTaskReturnsOnCall[len(fake.handleTaskArgsForCall)]
 	fake.handleTaskArgsForCall = append(fake.handleTaskArgsForCall, struct {
 		arg1 context.Context
 		arg2 *types.Task
 		arg3 *types.Message
-	}{arg1, arg2, arg3})
+		arg4 server.OpenAICompatibleAgent
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.HandleTaskStub
 	fakeReturns := fake.handleTaskReturns
-	fake.recordInvocation("HandleTask", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("HandleTask", []interface{}{arg1, arg2, arg3, arg4})
 	fake.handleTaskMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -56,17 +58,17 @@ func (fake *FakeTaskHandler) HandleTaskCallCount() int {
 	return len(fake.handleTaskArgsForCall)
 }
 
-func (fake *FakeTaskHandler) HandleTaskCalls(stub func(context.Context, *types.Task, *types.Message) (*types.Task, error)) {
+func (fake *FakeTaskHandler) HandleTaskCalls(stub func(context.Context, *types.Task, *types.Message, server.OpenAICompatibleAgent) (*types.Task, error)) {
 	fake.handleTaskMutex.Lock()
 	defer fake.handleTaskMutex.Unlock()
 	fake.HandleTaskStub = stub
 }
 
-func (fake *FakeTaskHandler) HandleTaskArgsForCall(i int) (context.Context, *types.Task, *types.Message) {
+func (fake *FakeTaskHandler) HandleTaskArgsForCall(i int) (context.Context, *types.Task, *types.Message, server.OpenAICompatibleAgent) {
 	fake.handleTaskMutex.RLock()
 	defer fake.handleTaskMutex.RUnlock()
 	argsForCall := fake.handleTaskArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeTaskHandler) HandleTaskReturns(result1 *types.Task, result2 error) {

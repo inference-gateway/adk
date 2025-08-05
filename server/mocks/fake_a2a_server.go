@@ -52,21 +52,6 @@ type FakeA2AServer struct {
 	loadAgentCardFromFileReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ProcessTaskStub        func(context.Context, *types.Task, *types.Message) (*types.Task, error)
-	processTaskMutex       sync.RWMutex
-	processTaskArgsForCall []struct {
-		arg1 context.Context
-		arg2 *types.Task
-		arg3 *types.Message
-	}
-	processTaskReturns struct {
-		result1 *types.Task
-		result2 error
-	}
-	processTaskReturnsOnCall map[int]struct {
-		result1 *types.Task
-		result2 error
-	}
 	SetAgentStub        func(server.OpenAICompatibleAgent)
 	setAgentMutex       sync.RWMutex
 	setAgentArgsForCall []struct {
@@ -352,72 +337,6 @@ func (fake *FakeA2AServer) LoadAgentCardFromFileReturnsOnCall(i int, result1 err
 	fake.loadAgentCardFromFileReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
-}
-
-func (fake *FakeA2AServer) ProcessTask(arg1 context.Context, arg2 *types.Task, arg3 *types.Message) (*types.Task, error) {
-	fake.processTaskMutex.Lock()
-	ret, specificReturn := fake.processTaskReturnsOnCall[len(fake.processTaskArgsForCall)]
-	fake.processTaskArgsForCall = append(fake.processTaskArgsForCall, struct {
-		arg1 context.Context
-		arg2 *types.Task
-		arg3 *types.Message
-	}{arg1, arg2, arg3})
-	stub := fake.ProcessTaskStub
-	fakeReturns := fake.processTaskReturns
-	fake.recordInvocation("ProcessTask", []interface{}{arg1, arg2, arg3})
-	fake.processTaskMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeA2AServer) ProcessTaskCallCount() int {
-	fake.processTaskMutex.RLock()
-	defer fake.processTaskMutex.RUnlock()
-	return len(fake.processTaskArgsForCall)
-}
-
-func (fake *FakeA2AServer) ProcessTaskCalls(stub func(context.Context, *types.Task, *types.Message) (*types.Task, error)) {
-	fake.processTaskMutex.Lock()
-	defer fake.processTaskMutex.Unlock()
-	fake.ProcessTaskStub = stub
-}
-
-func (fake *FakeA2AServer) ProcessTaskArgsForCall(i int) (context.Context, *types.Task, *types.Message) {
-	fake.processTaskMutex.RLock()
-	defer fake.processTaskMutex.RUnlock()
-	argsForCall := fake.processTaskArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
-}
-
-func (fake *FakeA2AServer) ProcessTaskReturns(result1 *types.Task, result2 error) {
-	fake.processTaskMutex.Lock()
-	defer fake.processTaskMutex.Unlock()
-	fake.ProcessTaskStub = nil
-	fake.processTaskReturns = struct {
-		result1 *types.Task
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeA2AServer) ProcessTaskReturnsOnCall(i int, result1 *types.Task, result2 error) {
-	fake.processTaskMutex.Lock()
-	defer fake.processTaskMutex.Unlock()
-	fake.ProcessTaskStub = nil
-	if fake.processTaskReturnsOnCall == nil {
-		fake.processTaskReturnsOnCall = make(map[int]struct {
-			result1 *types.Task
-			result2 error
-		})
-	}
-	fake.processTaskReturnsOnCall[i] = struct {
-		result1 *types.Task
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *FakeA2AServer) SetAgent(arg1 server.OpenAICompatibleAgent) {
@@ -809,8 +728,6 @@ func (fake *FakeA2AServer) Invocations() map[string][][]interface{} {
 	defer fake.getTaskHandlerMutex.RUnlock()
 	fake.loadAgentCardFromFileMutex.RLock()
 	defer fake.loadAgentCardFromFileMutex.RUnlock()
-	fake.processTaskMutex.RLock()
-	defer fake.processTaskMutex.RUnlock()
 	fake.setAgentMutex.RLock()
 	defer fake.setAgentMutex.RUnlock()
 	fake.setAgentCardMutex.RLock()

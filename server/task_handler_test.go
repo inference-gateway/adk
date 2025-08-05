@@ -18,7 +18,7 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 		expectedMsg string
 	}{
 		{
-			name: "default handler throws error - task with message",
+			name: "default handler provides basic response - task with message",
 			task: &types.Task{
 				ID:        "test-task-1",
 				ContextID: "test-context",
@@ -37,11 +37,11 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 					},
 				},
 			},
-			expectError: true,
-			expectedMsg: "no task handler configured",
+			expectError: false,
+			expectedMsg: "",
 		},
 		{
-			name: "default handler throws error - task with nil message",
+			name: "default handler provides basic response - task with nil message",
 			task: &types.Task{
 				ID:        "test-task-2",
 				ContextID: "test-context",
@@ -50,8 +50,8 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 					Message: nil,
 				},
 			},
-			expectError: true,
-			expectedMsg: "no task handler configured",
+			expectError: false,
+			expectedMsg: "",
 		},
 	}
 
@@ -62,7 +62,7 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 
 			ctx := context.Background()
 			message := tt.task.Status.Message
-			result, err := taskHandler.HandleTask(ctx, tt.task, message)
+			result, err := taskHandler.HandleTask(ctx, tt.task, message, nil)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -71,6 +71,10 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
+				assert.Equal(t, types.TaskStateCompleted, result.Status.State)
+				assert.NotNil(t, result.Status.Message)
+				assert.Equal(t, "assistant", result.Status.Message.Role)
+				assert.GreaterOrEqual(t, len(result.History), 1)
 			}
 		})
 	}

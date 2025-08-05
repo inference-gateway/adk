@@ -10,20 +10,21 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	AgentName                     string             // Build-time metadata, not configurable via environment
-	AgentDescription              string             // Build-time metadata, not configurable via environment
-	AgentVersion                  string             // Build-time metadata, not configurable via environment
-	AgentURL                      string             `env:"AGENT_URL"`
-	AgentCardFilePath             string             `env:"AGENT_CARD_FILE_PATH" description:"Path to JSON file containing static agent card definition"`
-	Debug                         bool               `env:"DEBUG,default=false"`
-	Timezone                      string             `env:"TIMEZONE,default=UTC" description:"Timezone for timestamps (e.g., UTC, America/New_York, Europe/London)"`
-	StreamingStatusUpdateInterval time.Duration      `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
-	AgentConfig                   AgentConfig        `env:",prefix=AGENT_CLIENT_"`
-	CapabilitiesConfig            CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
-	AuthConfig                    AuthConfig         `env:",prefix=AUTH_"`
-	QueueConfig                   QueueConfig        `env:",prefix=QUEUE_"`
-	ServerConfig                  ServerConfig       `env:",prefix=SERVER_"`
-	TelemetryConfig               TelemetryConfig    `env:",prefix=TELEMETRY_"`
+	AgentName                     string              // Build-time metadata, not configurable via environment
+	AgentDescription              string              // Build-time metadata, not configurable via environment
+	AgentVersion                  string              // Build-time metadata, not configurable via environment
+	AgentURL                      string              `env:"AGENT_URL"`
+	AgentCardFilePath             string              `env:"AGENT_CARD_FILE_PATH" description:"Path to JSON file containing static agent card definition"`
+	Debug                         bool                `env:"DEBUG,default=false"`
+	Timezone                      string              `env:"TIMEZONE,default=UTC" description:"Timezone for timestamps (e.g., UTC, America/New_York, Europe/London)"`
+	StreamingStatusUpdateInterval time.Duration       `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
+	AgentConfig                   AgentConfig         `env:",prefix=AGENT_CLIENT_"`
+	CapabilitiesConfig            CapabilitiesConfig  `env:",prefix=CAPABILITIES_"`
+	AuthConfig                    AuthConfig          `env:",prefix=AUTH_"`
+	QueueConfig                   QueueConfig         `env:",prefix=QUEUE_"`
+	TaskRetentionConfig           TaskRetentionConfig `env:",prefix=TASK_RETENTION_"`
+	ServerConfig                  ServerConfig        `env:",prefix=SERVER_"`
+	TelemetryConfig               TelemetryConfig     `env:",prefix=TELEMETRY_"`
 }
 
 // AgentConfig holds agent-specific configuration
@@ -82,6 +83,13 @@ type AuthConfig struct {
 type QueueConfig struct {
 	MaxSize         int           `env:"MAX_SIZE,default=100"`
 	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL,default=30s"`
+}
+
+// TaskRetentionConfig defines how many completed and failed tasks to retain
+type TaskRetentionConfig struct {
+	MaxCompletedTasks int           `env:"MAX_COMPLETED_TASKS,default=100" description:"Maximum number of completed tasks to retain (0 = unlimited)"`
+	MaxFailedTasks    int           `env:"MAX_FAILED_TASKS,default=50" description:"Maximum number of failed tasks to retain (0 = unlimited)"`
+	CleanupInterval   time.Duration `env:"CLEANUP_INTERVAL,default=5m" description:"How often to run cleanup (0 = manual cleanup only)"`
 }
 
 // ServerConfig holds HTTP server configuration

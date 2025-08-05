@@ -201,7 +201,7 @@ func main() {
     )
     toolBox.AddTool(weatherTool)
 
-    // Create LLM client (requires AGENT_CLIENT_API_KEY environment variable)
+    // Create LLM client (requires INFERENCE_GATEWAY_URL environment variable)
     var a2aServer server.A2AServer
     var err error
     if cfg.AgentConfig != nil && cfg.AgentConfig.APIKey != "" {
@@ -321,6 +321,7 @@ For complete working examples, see the [examples](./examples/) directory:
 - **[AI-Powered Server](./examples/server/cmd/aipowered/)** - Full A2A server with LLM integration
 - **[JSON AgentCard Server](./examples/server/cmd/json-agentcard/)** - A2A server with agent metadata loaded from JSON file
 - **[Client Example](./examples/client/)** - A2A client implementation
+- **[Paused Task Example](./examples/client/cmd/pausedtask/)** - Handle input-required task pausing
 - **[Health Check Example](#health-check-example)** - Monitor agent health status
 
 ## ✨ Key Features
@@ -333,6 +334,7 @@ For complete working examples, see the [examples](./examples/) directory:
 - 🔧 **Custom Tools**: Easy integration of custom tools and capabilities
 - 🔐 **Secure Authentication**: Built-in OIDC/OAuth2 authentication support
 - 📨 **Push Notifications**: Webhook notifications for real-time task state updates
+- ⏸️ **Task Pausing**: Built-in support for input-required state pausing and resumption
 
 ### Developer Experience
 
@@ -679,8 +681,8 @@ agent, err = server.NewAgentBuilder(logger).
 ```go
 cfg := &config.AgentConfig{
     Provider:                    "openai",
-    Model:                       "gpt-4",
-    APIKey:                      "your-api-key",
+    Model:                       "openai/gpt-4",
+    APIKey:                      "your-inference-gateway-api-key-if-authentication-is-enabled",
     MaxTokens:                   4096,
     Temperature:                 0.7,
     MaxChatCompletionIterations: 10,
@@ -744,11 +746,23 @@ if err != nil {
 
 ### Custom Tools
 
-Create custom tools to extend your agent's capabilities:
+Create custom tools to extend your agent's capabilities.
+
+#### Toolbox Creation
+
+The ADK provides two ways to create a toolbox:
+
+- **`NewDefaultToolBox()`** - Creates a toolbox with built-in tools including:
+  - `input_required` - Allows agents to pause tasks and request additional user input when needed
+
+- **`NewToolBox()`** - Creates an empty toolbox for complete customization
 
 ```go
-// Create a toolbox
+// Option 1: Use default toolbox (includes input_required tool)
 toolBox := server.NewDefaultToolBox()
+
+// Option 2: Create empty toolbox
+toolBox := server.NewToolBox()
 
 // Create a custom tool using NewBasicTool
 weatherTool := server.NewBasicTool(
@@ -885,7 +899,7 @@ go run main.go
 AGENT_CARD_FILE_PATH="./my-custom-card.json" go run main.go
 
 # Run with AI capabilities
-export AGENT_CLIENT_API_KEY="sk-..."
+export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
 export AGENT_CARD_FILE_PATH="./.well-known/agent.json"
 go run main.go
 ```
@@ -897,6 +911,113 @@ go run main.go
 - **Version Control Friendly**: Easy to track changes in agent configuration
 - **Team Collaboration**: Non-developers can manage agent metadata
 - **Deployment Flexibility**: Different agent cards for different environments
+
+### Task Pausing for User Input
+
+Agents can pause tasks to request additional input from clients using the input-required state:
+
+```go
+// Server-side: Pause task for input (TaskManager interface)
+err := taskManager.PauseTaskForInput(taskID, &adk.Message{
+    Role: "assistant",
+    Parts: []adk.Part{{
+        Kind: "text",
+        Text: "I need additional information. Please provide your preferences:",
+    }},
+})
+
+// Client-side: Monitor and resume paused tasks
+for {
+    task, err := client.GetTask(ctx, taskID)
+    if err != nil {
+        log.Printf("Error getting task: %v", err)
+        continue
+    }
+    
+    switch task.Status.State {
+    case adk.TaskStateInputRequired:
+        // Display agent's request and get user input
+        fmt.Printf("Agent: %s\n", getMessageText(task.Status.Message))
+        userInput := getUserInput()
+        
+        // Resume task with user input (TaskID in message as per schema)
+        _, err = client.SendTask(ctx, adk.MessageSendParams{
+            Message: adk.Message{
+                Role: "user",
+                TaskID: &taskID,  // Resume existing task
+                Parts: []adk.Part{{Kind: "text", Text: userInput}},
+            },
+        })
+        if err != nil {
+            log.Printf("Error resuming task: %v", err)
+        }
+    case adk.TaskStateCompleted, adk.TaskStateFailed:
+        return task // Task finished
+    }
+    
+    time.Sleep(2 * time.Second) // Poll interval
+}
+```
+
+#### Tool Use and MCP Integration
+
+Leverage standard tool use patterns and Model Context Protocol (MCP) with task pausing:
+
+**Tool-Based Pausing:**
+```go
+// Define a tool that requires user input
+inputTool := server.NewBasicTool(
+    "request_user_input",
+    "Request additional input from the user",
+    map[string]interface{}{
+        "type": "object",
+        "properties": map[string]interface{}{
+            "prompt": {"type": "string", "description": "Question for the user"},
+        },
+    },
+    func(ctx context.Context, args map[string]interface{}) (string, error) {
+        prompt := args["prompt"].(string)
+        
+        // Extract taskID from context (set by agent)
+        taskID := ctx.Value("taskID").(string)
+        
+        // Pause the task and request input
+        err := taskManager.PauseTaskForInput(taskID, &adk.Message{
+            Role: "assistant",
+            Parts: []adk.Part{{Kind: "text", Text: prompt}},
+        })
+        
+        return "task_paused_for_input", err
+    },
+)
+```
+
+**MCP Tool Integration:**
+```go
+// MCP tools can seamlessly pause tasks for user confirmation
+mcpConfirmTool := server.NewBasicTool(
+    "mcp_confirm_action",
+    "Request user confirmation via MCP protocol",
+    map[string]interface{}{
+        "type": "object",
+        "properties": map[string]interface{}{
+            "action": {"type": "string", "description": "Action requiring confirmation"},
+            "details": {"type": "object", "description": "Action details"},
+        },
+    },
+    func(ctx context.Context, args map[string]interface{}) (string, error) {
+        // Use MCP to present structured confirmation request
+        confirmationRequest := buildMCPConfirmation(args)
+        
+        taskID := ctx.Value("taskID").(string)
+        err := taskManager.PauseTaskForInput(taskID, confirmationRequest)
+        
+        return "awaiting_mcp_confirmation", err
+    },
+)
+```
+
+This pattern enables agents to seamlessly integrate human-in-the-loop workflows while maintaining tool use standards and MCP compatibility.
 
 ### Custom Task Processing
 
@@ -1107,8 +1228,8 @@ AGENT_CARD_FILE_PATH="./.well-known/agent.json"    # Path to JSON AgentCard file
 
 # LLM client configuration
 AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
-AGENT_CLIENT_MODEL="gpt-4"                  # Model name
-AGENT_CLIENT_API_KEY="your-api-key"         # Required for AI features
+AGENT_CLIENT_MODEL="openai/gpt-4"                  # Model name
+INFERENCE_GATEWAY_URL="http://localhost:3000/v1"  # Required for AI features
 AGENT_CLIENT_BASE_URL="https://api.openai.com/v1"  # Custom endpoint
 AGENT_CLIENT_MAX_TOKENS="4096"              # Max tokens for completion
 AGENT_CLIENT_TEMPERATURE="0.7"              # Temperature for completion

@@ -27,6 +27,7 @@ type MessageHandler interface {
 type DefaultMessageHandler struct {
 	logger        *zap.Logger
 	taskManager   TaskManager
+	storage       Storage
 	agent         OpenAICompatibleAgent
 	config        *config.Config
 	llmClient     LLMClient
@@ -36,7 +37,7 @@ type DefaultMessageHandler struct {
 }
 
 // NewDefaultMessageHandler creates a new default message handler
-func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, cfg *config.Config) *DefaultMessageHandler {
+func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, storage Storage, cfg *config.Config) *DefaultMessageHandler {
 	if cfg == nil {
 		logger.Fatal("config is required but was nil")
 	}
@@ -44,6 +45,7 @@ func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, cfg *
 	return &DefaultMessageHandler{
 		logger:        logger,
 		taskManager:   taskManager,
+		storage:       storage,
 		agent:         nil,
 		config:        cfg,
 		llmClient:     nil,
@@ -54,27 +56,20 @@ func NewDefaultMessageHandler(logger *zap.Logger, taskManager TaskManager, cfg *
 }
 
 // NewDefaultMessageHandlerWithAgent creates a new default message handler with an agent for streaming
-func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManager, agent OpenAICompatibleAgent, cfg *config.Config) *DefaultMessageHandler {
+func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManager, storage Storage, agent OpenAICompatibleAgent, cfg *config.Config) *DefaultMessageHandler {
 	if cfg == nil {
 		logger.Fatal("config is required but was nil")
-	}
-
-	var llmClient LLMClient
-	var toolBox ToolBox
-
-	if agent != nil {
-		llmClient = agent.GetLLMClient()
-		toolBox = agent.GetToolBox()
 	}
 
 	return &DefaultMessageHandler{
 		logger:        logger,
 		taskManager:   taskManager,
+		storage:       storage,
 		agent:         agent,
 		config:        cfg,
-		llmClient:     llmClient,
+		llmClient:     nil,
 		converter:     utils.NewOptimizedMessageConverter(logger),
-		toolBox:       toolBox,
+		toolBox:       nil,
 		maxIterations: cfg.AgentConfig.MaxChatCompletionIterations,
 	}
 }
@@ -83,6 +78,31 @@ func NewDefaultMessageHandlerWithAgent(logger *zap.Logger, taskManager TaskManag
 func (mh *DefaultMessageHandler) HandleMessageSend(ctx context.Context, params types.MessageSendParams) (*types.Task, error) {
 	if len(params.Message.Parts) == 0 {
 		return nil, NewEmptyMessagePartsError()
+	}
+
+	if params.Message.TaskID != nil {
+		taskID := *params.Message.TaskID
+
+		err := mh.taskManager.ResumeTaskWithInput(taskID, &params.Message)
+		if err != nil {
+			mh.logger.Error("failed to resume task with input",
+				zap.String("task_id", taskID),
+				zap.Error(err))
+			return nil, fmt.Errorf("failed to resume task: %w", err)
+		}
+
+		task, exists := mh.taskManager.GetTask(taskID)
+		if !exists {
+			mh.logger.Error("failed to get resumed task",
+				zap.String("task_id", taskID))
+			return nil, fmt.Errorf("resumed task not found: %s", taskID)
+		}
+
+		mh.logger.Info("task resumed with user input",
+			zap.String("task_id", taskID),
+			zap.String("context_id", task.ContextID))
+
+		return task, nil
 	}
 
 	contextID := params.Message.ContextID
@@ -142,19 +162,21 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 	go func() {
 		defer close(done)
 		defer func() {
-			if err := mh.taskManager.UpdateTask(task.ID, types.TaskStateCompleted, nil); err != nil {
+			task.Status.State = types.TaskStateCompleted
+			if err := mh.taskManager.UpdateTask(task); err != nil {
 				mh.logger.Error("failed to update streaming task", zap.Error(err))
+			} else {
+				mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
 			}
 		}()
 
-		if mh.llmClient == nil {
-			mh.logger.Error("no LLM client available for streaming")
-			mh.handleMockStreaming(ctx, task, responseChan)
+		if mh.agent != nil {
+			mh.handleAgentStreaming(ctx, task, &params.Message, responseChan)
 			return
 		}
 
-		if mh.agent == nil {
-			mh.logger.Error("no agent available for streaming")
+		if mh.llmClient == nil {
+			mh.logger.Error("no LLM client or agent available for streaming")
 			mh.handleMockStreaming(ctx, task, responseChan)
 			return
 		}
@@ -170,6 +192,102 @@ func (mh *DefaultMessageHandler) HandleMessageStream(ctx context.Context, params
 	}
 }
 
+// handleAgentStreaming handles streaming using the agent's RunWithStream method
+func (mh *DefaultMessageHandler) handleAgentStreaming(
+	ctx context.Context,
+	task *types.Task,
+	message *types.Message,
+	responseChan chan<- types.SendStreamingMessageResponse,
+) {
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
+
+	mh.logger.Debug("starting agent streaming",
+		zap.String("task_id", task.ID),
+		zap.Int("conversation_messages", len(messages)))
+
+	if len(messages) > 0 {
+		mh.logger.Debug("conversation being sent to agent:")
+		for i, msg := range messages {
+			mh.logger.Debug("conversation message",
+				zap.Int("index", i),
+				zap.String("role", msg.Role),
+				zap.String("message_id", msg.MessageID))
+		}
+	}
+
+	streamChan, err := mh.agent.RunWithStream(ctx, messages)
+	if err != nil {
+		mh.logger.Error("agent streaming failed", zap.Error(err))
+		mh.sendErrorResponse(ctx, task, fmt.Sprintf("Agent streaming failed: %v", err), responseChan)
+		return
+	}
+
+	var lastMessage *types.Message
+	var generatedMessages []types.Message
+	for msg := range streamChan {
+		if msg != nil {
+			lastMessage = msg
+			generatedMessages = append(generatedMessages, *msg)
+
+			select {
+			case responseChan <- types.TaskStatusUpdateEvent{
+				Kind:      "status-update",
+				TaskID:    task.ID,
+				ContextID: task.ContextID,
+				Status: types.TaskStatus{
+					State:     types.TaskStateWorking,
+					Message:   msg,
+					Timestamp: StringPtr(mh.getCurrentTimestamp()),
+				},
+				Final: false,
+			}:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+
+	if lastMessage != nil {
+		task.Status.Message = lastMessage
+
+		for _, msg := range generatedMessages {
+			if msg.Role == "assistant" || msg.Role == "tool" {
+				task.History = append(task.History, msg)
+			}
+		}
+
+		mh.logger.Info("agent streaming completed successfully",
+			zap.String("task_id", task.ID))
+
+		// Determine final task state based on the last message
+		finalState := types.TaskStateCompleted
+		if lastMessage.Kind == "input_required" {
+			finalState = "input-required"
+			mh.logger.Debug("task requires input - setting state to input-required",
+				zap.String("task_id", task.ID),
+				zap.String("message_kind", lastMessage.Kind))
+		}
+
+		select {
+		case responseChan <- types.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    task.ID,
+			ContextID: task.ContextID,
+			Status: types.TaskStatus{
+				State:     finalState,
+				Message:   lastMessage,
+				Timestamp: StringPtr(mh.getCurrentTimestamp()),
+			},
+			Final: true,
+		}:
+		case <-ctx.Done():
+		}
+	} else {
+		mh.sendErrorResponse(ctx, task, "Agent returned no result", responseChan)
+	}
+}
+
 // handleIterativeStreaming handles the iterative streaming process with tool calling support
 func (mh *DefaultMessageHandler) handleIterativeStreaming(
 	ctx context.Context,
@@ -177,26 +295,10 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 	message *types.Message,
 	responseChan chan<- types.SendStreamingMessageResponse,
 ) {
-	messages := make([]types.Message, 0)
-
-	systemMessage := types.Message{
-		Kind:      "message",
-		MessageID: "system-prompt",
-		Role:      "system",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": mh.agent.GetSystemPrompt(),
-			},
-		},
-	}
-	messages = append(messages, systemMessage)
-
-	if message != nil {
-		messages = append(messages, *message)
-	}
-
-	messages = append(messages, task.History...)
+	// Use task.History directly since it already contains the current message
+	// (added in CreateTask), so we don't need to add the message separately
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
 
 	var tools []sdk.ChatCompletionTool
 	if mh.toolBox != nil {
@@ -232,7 +334,6 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 			finalMessage := assistantMessage
 			if finalMessage != nil {
 				task.Status.Message = finalMessage
-				mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
 			}
 
 			mh.logger.Info("streaming task completed successfully",
@@ -259,8 +360,6 @@ func (mh *DefaultMessageHandler) handleIterativeStreaming(
 		mh.logger.Debug("tool calls executed, continuing to next iteration",
 			zap.Int("iteration", iteration),
 			zap.String("task_id", task.ID))
-
-		mh.taskManager.UpdateConversationHistory(task.ContextID, task.History)
 	}
 
 	mh.logger.Warn("max streaming iterations reached",

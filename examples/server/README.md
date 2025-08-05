@@ -2,12 +2,24 @@
 
 This directory contains examples demonstrating how to create A2A (Agent-to-Agent) compatible servers using the A2A ADK (Agent Development Kit).
 
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Quick Start](#quick-start)
+   1. [Minimal Server (No AI Required)](#1-minimal-server-no-ai-required)
+   2. [AI-Powered Server (API Key Required)](#2-ai-powered-server-api-key-required)
+   3. [Pausable Task Server (API Key Required)](#3-pausable-task-server-api-key-required)
+   4. [Travel Planning Server (Domain Expert)](#4-travel-planning-server-domain-expert)
+3. [Example Usage](#example-usage)
+
 ## Overview
 
 The A2A protocol enables agents to communicate with each other using JSON-RPC over HTTP. These examples show different approaches to creating A2A servers:
 
 1. **Minimal Server** - A working server with custom task handler that provides simple responses without AI
 2. **AI-Powered Server** - A full-featured server with LLM integration and tool calling capabilities
+3. **Pausable Task Server** - An AI-powered server that demonstrates intelligent task pausing with the `input-required` state
+4. **Travel Planning Server** - A specialized domain expert agent for vacation planning with streaming and paused tasks
 
 ## Quick Start
 
@@ -16,8 +28,7 @@ The A2A protocol enables agents to communicate with each other using JSON-RPC ov
 A working A2A server with simple conversational responses using a custom task handler:
 
 ```bash
-cd cmd/minimal
-go run main.go
+go run cmd/minimal/main.go
 ```
 
 This minimal example:
@@ -38,14 +49,16 @@ Perfect for learning the A2A protocol, creating deterministic business logic age
 For AI capabilities with LLM integration and tool calling:
 
 ```bash
-cd cmd/aipowered
+# Configure the Inference Gateway
+cp .env.gateway.example .env
 
-# Required: Set your API key
-export AGENT_CLIENT_API_KEY="sk-..."  # OpenAI
-# OR
-export AGENT_CLIENT_API_KEY="sk-ant-..." AGENT_CLIENT_PROVIDER="anthropic"  # Anthropic
+# Edit .env to configure the Inference Gateway URL and other settings
+docker run -d --name inference-gateway -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
+export AGENT_CLIENT_BASE_URL=http://localhost:8081/v1
+export AGENT_CLIENT_PROVIDER=deepseek # Choose your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
+export AGENT_CLIENT_MODEL=deepseek-chat
 
-go run main.go
+go run cmd/aipowered/main.go
 ```
 
 This AI-powered example:
@@ -56,6 +69,55 @@ This AI-powered example:
 - ✅ Full conversation context and history
 - ✅ Works with Inference Gateway for unified LLM access
 - ✅ Production-ready AI agent architecture
+
+### 3. Pausable Task Server (API Key Required)
+
+Demonstrates intelligent task pausing where the LLM decides when to request user input:
+
+```bash
+# Configure the Inference Gateway
+cp .env.gateway.example .env
+
+# Edit .env to configure the Inference Gateway URL and other settings
+docker run -d --name inference-gateway --env-file .env -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
+export AGENT_CLIENT_BASE_URL=http://localhost:8081/v1
+export AGENT_CLIENT_PROVIDER='deepseek' # Choose your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
+export AGENT_CLIENT_MODEL='deepseek-chat'
+
+go run cmd/pausedtask/main.go
+```
+
+This pausable task example:
+
+- ✅ **LLM-driven pausing** - Agent intelligently determines when more user input is needed
+- ✅ Built-in `request_user_input` tool that LLM can call to pause execution  
+- ✅ Demonstrates complete input-required workflow (submit → pause → resume → complete)
+- ✅ Works with existing pausedtask client example
+- ✅ Production-ready pattern for human-in-the-loop AI workflows
+
+### 4. Travel Planning Server (Domain Expert)
+
+A specialized travel planning agent that demonstrates domain expertise with streaming and paused task capabilities:
+
+```bash
+# Configure the Inference Gateway (same as above)
+export AGENT_CLIENT_BASE_URL=http://localhost:8081/v1
+export AGENT_CLIENT_PROVIDER='deepseek'
+export AGENT_CLIENT_MODEL='deepseek-chat'
+
+go run cmd/travelplanner/main.go
+```
+
+This travel planning example:
+
+- ✅ **Domain Expertise** - Specialized in vacation planning with travel-specific tools
+- ✅ **Smart Travel Tools** - Weather data, budget estimation, activity recommendations
+- ✅ **Interactive Planning** - Intelligently gathers preferences through conversation
+- ✅ **Perfect Match** - Designed specifically for the `pausedtask-streaming` client example
+- ✅ **Comprehensive Output** - Creates detailed day-by-day itineraries with budget breakdowns
+- ✅ **Real-world Pattern** - Shows how to build domain-specific A2A agents
+
+**Perfect for testing with**: `examples/client/cmd/pausedtask-streaming` - Send "I need help planning a vacation" to see the full interactive planning process!
 
 ## Example Usage
 
@@ -124,34 +186,26 @@ The agent metadata appears in:
 
 ### AI-Powered Server
 **Required:**
-- `AGENT_CLIENT_API_KEY` - Your LLM provider API key
-
-**Required for specific providers:**
-- `AGENT_CLIENT_PROVIDER` - LLM provider: "openai", "anthropic", "deepseek", "ollama" (required for non-OpenAI providers)
-- `AGENT_CLIENT_BASE_URL` - Custom API endpoint (required for Ollama, Inference Gateway, or custom deployments)
+- `AGENT_CLIENT_BASE_URL` - Your inference gateway URL (automatically configures AGENT_CLIENT_BASE_URL)
+- `AGENT_CLIENT_PROVIDER` - Your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
+- `AGENT_CLIENT_MODEL` - Model name (e.g., "gpt-4", "claude-2", "deepseek-chat")
 
 **Optional:**
 - `AGENT_CLIENT_MODEL` - Model name (uses provider defaults if not specified)
 - `PORT` - Server port (default: "8080")
 
-### Provider Examples
+### Configuration Examples
 
 ```bash
-# OpenAI (default)
-export AGENT_CLIENT_API_KEY="sk-..."
-
-# Anthropic
-export AGENT_CLIENT_API_KEY="sk-ant-..."
-export AGENT_CLIENT_PROVIDER="anthropic"
-
-# Via Inference Gateway
-export AGENT_CLIENT_API_KEY="your-key"
+# Standard Inference Gateway
 export AGENT_CLIENT_BASE_URL="http://localhost:3000/v1"
 
-# Local Ollama
-export AGENT_CLIENT_PROVIDER="ollama"
-export AGENT_CLIENT_MODEL="llama3.2"
-export AGENT_CLIENT_BASE_URL="http://localhost:11434/v1"
+# Custom Inference Gateway with specific model
+export AGENT_CLIENT_BASE_URL="http://localhost:3000/v1"
+export AGENT_CLIENT_MODEL="gpt-4"
+
+# Production Gateway
+export AGENT_CLIENT_BASE_URL="https://gateway.example.com/v1"
 ```
 
 ## Architecture
@@ -212,6 +266,7 @@ curl http://localhost:8080/.well-known/agent.json | jq
 
 - `cmd/minimal/main.go` - Simple working server with custom task handler
 - `cmd/aipowered/main.go` - AI-powered server with LLM integration and tools
+- `cmd/pausedtask/main.go` - AI-powered server with intelligent task pausing capabilities
 - `README.md` - This documentation
 
 ## Next Steps

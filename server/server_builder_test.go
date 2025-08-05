@@ -133,7 +133,7 @@ func TestA2AServerBuilder_WithAgentAndConfig(t *testing.T) {
 		BaseURL:  "https://api.openai.com/v1",
 	}
 
-	agent, err := server.NewOpenAICompatibleAgentWithConfig(logger, agentConfig)
+	agent, err := server.NewOpenAICompatibleAgentWithLLMConfig(logger, agentConfig)
 	assert.NoError(t, err)
 
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
@@ -205,7 +205,7 @@ func TestA2AServerBuilderInterface_WithMocks(t *testing.T) {
 	fakeBuilder.BuildReturns(mockServer, nil)
 
 	logger := zap.NewNop()
-	agent := server.NewDefaultOpenAICompatibleAgent(logger)
+	agent := server.NewOpenAICompatibleAgent(logger)
 
 	result, err := fakeBuilder.
 		WithLogger(logger).
@@ -257,7 +257,7 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 	fakeBuilder.BuildReturns(mockServer, nil)
 
 	logger := zap.NewNop()
-	agent := server.NewDefaultOpenAICompatibleAgent(logger)
+	agent := server.NewOpenAICompatibleAgent(logger)
 	taskHandler := &mocks.FakeTaskHandler{}
 	taskResultProcessor := &mocks.FakeTaskResultProcessor{}
 

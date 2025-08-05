@@ -15,7 +15,7 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	ServerURL        string        `env:"A2A_SERVER_URL,default=http://localhost:8080/a2a"`
+	ServerURL        string        `env:"A2A_SERVER_URL,default=http://localhost:8080"`
 	StreamingTimeout time.Duration `env:"STREAMING_TIMEOUT,default=60s"`
 }
 

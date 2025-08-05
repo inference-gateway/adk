@@ -229,11 +229,7 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 
 	if b.agent != nil {
 		server.SetAgent(b.agent)
-
-		if b.taskHandler == nil {
-			server.SetTaskHandler(NewAgentTaskHandler(b.logger, b.agent))
-			b.logger.Info("configured agent task handler with openai-compatible agent")
-		}
+		b.logger.Info("configured openai-compatible agent for optional use by task handler")
 	}
 
 	if b.taskHandler != nil {
@@ -287,8 +283,8 @@ func CustomA2AServerWithAgent(
 	agentCard types.AgentCard,
 ) (A2AServer, error) {
 	if toolBox != nil {
-		if defaultAgent, ok := agent.(*DefaultOpenAICompatibleAgent); ok {
-			defaultAgent.toolBox = toolBox
+		if agentImpl, ok := agent.(*OpenAICompatibleAgentImpl); ok {
+			agentImpl.SetToolBox(toolBox)
 		}
 	}
 
