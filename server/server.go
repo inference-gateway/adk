@@ -298,12 +298,6 @@ func (s *A2AServerImpl) validateStreamingConfiguration() {
 	}
 
 	if streamingEnabled {
-		if _, isDefault := s.streamingTaskHandler.(*DefaultStreamingTaskHandler); isDefault {
-			s.logger.Info("streaming is enabled - using default streaming task handler",
-				zap.String("note", "default handler provides built-in streaming support with input-required pausing"),
-				zap.String("tip", "for custom streaming logic, use WithStreamingTaskHandler() in your server builder"))
-		}
-
 		if s.streamingTaskHandler == nil {
 			s.logger.Warn("streaming is enabled in agent capabilities but no streaming task handler is configured",
 				zap.String("warning", "streaming requests will fail"),
@@ -429,7 +423,11 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 		IdleTimeout:  s.cfg.ServerConfig.IdleTimeout,
 	}
 
-	s.logger.Info("starting A2A server", zap.String("port", s.cfg.ServerConfig.Port))
+	s.logger.Info("starting A2A server",
+		zap.String("port", s.cfg.ServerConfig.Port),
+		zap.String("agent_name", s.cfg.AgentName),
+		zap.String("agent_description", s.cfg.AgentDescription),
+		zap.String("agent_version", s.cfg.AgentVersion))
 
 	s.validateStreamingConfiguration()
 
