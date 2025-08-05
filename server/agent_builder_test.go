@@ -38,8 +38,8 @@ func TestAgentBuilder_Build_WithDefaults(t *testing.T) {
 			},
 		},
 	}
-	// Expect error because no LLM client is configured
-	result, err := agent.Run(context.TODO(), []types.Message{*message})
+
+	result, err := agent.Run(context.Background(), []types.Message{*message})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no LLM client configured for agent")
 	assert.Nil(t, result)

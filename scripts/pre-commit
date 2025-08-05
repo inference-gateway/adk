@@ -1,0 +1,55 @@
+#!/bin/bash
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+go_files=$(git diff --cached --name-only | grep '\.go$' || true)
+md_files=$(git diff --cached --name-only | grep '\.md$' || true)
+
+if [ -n "$go_files" ]; then
+    echo "📝 Go files detected - running full checks..."
+    
+    echo "  🎨 Formatting code..."
+    task format
+    
+    echo "  🧹 Tidying Go modules..."
+    task tidy
+    
+    echo "  🔍 Running linter..."
+    task lint
+    
+    echo "  🧪 Running tests..."
+    task test
+    
+    if ! git diff --exit-code; then
+        echo ""
+        echo "❌ Files were modified by formatting or tidying!"
+        echo "   Please review the changes, stage them, and commit again:"
+        echo "   git add ."
+        echo "   git commit"
+        exit 1
+    fi
+fi
+
+if [ -n "$md_files" ]; then
+    if [ -z "$go_files" ]; then
+        echo "📝 Only Markdown files detected - running formatting..."
+        task format
+        
+        if ! git diff --exit-code; then
+            echo ""
+            echo "❌ Markdown files were modified by formatting!"
+            echo "   Please review the changes, stage them, and commit again:"
+            echo "   git add ."
+            echo "   git commit"
+            exit 1
+        fi
+    fi
+fi
+
+if [ -z "$go_files" ] && [ -z "$md_files" ]; then
+    echo "ℹ️  No Go or Markdown files to check"
+fi
+
+echo "✅ All pre-commit checks passed!"

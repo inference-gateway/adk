@@ -30,12 +30,14 @@ export STREAMING_TIMEOUT="2m"                     # Max time for streaming opera
 ### Running the Example
 
 Start the example travelplanner A2A server first:
+
 ```bash
 cd examples/server/cmd/travelplanner
 go run main.go
 ```
 
 Then run the client example:
+
 ```bash
 cd examples/client/cmd/pausedtask-streaming
 go run main.go

@@ -39,6 +39,8 @@ RUN apt-get update && \
     npm i -g js-yaml@4.1.0 && \
     # Install Claude code
     npm i -g @anthropic-ai/claude-code && \
+    # Install prettier
+    npm i -g prettier && \
     # Clean up
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

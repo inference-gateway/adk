@@ -22,6 +22,12 @@ tasks:
     cmds:
       - find . -name 'go.mod' -execdir go mod tidy \;
 
+  format:
+    desc: 'Format all Go files'
+    cmds:
+      - find . -name '*.go' -exec gofmt -w {} \;
+      - find . -name '*.md' -exec prettier -w {} \;
+
   lint:
     desc: 'Run Go static analysis and linting'
     cmds:
@@ -146,3 +152,16 @@ tasks:
     desc: 'Generate mock for OpenAICompatibleAgent interface'
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_openai_compatible_agent.go server OpenAICompatibleAgent
+
+  precommit:install:
+    desc: 'Install the pre-commit hook'
+    cmds:
+      - cp scripts/pre-commit .git/hooks/pre-commit
+      - chmod +x .git/hooks/pre-commit
+      - echo "✅ Pre-commit hook installed successfully!"
+
+  precommit:uninstall:
+    desc: 'Uninstall the pre-commit hook'
+    cmds:
+      - rm -f .git/hooks/pre-commit
+      - echo "✅ Pre-commit hook uninstalled successfully!"

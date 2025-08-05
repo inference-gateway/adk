@@ -28,7 +28,7 @@ func main() {
 	// Load configuration from environment variables
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	var config Config
 	if err := envconfig.Process(ctx, &config); err != nil {
 		log.Fatalf("failed to process configuration: %v", err)
@@ -44,9 +44,9 @@ func main() {
 	// Setup signal handling for graceful interruption
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	
+
 	var currentTaskID string
-	
+
 	go func() {
 		<-sigChan
 		fmt.Printf("\n\n🛑 Interrupted! Showing conversation history...\n")
@@ -178,7 +178,7 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 
 			case adk.TaskStateInputRequired:
 				fmt.Printf("\n⏸️  Task paused - agent needs input!\n")
-				
+
 				// Show recent conversation for context
 				showRecentConversation(&task, 3)
 
@@ -264,7 +264,7 @@ func showConversationHistory(ctx context.Context, a2aClient client.A2AClient, ta
 
 	fmt.Printf("\n📜 Conversation History for Task %s:\n", taskID)
 	fmt.Printf("%s\n", strings.Repeat("=", 60))
-	
+
 	if len(task.History) == 0 {
 		fmt.Printf("(No conversation history available)\n")
 		return
@@ -275,10 +275,10 @@ func showConversationHistory(ctx context.Context, a2aClient client.A2AClient, ta
 		if msg.Role == "assistant" {
 			role = "🤖 Assistant"
 		}
-		
+
 		fmt.Printf("\n[%d] %s:\n", i+1, role)
 		fmt.Printf("%s\n", strings.Repeat("-", 30))
-		
+
 		textContent := extractTextFromMessage(&msg)
 		if textContent != "" {
 			fmt.Printf("%s\n", textContent)
@@ -296,7 +296,7 @@ func showRecentConversation(task *adk.Task, count int) {
 	}
 
 	fmt.Printf("\n📝 Recent conversation:\n")
-	
+
 	start := len(task.History) - count
 	if start < 0 {
 		start = 0
@@ -308,7 +308,7 @@ func showRecentConversation(task *adk.Task, count int) {
 		if msg.Role == "assistant" {
 			role = "🤖"
 		}
-		
+
 		textContent := extractTextFromMessage(&msg)
 		if textContent != "" {
 			// Truncate long messages for context

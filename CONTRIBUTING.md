@@ -81,15 +81,50 @@ task test
 task tidy
 ```
 
-### 5. Before Committing
+### 5. Pre-commit Hooks (Recommended)
+
+**Install the pre-commit hook to automatically run quality checks:**
+
+```bash
+task precommit:install
+```
+
+The pre-commit hook will automatically run smart checks based on file types:
+
+- **Go files**: Full workflow (formatting, tidying, linting, tests)
+- **Markdown files only**: Just formatting
+- **Mixed files**: Full workflow
+
+**Important**: The hook will **fail** if any checks fail or files need formatting. You'll need to review the changes, stage them, and commit again.
+
+- **Mixed files**: Full workflow
+
+This ensures consistent code quality and reduces CI failures.
+
+**To bypass the hook if needed (not recommended):**
+
+```bash
+git commit --no-verify
+```
+
+**To uninstall the hook:**
+
+```bash
+task precommit:uninstall
+```
+
+### 6. Before Committing
 
 **Always run these commands before committing:**
 
-1. `task a2a:download-schema` (if working on A2A features)
-2. `task a2a:generate-types` (if schema changes were made)
-3. `task generate:mocks` (if interfaces were modified)
-4. `task lint` (ensure code quality)
-5. `task test` (ensure all tests pass)
+1. `task precommit:install` (recommended for first-time setup)
+2. `task a2a:download-schema` (if working on A2A features)
+3. `task a2a:generate-types` (if schema changes were made)
+4. `task generate:mocks` (if interfaces were modified)
+5. `task lint` (ensure code quality)
+6. `task test` (ensure all tests pass)
+
+Note: If you have the pre-commit hook installed, steps 4-6 will run automatically on commit.
 
 ## 🎯 Coding Guidelines
 
@@ -120,7 +155,7 @@ import (
     "net/http/httptest"
     "strings"
     "testing"
-    
+
     "github.com/stretchr/testify/assert"
     "github.com/inference-gateway/adk/server"
 )
@@ -156,11 +191,11 @@ func TestAgentServer(t *testing.T) {
         t.Run(tt.name, func(t *testing.T) {
             // Create isolated test environment
             server := setupTestAgent(t)
-            
+
             // Make request
             req := httptest.NewRequest(tt.method, tt.endpoint, strings.NewReader(tt.body))
             rec := httptest.NewRecorder()
-            
+
             // Use the server's HTTP handler
             server.ServeHTTP(rec, req)
 
@@ -305,7 +340,7 @@ func setupTestAgent(t *testing.T) server.A2AServer {
         WithTaskHandler(mockTaskHandler).
         WithTaskResultProcessor(mockTaskResultProcessor).
         Build()
-    
+
     return server
 }
 ```

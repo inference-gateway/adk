@@ -5,19 +5,22 @@ A specialized A2A (Agent-to-Agent) server that demonstrates domain expertise in 
 ## Features
 
 ✈️ **Travel Planning Expertise**
+
 - Personalized vacation itinerary creation
-- Destination research and recommendations  
+- Destination research and recommendations
 - Budget planning and cost estimation
 - Activity and attraction suggestions
 - Cultural insights and local experiences
 
 🤖 **AI-Powered Intelligence**
+
 - LLM-driven conversation and planning
 - Smart pausing to gather user preferences
 - Tool calling for weather, budget, and activity data
 - Long conversation context for complex planning
 
 🔄 **Interactive Planning Process**
+
 - Intelligently pauses to gather preferences
 - Asks clarifying questions about destinations, budget, interests
 - Provides detailed, actionable travel advice
@@ -35,15 +38,18 @@ This server is specifically designed to complement the `pausedtask-streaming` cl
 ## Available Tools
 
 ### 🌤️ Weather Information
+
 - `get_destination_weather`: Current weather and seasonal climate data
 - Provides best travel times, weather patterns, packing tips
 
-### 💰 Budget Estimation  
+### 💰 Budget Estimation
+
 - `estimate_travel_budget`: Cost breakdown for trips
 - Calculates accommodation, food, activities, transport costs
 - Supports budget, mid-range, and luxury travel styles
 
 ### 🎯 Activity Recommendations
+
 - `get_destination_activities`: Attractions and experiences
 - Suggests activities based on interests and trip duration
 - Includes cultural sites, food experiences, outdoor activities
@@ -121,12 +127,14 @@ Travel Planning Agent
 ## Production Considerations
 
 ### Real Data Integration
+
 - Replace mock weather data with actual weather APIs
 - Integrate real tourism and activity databases
 - Connect to actual travel booking systems
 - Add real-time pricing data
 
 ### Enhanced Features
+
 - Multi-language support for international travelers
 - Accessibility information for travelers with disabilities
 - Real-time flight and accommodation booking
@@ -134,6 +142,7 @@ Travel Planning Agent
 - Travel document and visa requirement checking
 
 ### Scaling
+
 - Add caching for weather and activity data
 - Implement rate limiting for external APIs
 - Add monitoring and analytics
@@ -142,12 +151,13 @@ Travel Planning Agent
 ## Testing the Agent
 
 ### Manual Testing
+
 ```bash
 curl -X POST http://localhost:8080/a2a \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "method": "message/send", 
+    "method": "message/send",
     "params": {
       "message": {
         "kind": "message",
@@ -161,6 +171,7 @@ curl -X POST http://localhost:8080/a2a \
 ```
 
 ### Agent Information
+
 ```bash
 curl http://localhost:8080/.well-known/agent.json | jq .
 ```

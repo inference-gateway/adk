@@ -118,15 +118,14 @@ func min(a, b int) int {
 func main() {
 	fmt.Println("🤖 Starting Minimal A2A Server (Non-AI)...")
 
-	// Step 1: Initialize logger
+	// Initialize logger
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("failed to create logger: %v", err)
 	}
 	defer logger.Sync()
 
-	// Step 2: Create a simple A2A server with custom task handler
-	// This creates a server that can handle A2A protocol messages with simple responses
+	// Create a simple A2A server with custom task handler
 
 	// Get the port from environment or use default
 	port := os.Getenv("PORT")
@@ -183,7 +182,7 @@ func main() {
 		zap.String("description", server.BuildAgentDescription),
 		zap.String("version", server.BuildAgentVersion))
 
-	// Step 3: Start the server
+	// Start the server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -223,14 +222,14 @@ func main() {
   }'`, port)
 	fmt.Println()
 
-	// Step 4: Wait for shutdown signal
+	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	logger.Info("🛑 shutting down server...")
 
-	// Step 5: Graceful shutdown
+	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 

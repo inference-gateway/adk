@@ -90,7 +90,7 @@ go run cmd/pausedtask/main.go
 This pausable task example:
 
 - ✅ **LLM-driven pausing** - Agent intelligently determines when more user input is needed
-- ✅ Built-in `request_user_input` tool that LLM can call to pause execution  
+- ✅ Built-in `request_user_input` tool that LLM can call to pause execution
 - ✅ Demonstrates complete input-required workflow (submit → pause → resume → complete)
 - ✅ Works with existing pausedtask client example
 - ✅ Production-ready pattern for human-in-the-loop AI workflows
@@ -174,6 +174,7 @@ go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=my-
 ```
 
 The agent metadata appears in:
+
 - `/.well-known/agent.json` endpoint
 - Server startup logs
 - A2A protocol responses
@@ -181,16 +182,20 @@ The agent metadata appears in:
 ## Configuration
 
 ### Minimal Server
+
 - `PORT` - Server port (default: "8080")
 - No other configuration required!
 
 ### AI-Powered Server
+
 **Required:**
+
 - `AGENT_CLIENT_BASE_URL` - Your inference gateway URL (automatically configures AGENT_CLIENT_BASE_URL)
 - `AGENT_CLIENT_PROVIDER` - Your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
 - `AGENT_CLIENT_MODEL` - Model name (e.g., "gpt-4", "claude-2", "deepseek-chat")
 
 **Optional:**
+
 - `AGENT_CLIENT_MODEL` - Model name (uses provider defaults if not specified)
 - `PORT` - Server port (default: "8080")
 
@@ -211,13 +216,15 @@ export AGENT_CLIENT_BASE_URL="https://gateway.example.com/v1"
 ## Architecture
 
 ### Minimal Server
+
 - **CustomTaskHandler**: Processes messages with simple business logic
 - **No LLM dependency**: Fast, deterministic responses
 - **A2A compliant**: Full protocol support without AI complexity
 
-### AI-Powered Server  
+### AI-Powered Server
+
 - **OpenAICompatibleAgent**: Handles LLM communication
-- **ToolBox**: Function calling capabilities  
+- **ToolBox**: Function calling capabilities
 - **Multiple LLM Providers**: Flexible provider support
 - **Conversation Management**: Context-aware interactions
 
@@ -226,6 +233,7 @@ export AGENT_CLIENT_BASE_URL="https://gateway.example.com/v1"
 When you run the examples with custom build-time metadata, you'll see the agent information displayed in the startup logs:
 
 **Minimal Server Example:**
+
 ```bash
 # Build with custom metadata
 go build -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=Weather Assistant' \
@@ -238,6 +246,7 @@ go build -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=We
 ```
 
 **Output:**
+
 ```
 🤖 Starting Minimal A2A Server (Non-AI)...
 2025-07-20T09:14:26.290Z  INFO  ✅ minimal A2A server created with simple task handler
@@ -251,11 +260,12 @@ go build -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=We
 ```
 
 The agent metadata is also available via the agent info endpoint:
+
 ```bash
 curl http://localhost:8080/.well-known/agent.json | jq
 {
   "name": "Weather Assistant",
-  "description": "AI-powered weather and time assistant", 
+  "description": "AI-powered weather and time assistant",
   "version": "2.1.0",
   "capabilities": { ... },
   ...
@@ -272,7 +282,7 @@ curl http://localhost:8080/.well-known/agent.json | jq
 ## Next Steps
 
 1. **Start Simple**: Run the minimal example to understand A2A protocol basics
-2. **Add Business Logic**: Customize the task handler for your specific use case  
+2. **Add Business Logic**: Customize the task handler for your specific use case
 3. **Add AI**: Use the AI-powered example with your API key for intelligent responses
 4. **Extend Tools**: Add custom tools and functions for your domain
 5. **Production**: See the main ADK documentation for advanced patterns and deployment

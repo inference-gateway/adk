@@ -43,6 +43,7 @@
   - [Prerequisites](#prerequisites)
   - [Development Workflow](#development-workflow)
   - [Available Tasks](#available-tasks)
+  - [Pre-commit Hooks](#pre-commit-hooks)
   - [Build-Time Agent Metadata](#build-time-agent-metadata)
 - [📖 API Reference](#-api-reference)
   - [Core Components](#core-components)
@@ -155,9 +156,12 @@ import (
     "fmt"
     "log"
     "os"
+    "os/signal"
+    "syscall"
 
     "github.com/inference-gateway/adk/server"
     "github.com/inference-gateway/adk/server/config"
+    "github.com/inference-gateway/adk/types"
     "github.com/sethvargo/go-envconfig"
     "go.uber.org/zap"
 )
@@ -201,42 +205,37 @@ func main() {
     )
     toolBox.AddTool(weatherTool)
 
-    // Create LLM client (requires INFERENCE_GATEWAY_URL environment variable)
-    var a2aServer server.A2AServer
-    var err error
-    if cfg.AgentConfig != nil && cfg.AgentConfig.APIKey != "" {
-        // Modern approach using AgentBuilder
-        agent, err := server.NewAgentBuilder(logger).
-            WithConfig(cfg.AgentConfig).
-            WithToolBox(toolBox).
-            Build()
-        if err != nil {
-            log.Fatal("Failed to create agent:", err)
-        }
-        
-        a2aServer, err = server.NewA2AServerBuilder(cfg, logger).
-            WithAgent(agent).
-            WithAgentCardFromFile(".well-known/agent.json").
-            Build()
-        if err != nil {
-            log.Fatal("Failed to create server:", err)
-        }
-    } else {
-        // Mock mode without actual LLM
-        agent, err := server.NewAgentBuilder(logger).
-            WithToolBox(toolBox).
-            Build()
-        if err != nil {
-            log.Fatal("Failed to create agent:", err)
-        }
-        
-        a2aServer, err = server.NewA2AServerBuilder(cfg, logger).
-            WithAgent(agent).
-            WithAgentCardFromFile(".well-known/agent.json").
-            Build()
-        if err != nil {
-            log.Fatal("Failed to create server:", err)
-        }
+    // Create LLM client and agent
+    llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
+    if err != nil {
+        log.Fatal("Failed to create LLM client:", err)
+    }
+
+    agent, err := server.NewAgentBuilder(logger).
+        WithConfig(&cfg.AgentConfig).
+        WithLLMClient(llmClient).
+        WithSystemPrompt("You are a helpful AI assistant.").
+        WithToolBox(toolBox).
+        Build()
+    if err != nil {
+        log.Fatal("Failed to create agent:", err)
+    }
+
+    // Create server with agent
+    a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, agent, types.AgentCard{
+        Name:        cfg.AgentName,
+        Description: cfg.AgentDescription,
+        Version:     cfg.AgentVersion,
+        Capabilities: types.AgentCapabilities{
+            Streaming:              &cfg.CapabilitiesConfig.Streaming,
+            PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
+            StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
+        },
+        DefaultInputModes:  []string{"text/plain"},
+        DefaultOutputModes: []string{"text/plain"},
+    })
+    if err != nil {
+        log.Fatal("Failed to create server:", err)
     }
 
     // Start server
@@ -249,7 +248,12 @@ func main() {
     logger.Info("AI-powered A2A server running", zap.String("port", cfg.ServerConfig.Port))
 
     // Wait for shutdown signal
-    select {}
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    <-quit
+
+    logger.Info("Shutting down server...")
+    a2aServer.Stop(ctx)
 }
 ```
 
@@ -275,20 +279,20 @@ func main() {
 
     // Monitor agent health
     ctx := context.Background()
-    
+
     // Single health check
     health, err := client.GetHealth(ctx)
     if err != nil {
         log.Printf("Health check failed: %v", err)
         return
     }
-    
+
     fmt.Printf("Agent health: %s\n", health.Status)
-    
+
     // Periodic health monitoring
     ticker := time.NewTicker(30 * time.Second)
     defer ticker.Stop()
-    
+
     for {
         select {
         case <-ticker.C:
@@ -297,7 +301,7 @@ func main() {
                 log.Printf("Health check failed: %v", err)
                 continue
             }
-            
+
             switch health.Status {
             case "healthy":
                 fmt.Printf("[%s] Agent is healthy\n", time.Now().Format("15:04:05"))
@@ -319,7 +323,6 @@ For complete working examples, see the [examples](./examples/) directory:
 
 - **[Minimal Server](./examples/server/cmd/minimal/)** - Basic A2A server without AI capabilities
 - **[AI-Powered Server](./examples/server/cmd/aipowered/)** - Full A2A server with LLM integration
-- **[JSON AgentCard Server](./examples/server/cmd/json-agentcard/)** - A2A server with agent metadata loaded from JSON file
 - **[Client Example](./examples/client/)** - A2A client implementation
 - **[Paused Task Example](./examples/client/cmd/pausedtask/)** - Handle input-required task pausing
 - **[Health Check Example](#health-check-example)** - Monitor agent health status
@@ -375,28 +378,78 @@ For complete working examples, see the [examples](./examples/) directory:
    task a2a:generate-types
    ```
 
-3. **Run linting**:
+3. **Generate testing mocks**:
+
+   ```bash
+   task generate:mocks
+   ```
+
+4. **Run formatting**:
+
+   ```bash
+   task format
+   ```
+
+5. **Run linting**:
 
    ```bash
    task lint
    ```
 
-4. **Run tests**:
+6. **Run tests**:
    ```bash
    task test
    ```
 
 ### Available Tasks
 
-| Task                       | Description                                                |
-| -------------------------- | ---------------------------------------------------------- |
-| `task a2a:download-schema` | Download the latest A2A schema                             |
-| `task a2a:generate-types`  | Generate Go types from A2A schema                          |
-| `task generate:mocks`      | Generate all testing mocks                                 |
-| `task lint`                | Run static analysis and linting                            |
-| `task test`                | Run all tests                                              |
-| `task tidy`                | Tidy Go modules                                            |
-| `task clean`               | Clean up build artifacts                                   |
+| Task                       | Description                       |
+| -------------------------- | --------------------------------- |
+| `task a2a:download-schema` | Download the latest A2A schema    |
+| `task a2a:generate-types`  | Generate Go types from A2A schema |
+| `task generate:mocks`      | Generate all testing mocks        |
+| `task format`              | Format all Go and Markdown files  |
+| `task lint`                | Run static analysis and linting   |
+| `task test`                | Run all tests                     |
+| `task tidy`                | Tidy Go modules                   |
+| `task clean`               | Clean up build artifacts          |
+| `task precommit:install`   | Install Git pre-commit hook       |
+| `task precommit:uninstall` | Uninstall Git pre-commit hook     |
+
+### Pre-commit Hooks
+
+The project includes a Git pre-commit hook that automatically runs quality checks before commits:
+
+**Installation:**
+
+```bash
+task precommit:install
+```
+
+**What the hook does (smart checks):**
+
+- **Go files committed**: Full workflow - formatting, tidying, linting, and tests
+- **Markdown files only**: Only formatting (`task format`)
+- **Mixed Go and Markdown**: Full workflow
+- **Other files**: No checks run
+
+**Hook behavior:**
+
+- ✅ **Passes**: If all checks pass and no files need formatting
+- ❌ **Fails**: If tests fail, linting fails, or files need formatting
+- 📝 **After failure**: Review changes, stage them (`git add .`), and commit again
+
+**Bypass if needed:**
+
+```bash
+git commit --no-verify  # Skip pre-commit hook (not recommended)
+```
+
+**Uninstall:**
+
+```bash
+task precommit:uninstall
+```
 
 ### Build-Time Agent Metadata
 
@@ -407,7 +460,7 @@ The ADK supports injecting agent metadata at build time using Go linker flags (L
 The following build-time metadata variables can be set via LD flags:
 
 - **`BuildAgentName`** - The agent's display name
-- **`BuildAgentDescription`** - A description of the agent's capabilities  
+- **`BuildAgentDescription`** - A description of the agent's capabilities
 - **`BuildAgentVersion`** - The agent's version number
 
 #### Usage Examples
@@ -429,7 +482,7 @@ go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName='My
 FROM golang:1.24-alpine AS builder
 
 ARG AGENT_NAME="Production Agent"
-ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"  
+ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"
 ARG AGENT_VERSION="1.0.0"
 
 WORKDIR /app
@@ -592,11 +645,13 @@ default:
 ```
 
 **Health Status Values:**
+
 - `healthy`: Agent is fully operational
 - `degraded`: Agent is partially operational (some functionality may be limited)
 - `unhealthy`: Agent is not operational or experiencing significant issues
 
 **Use Cases:**
+
 - Monitor agent availability in distributed systems
 - Implement health checks for load balancers
 - Detect and respond to agent failures
@@ -622,17 +677,18 @@ The configuration is managed through environment variables and the config packag
 
 ```go
 type Config struct {
-    AgentURL                      string              `env:"AGENT_URL,default=http://helloworld-agent:8080"`
-    Debug                         bool                `env:"DEBUG,default=false"`
-    Port                          string              `env:"PORT,default=8080"`
-    StreamingStatusUpdateInterval time.Duration       `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
-    AgentConfig                   *AgentConfig        `env:",prefix=AGENT_CLIENT_"`
-    CapabilitiesConfig            *CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
-    TLSConfig                     *TLSConfig          `env:",prefix=TLS_"`
-    AuthConfig                    *AuthConfig         `env:",prefix=AUTH_"`
-    QueueConfig                   *QueueConfig        `env:",prefix=QUEUE_"`
-    ServerConfig                  *ServerConfig       `env:",prefix=SERVER_"`
-    TelemetryConfig               *TelemetryConfig    `env:",prefix=TELEMETRY_"`
+    AgentURL                      string               `env:"AGENT_URL,default=http://helloworld-agent:8080"`
+    Debug                         bool                 `env:"DEBUG,default=false"`
+    Port                          string               `env:"PORT,default=8080"`
+    StreamingStatusUpdateInterval time.Duration        `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
+    AgentConfig                   *AgentConfig         `env:",prefix=AGENT_CLIENT_"`
+    CapabilitiesConfig            *CapabilitiesConfig  `env:",prefix=CAPABILITIES_"`
+    TLSConfig                     *TLSConfig           `env:",prefix=TLS_"`
+    AuthConfig                    *AuthConfig          `env:",prefix=AUTH_"`
+    QueueConfig                   *QueueConfig         `env:",prefix=QUEUE_"`
+    TaskRetentionConfig           *TaskRetentionConfig `env:",prefix=TASK_RETENTION_"`
+    ServerConfig                  *ServerConfig        `env:",prefix=SERVER_"`
+    TelemetryConfig               *TelemetryConfig     `env:",prefix=TELEMETRY_"`
 }
 
 type AgentConfig struct {
@@ -854,7 +910,7 @@ Create a JSON file following the A2A AgentCard specification:
       "description": "API key for weather service access"
     }
   },
-  "security": [{"apiKey": []}]
+  "security": [{ "apiKey": [] }]
 }
 ```
 
@@ -933,13 +989,13 @@ for {
         log.Printf("Error getting task: %v", err)
         continue
     }
-    
+
     switch task.Status.State {
     case adk.TaskStateInputRequired:
         // Display agent's request and get user input
         fmt.Printf("Agent: %s\n", getMessageText(task.Status.Message))
         userInput := getUserInput()
-        
+
         // Resume task with user input (TaskID in message as per schema)
         _, err = client.SendTask(ctx, adk.MessageSendParams{
             Message: adk.Message{
@@ -954,7 +1010,7 @@ for {
     case adk.TaskStateCompleted, adk.TaskStateFailed:
         return task // Task finished
     }
-    
+
     time.Sleep(2 * time.Second) // Poll interval
 }
 ```
@@ -964,6 +1020,7 @@ for {
 Leverage standard tool use patterns and Model Context Protocol (MCP) with task pausing:
 
 **Tool-Based Pausing:**
+
 ```go
 // Define a tool that requires user input
 inputTool := server.NewBasicTool(
@@ -977,22 +1034,23 @@ inputTool := server.NewBasicTool(
     },
     func(ctx context.Context, args map[string]interface{}) (string, error) {
         prompt := args["prompt"].(string)
-        
+
         // Extract taskID from context (set by agent)
         taskID := ctx.Value("taskID").(string)
-        
+
         // Pause the task and request input
         err := taskManager.PauseTaskForInput(taskID, &adk.Message{
             Role: "assistant",
             Parts: []adk.Part{{Kind: "text", Text: prompt}},
         })
-        
+
         return "task_paused_for_input", err
     },
 )
 ```
 
 **MCP Tool Integration:**
+
 ```go
 // MCP tools can seamlessly pause tasks for user confirmation
 mcpConfirmTool := server.NewBasicTool(
@@ -1008,10 +1066,10 @@ mcpConfirmTool := server.NewBasicTool(
     func(ctx context.Context, args map[string]interface{}) (string, error) {
         // Use MCP to present structured confirmation request
         confirmationRequest := buildMCPConfirmation(args)
-        
+
         taskID := ctx.Value("taskID").(string)
         err := taskManager.PauseTaskForInput(taskID, confirmationRequest)
-        
+
         return "awaiting_mcp_confirmation", err
     },
 )
@@ -1245,6 +1303,11 @@ AUTH_ENABLE="false"
 AUTH_ISSUER_URL="http://keycloak:8080/realms/inference-gateway-realm"
 AUTH_CLIENT_ID="inference-gateway-client"
 AUTH_CLIENT_SECRET="your-secret"
+
+# Task retention (optional)
+TASK_RETENTION_MAX_COMPLETED_TASKS="100"    # Maximum completed tasks to retain (0 = unlimited)
+TASK_RETENTION_MAX_FAILED_TASKS="50"        # Maximum failed tasks to retain (0 = unlimited)
+TASK_RETENTION_CLEANUP_INTERVAL="5m"        # How often to run cleanup (0 = manual only)
 
 # TLS (optional)
 SERVER_TLS_ENABLE="false"
