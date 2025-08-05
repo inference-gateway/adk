@@ -284,7 +284,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 			currentMessages = append(currentMessages, toolResultMessages...)
 
-			// Check if the last message sent was an input_required - if so, stop streaming
 			if len(toolResultMessages) > 0 {
 				lastToolMessage := toolResultMessages[len(toolResultMessages)-1]
 				if lastToolMessage.Kind == "input_required" {
@@ -570,10 +569,8 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 				case <-ctx.Done():
 				}
 
-				// Add the input_required message to toolResultMessages so the main loop can detect it
 				toolResultMessages = append(toolResultMessages, *inputRequiredMessage)
 
-				// Return immediately - don't process any more tools or continue iterations
 				return toolResultMessages
 			}
 
@@ -625,7 +622,6 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			}
 		}
 
-		// Always add a tool result message, regardless of success or failure
 		toolResultMessage := types.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),

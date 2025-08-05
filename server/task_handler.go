@@ -69,7 +69,7 @@ func (th *DefaultTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 		return th.processWithAgent(ctx, task, message)
 	}
 
-	return th.processWithoutAgent(ctx, task, message)
+	return th.processWithoutAgentBackground(ctx, task, message)
 }
 
 // processWithAgent processes a task using the configured agent's capabilities
@@ -119,8 +119,8 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 	return task, nil
 }
 
-// processWithoutAgent processes a task without any agent capabilities
-func (th *DefaultTaskHandler) processWithoutAgent(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+// processWithoutAgentBackground processes a task without any agent capabilities
+func (th *DefaultTaskHandler) processWithoutAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	th.logger.Info("processing task without agent",
 		zap.String("task_id", task.ID))
 
@@ -183,7 +183,7 @@ func (bth *DefaultBackgroundTaskHandler) HandleTask(ctx context.Context, task *t
 	if bth.agent != nil {
 		return bth.processWithAgentBackground(ctx, task, message)
 	}
-	return bth.processWithoutAgent(ctx, task, message)
+	return bth.processWithoutAgentBackground(ctx, task, message)
 }
 
 // processWithAgentBackground processes a task using agent capabilities with automatic input-required handling
@@ -219,7 +219,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		return task, nil
 	}
 
-	// Check if the response requires input pausing (similar to pausedtask example)
 	if agentResponse.Response != nil {
 		lastMessage := agentResponse.Response
 		if lastMessage.Kind == "input_required" {
@@ -231,13 +230,11 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 					}
 				}
 			}
-			// Add the agent's response to history
 			task.History = append(task.History, *agentResponse.Response)
 			return bth.pauseTaskForInput(task, inputMessage), nil
 		}
 	}
 
-	// Add additional messages and response to history
 	if len(agentResponse.AdditionalMessages) > 0 {
 		task.History = append(task.History, agentResponse.AdditionalMessages...)
 	}
@@ -251,8 +248,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	return task, nil
 }
 
-// processWithoutAgent processes a task without agent capabilities for background
-func (bth *DefaultBackgroundTaskHandler) processWithoutAgent(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+// processWithoutAgentBackground processes a task without agent capabilities for background
+func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	bth.logger.Info("processing background task without agent",
 		zap.String("task_id", task.ID))
 
@@ -284,7 +281,6 @@ func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inp
 		zap.String("task_id", task.ID),
 		zap.String("input_message", inputMessage))
 
-	// Create the input request message for the user
 	message := &types.Message{
 		Kind:      "message",
 		MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
@@ -297,13 +293,11 @@ func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inp
 		},
 	}
 
-	// Add the assistant's input request message to conversation history
 	if task.History == nil {
 		task.History = []types.Message{}
 	}
 	task.History = append(task.History, *message)
 
-	// Update task state to input-required
 	task.Status.State = types.TaskStateInputRequired
 	task.Status.Message = message
 
@@ -356,7 +350,7 @@ func (sth *DefaultStreamingTaskHandler) HandleTask(ctx context.Context, task *ty
 		return sth.processWithAgentStreaming(ctx, task, message)
 	}
 
-	return sth.processWithoutAgent(ctx, task, message)
+	return sth.processWithoutAgentBackground(ctx, task, message)
 }
 
 // processWithAgentStreaming processes a task using agent capabilities optimized for streaming with automatic input-required handling
@@ -367,7 +361,6 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	// For streaming scenarios, we use the agent's Run method but with streaming-aware logic
 	agentResponse, err := sth.agent.Run(ctx, messages)
 	if err != nil {
 		sth.logger.Error("agent processing failed in streaming context", zap.Error(err))
@@ -393,7 +386,6 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		return task, nil
 	}
 
-	// Check if the response requires input pausing in streaming context
 	if agentResponse.Response != nil {
 		lastMessage := agentResponse.Response
 		if lastMessage.Kind == "input_required" {
@@ -405,13 +397,11 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 					}
 				}
 			}
-			// Add the agent's response to history
 			task.History = append(task.History, *agentResponse.Response)
 			return sth.pauseTaskForStreamingInput(task, inputMessage), nil
 		}
 	}
 
-	// Add additional messages and response to history
 	if len(agentResponse.AdditionalMessages) > 0 {
 		task.History = append(task.History, agentResponse.AdditionalMessages...)
 	}
@@ -425,8 +415,8 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 	return task, nil
 }
 
-// processWithoutAgent processes a task without agent capabilities for streaming
-func (sth *DefaultStreamingTaskHandler) processWithoutAgent(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+// processWithoutAgentBackground processes a task without agent capabilities for streaming
+func (sth *DefaultStreamingTaskHandler) processWithoutAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	sth.logger.Info("processing streaming task without agent",
 		zap.String("task_id", task.ID))
 
@@ -458,7 +448,6 @@ func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.T
 		zap.String("task_id", task.ID),
 		zap.String("input_message", inputMessage))
 
-	// Create the input request message for the user with streaming context
 	message := &types.Message{
 		Kind:      "message",
 		MessageID: fmt.Sprintf("stream-input-request-%d", time.Now().Unix()),
@@ -471,13 +460,11 @@ func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.T
 		},
 	}
 
-	// Add the assistant's input request message to conversation history
 	if task.History == nil {
 		task.History = []types.Message{}
 	}
 	task.History = append(task.History, *message)
 
-	// Update task state to input-required
 	task.Status.State = types.TaskStateInputRequired
 	task.Status.Message = message
 
