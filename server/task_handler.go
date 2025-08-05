@@ -66,14 +66,14 @@ func (th *DefaultTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 		zap.Bool("has_agent", th.agent != nil))
 
 	if th.agent != nil {
-		return th.processWithAgent(ctx, task, message)
+		return th.processWithAgentBackground(ctx, task, message)
 	}
 
 	return th.processWithoutAgentBackground(ctx, task, message)
 }
 
-// processWithAgent processes a task using the configured agent's capabilities
-func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+// processWithAgentBackground processes a task using the configured agent's capabilities
+func (th *DefaultTaskHandler) processWithAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	th.logger.Info("processing task with agent capabilities",
 		zap.String("task_id", task.ID))
 
