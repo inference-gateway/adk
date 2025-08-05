@@ -81,15 +81,44 @@ task test
 task tidy
 ```
 
-### 5. Before Committing
+### 5. Pre-commit Hooks (Recommended)
+
+**Install the pre-commit hook to automatically run quality checks:**
+
+```bash
+task precommit:install
+```
+
+The pre-commit hook will automatically run these checks when you commit:
+- Code formatting (`task format`)
+- Module tidying (`task tidy`)
+- Linting (`task lint`)
+- Tests (`task test`)
+
+This ensures consistent code quality and reduces CI failures.
+
+**To bypass the hook if needed (not recommended):**
+```bash
+git commit --no-verify
+```
+
+**To uninstall the hook:**
+```bash
+task precommit:uninstall
+```
+
+### 6. Before Committing
 
 **Always run these commands before committing:**
 
-1. `task a2a:download-schema` (if working on A2A features)
-2. `task a2a:generate-types` (if schema changes were made)
-3. `task generate:mocks` (if interfaces were modified)
-4. `task lint` (ensure code quality)
-5. `task test` (ensure all tests pass)
+1. `task precommit:install` (recommended for first-time setup)
+2. `task a2a:download-schema` (if working on A2A features)
+3. `task a2a:generate-types` (if schema changes were made)
+4. `task generate:mocks` (if interfaces were modified)
+5. `task lint` (ensure code quality)
+6. `task test` (ensure all tests pass)
+
+Note: If you have the pre-commit hook installed, steps 4-6 will run automatically on commit.
 
 ## 🎯 Coding Guidelines
 

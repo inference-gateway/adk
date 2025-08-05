@@ -43,6 +43,7 @@
   - [Prerequisites](#prerequisites)
   - [Development Workflow](#development-workflow)
   - [Available Tasks](#available-tasks)
+  - [Pre-commit Hooks](#pre-commit-hooks)
   - [Build-Time Agent Metadata](#build-time-agent-metadata)
 - [📖 API Reference](#-api-reference)
   - [Core Components](#core-components)
@@ -412,6 +413,34 @@ For complete working examples, see the [examples](./examples/) directory:
 | `task test`                | Run all tests                     |
 | `task tidy`                | Tidy Go modules                   |
 | `task clean`               | Clean up build artifacts          |
+| `task precommit:install`   | Install Git pre-commit hook       |
+| `task precommit:uninstall` | Uninstall Git pre-commit hook     |
+
+### Pre-commit Hooks
+
+The project includes a Git pre-commit hook that automatically runs quality checks before commits:
+
+**Installation:**
+```bash
+task precommit:install
+```
+
+**What the hook does:**
+- Formats Go code (`task format`)
+- Tidies Go modules (`task tidy`)
+- Runs linting (`task lint`)
+- Runs tests (`task test`)
+- Only runs when Go files are being committed
+
+**Bypass if needed:**
+```bash
+git commit --no-verify  # Skip pre-commit hook (not recommended)
+```
+
+**Uninstall:**
+```bash
+task precommit:uninstall
+```
 
 ### Build-Time Agent Metadata
 

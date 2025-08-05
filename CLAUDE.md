@@ -9,6 +9,7 @@ This is a Go project that uses Task for build automation. Common commands:
 - `task test` - Run all tests with coverage (`go test -v -cover ./...`)
 - `task lint` - Run Go static analysis and linting (`golangci-lint run`)
 - `task tidy` - Tidy all Go modules
+- `task format` - Format all Go and Markdown files
 - `task clean` - Remove build artifacts
 
 ### A2A Schema Management
@@ -20,6 +21,19 @@ This is a Go project that uses Task for build automation. Common commands:
 
 - `task generate:mocks` - Generate all mocks using counterfeiter
 - `task clean:mocks` - Clean up generated mocks
+
+### Pre-commit Hooks
+
+- `task precommit:install` - Install Git pre-commit hook
+- `task precommit:uninstall` - Uninstall Git pre-commit hook
+
+The pre-commit hook automatically runs on `git commit` and performs:
+- Code formatting (`task format`)
+- Module tidying (`task tidy`)
+- Linting (`task lint`)
+- Tests (`task test`)
+
+Use `git commit --no-verify` to skip the pre-commit hook if needed.
 
 ## Architecture Overview
 
@@ -118,6 +132,7 @@ Uses table-driven tests with generated mocks:
 
 ## Important Notes
 
+- ALWAYS run `task precommit:install` before starting any development task - This ensures code quality checks are enforced
 - Always run `task a2a:generate-types` after schema updates
 - The project follows Go module structure with `go.mod` at root
 - Generated types are in `types/generated_types.go` (do not edit manually)

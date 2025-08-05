@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# A2A ADK Pre-commit Hook
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Check if there are any Go files being committed
+if git diff --cached --name-only | grep -q '\.go$'; then
+    echo "📝 Formatting Go code..."
+    task format
+    
+    echo "🧹 Tidying Go modules..."
+    task tidy
+    
+    echo "🔍 Running linter..."
+    task lint
+    
+    echo "🧪 Running tests..."
+    task test
+    
+    git add $(git diff --cached --name-only | grep '\.go$' | tr '\n' ' ')
+fi
+
+echo "✅ All pre-commit checks passed!"
