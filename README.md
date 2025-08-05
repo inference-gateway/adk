@@ -616,37 +616,95 @@ agent, err := server.NewAgentBuilder(logger).
 
 ### Configuration
 
-The configuration is managed through environment variables and the config package:
+Configure your A2A agent using environment variables. All configuration is optional and includes sensible defaults.
 
-```go
-type Config struct {
-    AgentURL                      string               `env:"AGENT_URL,default=http://helloworld-agent:8080"`
-    Debug                         bool                 `env:"DEBUG,default=false"`
-    Port                          string               `env:"PORT,default=8080"`
-    StreamingStatusUpdateInterval time.Duration        `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
-    AgentConfig                   *AgentConfig         `env:",prefix=AGENT_CLIENT_"`
-    CapabilitiesConfig            *CapabilitiesConfig  `env:",prefix=CAPABILITIES_"`
-    TLSConfig                     *TLSConfig           `env:",prefix=TLS_"`
-    AuthConfig                    *AuthConfig          `env:",prefix=AUTH_"`
-    QueueConfig                   *QueueConfig         `env:",prefix=QUEUE_"`
-    TaskRetentionConfig           *TaskRetentionConfig `env:",prefix=TASK_RETENTION_"`
-    ServerConfig                  *ServerConfig        `env:",prefix=SERVER_"`
-    TelemetryConfig               *TelemetryConfig     `env:",prefix=TELEMETRY_"`
-}
+#### Core Server Configuration
 
-type AgentConfig struct {
-    Provider                    string            `env:"PROVIDER"`
-    Model                       string            `env:"MODEL"`
-    BaseURL                     string            `env:"BASE_URL"`
-    APIKey                      string            `env:"API_KEY"`
-    Timeout                     time.Duration     `env:"TIMEOUT,default=30s"`
-    MaxRetries                  int               `env:"MAX_RETRIES,default=3"`
-    MaxChatCompletionIterations int               `env:"MAX_CHAT_COMPLETION_ITERATIONS,default=10"`
-    MaxTokens                   int               `env:"MAX_TOKENS,default=4096"`
-    Temperature                 float64           `env:"TEMPERATURE,default=0.7"`
-    SystemPrompt                string            `env:"SYSTEM_PROMPT"`
-    QueueConfig                 QueueConfig       `env:",prefix=QUEUE_"`
-}
+| Variable                           | Default                        | Description                                |
+| ---------------------------------- | ------------------------------ | ------------------------------------------ |
+| `PORT`                             | `8080`                         | Server port                                |
+| `DEBUG`                            | `false`                        | Enable debug logging                       |
+| `AGENT_URL`                        | `http://helloworld-agent:8080` | Agent URL for internal references          |
+| `STREAMING_STATUS_UPDATE_INTERVAL` | `1s`                           | How often to send streaming status updates |
+
+#### Agent & LLM Configuration
+
+| Variable                                      | Default | Description                                  |
+| --------------------------------------------- | ------- | -------------------------------------------- |
+| `AGENT_CLIENT_PROVIDER`                       | -       | LLM provider (openai, anthropic, groq, etc.) |
+| `AGENT_CLIENT_MODEL`                          | -       | Model name (e.g., `openai/gpt-4`)            |
+| `AGENT_CLIENT_BASE_URL`                       | -       | Custom LLM endpoint URL                      |
+| `AGENT_CLIENT_API_KEY`                        | -       | API key for LLM provider                     |
+| `AGENT_CLIENT_TIMEOUT`                        | `30s`   | Request timeout                              |
+| `AGENT_CLIENT_MAX_RETRIES`                    | `3`     | Maximum retry attempts                       |
+| `AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS` | `10`    | Max chat completion rounds                   |
+| `AGENT_CLIENT_MAX_TOKENS`                     | `4096`  | Maximum tokens per response                  |
+| `AGENT_CLIENT_TEMPERATURE`                    | `0.7`   | LLM temperature (0.0-2.0)                    |
+| `AGENT_CLIENT_SYSTEM_PROMPT`                  | -       | System prompt for the agent                  |
+
+#### Agent Capabilities
+
+| Variable                                | Default | Description                  |
+| --------------------------------------- | ------- | ---------------------------- |
+| `CAPABILITIES_STREAMING`                | `true`  | Enable streaming responses   |
+| `CAPABILITIES_PUSH_NOTIFICATIONS`       | `false` | Enable webhook notifications |
+| `CAPABILITIES_STATE_TRANSITION_HISTORY` | `false` | Track state changes          |
+
+#### Authentication (Optional)
+
+| Variable             | Default | Description                |
+| -------------------- | ------- | -------------------------- |
+| `AUTH_ENABLE`        | `false` | Enable OIDC authentication |
+| `AUTH_ISSUER_URL`    | -       | OIDC issuer URL            |
+| `AUTH_CLIENT_ID`     | -       | OIDC client ID             |
+| `AUTH_CLIENT_SECRET` | -       | OIDC client secret         |
+
+#### Task Management
+
+| Variable                             | Default | Description                                 |
+| ------------------------------------ | ------- | ------------------------------------------- |
+| `TASK_RETENTION_MAX_COMPLETED_TASKS` | `100`   | Max completed tasks to keep (0 = unlimited) |
+| `TASK_RETENTION_MAX_FAILED_TASKS`    | `50`    | Max failed tasks to keep (0 = unlimited)    |
+| `TASK_RETENTION_CLEANUP_INTERVAL`    | `5m`    | Cleanup frequency (0 = manual only)         |
+
+#### TLS Configuration (Optional)
+
+| Variable               | Default | Description             |
+| ---------------------- | ------- | ----------------------- |
+| `SERVER_TLS_ENABLE`    | `false` | Enable TLS/HTTPS        |
+| `SERVER_TLS_CERT_PATH` | -       | Path to TLS certificate |
+| `SERVER_TLS_KEY_PATH`  | -       | Path to TLS private key |
+
+#### Telemetry (Optional)
+
+| Variable                 | Default     | Description              |
+| ------------------------ | ----------- | ------------------------ |
+| `TELEMETRY_ENABLE`       | `false`     | Enable OpenTelemetry     |
+| `TELEMETRY_ENDPOINT`     | -           | OTLP endpoint URL        |
+| `TELEMETRY_SERVICE_NAME` | `a2a-agent` | Service name for tracing |
+
+#### Example Configuration
+
+```bash
+# Basic AI-powered agent
+export PORT="8080"
+export AGENT_CLIENT_PROVIDER="openai"
+export AGENT_CLIENT_MODEL="openai/gpt-4"
+export AGENT_CLIENT_API_KEY="your-api-key"
+export AGENT_CLIENT_SYSTEM_PROMPT="You are a helpful assistant"
+
+# Enable capabilities
+export CAPABILITIES_STREAMING="true"
+export CAPABILITIES_PUSH_NOTIFICATIONS="true"
+
+# Optional: Enable authentication
+export AUTH_ENABLE="true"
+export AUTH_ISSUER_URL="https://your-auth-provider.com"
+export AUTH_CLIENT_ID="your-client-id"
+
+# Optional: Configure task retention
+export TASK_RETENTION_MAX_COMPLETED_TASKS="200"
+export TASK_RETENTION_CLEANUP_INTERVAL="10m"
 ```
 
 ## 🔧 Advanced Usage
