@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# A2A ADK Pre-commit Hook
 set -e
 
 echo "🔍 Running pre-commit checks..."
 
-# Check if there are any Go files being committed
 if git diff --cached --name-only | grep -q '\.go$'; then
     echo "📝 Formatting Go code..."
     task format
