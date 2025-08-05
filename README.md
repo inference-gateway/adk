@@ -39,19 +39,17 @@
   - [What is A2A?](#what-is-a2a)
 - [🚀 Quick Start](#-quick-start)
   - [Installation](#installation)
-  - [Basic Usage (Minimal Server)](#basic-usage-minimal-server)
-  - [AI-Powered Server](#ai-powered-server)
-  - [Health Check Example](#health-check-example)
   - [Examples](#examples)
+    - [Basic Usage (Minimal Server)](#basic-usage-minimal-server)
+    - [AI-Powered Server](#ai-powered-server)
+    - [Health Check Example](#health-check-example)
 - [✨ Key Features](#-key-features)
   - [Core Capabilities](#core-capabilities)
   - [Developer Experience](#developer-experience)
   - [Production Ready](#production-ready)
 - [🛠️ Development](#️-development)
-  - [Prerequisites](#prerequisites)
-  - [Development Workflow](#development-workflow)
-  - [Available Tasks](#available-tasks)
-  - [Pre-commit Hooks](#pre-commit-hooks)
+  - [Quick Setup](#quick-setup)
+  - [Essential Tasks](#essential-tasks)
   - [Build-Time Agent Metadata](#build-time-agent-metadata)
 - [📖 API Reference](#-api-reference)
   - [Core Components](#core-components)
@@ -60,11 +58,13 @@
     - [AgentBuilder](#agentbuilder)
     - [A2AClient](#a2aclient)
     - [Agent Health Monitoring](#agent-health-monitoring)
-    - [LLM Client](#llm-client)
+  - [LLM Client](#llm-client)
   - [Configuration](#configuration)
 - [🔧 Advanced Usage](#-advanced-usage)
   - [Building Custom Agents with AgentBuilder](#building-custom-agents-with-agentbuilder)
   - [Custom Tools](#custom-tools)
+  - [Loading AgentCard from JSON File](#loading-agentcard-from-json-file)
+  - [Task Pausing for User Input](#task-pausing-for-user-input)
   - [Custom Task Processing](#custom-task-processing)
   - [Push Notifications](#push-notifications)
   - [Agent Metadata](#agent-metadata)
@@ -77,10 +77,6 @@
 - [🧪 Testing](#-testing)
 - [📄 License](#-license)
 - [🤝 Contributing](#-contributing)
-  - [Getting Started](#getting-started)
-  - [Development Guidelines](#development-guidelines)
-  - [Before Submitting](#before-submitting)
-  - [Pull Request Process](#pull-request-process)
 - [📞 Support](#-support)
   - [Issues & Questions](#issues--questions)
 - [🔗 Resources](#-resources)
@@ -110,7 +106,23 @@ Agent-to-Agent (A2A) is a standardized protocol that enables AI agents to:
 go get github.com/inference-gateway/adk
 ```
 
-### Basic Usage (Minimal Server)
+### Examples
+
+For complete working examples, see the [examples](./examples/) directory:
+
+- **[Minimal Server](./examples/server/cmd/minimal/)** - Basic A2A server without AI capabilities
+- **[AI-Powered Server](./examples/server/cmd/aipowered/)** - Full A2A server with LLM integration
+- **[Travel Planner Server](./examples/server/cmd/travelplanner/)** - Advanced AI-powered travel planning agent
+- **[Server Paused Task Example](./examples/server/cmd/pausedtask/)** - Server-side task pausing implementation
+- **[Client Example](./examples/client/)** - A2A client implementation
+- **[Streaming Example](./examples/client/cmd/streaming/)** - Real-time streaming responses
+- **[Async Example](./examples/client/cmd/async/)** - Asynchronous task processing
+- **[List Tasks Example](./examples/client/cmd/listtasks/)** - Task listing and filtering
+- **[Paused Task Example](./examples/client/cmd/pausedtask/)** - Handle input-required task pausing
+- **[Paused Task Streaming Example](./examples/client/cmd/pausedtask-streaming/)** - Streaming with task pausing
+- **[Health Check Example](#health-check-example)** - Monitor agent health status
+
+#### Basic Usage (Minimal Server)
 
 ```go
 package main
@@ -154,7 +166,7 @@ func main() {
 }
 ```
 
-### AI-Powered Server
+#### AI-Powered Server
 
 ```go
 package main
@@ -265,7 +277,7 @@ func main() {
 }
 ```
 
-### Health Check Example
+#### Health Check Example
 
 Monitor the health status of A2A agents for service discovery and load balancing:
 
@@ -324,16 +336,6 @@ func main() {
     }
 }
 ```
-
-### Examples
-
-For complete working examples, see the [examples](./examples/) directory:
-
-- **[Minimal Server](./examples/server/cmd/minimal/)** - Basic A2A server without AI capabilities
-- **[AI-Powered Server](./examples/server/cmd/aipowered/)** - Full A2A server with LLM integration
-- **[Client Example](./examples/client/)** - A2A client implementation
-- **[Paused Task Example](./examples/client/cmd/pausedtask/)** - Handle input-required task pausing
-- **[Health Check Example](#health-check-example)** - Monitor agent health status
 
 ## ✨ Key Features
 
