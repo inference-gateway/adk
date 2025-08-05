@@ -677,18 +677,18 @@ The configuration is managed through environment variables and the config packag
 
 ```go
 type Config struct {
-    AgentURL                      string              `env:"AGENT_URL,default=http://helloworld-agent:8080"`
-    Debug                         bool                `env:"DEBUG,default=false"`
-    Port                          string              `env:"PORT,default=8080"`
-    StreamingStatusUpdateInterval time.Duration       `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
-    AgentConfig                   *AgentConfig        `env:",prefix=AGENT_CLIENT_"`
-    CapabilitiesConfig            *CapabilitiesConfig `env:",prefix=CAPABILITIES_"`
-    TLSConfig                     *TLSConfig          `env:",prefix=TLS_"`
-    AuthConfig                    *AuthConfig         `env:",prefix=AUTH_"`
-    QueueConfig                   *QueueConfig        `env:",prefix=QUEUE_"`
+    AgentURL                      string               `env:"AGENT_URL,default=http://helloworld-agent:8080"`
+    Debug                         bool                 `env:"DEBUG,default=false"`
+    Port                          string               `env:"PORT,default=8080"`
+    StreamingStatusUpdateInterval time.Duration        `env:"STREAMING_STATUS_UPDATE_INTERVAL,default=1s"`
+    AgentConfig                   *AgentConfig         `env:",prefix=AGENT_CLIENT_"`
+    CapabilitiesConfig            *CapabilitiesConfig  `env:",prefix=CAPABILITIES_"`
+    TLSConfig                     *TLSConfig           `env:",prefix=TLS_"`
+    AuthConfig                    *AuthConfig          `env:",prefix=AUTH_"`
+    QueueConfig                   *QueueConfig         `env:",prefix=QUEUE_"`
     TaskRetentionConfig           *TaskRetentionConfig `env:",prefix=TASK_RETENTION_"`
-    ServerConfig                  *ServerConfig       `env:",prefix=SERVER_"`
-    TelemetryConfig               *TelemetryConfig    `env:",prefix=TELEMETRY_"`
+    ServerConfig                  *ServerConfig        `env:",prefix=SERVER_"`
+    TelemetryConfig               *TelemetryConfig     `env:",prefix=TELEMETRY_"`
 }
 
 type AgentConfig struct {
