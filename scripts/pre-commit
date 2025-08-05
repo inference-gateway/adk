@@ -16,7 +16,10 @@ if [ -n "$go_files" ]; then
     echo "  🧹 Tidying Go modules..."
     task tidy
     
-    echo "  🔍 Running linter..."
+    echo "  � Generating mocks..."
+    task generate:mocks
+    
+    echo "  �🔍 Running linter..."
     task lint
     
     echo "  🧪 Running tests..."
