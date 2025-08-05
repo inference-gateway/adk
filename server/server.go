@@ -489,7 +489,6 @@ func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 			s.logger.Info("task processor shutting down")
 			return
 		default:
-			// Try to dequeue a task from storage
 			queuedTask, err := s.storage.DequeueTask(ctx)
 			if err != nil {
 				if err == context.Canceled || err == context.DeadlineExceeded {
@@ -775,7 +774,6 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 
 	ctx := c.Request.Context()
 
-	// Create task for streaming - but process immediately instead of queuing
 	task, err := s.createTaskFromMessage(ctx, params)
 	if err != nil {
 		s.logger.Error("failed to create streaming task", zap.Error(err))
@@ -797,14 +795,12 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
 
-	// Update task state to working
 	err = s.taskManager.UpdateState(task.ID, types.TaskStateWorking)
 	if err != nil {
 		s.logger.Error("failed to update streaming task state", zap.Error(err))
 		return
 	}
 
-	// Process task using streaming task handler
 	var message *types.Message
 	if task.Status.Message != nil {
 		message = task.Status.Message
@@ -865,7 +861,6 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 		s.logger.Error("failed to write final streaming response", zap.Error(err))
 	}
 
-	// Send termination signal
 	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
 		s.logger.Error("failed to write stream termination signal", zap.Error(err))
 	} else {

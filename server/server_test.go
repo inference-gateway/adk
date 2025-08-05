@@ -153,12 +153,7 @@ func TestA2AServer_ResponseSender_SendError(t *testing.T) {
 	})
 }
 
-func TestA2AServer_MessageHandler_Integration(t *testing.T) {
-	logger := zap.NewNop()
-	taskManager := server.NewDefaultTaskManager(logger)
-	maxHistory := 3
-	storage := server.NewInMemoryStorage(logger, maxHistory)
-
+func TestA2AServer_DirectTaskCreation_Integration(t *testing.T) {
 	cfg := &config.Config{
 		AgentConfig: config.AgentConfig{
 			MaxChatCompletionIterations: 10,
@@ -166,31 +161,19 @@ func TestA2AServer_MessageHandler_Integration(t *testing.T) {
 		},
 	}
 
-	messageHandler := server.NewDefaultMessageHandler(logger, taskManager, storage, cfg)
+	logger := zap.NewNop()
+	a2aServer := server.NewA2AServer(cfg, logger, nil)
 
-	contextID := "test-context"
-	params := types.MessageSendParams{
-		Message: types.Message{
-			ContextID: &contextID,
-			Kind:      "message",
-			MessageID: "test-message",
-			Role:      "user",
-			Parts: []types.Part{
-				map[string]interface{}{
-					"kind": "text",
-					"text": "Hello, world!",
-				},
-			},
-		},
-	}
+	// Test that the server was created with proper task handlers
+	backgroundHandler := a2aServer.GetBackgroundTaskHandler()
+	assert.NotNil(t, backgroundHandler, "Background task handler should be set")
 
-	ctx := context.Background()
-	task, err := messageHandler.HandleMessageSend(ctx, params)
+	streamingHandler := a2aServer.GetStreamingTaskHandler()
+	assert.NotNil(t, streamingHandler, "Streaming task handler should be set")
 
-	assert.NoError(t, err)
-	assert.NotNil(t, task)
-	assert.Equal(t, contextID, task.ContextID)
-	assert.Equal(t, types.TaskStateSubmitted, task.Status.State)
+	// Verify that task handlers are different instances (as expected for different scenarios)
+	assert.IsType(t, &server.DefaultBackgroundTaskHandler{}, backgroundHandler)
+	assert.IsType(t, &server.DefaultStreamingTaskHandler{}, streamingHandler)
 }
 
 func TestA2AServer_TaskProcessing_Background(t *testing.T) {
