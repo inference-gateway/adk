@@ -633,6 +633,7 @@ type Config struct {
     TLSConfig                     *TLSConfig          `env:",prefix=TLS_"`
     AuthConfig                    *AuthConfig         `env:",prefix=AUTH_"`
     QueueConfig                   *QueueConfig        `env:",prefix=QUEUE_"`
+    TaskRetentionConfig           *TaskRetentionConfig `env:",prefix=TASK_RETENTION_"`
     ServerConfig                  *ServerConfig       `env:",prefix=SERVER_"`
     TelemetryConfig               *TelemetryConfig    `env:",prefix=TELEMETRY_"`
 }
@@ -1247,6 +1248,11 @@ AUTH_ENABLE="false"
 AUTH_ISSUER_URL="http://keycloak:8080/realms/inference-gateway-realm"
 AUTH_CLIENT_ID="inference-gateway-client"
 AUTH_CLIENT_SECRET="your-secret"
+
+# Task retention (optional)
+TASK_RETENTION_MAX_COMPLETED_TASKS="100"    # Maximum completed tasks to retain (0 = unlimited)
+TASK_RETENTION_MAX_FAILED_TASKS="50"        # Maximum failed tasks to retain (0 = unlimited)  
+TASK_RETENTION_CLEANUP_INTERVAL="5m"        # How often to run cleanup (0 = manual only)
 
 # TLS (optional)
 SERVER_TLS_ENABLE="false"
