@@ -246,6 +246,7 @@ func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
 
 	serverInstance, err := server.NewA2AServerBuilder(*partialCfg, logger).
 		WithAgentCard(createTestAgentCard()).
+		WithDefaultTaskHandlers().
 		Build()
 
 	require.NoError(t, err, "Expected no error when building server with partial config")
@@ -290,6 +291,7 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 
 	serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgentCard(testAgentCard).
+		WithDefaultTaskHandlers().
 		Build()
 	require.NoError(t, err, "Expected no error when building server with custom capabilities configuration")
 
@@ -335,6 +337,7 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 
 	serverInstance, err := server.NewA2AServerBuilder(*partialCfg, logger).
 		WithAgentCard(testAgentCard).
+		WithDefaultTaskHandlers().
 		Build()
 	require.NoError(t, err, "Expected no error when building server with partial config")
 

@@ -33,6 +33,7 @@ type A2AServerBuilder interface {
 	// WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios.
 	// This handler automatically handles input-required pausing without requiring custom implementation.
 	WithDefaultBackgroundTaskHandler() A2AServerBuilder // WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios.
+
 	// This handler automatically handles input-required pausing with streaming-aware behavior.
 	WithDefaultStreamingTaskHandler() A2AServerBuilder
 
@@ -249,9 +250,12 @@ func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 
 // Build creates and returns the configured A2A server.
 func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
-	// Validate that an agent card is configured
 	if b.agentCard == nil {
 		return nil, fmt.Errorf("agent card must be configured before building the server - use WithAgentCard() or WithAgentCardFromFile()")
+	}
+
+	if err := b.validateTaskHandlerConfiguration(); err != nil {
+		return nil, err
 	}
 
 	var telemetryInstance otel.OpenTelemetry
@@ -289,6 +293,24 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 	}
 
 	return server, nil
+}
+
+// validateTaskHandlerConfiguration ensures task handlers are configured based on agent card capabilities
+func (b *A2AServerBuilderImpl) validateTaskHandlerConfiguration() error {
+	streamingEnabled := false
+	if b.agentCard.Capabilities.Streaming != nil {
+		streamingEnabled = *b.agentCard.Capabilities.Streaming
+	}
+
+	if b.pollingTaskHandler == nil {
+		return fmt.Errorf("background task handler must be configured - use WithBackgroundTaskHandler() for custom handler or WithDefaultBackgroundTaskHandler() for a ready-to-use default handler")
+	}
+
+	if streamingEnabled && b.streamingTaskHandler == nil {
+		return fmt.Errorf("streaming task handler must be configured when streaming is enabled in agent capabilities - use WithStreamingTaskHandler() for custom handler or WithDefaultStreamingTaskHandler() for a ready-to-use default handler")
+	}
+
+	return nil
 }
 
 // SimpleA2AServerWithAgent creates a basic A2A server with an OpenAI-compatible agent

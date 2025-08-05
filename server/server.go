@@ -286,6 +286,36 @@ func (s *A2AServerImpl) SetAgentCard(agentCard types.AgentCard) {
 	s.customAgentCard = &agentCard
 }
 
+// validateStreamingConfiguration checks if streaming is enabled but no streaming handler is configured
+func (s *A2AServerImpl) validateStreamingConfiguration() {
+	if s.customAgentCard == nil {
+		return
+	}
+
+	streamingEnabled := false
+	if s.customAgentCard.Capabilities.Streaming != nil {
+		streamingEnabled = *s.customAgentCard.Capabilities.Streaming
+	}
+
+	if streamingEnabled {
+		if _, isDefault := s.streamingTaskHandler.(*DefaultStreamingTaskHandler); isDefault {
+			s.logger.Info("streaming is enabled - using default streaming task handler",
+				zap.String("note", "default handler provides built-in streaming support with input-required pausing"),
+				zap.String("tip", "for custom streaming logic, use WithStreamingTaskHandler() in your server builder"))
+		}
+
+		if s.streamingTaskHandler == nil {
+			s.logger.Warn("streaming is enabled in agent capabilities but no streaming task handler is configured",
+				zap.String("warning", "streaming requests will fail"),
+				zap.String("suggestion", "use WithStreamingTaskHandler() for custom streaming logic or WithDefaultStreamingTaskHandler() for optimized streaming support"))
+		}
+	} else {
+		s.logger.Info("streaming is disabled in agent capabilities",
+			zap.String("note", "only background/polling requests will be supported"),
+			zap.String("tip", "to enable streaming, set streaming capability to true in your agent card and configure a streaming task handler"))
+	}
+}
+
 // LoadAgentCardFromFile loads and sets an agent card from a JSON file
 // The optional overrides map allows dynamic replacement of JSON attribute values
 func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string, overrides map[string]interface{}) error {
@@ -400,6 +430,8 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 	}
 
 	s.logger.Info("starting A2A server", zap.String("port", s.cfg.ServerConfig.Port))
+
+	s.validateStreamingConfiguration()
 
 	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
 		go func() {

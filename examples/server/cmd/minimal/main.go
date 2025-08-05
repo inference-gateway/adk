@@ -28,7 +28,6 @@ func NewSimpleTaskHandler(logger *zap.Logger) *SimpleTaskHandler {
 
 // HandleTask processes tasks with simple echo responses
 func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	// Extract user input
 	userInput := ""
 	if message != nil {
 		for _, part := range message.Parts {
@@ -41,13 +40,11 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 		}
 	}
 
-	// Simple echo response
 	responseText := fmt.Sprintf("Echo: %s", userInput)
 	if userInput == "" {
 		responseText = "Hello! Send me a message and I'll echo it back."
 	}
 
-	// Create response
 	task.History = append(task.History, types.Message{
 		Kind:      "message",
 		MessageID: fmt.Sprintf("response-%s", task.ID),

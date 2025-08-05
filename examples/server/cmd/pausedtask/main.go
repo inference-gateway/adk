@@ -121,7 +121,7 @@ IMPORTANT: Always use JSON for tool calls.`
 	// Step 6: Create and start server
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
-		WithTaskHandler(pausableTaskHandler).
+		WithBackgroundTaskHandler(pausableTaskHandler).
 		WithAgentCard(types.AgentCard{
 			Name:        cfg.AgentName,
 			Description: cfg.AgentDescription,
@@ -205,11 +205,8 @@ func NewPausableTaskHandler(agent server.OpenAICompatibleAgent, logger *zap.Logg
 	}
 }
 
-func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message, agent server.OpenAICompatibleAgent) (*types.Task, error) {
+func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	activeAgent := p.agent
-	if activeAgent == nil {
-		activeAgent = agent
-	}
 
 	if activeAgent == nil {
 		return p.handleWithoutAgent(ctx, task, message)
@@ -250,6 +247,16 @@ func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 	task.Status.Message = agentResponse.Response
 
 	return task, nil
+}
+
+// SetAgent sets the OpenAI-compatible agent
+func (p *PausableTaskHandler) SetAgent(agent server.OpenAICompatibleAgent) {
+	p.agent = agent
+}
+
+// GetAgent returns the configured OpenAI-compatible agent
+func (p *PausableTaskHandler) GetAgent() server.OpenAICompatibleAgent {
+	return p.agent
 }
 
 // handleWithoutAgent processes a task without agent capabilities
