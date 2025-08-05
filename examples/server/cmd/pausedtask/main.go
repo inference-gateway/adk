@@ -31,6 +31,11 @@ func main() {
 		AgentName:        "pausable-task-agent",
 		AgentDescription: "An AI-powered agent that can pause task execution to request additional user input when needed",
 		AgentVersion:     "1.0.0",
+		CapabilitiesConfig: config.CapabilitiesConfig{
+			Streaming:              false, // Disable streaming for this background-focused example
+			PushNotifications:      true,
+			StateTransitionHistory: false,
+		},
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
@@ -122,6 +127,7 @@ IMPORTANT: Always use JSON for tool calls.`
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
 		WithBackgroundTaskHandler(pausableTaskHandler).
+		WithDefaultStreamingTaskHandler().
 		WithAgentCard(types.AgentCard{
 			Name:        cfg.AgentName,
 			Description: cfg.AgentDescription,
@@ -164,17 +170,6 @@ IMPORTANT: Always use JSON for tool calls.`
 			logger.Fatal("server failed to start", zap.Error(err))
 		}
 	}()
-
-	logger.Info("🌐 server running", zap.String("port", cfg.ServerConfig.Port))
-	fmt.Printf("\n🎯 Test with the pausedtask client:\n")
-	fmt.Printf("  cd ../../../client/cmd/pausedtask\n")
-	fmt.Printf("  go run main.go\n")
-	fmt.Printf("\n📋 Example requests that will trigger input-required pausing:\n")
-	fmt.Printf("  - \"Create a presentation outline about climate change\"\n")
-	fmt.Printf("  - \"Help me plan a workshop\"\n")
-	fmt.Printf("  - \"What's the weather like?\"\n")
-	fmt.Printf("\n🧠 The LLM will analyze requests and use the input_required tool when it needs more context.\n")
-	fmt.Println()
 
 	// Wait for shutdown
 	quit := make(chan os.Signal, 1)
