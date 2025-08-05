@@ -19,14 +19,14 @@ import (
 func main() {
 	fmt.Println("🤖 Starting AI-Powered A2A Server...")
 
-	// Step 1: Initialize logger
+	// Initialize logger
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("failed to create logger: %v", err)
 	}
 	defer logger.Sync()
 
-	// Step 2: Load configuration from environment
+	// Load configuration from environment
 	// Agent metadata is injected at build time via LD flags
 	// Use: go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=my-agent ..."
 	cfg := config.Config{
@@ -46,7 +46,7 @@ func main() {
 		logger.Fatal("failed to process environment config", zap.Error(err))
 	}
 
-	// Step 3: Create toolbox with sample tools
+	// Create toolbox with sample tools
 	toolBox := server.NewDefaultToolBox()
 
 	// Add weather tool
@@ -86,7 +86,7 @@ func main() {
 	)
 	toolBox.AddTool(timeTool)
 
-	// Step 4: Create AI agent with LLM client
+	// Create AI agent with LLM client
 	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
 	if err != nil {
 		logger.Fatal("failed to create LLM client", zap.Error(err))
@@ -103,7 +103,7 @@ func main() {
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Step 5: Create and start server
+	// Create and start server
 	a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, agent, types.AgentCard{
 		Name:        cfg.AgentName,
 		Description: cfg.AgentDescription,

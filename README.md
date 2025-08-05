@@ -155,9 +155,12 @@ import (
     "fmt"
     "log"
     "os"
+    "os/signal"
+    "syscall"
 
     "github.com/inference-gateway/adk/server"
     "github.com/inference-gateway/adk/server/config"
+    "github.com/inference-gateway/adk/types"
     "github.com/sethvargo/go-envconfig"
     "go.uber.org/zap"
 )
@@ -201,42 +204,37 @@ func main() {
     )
     toolBox.AddTool(weatherTool)
 
-    // Create LLM client (requires INFERENCE_GATEWAY_URL environment variable)
-    var a2aServer server.A2AServer
-    var err error
-    if cfg.AgentConfig != nil && cfg.AgentConfig.APIKey != "" {
-        // Modern approach using AgentBuilder
-        agent, err := server.NewAgentBuilder(logger).
-            WithConfig(cfg.AgentConfig).
-            WithToolBox(toolBox).
-            Build()
-        if err != nil {
-            log.Fatal("Failed to create agent:", err)
-        }
-        
-        a2aServer, err = server.NewA2AServerBuilder(cfg, logger).
-            WithAgent(agent).
-            WithAgentCardFromFile(".well-known/agent.json").
-            Build()
-        if err != nil {
-            log.Fatal("Failed to create server:", err)
-        }
-    } else {
-        // Mock mode without actual LLM
-        agent, err := server.NewAgentBuilder(logger).
-            WithToolBox(toolBox).
-            Build()
-        if err != nil {
-            log.Fatal("Failed to create agent:", err)
-        }
-        
-        a2aServer, err = server.NewA2AServerBuilder(cfg, logger).
-            WithAgent(agent).
-            WithAgentCardFromFile(".well-known/agent.json").
-            Build()
-        if err != nil {
-            log.Fatal("Failed to create server:", err)
-        }
+    // Create LLM client and agent
+    llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.AgentConfig, logger)
+    if err != nil {
+        log.Fatal("Failed to create LLM client:", err)
+    }
+
+    agent, err := server.NewAgentBuilder(logger).
+        WithConfig(&cfg.AgentConfig).
+        WithLLMClient(llmClient).
+        WithSystemPrompt("You are a helpful AI assistant.").
+        WithToolBox(toolBox).
+        Build()
+    if err != nil {
+        log.Fatal("Failed to create agent:", err)
+    }
+
+    // Create server with agent
+    a2aServer, err := server.SimpleA2AServerWithAgent(cfg, logger, agent, types.AgentCard{
+        Name:        cfg.AgentName,
+        Description: cfg.AgentDescription,
+        Version:     cfg.AgentVersion,
+        Capabilities: types.AgentCapabilities{
+            Streaming:              &cfg.CapabilitiesConfig.Streaming,
+            PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
+            StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
+        },
+        DefaultInputModes:  []string{"text/plain"},
+        DefaultOutputModes: []string{"text/plain"},
+    })
+    if err != nil {
+        log.Fatal("Failed to create server:", err)
     }
 
     // Start server
@@ -249,7 +247,12 @@ func main() {
     logger.Info("AI-powered A2A server running", zap.String("port", cfg.ServerConfig.Port))
 
     // Wait for shutdown signal
-    select {}
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    <-quit
+
+    logger.Info("Shutting down server...")
+    a2aServer.Stop(ctx)
 }
 ```
 
@@ -319,7 +322,6 @@ For complete working examples, see the [examples](./examples/) directory:
 
 - **[Minimal Server](./examples/server/cmd/minimal/)** - Basic A2A server without AI capabilities
 - **[AI-Powered Server](./examples/server/cmd/aipowered/)** - Full A2A server with LLM integration
-- **[JSON AgentCard Server](./examples/server/cmd/json-agentcard/)** - A2A server with agent metadata loaded from JSON file
 - **[Client Example](./examples/client/)** - A2A client implementation
 - **[Paused Task Example](./examples/client/cmd/pausedtask/)** - Handle input-required task pausing
 - **[Health Check Example](#health-check-example)** - Monitor agent health status
