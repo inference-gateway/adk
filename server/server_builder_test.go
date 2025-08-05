@@ -278,6 +278,38 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 	assert.Equal(t, mockServer, result)
 }
 
+func TestA2AServerBuilder_WithDefaultPollingTaskHandler(t *testing.T) {
+	cfg := config.Config{
+		AgentName:    "test-agent",
+		AgentVersion: "1.0.0",
+	}
+	logger := zap.NewNop()
+
+	builder := server.NewA2AServerBuilder(cfg, logger)
+	
+	// Use WithDefaultPollingTaskHandler and test that it sets the handler
+	builderWithHandler := builder.WithDefaultPollingTaskHandler()
+	
+	// The builder should return itself for method chaining
+	assert.Equal(t, builder, builderWithHandler)
+}
+
+func TestA2AServerBuilder_WithDefaultStreamingTaskHandler(t *testing.T) {
+	cfg := config.Config{
+		AgentName:    "test-agent",
+		AgentVersion: "1.0.0",
+	}
+	logger := zap.NewNop()
+
+	builder := server.NewA2AServerBuilder(cfg, logger)
+	
+	// Use WithDefaultStreamingTaskHandler and test that it sets the handler
+	builderWithHandler := builder.WithDefaultStreamingTaskHandler()
+	
+	// The builder should return itself for method chaining
+	assert.Equal(t, builder, builderWithHandler)
+}
+
 func TestServerBuilderAppliesAgentConfigDefaults(t *testing.T) {
 	logger := zap.NewNop()
 

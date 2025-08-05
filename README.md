@@ -492,6 +492,24 @@ if err != nil {
     // handle error
 }
 
+// Server with default polling task handler
+a2aServer, err := server.NewA2AServerBuilder(config, logger).
+    WithDefaultPollingTaskHandler().
+    WithAgentCardFromFile(".well-known/agent.json").
+    Build()
+if err != nil {
+    // handle error
+}
+
+// Server with default streaming task handler
+a2aServer, err := server.NewA2AServerBuilder(config, logger).
+    WithDefaultStreamingTaskHandler().
+    WithAgentCardFromFile(".well-known/agent.json").
+    Build()
+if err != nil {
+    // handle error
+}
+
 // Server with custom logger
 a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithLogger(customLogger).
@@ -1177,6 +1195,40 @@ mcpConfirmTool := server.NewBasicTool(
 ```
 
 This pattern enables agents to seamlessly integrate human-in-the-loop workflows while maintaining tool use standards and MCP compatibility.
+
+### Default Task Handlers
+
+The ADK provides specialized default task handlers that automatically handle input-required pausing:
+
+#### DefaultPollingTaskHandler
+
+Optimized for polling scenarios with automatic input-required pausing:
+
+```go
+// Create a server with default polling task handler
+a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+    WithDefaultPollingTaskHandler().
+    WithAgentCardFromFile(".well-known/agent.json").
+    Build()
+```
+
+#### DefaultStreamingTaskHandler
+
+Optimized for streaming scenarios with automatic input-required pausing:
+
+```go
+// Create a server with default streaming task handler  
+a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+    WithDefaultStreamingTaskHandler().
+    WithAgentCardFromFile(".well-known/agent.json").
+    Build()
+```
+
+These handlers automatically:
+- Handle input-required pausing when agents call the `input_required` tool
+- Manage conversation history appropriately for polling vs streaming contexts
+- Provide appropriate error handling and logging
+- Work seamlessly with or without AI agents
 
 ### Custom Task Processing
 

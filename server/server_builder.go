@@ -26,6 +26,14 @@ type A2AServerBuilder interface {
 	// If not set, a default task handler will be used.
 	WithTaskHandler(handler TaskHandler) A2AServerBuilder
 
+	// WithDefaultPollingTaskHandler sets a default polling task handler optimized for polling scenarios.
+	// This handler automatically handles input-required pausing without requiring custom implementation.
+	WithDefaultPollingTaskHandler() A2AServerBuilder
+
+	// WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios.
+	// This handler automatically handles input-required pausing with streaming-aware behavior.
+	WithDefaultStreamingTaskHandler() A2AServerBuilder
+
 	// WithTaskResultProcessor sets a custom task result processor for handling tool call results.
 	// This allows custom business logic for determining when tasks should be completed.
 	WithTaskResultProcessor(processor TaskResultProcessor) A2AServerBuilder
@@ -132,6 +140,18 @@ func isAgentConfigEmpty(agentConfig config.AgentConfig) bool {
 // WithTaskHandler sets a custom task handler
 func (b *A2AServerBuilderImpl) WithTaskHandler(handler TaskHandler) A2AServerBuilder {
 	b.taskHandler = handler
+	return b
+}
+
+// WithDefaultPollingTaskHandler sets a default polling task handler optimized for polling scenarios
+func (b *A2AServerBuilderImpl) WithDefaultPollingTaskHandler() A2AServerBuilder {
+	b.taskHandler = NewDefaultPollingTaskHandler(b.logger)
+	return b
+}
+
+// WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios
+func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilder {
+	b.taskHandler = NewDefaultStreamingTaskHandler(b.logger)
 	return b
 }
 
