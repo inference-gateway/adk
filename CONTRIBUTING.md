@@ -120,7 +120,7 @@ import (
     "net/http/httptest"
     "strings"
     "testing"
-    
+
     "github.com/stretchr/testify/assert"
     "github.com/inference-gateway/adk/server"
 )
@@ -156,11 +156,11 @@ func TestAgentServer(t *testing.T) {
         t.Run(tt.name, func(t *testing.T) {
             // Create isolated test environment
             server := setupTestAgent(t)
-            
+
             // Make request
             req := httptest.NewRequest(tt.method, tt.endpoint, strings.NewReader(tt.body))
             rec := httptest.NewRecorder()
-            
+
             // Use the server's HTTP handler
             server.ServeHTTP(rec, req)
 
@@ -305,7 +305,7 @@ func setupTestAgent(t *testing.T) server.A2AServer {
         WithTaskHandler(mockTaskHandler).
         WithTaskResultProcessor(mockTaskResultProcessor).
         Build()
-    
+
     return server
 }
 ```

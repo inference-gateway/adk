@@ -29,6 +29,7 @@ go run main.go
 ### Paused Task Client (`cmd/pausedtask`)
 
 Demonstrates handling tasks that require user input (input-required state). Shows how to:
+
 - Monitor tasks that may pause for additional input
 - Handle the input-required state
 - Resume paused tasks with user-provided input
@@ -44,6 +45,7 @@ go run main.go
 ### Paused Task Streaming (`cmd/pausedtask-streaming`)
 
 Combines paused task handling with real-time streaming. Features:
+
 - Start streaming conversations that may pause for input
 - Handle real-time streaming chunks during task execution
 - Resume paused tasks with continued streaming
@@ -60,23 +62,23 @@ go run main.go
 
 Environment variables:
 
-| Variable            | Default                     | Description                 |
-| ------------------- | --------------------------- | --------------------------- |
-| `A2A_SERVER_URL`    | `http://localhost:8080`     | A2A agent server URL        |
-| `POLL_INTERVAL`     | `2s`                        | Polling interval (async)    |
-| `MAX_POLL_TIMEOUT`  | `30s`                       | Max polling timeout (async) |
-| `STREAMING_TIMEOUT` | `60s`                       | Max streaming timeout       |
+| Variable            | Default                 | Description                 |
+| ------------------- | ----------------------- | --------------------------- |
+| `A2A_SERVER_URL`    | `http://localhost:8080` | A2A agent server URL        |
+| `POLL_INTERVAL`     | `2s`                    | Polling interval (async)    |
+| `MAX_POLL_TIMEOUT`  | `30s`                   | Max polling timeout (async) |
+| `STREAMING_TIMEOUT` | `60s`                   | Max streaming timeout       |
 
 ## Quick Comparison
 
-| Aspect            | Async Pattern         | Streaming Pattern          | Paused Task Pattern          | Paused Task Streaming       |
-| ----------------- | --------------------- | -------------------------- | ---------------------------- | --------------------------- |
-| **Compatibility** | Any A2A agent         | Requires streaming support | Any A2A agent                | Requires streaming support  |
-| **Use Case**      | Background processing | Interactive applications   | Multi-step interactions      | Real-time multi-step flows  |
-| **Network**       | Multiple requests     | Single connection          | Multiple requests with pauses| Streaming with pause/resume |
-| **Latency**       | Higher                | Lower                      | Variable (user-dependent)    | Low + user interaction      |
-| **User Input**    | No                    | No                         | Yes (on demand)              | Yes (during streaming)      |
-| **Real-time**     | No                    | Yes                        | No (polling for updates)     | Yes                         |
+| Aspect            | Async Pattern         | Streaming Pattern          | Paused Task Pattern           | Paused Task Streaming       |
+| ----------------- | --------------------- | -------------------------- | ----------------------------- | --------------------------- |
+| **Compatibility** | Any A2A agent         | Requires streaming support | Any A2A agent                 | Requires streaming support  |
+| **Use Case**      | Background processing | Interactive applications   | Multi-step interactions       | Real-time multi-step flows  |
+| **Network**       | Multiple requests     | Single connection          | Multiple requests with pauses | Streaming with pause/resume |
+| **Latency**       | Higher                | Lower                      | Variable (user-dependent)     | Low + user interaction      |
+| **User Input**    | No                    | No                         | Yes (on demand)               | Yes (during streaming)      |
+| **Real-time**     | No                    | Yes                        | No (polling for updates)      | Yes                         |
 
 ## Troubleshooting
 

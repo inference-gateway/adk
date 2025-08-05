@@ -278,20 +278,20 @@ func main() {
 
     // Monitor agent health
     ctx := context.Background()
-    
+
     // Single health check
     health, err := client.GetHealth(ctx)
     if err != nil {
         log.Printf("Health check failed: %v", err)
         return
     }
-    
+
     fmt.Printf("Agent health: %s\n", health.Status)
-    
+
     // Periodic health monitoring
     ticker := time.NewTicker(30 * time.Second)
     defer ticker.Stop()
-    
+
     for {
         select {
         case <-ticker.C:
@@ -300,7 +300,7 @@ func main() {
                 log.Printf("Health check failed: %v", err)
                 continue
             }
-            
+
             switch health.Status {
             case "healthy":
                 fmt.Printf("[%s] Agent is healthy\n", time.Now().Format("15:04:05"))
@@ -390,15 +390,15 @@ For complete working examples, see the [examples](./examples/) directory:
 
 ### Available Tasks
 
-| Task                       | Description                                                |
-| -------------------------- | ---------------------------------------------------------- |
-| `task a2a:download-schema` | Download the latest A2A schema                             |
-| `task a2a:generate-types`  | Generate Go types from A2A schema                          |
-| `task generate:mocks`      | Generate all testing mocks                                 |
-| `task lint`                | Run static analysis and linting                            |
-| `task test`                | Run all tests                                              |
-| `task tidy`                | Tidy Go modules                                            |
-| `task clean`               | Clean up build artifacts                                   |
+| Task                       | Description                       |
+| -------------------------- | --------------------------------- |
+| `task a2a:download-schema` | Download the latest A2A schema    |
+| `task a2a:generate-types`  | Generate Go types from A2A schema |
+| `task generate:mocks`      | Generate all testing mocks        |
+| `task lint`                | Run static analysis and linting   |
+| `task test`                | Run all tests                     |
+| `task tidy`                | Tidy Go modules                   |
+| `task clean`               | Clean up build artifacts          |
 
 ### Build-Time Agent Metadata
 
@@ -409,7 +409,7 @@ The ADK supports injecting agent metadata at build time using Go linker flags (L
 The following build-time metadata variables can be set via LD flags:
 
 - **`BuildAgentName`** - The agent's display name
-- **`BuildAgentDescription`** - A description of the agent's capabilities  
+- **`BuildAgentDescription`** - A description of the agent's capabilities
 - **`BuildAgentVersion`** - The agent's version number
 
 #### Usage Examples
@@ -431,7 +431,7 @@ go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName='My
 FROM golang:1.24-alpine AS builder
 
 ARG AGENT_NAME="Production Agent"
-ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"  
+ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"
 ARG AGENT_VERSION="1.0.0"
 
 WORKDIR /app
@@ -594,11 +594,13 @@ default:
 ```
 
 **Health Status Values:**
+
 - `healthy`: Agent is fully operational
 - `degraded`: Agent is partially operational (some functionality may be limited)
 - `unhealthy`: Agent is not operational or experiencing significant issues
 
 **Use Cases:**
+
 - Monitor agent availability in distributed systems
 - Implement health checks for load balancers
 - Detect and respond to agent failures
@@ -857,7 +859,7 @@ Create a JSON file following the A2A AgentCard specification:
       "description": "API key for weather service access"
     }
   },
-  "security": [{"apiKey": []}]
+  "security": [{ "apiKey": [] }]
 }
 ```
 
@@ -936,13 +938,13 @@ for {
         log.Printf("Error getting task: %v", err)
         continue
     }
-    
+
     switch task.Status.State {
     case adk.TaskStateInputRequired:
         // Display agent's request and get user input
         fmt.Printf("Agent: %s\n", getMessageText(task.Status.Message))
         userInput := getUserInput()
-        
+
         // Resume task with user input (TaskID in message as per schema)
         _, err = client.SendTask(ctx, adk.MessageSendParams{
             Message: adk.Message{
@@ -957,7 +959,7 @@ for {
     case adk.TaskStateCompleted, adk.TaskStateFailed:
         return task // Task finished
     }
-    
+
     time.Sleep(2 * time.Second) // Poll interval
 }
 ```
@@ -967,6 +969,7 @@ for {
 Leverage standard tool use patterns and Model Context Protocol (MCP) with task pausing:
 
 **Tool-Based Pausing:**
+
 ```go
 // Define a tool that requires user input
 inputTool := server.NewBasicTool(
@@ -980,22 +983,23 @@ inputTool := server.NewBasicTool(
     },
     func(ctx context.Context, args map[string]interface{}) (string, error) {
         prompt := args["prompt"].(string)
-        
+
         // Extract taskID from context (set by agent)
         taskID := ctx.Value("taskID").(string)
-        
+
         // Pause the task and request input
         err := taskManager.PauseTaskForInput(taskID, &adk.Message{
             Role: "assistant",
             Parts: []adk.Part{{Kind: "text", Text: prompt}},
         })
-        
+
         return "task_paused_for_input", err
     },
 )
 ```
 
 **MCP Tool Integration:**
+
 ```go
 // MCP tools can seamlessly pause tasks for user confirmation
 mcpConfirmTool := server.NewBasicTool(
@@ -1011,10 +1015,10 @@ mcpConfirmTool := server.NewBasicTool(
     func(ctx context.Context, args map[string]interface{}) (string, error) {
         // Use MCP to present structured confirmation request
         confirmationRequest := buildMCPConfirmation(args)
-        
+
         taskID := ctx.Value("taskID").(string)
         err := taskManager.PauseTaskForInput(taskID, confirmationRequest)
-        
+
         return "awaiting_mcp_confirmation", err
     },
 )
@@ -1251,7 +1255,7 @@ AUTH_CLIENT_SECRET="your-secret"
 
 # Task retention (optional)
 TASK_RETENTION_MAX_COMPLETED_TASKS="100"    # Maximum completed tasks to retain (0 = unlimited)
-TASK_RETENTION_MAX_FAILED_TASKS="50"        # Maximum failed tasks to retain (0 = unlimited)  
+TASK_RETENTION_MAX_FAILED_TASKS="50"        # Maximum failed tasks to retain (0 = unlimited)
 TASK_RETENTION_CLEANUP_INTERVAL="5m"        # How often to run cleanup (0 = manual only)
 
 # TLS (optional)

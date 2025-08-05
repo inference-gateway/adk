@@ -28,6 +28,7 @@ This is the **A2A ADK (Agent Development Kit)** - a Go library for building Agen
 ### Core Components
 
 **Server Architecture (`adk/server/`):**
+
 - `server.go` - Main A2AServer interface and implementation with HTTP endpoints
 - `server_builder.go` - Builder pattern for creating configured servers
 - `agent_builder.go` - Builder pattern for creating OpenAI-compatible agents
@@ -36,9 +37,11 @@ This is the **A2A ADK (Agent Development Kit)** - a Go library for building Agen
 - `config/config.go` - Environment-based configuration management
 
 **Client Architecture (`adk/client/`):**
+
 - `client.go` - A2A protocol client with retry logic and streaming support
 
 **Key Interfaces:**
+
 - `A2AServer` - Main server interface with Start/Stop, task processing
 - `A2AClient` - Client interface for communicating with A2A servers
 - `TaskHandler` - Custom task processing logic
@@ -48,6 +51,7 @@ This is the **A2A ADK (Agent Development Kit)** - a Go library for building Agen
 ### A2A Protocol Implementation
 
 The server implements these A2A JSON-RPC methods:
+
 - `message/send` - Send tasks to agents
 - `message/stream` - Stream responses in real-time
 - `tasks/get` - Retrieve task status
@@ -56,6 +60,7 @@ The server implements these A2A JSON-RPC methods:
 - `tasks/pushNotificationConfig/*` - Webhook notifications
 
 HTTP endpoints:
+
 - `POST /a2a` - Main A2A protocol endpoint
 - `GET /.well-known/agent.json` - Agent capabilities discovery
 - `GET /health` - Health check
@@ -65,6 +70,7 @@ HTTP endpoints:
 Uses `github.com/sethvargo/go-envconfig` for environment-based configuration:
 
 **Key Environment Variables:**
+
 - `AGENT_NAME` - Agent identifier
 - `INFERENCE_GATEWAY_URL` - Inference Gateway URL (configures AGENT_CLIENT_BASE_URL)
 - `AGENT_CLIENT_PROVIDER` - LLM provider (openai, anthropic, etc.)
@@ -76,6 +82,7 @@ Uses `github.com/sethvargo/go-envconfig` for environment-based configuration:
 ### Testing Approach
 
 Uses table-driven tests with generated mocks:
+
 - Test files: `*_test.go`
 - Mocks: `adk/server/mocks/` (generated via counterfeiter)
 - Comprehensive coverage for HTTP endpoints, task processing, and client operations
@@ -83,6 +90,7 @@ Uses table-driven tests with generated mocks:
 ### Dependencies
 
 **Key Dependencies:**
+
 - `github.com/gin-gonic/gin` - HTTP server framework
 - `github.com/inference-gateway/sdk` - LLM provider integration
 - `go.uber.org/zap` - Structured logging
@@ -93,14 +101,17 @@ Uses table-driven tests with generated mocks:
 ### Development Patterns
 
 **Builder Pattern Usage:**
+
 - `NewA2AServerBuilder()` - Fluent server configuration
 - `NewAgentBuilder()` - Fluent agent configuration with LLM clients
 
 **Error Handling:**
+
 - Structured error responses following JSON-RPC specification
 - Comprehensive logging with context
 
 **Concurrency:**
+
 - Background task processing with goroutines
 - Context-aware request handling
 - Graceful shutdown support

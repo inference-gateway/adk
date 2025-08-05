@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/inference-gateway/adk/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/inference-gateway/adk/types"
 	"go.uber.org/zap"
 )
 
@@ -165,7 +165,7 @@ func TestQueueCentricOperations(t *testing.T) {
 				logger := zap.NewNop()
 				storage := NewInMemoryStorage(logger, 100)
 				testContext := "test-context-delete"
-				
+
 				// Create active task
 				activeTask := &types.Task{
 					ID:        "active-task",
@@ -193,7 +193,7 @@ func TestQueueCentricOperations(t *testing.T) {
 				// Verify both tasks exist
 				_, err = storage.GetActiveTask(activeTask.ID)
 				assert.NoError(t, err)
-				
+
 				tasks, err := storage.ListTasksByContext(testContext, TaskFilter{})
 				require.NoError(t, err)
 				assert.Len(t, tasks, 1)
@@ -205,7 +205,7 @@ func TestQueueCentricOperations(t *testing.T) {
 				// Verify both tasks are deleted
 				_, err = storage.GetActiveTask(activeTask.ID)
 				assert.Error(t, err)
-				
+
 				tasks, err = storage.ListTasksByContext(testContext, TaskFilter{})
 				require.NoError(t, err)
 				assert.Len(t, tasks, 0)

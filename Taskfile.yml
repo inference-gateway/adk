@@ -22,6 +22,12 @@ tasks:
     cmds:
       - find . -name 'go.mod' -execdir go mod tidy \;
 
+  format:
+    desc: 'Format all Go files'
+    cmds:
+      - find . -name '*.go' -exec gofmt -w {} \;
+      - find . -name '*.md' -exec prettier -w {} \;
+
   lint:
     desc: 'Run Go static analysis and linting'
     cmds:
