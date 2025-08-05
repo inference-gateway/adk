@@ -46,7 +46,7 @@
 - [✨ Key Features](#-key-features)
   - [Core Capabilities](#core-capabilities)
   - [Developer Experience](#developer-experience)
-  - [Production Ready](#production-ready)
+  - [Enterprise Ready](#enterprise-ready)
 - [🛠️ Development](#️-development)
   - [Quick Setup](#quick-setup)
   - [Essential Tasks](#essential-tasks)
@@ -353,17 +353,15 @@ func main() {
 
 - ⚙️ **Environment Configuration**: Simple setup through environment variables
 - 📊 **Task Management**: Built-in task queuing, polling, and lifecycle management
-- 📋 **Task Listing**: Listing with filtering and pagination (`tasks/list`)
 - 🏗️ **Extensible Architecture**: Pluggable components for custom business logic
 - 📚 **Type-Safe**: Generated types from A2A schema for compile-time safety
 - 🧪 **Well Tested**: Comprehensive test coverage with table-driven tests
 
-### Production Ready
+### Enterprise Ready
 
-- 🌿 **Lightweight**: Optimized binary size
+- 🌿 **Lightweight**: Optimized binary size for efficient deployment
 - 🛡️ **Production Hardened**: Configurable timeouts, TLS support, and error handling
-- 🐳 **Containerized**: OCI compliant and works with Docker and Docker Compose
-- ☸️ **Kubernetes Native**: Ready for cloud-native deployments
+- ☸️ **Cloud Native**: Ready for cloud-native deployments and orchestration
 - 📊 **Observability**: OpenTelemetry integration for monitoring and tracing
 
 ## 🛠️ Development
