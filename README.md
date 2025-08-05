@@ -377,13 +377,25 @@ For complete working examples, see the [examples](./examples/) directory:
    task a2a:generate-types
    ```
 
-3. **Run linting**:
+3. **Generate testing mocks**:
+
+   ```bash
+   task generate:mocks
+   ```
+
+4. **Run formatting**:
+
+   ```bash
+   task format
+   ```
+
+5. **Run linting**:
 
    ```bash
    task lint
    ```
 
-4. **Run tests**:
+6. **Run tests**:
    ```bash
    task test
    ```
@@ -395,6 +407,7 @@ For complete working examples, see the [examples](./examples/) directory:
 | `task a2a:download-schema` | Download the latest A2A schema    |
 | `task a2a:generate-types`  | Generate Go types from A2A schema |
 | `task generate:mocks`      | Generate all testing mocks        |
+| `task format`              | Format all Go and Markdown files  |
 | `task lint`                | Run static analysis and linting   |
 | `task test`                | Run all tests                     |
 | `task tidy`                | Tidy Go modules                   |
