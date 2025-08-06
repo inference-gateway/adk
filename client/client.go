@@ -39,8 +39,7 @@ type A2AClient interface {
 	GetLogger() *zap.Logger
 
 	// Authentication configuration
-	SetAuthToken(token string)
-	SetAPIKey(apiKey string, header ...string)
+	SetAuthToken(token string, header ...string)
 	ClearAuth()
 }
 
@@ -53,9 +52,8 @@ type HealthResponse struct {
 
 // AuthConfig holds authentication configuration for the A2A client
 type AuthConfig struct {
-	AuthToken    string // Bearer token for authentication
-	APIKey       string // API key for API key authentication
-	APIKeyHeader string // Header name for API key (default: "X-API-Key")
+	Token  string // Authentication token
+	Header string // Header name for the token (default: "Authorization" with "Bearer " prefix)
 }
 
 // Config holds configuration options for the A2A client
@@ -629,16 +627,13 @@ func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", c.config.UserAgent)
 
 	// Add authentication headers if configured
-	if c.config.Auth != nil {
-		if c.config.Auth.AuthToken != "" {
-			req.Header.Set("Authorization", "Bearer "+c.config.Auth.AuthToken)
-		}
-		if c.config.Auth.APIKey != "" {
-			header := c.config.Auth.APIKeyHeader
-			if header == "" {
-				header = "X-API-Key" // default header name
-			}
-			req.Header.Set(header, c.config.Auth.APIKey)
+	if c.config.Auth != nil && c.config.Auth.Token != "" {
+		if c.config.Auth.Header == "" {
+			// Default to Authorization Bearer
+			req.Header.Set("Authorization", "Bearer "+c.config.Auth.Token)
+		} else {
+			// Use custom header
+			req.Header.Set(c.config.Auth.Header, c.config.Auth.Token)
 		}
 	}
 
@@ -724,22 +719,18 @@ func NewClientWithLogger(baseURL string, logger *zap.Logger) A2AClient {
 	return NewClientWithConfig(config)
 }
 
-// SetAuthToken sets the bearer token for authentication
-func (c *Client) SetAuthToken(token string) {
+// SetAuthToken sets the authentication token with optional custom header
+// If no header specified, defaults to "Authorization" with "Bearer " prefix
+// If header specified, uses token as-is without prefix
+func (c *Client) SetAuthToken(token string, header ...string) {
 	if c.config.Auth == nil {
 		c.config.Auth = &AuthConfig{}
 	}
-	c.config.Auth.AuthToken = token
-}
-
-// SetAPIKey sets the API key for authentication
-func (c *Client) SetAPIKey(apiKey string, header ...string) {
-	if c.config.Auth == nil {
-		c.config.Auth = &AuthConfig{}
-	}
-	c.config.Auth.APIKey = apiKey
+	c.config.Auth.Token = token
 	if len(header) > 0 {
-		c.config.Auth.APIKeyHeader = header[0]
+		c.config.Auth.Header = header[0]
+	} else {
+		c.config.Auth.Header = "" // Use default Authorization Bearer
 	}
 }
 

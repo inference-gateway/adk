@@ -126,7 +126,6 @@ func TestClientAuthentication(t *testing.T) {
 		config.Logger = logger
 		client := NewClientWithConfig(config)
 
-		// Set bearer token
 		client.SetAuthToken("test-token")
 
 		_, err := client.GetAuthenticatedExtendedCard(context.Background())
@@ -152,8 +151,7 @@ func TestClientAuthentication(t *testing.T) {
 		config.Logger = logger
 		client := NewClientWithConfig(config)
 
-		// Set API key
-		client.SetAPIKey("test-api-key")
+		client.SetAuthToken("test-api-key", "X-API-Key")
 
 		_, err := client.GetAuthenticatedExtendedCard(context.Background())
 		assert.NoError(t, err)
@@ -178,8 +176,7 @@ func TestClientAuthentication(t *testing.T) {
 		config.Logger = logger
 		client := NewClientWithConfig(config)
 
-		// Set API key with custom header
-		client.SetAPIKey("test-api-key", "X-Custom-Key")
+		client.SetAuthToken("test-api-key", "X-Custom-Key")
 
 		_, err := client.GetAuthenticatedExtendedCard(context.Background())
 		assert.NoError(t, err)
@@ -190,7 +187,7 @@ func TestClientAuthentication(t *testing.T) {
 			authHeader := r.Header.Get("Authorization")
 			apiKey := r.Header.Get("X-API-Key")
 
-			assert.Equal(t, "Bearer test-token", authHeader)
+			assert.Empty(t, authHeader)
 			assert.Equal(t, "test-api-key", apiKey)
 
 			response := types.JSONRPCSuccessResponse{
@@ -207,9 +204,8 @@ func TestClientAuthentication(t *testing.T) {
 		config.Logger = logger
 		client := NewClientWithConfig(config)
 
-		// Set both bearer token and API key
 		client.SetAuthToken("test-token")
-		client.SetAPIKey("test-api-key")
+		client.SetAuthToken("test-api-key", "X-API-Key")
 
 		_, err := client.GetAuthenticatedExtendedCard(context.Background())
 		assert.NoError(t, err)
@@ -239,7 +235,6 @@ func TestClientAuthentication(t *testing.T) {
 
 		// Set authentication then clear it
 		client.SetAuthToken("test-token")
-		client.SetAPIKey("test-api-key")
 		client.ClearAuth()
 
 		_, err := client.GetAuthenticatedExtendedCard(context.Background())
@@ -250,27 +245,25 @@ func TestClientAuthentication(t *testing.T) {
 func TestAuthConfig(t *testing.T) {
 	t.Run("AuthConfig initialization", func(t *testing.T) {
 		authConfig := &AuthConfig{
-			AuthToken:    "test-token",
-			APIKey:       "test-key",
-			APIKeyHeader: "X-Custom-API-Key",
+			Token:  "test-token",
+			Header: "X-Custom-API-Key",
 		}
 
-		assert.Equal(t, "test-token", authConfig.AuthToken)
-		assert.Equal(t, "test-key", authConfig.APIKey)
-		assert.Equal(t, "X-Custom-API-Key", authConfig.APIKeyHeader)
+		assert.Equal(t, "test-token", authConfig.Token)
+		assert.Equal(t, "X-Custom-API-Key", authConfig.Header)
 	})
 
 	t.Run("Config with authentication", func(t *testing.T) {
 		config := &Config{
 			BaseURL: "http://localhost:8080",
 			Auth: &AuthConfig{
-				AuthToken: "test-token",
-				APIKey:    "test-key",
+				Token:  "test-token",
+				Header: "X-Custom-Key",
 			},
 		}
 
 		assert.NotNil(t, config.Auth)
-		assert.Equal(t, "test-token", config.Auth.AuthToken)
-		assert.Equal(t, "test-key", config.Auth.APIKey)
+		assert.Equal(t, "test-token", config.Auth.Token)
+		assert.Equal(t, "X-Custom-Key", config.Auth.Header)
 	})
 }
