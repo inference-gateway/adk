@@ -108,6 +108,17 @@ type FakeA2AServerBuilder struct {
 	withLoggerReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
+	WithSecurityConfiguredAgentCardStub        func(types.AgentCard) server.A2AServerBuilder
+	withSecurityConfiguredAgentCardMutex       sync.RWMutex
+	withSecurityConfiguredAgentCardArgsForCall []struct {
+		arg1 types.AgentCard
+	}
+	withSecurityConfiguredAgentCardReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withSecurityConfiguredAgentCardReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
 	WithStreamingTaskHandlerStub        func(server.TaskHandler) server.A2AServerBuilder
 	withStreamingTaskHandlerMutex       sync.RWMutex
 	withStreamingTaskHandlerArgsForCall []struct {
@@ -655,6 +666,67 @@ func (fake *FakeA2AServerBuilder) WithLoggerReturnsOnCall(i int, result1 server.
 	}{result1}
 }
 
+func (fake *FakeA2AServerBuilder) WithSecurityConfiguredAgentCard(arg1 types.AgentCard) server.A2AServerBuilder {
+	fake.withSecurityConfiguredAgentCardMutex.Lock()
+	ret, specificReturn := fake.withSecurityConfiguredAgentCardReturnsOnCall[len(fake.withSecurityConfiguredAgentCardArgsForCall)]
+	fake.withSecurityConfiguredAgentCardArgsForCall = append(fake.withSecurityConfiguredAgentCardArgsForCall, struct {
+		arg1 types.AgentCard
+	}{arg1})
+	stub := fake.WithSecurityConfiguredAgentCardStub
+	fakeReturns := fake.withSecurityConfiguredAgentCardReturns
+	fake.recordInvocation("WithSecurityConfiguredAgentCard", []interface{}{arg1})
+	fake.withSecurityConfiguredAgentCardMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithSecurityConfiguredAgentCardCallCount() int {
+	fake.withSecurityConfiguredAgentCardMutex.RLock()
+	defer fake.withSecurityConfiguredAgentCardMutex.RUnlock()
+	return len(fake.withSecurityConfiguredAgentCardArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithSecurityConfiguredAgentCardCalls(stub func(types.AgentCard) server.A2AServerBuilder) {
+	fake.withSecurityConfiguredAgentCardMutex.Lock()
+	defer fake.withSecurityConfiguredAgentCardMutex.Unlock()
+	fake.WithSecurityConfiguredAgentCardStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithSecurityConfiguredAgentCardArgsForCall(i int) types.AgentCard {
+	fake.withSecurityConfiguredAgentCardMutex.RLock()
+	defer fake.withSecurityConfiguredAgentCardMutex.RUnlock()
+	argsForCall := fake.withSecurityConfiguredAgentCardArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServerBuilder) WithSecurityConfiguredAgentCardReturns(result1 server.A2AServerBuilder) {
+	fake.withSecurityConfiguredAgentCardMutex.Lock()
+	defer fake.withSecurityConfiguredAgentCardMutex.Unlock()
+	fake.WithSecurityConfiguredAgentCardStub = nil
+	fake.withSecurityConfiguredAgentCardReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithSecurityConfiguredAgentCardReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withSecurityConfiguredAgentCardMutex.Lock()
+	defer fake.withSecurityConfiguredAgentCardMutex.Unlock()
+	fake.WithSecurityConfiguredAgentCardStub = nil
+	if fake.withSecurityConfiguredAgentCardReturnsOnCall == nil {
+		fake.withSecurityConfiguredAgentCardReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withSecurityConfiguredAgentCardReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
 func (fake *FakeA2AServerBuilder) WithStreamingTaskHandler(arg1 server.TaskHandler) server.A2AServerBuilder {
 	fake.withStreamingTaskHandlerMutex.Lock()
 	ret, specificReturn := fake.withStreamingTaskHandlerReturnsOnCall[len(fake.withStreamingTaskHandlerArgsForCall)]
@@ -798,6 +870,8 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.withDefaultTaskHandlersMutex.RUnlock()
 	fake.withLoggerMutex.RLock()
 	defer fake.withLoggerMutex.RUnlock()
+	fake.withSecurityConfiguredAgentCardMutex.RLock()
+	defer fake.withSecurityConfiguredAgentCardMutex.RUnlock()
 	fake.withStreamingTaskHandlerMutex.RLock()
 	defer fake.withStreamingTaskHandlerMutex.RUnlock()
 	fake.withTaskResultProcessorMutex.RLock()

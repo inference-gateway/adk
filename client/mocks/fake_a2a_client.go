@@ -27,6 +27,10 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
+	ClearAuthStub        func()
+	clearAuthMutex       sync.RWMutex
+	clearAuthArgsForCall []struct {
+	}
 	GetAgentCardStub        func(context.Context) (*types.AgentCard, error)
 	getAgentCardMutex       sync.RWMutex
 	getAgentCardArgsForCall []struct {
@@ -37,6 +41,19 @@ type FakeA2AClient struct {
 		result2 error
 	}
 	getAgentCardReturnsOnCall map[int]struct {
+		result1 *types.AgentCard
+		result2 error
+	}
+	GetAuthenticatedExtendedCardStub        func(context.Context) (*types.AgentCard, error)
+	getAuthenticatedExtendedCardMutex       sync.RWMutex
+	getAuthenticatedExtendedCardArgsForCall []struct {
+		arg1 context.Context
+	}
+	getAuthenticatedExtendedCardReturns struct {
+		result1 *types.AgentCard
+		result2 error
+	}
+	getAuthenticatedExtendedCardReturnsOnCall map[int]struct {
 		result1 *types.AgentCard
 		result2 error
 	}
@@ -128,6 +145,17 @@ type FakeA2AClient struct {
 	sendTaskStreamingReturnsOnCall map[int]struct {
 		result1 error
 	}
+	SetAPIKeyStub        func(string, ...string)
+	setAPIKeyMutex       sync.RWMutex
+	setAPIKeyArgsForCall []struct {
+		arg1 string
+		arg2 []string
+	}
+	SetAuthTokenStub        func(string)
+	setAuthTokenMutex       sync.RWMutex
+	setAuthTokenArgsForCall []struct {
+		arg1 string
+	}
 	SetHTTPClientStub        func(*http.Client)
 	setHTTPClientMutex       sync.RWMutex
 	setHTTPClientArgsForCall []struct {
@@ -212,6 +240,30 @@ func (fake *FakeA2AClient) CancelTaskReturnsOnCall(i int, result1 *types.JSONRPC
 	}{result1, result2}
 }
 
+func (fake *FakeA2AClient) ClearAuth() {
+	fake.clearAuthMutex.Lock()
+	fake.clearAuthArgsForCall = append(fake.clearAuthArgsForCall, struct {
+	}{})
+	stub := fake.ClearAuthStub
+	fake.recordInvocation("ClearAuth", []interface{}{})
+	fake.clearAuthMutex.Unlock()
+	if stub != nil {
+		fake.ClearAuthStub()
+	}
+}
+
+func (fake *FakeA2AClient) ClearAuthCallCount() int {
+	fake.clearAuthMutex.RLock()
+	defer fake.clearAuthMutex.RUnlock()
+	return len(fake.clearAuthArgsForCall)
+}
+
+func (fake *FakeA2AClient) ClearAuthCalls(stub func()) {
+	fake.clearAuthMutex.Lock()
+	defer fake.clearAuthMutex.Unlock()
+	fake.ClearAuthStub = stub
+}
+
 func (fake *FakeA2AClient) GetAgentCard(arg1 context.Context) (*types.AgentCard, error) {
 	fake.getAgentCardMutex.Lock()
 	ret, specificReturn := fake.getAgentCardReturnsOnCall[len(fake.getAgentCardArgsForCall)]
@@ -271,6 +323,70 @@ func (fake *FakeA2AClient) GetAgentCardReturnsOnCall(i int, result1 *types.Agent
 		})
 	}
 	fake.getAgentCardReturnsOnCall[i] = struct {
+		result1 *types.AgentCard
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCard(arg1 context.Context) (*types.AgentCard, error) {
+	fake.getAuthenticatedExtendedCardMutex.Lock()
+	ret, specificReturn := fake.getAuthenticatedExtendedCardReturnsOnCall[len(fake.getAuthenticatedExtendedCardArgsForCall)]
+	fake.getAuthenticatedExtendedCardArgsForCall = append(fake.getAuthenticatedExtendedCardArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	stub := fake.GetAuthenticatedExtendedCardStub
+	fakeReturns := fake.getAuthenticatedExtendedCardReturns
+	fake.recordInvocation("GetAuthenticatedExtendedCard", []interface{}{arg1})
+	fake.getAuthenticatedExtendedCardMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCardCallCount() int {
+	fake.getAuthenticatedExtendedCardMutex.RLock()
+	defer fake.getAuthenticatedExtendedCardMutex.RUnlock()
+	return len(fake.getAuthenticatedExtendedCardArgsForCall)
+}
+
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCardCalls(stub func(context.Context) (*types.AgentCard, error)) {
+	fake.getAuthenticatedExtendedCardMutex.Lock()
+	defer fake.getAuthenticatedExtendedCardMutex.Unlock()
+	fake.GetAuthenticatedExtendedCardStub = stub
+}
+
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCardArgsForCall(i int) context.Context {
+	fake.getAuthenticatedExtendedCardMutex.RLock()
+	defer fake.getAuthenticatedExtendedCardMutex.RUnlock()
+	argsForCall := fake.getAuthenticatedExtendedCardArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCardReturns(result1 *types.AgentCard, result2 error) {
+	fake.getAuthenticatedExtendedCardMutex.Lock()
+	defer fake.getAuthenticatedExtendedCardMutex.Unlock()
+	fake.GetAuthenticatedExtendedCardStub = nil
+	fake.getAuthenticatedExtendedCardReturns = struct {
+		result1 *types.AgentCard
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCardReturnsOnCall(i int, result1 *types.AgentCard, result2 error) {
+	fake.getAuthenticatedExtendedCardMutex.Lock()
+	defer fake.getAuthenticatedExtendedCardMutex.Unlock()
+	fake.GetAuthenticatedExtendedCardStub = nil
+	if fake.getAuthenticatedExtendedCardReturnsOnCall == nil {
+		fake.getAuthenticatedExtendedCardReturnsOnCall = make(map[int]struct {
+			result1 *types.AgentCard
+			result2 error
+		})
+	}
+	fake.getAuthenticatedExtendedCardReturnsOnCall[i] = struct {
 		result1 *types.AgentCard
 		result2 error
 	}{result1, result2}
@@ -704,6 +820,71 @@ func (fake *FakeA2AClient) SendTaskStreamingReturnsOnCall(i int, result1 error) 
 	}{result1}
 }
 
+func (fake *FakeA2AClient) SetAPIKey(arg1 string, arg2 ...string) {
+	fake.setAPIKeyMutex.Lock()
+	fake.setAPIKeyArgsForCall = append(fake.setAPIKeyArgsForCall, struct {
+		arg1 string
+		arg2 []string
+	}{arg1, arg2})
+	stub := fake.SetAPIKeyStub
+	fake.recordInvocation("SetAPIKey", []interface{}{arg1, arg2})
+	fake.setAPIKeyMutex.Unlock()
+	if stub != nil {
+		fake.SetAPIKeyStub(arg1, arg2...)
+	}
+}
+
+func (fake *FakeA2AClient) SetAPIKeyCallCount() int {
+	fake.setAPIKeyMutex.RLock()
+	defer fake.setAPIKeyMutex.RUnlock()
+	return len(fake.setAPIKeyArgsForCall)
+}
+
+func (fake *FakeA2AClient) SetAPIKeyCalls(stub func(string, ...string)) {
+	fake.setAPIKeyMutex.Lock()
+	defer fake.setAPIKeyMutex.Unlock()
+	fake.SetAPIKeyStub = stub
+}
+
+func (fake *FakeA2AClient) SetAPIKeyArgsForCall(i int) (string, []string) {
+	fake.setAPIKeyMutex.RLock()
+	defer fake.setAPIKeyMutex.RUnlock()
+	argsForCall := fake.setAPIKeyArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeA2AClient) SetAuthToken(arg1 string) {
+	fake.setAuthTokenMutex.Lock()
+	fake.setAuthTokenArgsForCall = append(fake.setAuthTokenArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.SetAuthTokenStub
+	fake.recordInvocation("SetAuthToken", []interface{}{arg1})
+	fake.setAuthTokenMutex.Unlock()
+	if stub != nil {
+		fake.SetAuthTokenStub(arg1)
+	}
+}
+
+func (fake *FakeA2AClient) SetAuthTokenCallCount() int {
+	fake.setAuthTokenMutex.RLock()
+	defer fake.setAuthTokenMutex.RUnlock()
+	return len(fake.setAuthTokenArgsForCall)
+}
+
+func (fake *FakeA2AClient) SetAuthTokenCalls(stub func(string)) {
+	fake.setAuthTokenMutex.Lock()
+	defer fake.setAuthTokenMutex.Unlock()
+	fake.SetAuthTokenStub = stub
+}
+
+func (fake *FakeA2AClient) SetAuthTokenArgsForCall(i int) string {
+	fake.setAuthTokenMutex.RLock()
+	defer fake.setAuthTokenMutex.RUnlock()
+	argsForCall := fake.setAuthTokenArgsForCall[i]
+	return argsForCall.arg1
+}
+
 func (fake *FakeA2AClient) SetHTTPClient(arg1 *http.Client) {
 	fake.setHTTPClientMutex.Lock()
 	fake.setHTTPClientArgsForCall = append(fake.setHTTPClientArgsForCall, struct {
@@ -805,8 +986,12 @@ func (fake *FakeA2AClient) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.cancelTaskMutex.RLock()
 	defer fake.cancelTaskMutex.RUnlock()
+	fake.clearAuthMutex.RLock()
+	defer fake.clearAuthMutex.RUnlock()
 	fake.getAgentCardMutex.RLock()
 	defer fake.getAgentCardMutex.RUnlock()
+	fake.getAuthenticatedExtendedCardMutex.RLock()
+	defer fake.getAuthenticatedExtendedCardMutex.RUnlock()
 	fake.getBaseURLMutex.RLock()
 	defer fake.getBaseURLMutex.RUnlock()
 	fake.getHealthMutex.RLock()
@@ -821,6 +1006,10 @@ func (fake *FakeA2AClient) Invocations() map[string][][]interface{} {
 	defer fake.sendTaskMutex.RUnlock()
 	fake.sendTaskStreamingMutex.RLock()
 	defer fake.sendTaskStreamingMutex.RUnlock()
+	fake.setAPIKeyMutex.RLock()
+	defer fake.setAPIKeyMutex.RUnlock()
+	fake.setAuthTokenMutex.RLock()
+	defer fake.setAuthTokenMutex.RUnlock()
 	fake.setHTTPClientMutex.RLock()
 	defer fake.setHTTPClientMutex.RUnlock()
 	fake.setLoggerMutex.RLock()
