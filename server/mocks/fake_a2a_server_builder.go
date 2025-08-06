@@ -56,6 +56,47 @@ type FakeA2AServerBuilder struct {
 	withAgentCardFromFileReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
+	WithBackgroundTaskHandlerStub        func(server.TaskHandler) server.A2AServerBuilder
+	withBackgroundTaskHandlerMutex       sync.RWMutex
+	withBackgroundTaskHandlerArgsForCall []struct {
+		arg1 server.TaskHandler
+	}
+	withBackgroundTaskHandlerReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withBackgroundTaskHandlerReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
+	WithDefaultBackgroundTaskHandlerStub        func() server.A2AServerBuilder
+	withDefaultBackgroundTaskHandlerMutex       sync.RWMutex
+	withDefaultBackgroundTaskHandlerArgsForCall []struct {
+	}
+	withDefaultBackgroundTaskHandlerReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withDefaultBackgroundTaskHandlerReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
+	WithDefaultStreamingTaskHandlerStub        func() server.A2AServerBuilder
+	withDefaultStreamingTaskHandlerMutex       sync.RWMutex
+	withDefaultStreamingTaskHandlerArgsForCall []struct {
+	}
+	withDefaultStreamingTaskHandlerReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withDefaultStreamingTaskHandlerReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
+	WithDefaultTaskHandlersStub        func() server.A2AServerBuilder
+	withDefaultTaskHandlersMutex       sync.RWMutex
+	withDefaultTaskHandlersArgsForCall []struct {
+	}
+	withDefaultTaskHandlersReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withDefaultTaskHandlersReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
 	WithLoggerStub        func(*zap.Logger) server.A2AServerBuilder
 	withLoggerMutex       sync.RWMutex
 	withLoggerArgsForCall []struct {
@@ -67,15 +108,15 @@ type FakeA2AServerBuilder struct {
 	withLoggerReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
-	WithTaskHandlerStub        func(server.TaskHandler) server.A2AServerBuilder
-	withTaskHandlerMutex       sync.RWMutex
-	withTaskHandlerArgsForCall []struct {
+	WithStreamingTaskHandlerStub        func(server.TaskHandler) server.A2AServerBuilder
+	withStreamingTaskHandlerMutex       sync.RWMutex
+	withStreamingTaskHandlerArgsForCall []struct {
 		arg1 server.TaskHandler
 	}
-	withTaskHandlerReturns struct {
+	withStreamingTaskHandlerReturns struct {
 		result1 server.A2AServerBuilder
 	}
-	withTaskHandlerReturnsOnCall map[int]struct {
+	withStreamingTaskHandlerReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
 	WithTaskResultProcessorStub        func(server.TaskResultProcessor) server.A2AServerBuilder
@@ -333,6 +374,226 @@ func (fake *FakeA2AServerBuilder) WithAgentCardFromFileReturnsOnCall(i int, resu
 	}{result1}
 }
 
+func (fake *FakeA2AServerBuilder) WithBackgroundTaskHandler(arg1 server.TaskHandler) server.A2AServerBuilder {
+	fake.withBackgroundTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.withBackgroundTaskHandlerReturnsOnCall[len(fake.withBackgroundTaskHandlerArgsForCall)]
+	fake.withBackgroundTaskHandlerArgsForCall = append(fake.withBackgroundTaskHandlerArgsForCall, struct {
+		arg1 server.TaskHandler
+	}{arg1})
+	stub := fake.WithBackgroundTaskHandlerStub
+	fakeReturns := fake.withBackgroundTaskHandlerReturns
+	fake.recordInvocation("WithBackgroundTaskHandler", []interface{}{arg1})
+	fake.withBackgroundTaskHandlerMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithBackgroundTaskHandlerCallCount() int {
+	fake.withBackgroundTaskHandlerMutex.RLock()
+	defer fake.withBackgroundTaskHandlerMutex.RUnlock()
+	return len(fake.withBackgroundTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithBackgroundTaskHandlerCalls(stub func(server.TaskHandler) server.A2AServerBuilder) {
+	fake.withBackgroundTaskHandlerMutex.Lock()
+	defer fake.withBackgroundTaskHandlerMutex.Unlock()
+	fake.WithBackgroundTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithBackgroundTaskHandlerArgsForCall(i int) server.TaskHandler {
+	fake.withBackgroundTaskHandlerMutex.RLock()
+	defer fake.withBackgroundTaskHandlerMutex.RUnlock()
+	argsForCall := fake.withBackgroundTaskHandlerArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServerBuilder) WithBackgroundTaskHandlerReturns(result1 server.A2AServerBuilder) {
+	fake.withBackgroundTaskHandlerMutex.Lock()
+	defer fake.withBackgroundTaskHandlerMutex.Unlock()
+	fake.WithBackgroundTaskHandlerStub = nil
+	fake.withBackgroundTaskHandlerReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithBackgroundTaskHandlerReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withBackgroundTaskHandlerMutex.Lock()
+	defer fake.withBackgroundTaskHandlerMutex.Unlock()
+	fake.WithBackgroundTaskHandlerStub = nil
+	if fake.withBackgroundTaskHandlerReturnsOnCall == nil {
+		fake.withBackgroundTaskHandlerReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withBackgroundTaskHandlerReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultBackgroundTaskHandler() server.A2AServerBuilder {
+	fake.withDefaultBackgroundTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.withDefaultBackgroundTaskHandlerReturnsOnCall[len(fake.withDefaultBackgroundTaskHandlerArgsForCall)]
+	fake.withDefaultBackgroundTaskHandlerArgsForCall = append(fake.withDefaultBackgroundTaskHandlerArgsForCall, struct {
+	}{})
+	stub := fake.WithDefaultBackgroundTaskHandlerStub
+	fakeReturns := fake.withDefaultBackgroundTaskHandlerReturns
+	fake.recordInvocation("WithDefaultBackgroundTaskHandler", []interface{}{})
+	fake.withDefaultBackgroundTaskHandlerMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultBackgroundTaskHandlerCallCount() int {
+	fake.withDefaultBackgroundTaskHandlerMutex.RLock()
+	defer fake.withDefaultBackgroundTaskHandlerMutex.RUnlock()
+	return len(fake.withDefaultBackgroundTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultBackgroundTaskHandlerCalls(stub func() server.A2AServerBuilder) {
+	fake.withDefaultBackgroundTaskHandlerMutex.Lock()
+	defer fake.withDefaultBackgroundTaskHandlerMutex.Unlock()
+	fake.WithDefaultBackgroundTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultBackgroundTaskHandlerReturns(result1 server.A2AServerBuilder) {
+	fake.withDefaultBackgroundTaskHandlerMutex.Lock()
+	defer fake.withDefaultBackgroundTaskHandlerMutex.Unlock()
+	fake.WithDefaultBackgroundTaskHandlerStub = nil
+	fake.withDefaultBackgroundTaskHandlerReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultBackgroundTaskHandlerReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withDefaultBackgroundTaskHandlerMutex.Lock()
+	defer fake.withDefaultBackgroundTaskHandlerMutex.Unlock()
+	fake.WithDefaultBackgroundTaskHandlerStub = nil
+	if fake.withDefaultBackgroundTaskHandlerReturnsOnCall == nil {
+		fake.withDefaultBackgroundTaskHandlerReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withDefaultBackgroundTaskHandlerReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandler() server.A2AServerBuilder {
+	fake.withDefaultStreamingTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.withDefaultStreamingTaskHandlerReturnsOnCall[len(fake.withDefaultStreamingTaskHandlerArgsForCall)]
+	fake.withDefaultStreamingTaskHandlerArgsForCall = append(fake.withDefaultStreamingTaskHandlerArgsForCall, struct {
+	}{})
+	stub := fake.WithDefaultStreamingTaskHandlerStub
+	fakeReturns := fake.withDefaultStreamingTaskHandlerReturns
+	fake.recordInvocation("WithDefaultStreamingTaskHandler", []interface{}{})
+	fake.withDefaultStreamingTaskHandlerMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandlerCallCount() int {
+	fake.withDefaultStreamingTaskHandlerMutex.RLock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.RUnlock()
+	return len(fake.withDefaultStreamingTaskHandlerArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandlerCalls(stub func() server.A2AServerBuilder) {
+	fake.withDefaultStreamingTaskHandlerMutex.Lock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.Unlock()
+	fake.WithDefaultStreamingTaskHandlerStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandlerReturns(result1 server.A2AServerBuilder) {
+	fake.withDefaultStreamingTaskHandlerMutex.Lock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.Unlock()
+	fake.WithDefaultStreamingTaskHandlerStub = nil
+	fake.withDefaultStreamingTaskHandlerReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultStreamingTaskHandlerReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withDefaultStreamingTaskHandlerMutex.Lock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.Unlock()
+	fake.WithDefaultStreamingTaskHandlerStub = nil
+	if fake.withDefaultStreamingTaskHandlerReturnsOnCall == nil {
+		fake.withDefaultStreamingTaskHandlerReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withDefaultStreamingTaskHandlerReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultTaskHandlers() server.A2AServerBuilder {
+	fake.withDefaultTaskHandlersMutex.Lock()
+	ret, specificReturn := fake.withDefaultTaskHandlersReturnsOnCall[len(fake.withDefaultTaskHandlersArgsForCall)]
+	fake.withDefaultTaskHandlersArgsForCall = append(fake.withDefaultTaskHandlersArgsForCall, struct {
+	}{})
+	stub := fake.WithDefaultTaskHandlersStub
+	fakeReturns := fake.withDefaultTaskHandlersReturns
+	fake.recordInvocation("WithDefaultTaskHandlers", []interface{}{})
+	fake.withDefaultTaskHandlersMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultTaskHandlersCallCount() int {
+	fake.withDefaultTaskHandlersMutex.RLock()
+	defer fake.withDefaultTaskHandlersMutex.RUnlock()
+	return len(fake.withDefaultTaskHandlersArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultTaskHandlersCalls(stub func() server.A2AServerBuilder) {
+	fake.withDefaultTaskHandlersMutex.Lock()
+	defer fake.withDefaultTaskHandlersMutex.Unlock()
+	fake.WithDefaultTaskHandlersStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultTaskHandlersReturns(result1 server.A2AServerBuilder) {
+	fake.withDefaultTaskHandlersMutex.Lock()
+	defer fake.withDefaultTaskHandlersMutex.Unlock()
+	fake.WithDefaultTaskHandlersStub = nil
+	fake.withDefaultTaskHandlersReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithDefaultTaskHandlersReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withDefaultTaskHandlersMutex.Lock()
+	defer fake.withDefaultTaskHandlersMutex.Unlock()
+	fake.WithDefaultTaskHandlersStub = nil
+	if fake.withDefaultTaskHandlersReturnsOnCall == nil {
+		fake.withDefaultTaskHandlersReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withDefaultTaskHandlersReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
 func (fake *FakeA2AServerBuilder) WithLogger(arg1 *zap.Logger) server.A2AServerBuilder {
 	fake.withLoggerMutex.Lock()
 	ret, specificReturn := fake.withLoggerReturnsOnCall[len(fake.withLoggerArgsForCall)]
@@ -394,16 +655,16 @@ func (fake *FakeA2AServerBuilder) WithLoggerReturnsOnCall(i int, result1 server.
 	}{result1}
 }
 
-func (fake *FakeA2AServerBuilder) WithTaskHandler(arg1 server.TaskHandler) server.A2AServerBuilder {
-	fake.withTaskHandlerMutex.Lock()
-	ret, specificReturn := fake.withTaskHandlerReturnsOnCall[len(fake.withTaskHandlerArgsForCall)]
-	fake.withTaskHandlerArgsForCall = append(fake.withTaskHandlerArgsForCall, struct {
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandler(arg1 server.TaskHandler) server.A2AServerBuilder {
+	fake.withStreamingTaskHandlerMutex.Lock()
+	ret, specificReturn := fake.withStreamingTaskHandlerReturnsOnCall[len(fake.withStreamingTaskHandlerArgsForCall)]
+	fake.withStreamingTaskHandlerArgsForCall = append(fake.withStreamingTaskHandlerArgsForCall, struct {
 		arg1 server.TaskHandler
 	}{arg1})
-	stub := fake.WithTaskHandlerStub
-	fakeReturns := fake.withTaskHandlerReturns
-	fake.recordInvocation("WithTaskHandler", []interface{}{arg1})
-	fake.withTaskHandlerMutex.Unlock()
+	stub := fake.WithStreamingTaskHandlerStub
+	fakeReturns := fake.withStreamingTaskHandlerReturns
+	fake.recordInvocation("WithStreamingTaskHandler", []interface{}{arg1})
+	fake.withStreamingTaskHandlerMutex.Unlock()
 	if stub != nil {
 		return stub(arg1)
 	}
@@ -413,44 +674,44 @@ func (fake *FakeA2AServerBuilder) WithTaskHandler(arg1 server.TaskHandler) serve
 	return fakeReturns.result1
 }
 
-func (fake *FakeA2AServerBuilder) WithTaskHandlerCallCount() int {
-	fake.withTaskHandlerMutex.RLock()
-	defer fake.withTaskHandlerMutex.RUnlock()
-	return len(fake.withTaskHandlerArgsForCall)
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerCallCount() int {
+	fake.withStreamingTaskHandlerMutex.RLock()
+	defer fake.withStreamingTaskHandlerMutex.RUnlock()
+	return len(fake.withStreamingTaskHandlerArgsForCall)
 }
 
-func (fake *FakeA2AServerBuilder) WithTaskHandlerCalls(stub func(server.TaskHandler) server.A2AServerBuilder) {
-	fake.withTaskHandlerMutex.Lock()
-	defer fake.withTaskHandlerMutex.Unlock()
-	fake.WithTaskHandlerStub = stub
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerCalls(stub func(server.TaskHandler) server.A2AServerBuilder) {
+	fake.withStreamingTaskHandlerMutex.Lock()
+	defer fake.withStreamingTaskHandlerMutex.Unlock()
+	fake.WithStreamingTaskHandlerStub = stub
 }
 
-func (fake *FakeA2AServerBuilder) WithTaskHandlerArgsForCall(i int) server.TaskHandler {
-	fake.withTaskHandlerMutex.RLock()
-	defer fake.withTaskHandlerMutex.RUnlock()
-	argsForCall := fake.withTaskHandlerArgsForCall[i]
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerArgsForCall(i int) server.TaskHandler {
+	fake.withStreamingTaskHandlerMutex.RLock()
+	defer fake.withStreamingTaskHandlerMutex.RUnlock()
+	argsForCall := fake.withStreamingTaskHandlerArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *FakeA2AServerBuilder) WithTaskHandlerReturns(result1 server.A2AServerBuilder) {
-	fake.withTaskHandlerMutex.Lock()
-	defer fake.withTaskHandlerMutex.Unlock()
-	fake.WithTaskHandlerStub = nil
-	fake.withTaskHandlerReturns = struct {
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerReturns(result1 server.A2AServerBuilder) {
+	fake.withStreamingTaskHandlerMutex.Lock()
+	defer fake.withStreamingTaskHandlerMutex.Unlock()
+	fake.WithStreamingTaskHandlerStub = nil
+	fake.withStreamingTaskHandlerReturns = struct {
 		result1 server.A2AServerBuilder
 	}{result1}
 }
 
-func (fake *FakeA2AServerBuilder) WithTaskHandlerReturnsOnCall(i int, result1 server.A2AServerBuilder) {
-	fake.withTaskHandlerMutex.Lock()
-	defer fake.withTaskHandlerMutex.Unlock()
-	fake.WithTaskHandlerStub = nil
-	if fake.withTaskHandlerReturnsOnCall == nil {
-		fake.withTaskHandlerReturnsOnCall = make(map[int]struct {
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withStreamingTaskHandlerMutex.Lock()
+	defer fake.withStreamingTaskHandlerMutex.Unlock()
+	fake.WithStreamingTaskHandlerStub = nil
+	if fake.withStreamingTaskHandlerReturnsOnCall == nil {
+		fake.withStreamingTaskHandlerReturnsOnCall = make(map[int]struct {
 			result1 server.A2AServerBuilder
 		})
 	}
-	fake.withTaskHandlerReturnsOnCall[i] = struct {
+	fake.withStreamingTaskHandlerReturnsOnCall[i] = struct {
 		result1 server.A2AServerBuilder
 	}{result1}
 }
@@ -527,10 +788,18 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.withAgentCardMutex.RUnlock()
 	fake.withAgentCardFromFileMutex.RLock()
 	defer fake.withAgentCardFromFileMutex.RUnlock()
+	fake.withBackgroundTaskHandlerMutex.RLock()
+	defer fake.withBackgroundTaskHandlerMutex.RUnlock()
+	fake.withDefaultBackgroundTaskHandlerMutex.RLock()
+	defer fake.withDefaultBackgroundTaskHandlerMutex.RUnlock()
+	fake.withDefaultStreamingTaskHandlerMutex.RLock()
+	defer fake.withDefaultStreamingTaskHandlerMutex.RUnlock()
+	fake.withDefaultTaskHandlersMutex.RLock()
+	defer fake.withDefaultTaskHandlersMutex.RUnlock()
 	fake.withLoggerMutex.RLock()
 	defer fake.withLoggerMutex.RUnlock()
-	fake.withTaskHandlerMutex.RLock()
-	defer fake.withTaskHandlerMutex.RUnlock()
+	fake.withStreamingTaskHandlerMutex.RLock()
+	defer fake.withStreamingTaskHandlerMutex.RUnlock()
 	fake.withTaskResultProcessorMutex.RLock()
 	defer fake.withTaskResultProcessorMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

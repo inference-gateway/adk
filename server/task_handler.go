@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	types "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
@@ -14,14 +15,21 @@ import (
 type TaskHandler interface {
 	// HandleTask processes a task and returns the updated task
 	// This is where the main business logic should be implemented
-	// The agent parameter is optional and will be nil if no OpenAI-compatible agent is configured
-	HandleTask(ctx context.Context, task *types.Task, message *types.Message, agent OpenAICompatibleAgent) (*types.Task, error)
+	HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error)
+
+	// SetAgent sets the OpenAI-compatible agent for the task handler
+	SetAgent(agent OpenAICompatibleAgent)
+
+	// GetAgent returns the configured OpenAI-compatible agent
+	GetAgent() OpenAICompatibleAgent
 }
 
-// DefaultTaskHandler implements the TaskHandler interface
-// This handler throws an error to enforce using proper handlers like AgentTaskHandler
+// DefaultTaskHandler implements the TaskHandler interface for basic scenarios
+// For optimized background or streaming with automatic input-required pausing,
+// use DefaultBackgroundTaskHandler or DefaultStreamingTaskHandler instead
 type DefaultTaskHandler struct {
 	logger *zap.Logger
+	agent  OpenAICompatibleAgent
 }
 
 // NewDefaultTaskHandler creates a new default task handler
@@ -31,30 +39,48 @@ func NewDefaultTaskHandler(logger *zap.Logger) *DefaultTaskHandler {
 	}
 }
 
+// NewDefaultTaskHandlerWithAgent creates a new default task handler with an agent
+func NewDefaultTaskHandlerWithAgent(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultTaskHandler {
+	return &DefaultTaskHandler{
+		logger: logger,
+		agent:  agent,
+	}
+}
+
+// SetAgent sets the OpenAI-compatible agent for the task handler
+func (th *DefaultTaskHandler) SetAgent(agent OpenAICompatibleAgent) {
+	th.agent = agent
+}
+
+// GetAgent returns the configured OpenAI-compatible agent
+func (th *DefaultTaskHandler) GetAgent() OpenAICompatibleAgent {
+	return th.agent
+}
+
 // HandleTask processes a task and returns the updated task
-// If an agent is provided, it will use the agent's capabilities, otherwise it will provide a simple response
-func (th *DefaultTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message, agent OpenAICompatibleAgent) (*types.Task, error) {
+// If an agent is configured, it will use the agent's capabilities, otherwise it will provide a simple response
+func (th *DefaultTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	th.logger.Info("processing task with default task handler",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID),
-		zap.Bool("has_agent", agent != nil))
+		zap.Bool("has_agent", th.agent != nil))
 
-	if agent != nil {
-		return th.processWithAgent(ctx, task, message, agent)
+	if th.agent != nil {
+		return th.processWithAgentBackground(ctx, task, message)
 	}
 
-	return th.processWithoutAgent(ctx, task, message)
+	return th.processWithoutAgentBackground(ctx, task, message)
 }
 
-// processWithAgent processes a task using the provided agent's capabilities
-func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.Task, message *types.Message, agent OpenAICompatibleAgent) (*types.Task, error) {
+// processWithAgentBackground processes a task using the configured agent's capabilities
+func (th *DefaultTaskHandler) processWithAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	th.logger.Info("processing task with agent capabilities",
 		zap.String("task_id", task.ID))
 
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	agentResponse, err := agent.Run(ctx, messages)
+	agentResponse, err := th.agent.Run(ctx, messages)
 	if err != nil {
 		th.logger.Error("agent processing failed", zap.Error(err))
 
@@ -93,8 +119,8 @@ func (th *DefaultTaskHandler) processWithAgent(ctx context.Context, task *types.
 	return task, nil
 }
 
-// processWithoutAgent processes a task without any agent capabilities
-func (th *DefaultTaskHandler) processWithoutAgent(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+// processWithoutAgentBackground processes a task without any agent capabilities
+func (th *DefaultTaskHandler) processWithoutAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	th.logger.Info("processing task without agent",
 		zap.String("task_id", task.ID))
 
@@ -118,4 +144,342 @@ func (th *DefaultTaskHandler) processWithoutAgent(ctx context.Context, task *typ
 	task.Status.Message = response
 
 	return task, nil
+}
+
+// DefaultBackgroundTaskHandler implements the TaskHandler interface optimized for background scenarios
+// This handler automatically handles input-required pausing without requiring custom implementation
+type DefaultBackgroundTaskHandler struct {
+	logger *zap.Logger
+	agent  OpenAICompatibleAgent
+}
+
+// NewDefaultBackgroundTaskHandler creates a new default background task handler
+func NewDefaultBackgroundTaskHandler(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultBackgroundTaskHandler {
+	return &DefaultBackgroundTaskHandler{
+		logger: logger,
+		agent:  agent,
+	}
+}
+
+// NewDefaultBackgroundTaskHandlerWithAgent creates a new default background task handler with an agent
+func NewDefaultBackgroundTaskHandlerWithAgent(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultBackgroundTaskHandler {
+	return &DefaultBackgroundTaskHandler{
+		logger: logger,
+		agent:  agent,
+	}
+}
+
+// SetAgent sets the agent for the task handler
+func (bth *DefaultBackgroundTaskHandler) SetAgent(agent OpenAICompatibleAgent) {
+	bth.agent = agent
+}
+
+// GetAgent returns the configured agent
+func (bth *DefaultBackgroundTaskHandler) GetAgent() OpenAICompatibleAgent {
+	return bth.agent
+}
+
+// HandleTask processes a task with optimized logic for background scenarios
+func (bth *DefaultBackgroundTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	if bth.agent != nil {
+		return bth.processWithAgentBackground(ctx, task, message)
+	}
+	return bth.processWithoutAgentBackground(ctx, task, message)
+}
+
+// processWithAgentBackground processes a task using agent capabilities with automatic input-required handling
+func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	bth.logger.Info("processing background task with agent capabilities",
+		zap.String("task_id", task.ID))
+
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
+
+	agentResponse, err := bth.agent.Run(ctx, messages)
+	if err != nil {
+		bth.logger.Error("agent processing failed", zap.Error(err))
+
+		task.Status.State = types.TaskStateFailed
+
+		errorText := err.Error()
+		if strings.Contains(errorText, "failed to create chat completion") {
+			errorText = "LLM request failed: " + err.Error()
+		}
+
+		task.Status.Message = &types.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("error-%s", task.ID),
+			Role:      "assistant",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": errorText,
+				},
+			},
+		}
+		return task, nil
+	}
+
+	if agentResponse.Response != nil {
+		lastMessage := agentResponse.Response
+		if lastMessage.Kind == "input_required" {
+			inputMessage := "Please provide more information to continue."
+			if len(lastMessage.Parts) > 0 {
+				if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
+					if text, exists := textPart["text"].(string); exists && text != "" {
+						inputMessage = text
+					}
+				}
+			}
+			task.History = append(task.History, *agentResponse.Response)
+			return bth.pauseTaskForInput(task, inputMessage), nil
+		}
+	}
+
+	if len(agentResponse.AdditionalMessages) > 0 {
+		task.History = append(task.History, agentResponse.AdditionalMessages...)
+	}
+	if agentResponse.Response != nil {
+		task.History = append(task.History, *agentResponse.Response)
+	}
+
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = agentResponse.Response
+
+	return task, nil
+}
+
+// processWithoutAgentBackground processes a task without agent capabilities for background
+func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	bth.logger.Info("processing background task without agent",
+		zap.String("task_id", task.ID))
+
+	response := &types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("response-%s", task.ID),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I received your message. I'm a default polling task handler without AI capabilities. To enable AI responses with automatic input-required pausing, configure an OpenAI-compatible agent.",
+			},
+		},
+	}
+
+	if task.History == nil {
+		task.History = []types.Message{}
+	}
+	task.History = append(task.History, *response)
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = response
+
+	return task, nil
+}
+
+// pauseTaskForInput updates a task to input-required state with the given message
+func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inputMessage string) *types.Task {
+	bth.logger.Info("pausing background task for user input",
+		zap.String("task_id", task.ID),
+		zap.String("input_message", inputMessage))
+
+	message := &types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": inputMessage,
+			},
+		},
+	}
+
+	if task.History == nil {
+		task.History = []types.Message{}
+	}
+	task.History = append(task.History, *message)
+
+	task.Status.State = types.TaskStateInputRequired
+	task.Status.Message = message
+
+	bth.logger.Info("background task paused for user input",
+		zap.String("task_id", task.ID),
+		zap.String("state", string(task.Status.State)),
+		zap.Int("conversation_history_count", len(task.History)))
+
+	return task
+}
+
+// DefaultStreamingTaskHandler implements the TaskHandler interface optimized for streaming scenarios
+// This handler automatically handles input-required pausing with streaming-aware behavior
+type DefaultStreamingTaskHandler struct {
+	logger *zap.Logger
+	agent  OpenAICompatibleAgent
+}
+
+// NewDefaultStreamingTaskHandler creates a new default streaming task handler
+func NewDefaultStreamingTaskHandler(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultStreamingTaskHandler {
+	var agentInstance OpenAICompatibleAgent
+	if agent != nil {
+		agentInstance = agent
+	}
+
+	return &DefaultStreamingTaskHandler{
+		logger: logger,
+		agent:  agentInstance,
+	}
+}
+
+// SetAgent sets the agent for the task handler
+func (sth *DefaultStreamingTaskHandler) SetAgent(agent OpenAICompatibleAgent) {
+	sth.agent = agent
+}
+
+// GetAgent returns the configured agent
+func (sth *DefaultStreamingTaskHandler) GetAgent() OpenAICompatibleAgent {
+	return sth.agent
+}
+
+// HandleTask processes a task optimized for streaming scenarios with automatic input pausing
+func (sth *DefaultStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	sth.logger.Info("processing task with default streaming task handler",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID),
+		zap.Bool("has_agent", sth.agent != nil))
+
+	if sth.agent != nil {
+		return sth.processWithAgentStreaming(ctx, task, message)
+	}
+
+	return sth.processWithoutAgentBackground(ctx, task, message)
+}
+
+// processWithAgentStreaming processes a task using agent capabilities optimized for streaming with automatic input-required handling
+func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	sth.logger.Info("processing streaming task with agent capabilities",
+		zap.String("task_id", task.ID))
+
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
+
+	streamChan, err := sth.agent.RunWithStream(ctx, messages)
+	if err != nil {
+		sth.logger.Error("agent streaming failed", zap.Error(err))
+
+		task.Status.State = types.TaskStateFailed
+
+		errorText := err.Error()
+		if strings.Contains(errorText, "failed to create chat completion") {
+			errorText = "LLM streaming request failed: " + err.Error()
+		}
+
+		task.Status.Message = &types.Message{
+			Kind:      "message",
+			MessageID: fmt.Sprintf("stream-error-%s", task.ID),
+			Role:      "assistant",
+			Parts: []types.Part{
+				map[string]interface{}{
+					"kind": "text",
+					"text": errorText,
+				},
+			},
+		}
+		return task, nil
+	}
+
+	// Collect all streaming messages
+	var additionalMessages []types.Message
+	var lastMessage *types.Message
+
+	for streamMessage := range streamChan {
+		if streamMessage != nil {
+			additionalMessages = append(additionalMessages, *streamMessage)
+			lastMessage = streamMessage
+		}
+	}
+
+	// Check for input required in the last message
+	if lastMessage != nil && lastMessage.Kind == "input_required" {
+		inputMessage := "Please provide more information to continue streaming."
+		if len(lastMessage.Parts) > 0 {
+			if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
+				if text, exists := textPart["text"].(string); exists && text != "" {
+					inputMessage = text
+				}
+			}
+		}
+		task.History = append(task.History, additionalMessages...)
+		return sth.pauseTaskForStreamingInput(task, inputMessage), nil
+	}
+
+	// Add all messages to history
+	if len(additionalMessages) > 0 {
+		task.History = append(task.History, additionalMessages...)
+	}
+
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = lastMessage
+
+	return task, nil
+}
+
+// processWithoutAgentBackground processes a task without agent capabilities for streaming
+func (sth *DefaultStreamingTaskHandler) processWithoutAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	sth.logger.Info("processing streaming task without agent",
+		zap.String("task_id", task.ID))
+
+	response := &types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("stream-response-%s", task.ID),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": "I received your message in streaming context. I'm a default streaming task handler without AI capabilities. To enable AI responses with automatic streaming input-required pausing, configure an OpenAI-compatible agent.",
+			},
+		},
+	}
+
+	if task.History == nil {
+		task.History = []types.Message{}
+	}
+	task.History = append(task.History, *response)
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = response
+
+	return task, nil
+}
+
+// pauseTaskForStreamingInput updates a task to input-required state optimized for streaming scenarios
+func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.Task, inputMessage string) *types.Task {
+	sth.logger.Info("pausing streaming task for user input",
+		zap.String("task_id", task.ID),
+		zap.String("input_message", inputMessage))
+
+	message := &types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("stream-input-request-%d", time.Now().Unix()),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": inputMessage,
+			},
+		},
+	}
+
+	if task.History == nil {
+		task.History = []types.Message{}
+	}
+	task.History = append(task.History, *message)
+
+	task.Status.State = types.TaskStateInputRequired
+	task.Status.Message = message
+
+	sth.logger.Info("streaming task paused for user input",
+		zap.String("task_id", task.ID),
+		zap.String("state", string(task.Status.State)),
+		zap.Int("conversation_history_count", len(task.History)))
+
+	return task
 }

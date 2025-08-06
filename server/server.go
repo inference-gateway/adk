@@ -35,11 +35,17 @@ type A2AServer interface {
 	// StartTaskProcessor starts the background task processor
 	StartTaskProcessor(ctx context.Context)
 
-	// SetTaskHandler sets the task handler for processing tasks
-	SetTaskHandler(handler TaskHandler)
+	// SetPollingTaskHandler sets the task handler for polling/queue-based scenarios
+	SetBackgroundTaskHandler(handler TaskHandler)
 
-	// GetTaskHandler returns the configured task handler
-	GetTaskHandler() TaskHandler
+	// GetPollingTaskHandler returns the configured polling task handler
+	GetBackgroundTaskHandler() TaskHandler
+
+	// SetStreamingTaskHandler sets the task handler for streaming scenarios
+	SetStreamingTaskHandler(handler TaskHandler)
+
+	// GetStreamingTaskHandler returns the configured streaming task handler
+	GetStreamingTaskHandler() TaskHandler
 
 	// SetAgent sets the OpenAI-compatible agent for processing tasks
 	SetAgent(agent OpenAICompatibleAgent)
@@ -90,9 +96,7 @@ type A2AServerImpl struct {
 	cfg            *config.Config
 	logger         *zap.Logger
 	storage        Storage
-	taskHandler    TaskHandler
 	taskManager    TaskManager
-	messageHandler MessageHandler
 	responseSender ResponseSender
 	otel           otel.OpenTelemetry
 
@@ -106,6 +110,10 @@ type A2AServerImpl struct {
 
 	// Custom agent card
 	customAgentCard *types.AgentCard
+
+	// Separate task handlers for different scenarios
+	backgroundTaskHandler TaskHandler
+	streamingTaskHandler  TaskHandler
 }
 
 var _ A2AServer = (*A2AServerImpl)(nil)
@@ -133,9 +141,9 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 	}
 
 	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
-	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, storage, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
-	server.taskHandler = NewDefaultTaskHandler(logger)
+	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger, server.agent)
+	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger, server.agent)
 
 	return server
 }
@@ -145,8 +153,7 @@ func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.Ope
 	server := NewA2AServer(cfg, logger, otel)
 
 	if agent != nil {
-		server.agent = agent
-		server.messageHandler = NewDefaultMessageHandlerWithAgent(logger, server.taskManager, server.storage, agent, cfg)
+		server.SetAgent(agent)
 	}
 
 	return server
@@ -206,27 +213,42 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 	server.storage = storage
 
 	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
-	server.messageHandler = NewDefaultMessageHandler(logger, server.taskManager, storage, cfg)
 	server.responseSender = NewDefaultResponseSender(logger)
-	server.taskHandler = NewDefaultTaskHandler(logger)
+	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger, server.agent)
+	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger, server.agent)
 
 	return server
 }
 
-// SetTaskHandler allows injecting a custom task handler
-func (s *A2AServerImpl) SetTaskHandler(handler TaskHandler) {
-	s.taskHandler = handler
+// SetBackgroundTaskHandler sets the task handler for polling/queue-based scenarios
+func (s *A2AServerImpl) SetBackgroundTaskHandler(handler TaskHandler) {
+	s.backgroundTaskHandler = handler
 }
 
-// GetTaskHandler returns the configured task handler
-func (s *A2AServerImpl) GetTaskHandler() TaskHandler {
-	return s.taskHandler
+// GetBackgroundTaskHandler returns the configured polling task handler
+func (s *A2AServerImpl) GetBackgroundTaskHandler() TaskHandler {
+	return s.backgroundTaskHandler
+}
+
+// SetStreamingTaskHandler sets the task handler for streaming scenarios
+func (s *A2AServerImpl) SetStreamingTaskHandler(handler TaskHandler) {
+	s.streamingTaskHandler = handler
+}
+
+// GetStreamingTaskHandler returns the configured streaming task handler
+func (s *A2AServerImpl) GetStreamingTaskHandler() TaskHandler {
+	return s.streamingTaskHandler
 }
 
 // SetAgent sets the OpenAI-compatible agent for processing tasks
 func (s *A2AServerImpl) SetAgent(agent OpenAICompatibleAgent) {
 	s.agent = agent
-	s.messageHandler = NewDefaultMessageHandlerWithAgent(s.logger, s.taskManager, s.storage, agent, s.cfg)
+	if s.backgroundTaskHandler != nil {
+		s.backgroundTaskHandler.SetAgent(agent)
+	}
+	if s.streamingTaskHandler != nil {
+		s.streamingTaskHandler.SetAgent(agent)
+	}
 }
 
 // GetAgent returns the configured OpenAI-compatible agent
@@ -262,6 +284,30 @@ func (s *A2AServerImpl) SetAgentVersion(version string) {
 // SetAgentCard sets a custom agent card that overrides the default card generation
 func (s *A2AServerImpl) SetAgentCard(agentCard types.AgentCard) {
 	s.customAgentCard = &agentCard
+}
+
+// validateStreamingConfiguration checks if streaming is enabled but no streaming handler is configured
+func (s *A2AServerImpl) validateStreamingConfiguration() {
+	if s.customAgentCard == nil {
+		return
+	}
+
+	streamingEnabled := false
+	if s.customAgentCard.Capabilities.Streaming != nil {
+		streamingEnabled = *s.customAgentCard.Capabilities.Streaming
+	}
+
+	if streamingEnabled {
+		if s.streamingTaskHandler == nil {
+			s.logger.Warn("streaming is enabled in agent capabilities but no streaming task handler is configured",
+				zap.String("warning", "streaming requests will fail"),
+				zap.String("suggestion", "use WithStreamingTaskHandler() for custom streaming logic or WithDefaultStreamingTaskHandler() for optimized streaming support"))
+		}
+	} else {
+		s.logger.Info("streaming is disabled in agent capabilities",
+			zap.String("note", "only background/polling requests will be supported"),
+			zap.String("tip", "to enable streaming, set streaming capability to true in your agent card and configure a streaming task handler"))
+	}
 }
 
 // LoadAgentCardFromFile loads and sets an agent card from a JSON file
@@ -377,7 +423,13 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 		IdleTimeout:  s.cfg.ServerConfig.IdleTimeout,
 	}
 
-	s.logger.Info("starting A2A server", zap.String("port", s.cfg.ServerConfig.Port))
+	s.logger.Info("starting A2A server",
+		zap.String("port", s.cfg.ServerConfig.Port),
+		zap.String("agent_name", s.cfg.AgentName),
+		zap.String("agent_description", s.cfg.AgentDescription),
+		zap.String("agent_version", s.cfg.AgentVersion))
+
+	s.validateStreamingConfiguration()
 
 	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
 		go func() {
@@ -467,7 +519,6 @@ func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 			s.logger.Info("task processor shutting down")
 			return
 		default:
-			// Try to dequeue a task from storage
 			queuedTask, err := s.storage.DequeueTask(ctx)
 			if err != nil {
 				if err == context.Canceled || err == context.DeadlineExceeded {
@@ -511,7 +562,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		return
 	}
 
-	updatedTask, err := s.taskHandler.HandleTask(ctx, task, message, s.agent)
+	updatedTask, err := s.backgroundTaskHandler.HandleTask(ctx, task, message)
 	if err != nil {
 		s.logger.Error("failed to process task",
 			zap.Error(err),
@@ -628,6 +679,56 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 	}
 }
 
+// createTaskFromMessage creates a task directly from message parameters
+func (s *A2AServerImpl) createTaskFromMessage(ctx context.Context, params types.MessageSendParams) (*types.Task, error) {
+	if len(params.Message.Parts) == 0 {
+		return nil, fmt.Errorf("empty message parts not allowed")
+	}
+
+	if params.Message.TaskID != nil {
+		taskID := *params.Message.TaskID
+
+		err := s.taskManager.ResumeTaskWithInput(taskID, &params.Message)
+		if err != nil {
+			s.logger.Error("failed to resume task with input",
+				zap.String("task_id", taskID),
+				zap.Error(err))
+			return nil, fmt.Errorf("failed to resume task: %w", err)
+		}
+
+		task, exists := s.taskManager.GetTask(taskID)
+		if !exists {
+			s.logger.Error("failed to get resumed task",
+				zap.String("task_id", taskID))
+			return nil, fmt.Errorf("resumed task not found: %s", taskID)
+		}
+
+		s.logger.Info("task resumed with user input",
+			zap.String("task_id", taskID),
+			zap.String("context_id", task.ContextID))
+
+		return task, nil
+	}
+
+	contextID := params.Message.ContextID
+	if contextID == nil {
+		newContextID := uuid.New().String()
+		contextID = &newContextID
+	}
+
+	task := s.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+
+	if task != nil {
+		s.logger.Info("task created for processing",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
+	} else {
+		s.logger.Error("failed to create task - task manager returned nil")
+		return nil, fmt.Errorf("failed to create task")
+	}
+	return task, nil
+}
+
 // handleMessageSend processes message/send requests
 func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.MessageSendParams
@@ -644,9 +745,9 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCReque
 		return
 	}
 
-	task, err := s.messageHandler.HandleMessageSend(c.Request.Context(), params)
+	task, err := s.createTaskFromMessage(c.Request.Context(), params)
 	if err != nil {
-		s.logger.Error("failed to handle message send", zap.Error(err))
+		s.logger.Error("failed to create task", zap.Error(err))
 		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
 		return
 	}
@@ -703,48 +804,56 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 
 	ctx := c.Request.Context()
 
-	responseChan := make(chan types.SendStreamingMessageResponse, 10)
-
-	done := make(chan error, 1)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				s.logger.Error("panic in streaming response handler", zap.Any("panic", r))
-				done <- fmt.Errorf("panic in streaming response handler: %v", r)
-			}
-		}()
-
-		for {
-			select {
-			case <-ctx.Done():
-				done <- ctx.Err()
-				return
-			case response, ok := <-responseChan:
-				if !ok {
-					done <- nil
-					return
-				}
-
-				jsonRPCResponse := types.JSONRPCSuccessResponse{
-					JSONRPC: "2.0",
-					ID:      req.ID,
-					Result:  response,
-				}
-
-				if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
-					s.logger.Error("failed to write streaming response", zap.Error(err))
-					done <- err
-					return
-				}
-			}
-		}
-	}()
-
-	err = s.messageHandler.HandleMessageStream(ctx, params, responseChan)
-
-	close(responseChan)
+	task, err := s.createTaskFromMessage(ctx, params)
 	if err != nil {
-		s.logger.Error("failed to handle message stream", zap.Error(err))
+		s.logger.Error("failed to create streaming task", zap.Error(err))
+		errorResponse := types.JSONRPCErrorResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &types.JSONRPCError{
+				Code:    int(ErrInternalError),
+				Message: err.Error(),
+			},
+		}
+		if writeErr := s.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+			s.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+		}
+		return
+	}
+
+	s.logger.Info("processing streaming task",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
+
+	err = s.taskManager.UpdateState(task.ID, types.TaskStateWorking)
+	if err != nil {
+		s.logger.Error("failed to update streaming task state", zap.Error(err))
+		return
+	}
+
+	var message *types.Message
+	if task.Status.Message != nil {
+		message = task.Status.Message
+	} else {
+		message = &types.Message{
+			Kind:      "message",
+			MessageID: uuid.New().String(),
+			Role:      "user",
+			Parts:     []types.Part{},
+		}
+	}
+
+	if s.agent != nil {
+		s.handleAgentStreaming(c, req, task, message)
+		return
+	}
+
+	updatedTask, err := s.streamingTaskHandler.HandleTask(ctx, task, message)
+	if err != nil {
+		s.logger.Error("failed to process streaming task",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
 
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
@@ -760,15 +869,29 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 		return
 	}
 
-	select {
-	case <-ctx.Done():
-		s.logger.Warn("streaming context cancelled")
-	case streamErr := <-done:
-		if streamErr != nil {
-			s.logger.Error("streaming completed with error", zap.Error(streamErr))
-		} else {
-			s.logger.Info("streaming completed successfully")
-		}
+	if err := s.taskManager.UpdateTask(updatedTask); err != nil {
+		s.logger.Error("failed to update streaming task",
+			zap.Error(err),
+			zap.String("task_id", updatedTask.ID),
+			zap.String("context_id", updatedTask.ContextID))
+	}
+
+	finalResponse := types.TaskStatusUpdateEvent{
+		Kind:      "status-update",
+		TaskID:    updatedTask.ID,
+		ContextID: updatedTask.ContextID,
+		Status:    updatedTask.Status,
+		Final:     true,
+	}
+
+	jsonRPCResponse := types.JSONRPCSuccessResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result:  finalResponse,
+	}
+
+	if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+		s.logger.Error("failed to write final streaming response", zap.Error(err))
 	}
 
 	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
@@ -777,6 +900,131 @@ func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCReq
 		c.Writer.Flush()
 		s.logger.Debug("sent stream termination signal [DONE]")
 	}
+
+	s.logger.Info("streaming task processed successfully",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
+}
+
+// handleAgentStreaming processes streaming tasks using direct agent streaming capabilities
+func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRequest, task *types.Task, message *types.Message) {
+	ctx := c.Request.Context()
+
+	s.logger.Info("starting agent streaming",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
+
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
+
+	streamChan, err := s.agent.RunWithStream(ctx, messages)
+	if err != nil {
+		s.logger.Error("failed to start agent streaming", zap.Error(err))
+		errorResponse := types.JSONRPCErrorResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &types.JSONRPCError{
+				Code:    int(ErrInternalError),
+				Message: fmt.Sprintf("Failed to start streaming: %v", err),
+			},
+		}
+		if writeErr := s.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+			s.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+		}
+		return
+	}
+
+	var allMessages []types.Message
+	var lastMessage *types.Message
+	messageCount := 0
+
+	for streamMessage := range streamChan {
+		if streamMessage != nil {
+			messageCount++
+			allMessages = append(allMessages, *streamMessage)
+			lastMessage = streamMessage
+
+			s.logger.Debug("received streaming message",
+				zap.String("task_id", task.ID),
+				zap.Int("message_count", messageCount),
+				zap.String("message_id", streamMessage.MessageID))
+
+			// Create status update for this streaming message
+			task.Status.State = types.TaskStateWorking
+			task.Status.Message = streamMessage
+
+			statusUpdate := types.TaskStatusUpdateEvent{
+				Kind:      "status-update",
+				TaskID:    task.ID,
+				ContextID: task.ContextID,
+				Status:    task.Status,
+				Final:     false,
+			}
+
+			jsonRPCResponse := types.JSONRPCSuccessResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  statusUpdate,
+			}
+
+			if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+				s.logger.Error("failed to write streaming response", zap.Error(err))
+				return
+			}
+			c.Writer.Flush()
+		}
+	}
+
+	s.logger.Info("agent streaming completed",
+		zap.String("task_id", task.ID),
+		zap.Int("total_messages", messageCount))
+
+	if len(allMessages) > 0 {
+		task.History = append(task.History, allMessages...)
+	}
+
+	if lastMessage != nil && lastMessage.Kind == "input_required" {
+		task.Status.State = types.TaskStateInputRequired
+	} else {
+		task.Status.State = types.TaskStateCompleted
+	}
+	task.Status.Message = lastMessage
+
+	if err := s.taskManager.UpdateTask(task); err != nil {
+		s.logger.Error("failed to update streaming task",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
+	}
+
+	finalResponse := types.TaskStatusUpdateEvent{
+		Kind:      "status-update",
+		TaskID:    task.ID,
+		ContextID: task.ContextID,
+		Status:    task.Status,
+		Final:     true,
+	}
+
+	jsonRPCResponse := types.JSONRPCSuccessResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result:  finalResponse,
+	}
+
+	if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+		s.logger.Error("failed to write final streaming response", zap.Error(err))
+	}
+
+	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+		s.logger.Error("failed to write stream termination signal", zap.Error(err))
+	} else {
+		c.Writer.Flush()
+		s.logger.Debug("sent stream termination signal [DONE]")
+	}
+
+	s.logger.Info("streaming task processed successfully",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
 }
 
 // writeStreamingResponse writes a JSON-RPC response to the streaming connection in SSE format
@@ -809,7 +1057,6 @@ func (s *A2AServerImpl) writeStreamingErrorResponse(c *gin.Context, response *ty
 		return fmt.Errorf("failed to marshal error response: %w", err)
 	}
 
-	// Write in SSE format: "data: <json>\n\n"
 	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
 		return fmt.Errorf("failed to write data prefix: %w", err)
 	}

@@ -7,6 +7,7 @@ import (
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"
 	mocks "github.com/inference-gateway/adk/server/mocks"
+	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
 	zap "go.uber.org/zap"
@@ -51,6 +52,7 @@ func TestA2AServerBuilder_BasicConstruction(t *testing.T) {
 				assert.NotPanics(t, func() {
 					a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 						WithAgentCard(createTestAgentCard()).
+						WithDefaultTaskHandlers().
 						Build()
 					assert.NoError(t, err)
 					assert.NotNil(t, a2aServer)
@@ -69,14 +71,16 @@ func TestA2AServerBuilder_WithTaskHandler(t *testing.T) {
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
-		WithTaskHandler(mockTaskHandler).
+		WithBackgroundTaskHandler(mockTaskHandler).
+		WithStreamingTaskHandler(mockTaskHandler).
 		WithAgentCard(createTestAgentCard()).
 		Build()
 
 	require.NoError(t, err)
 
 	assert.NotNil(t, a2aServer)
-	assert.Equal(t, mockTaskHandler, a2aServer.GetTaskHandler())
+	assert.Equal(t, mockTaskHandler, a2aServer.GetBackgroundTaskHandler())
+	assert.Equal(t, mockTaskHandler, a2aServer.GetStreamingTaskHandler())
 }
 
 func TestA2AServerBuilder_WithTaskResultProcessor(t *testing.T) {
@@ -90,6 +94,7 @@ func TestA2AServerBuilder_WithTaskResultProcessor(t *testing.T) {
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithTaskResultProcessor(mockProcessor).
 		WithAgentCard(createTestAgentCard()).
+		WithDefaultTaskHandlers().
 		Build()
 
 	require.NoError(t, err)
@@ -113,6 +118,7 @@ func TestA2AServerBuilder_WithAgent(t *testing.T) {
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
 		WithAgentCard(createTestAgentCard()).
+		WithDefaultTaskHandlers().
 		Build()
 
 	require.NoError(t, err)
@@ -139,6 +145,7 @@ func TestA2AServerBuilder_WithAgentAndConfig(t *testing.T) {
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
 		WithAgentCard(createTestAgentCard()).
+		WithDefaultTaskHandlers().
 		Build()
 
 	require.NoError(t, err)
@@ -161,7 +168,8 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 	require.NoError(t, err)
 
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
-		WithTaskHandler(mockTaskHandler).
+		WithBackgroundTaskHandler(mockTaskHandler).
+		WithStreamingTaskHandler(mockTaskHandler).
 		WithTaskResultProcessor(mockProcessor).
 		WithAgent(agent).
 		WithAgentCard(createTestAgentCard()).
@@ -169,7 +177,8 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotNil(t, a2aServer)
-	assert.Equal(t, mockTaskHandler, a2aServer.GetTaskHandler())
+	assert.Equal(t, mockTaskHandler, a2aServer.GetBackgroundTaskHandler())
+	assert.Equal(t, mockTaskHandler, a2aServer.GetStreamingTaskHandler())
 }
 
 func TestNewDefaultA2AServer(t *testing.T) {
@@ -187,11 +196,12 @@ func TestCustomA2AServer(t *testing.T) {
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 
-	a2aServer, err := server.CustomA2AServer(cfg, logger, mockTaskHandler, mockProcessor, createTestAgentCard())
+	a2aServer, err := server.CustomA2AServer(cfg, logger, mockTaskHandler, mockTaskHandler, mockProcessor, createTestAgentCard())
 	require.NoError(t, err)
 
 	assert.NotNil(t, a2aServer)
-	assert.Equal(t, mockTaskHandler, a2aServer.GetTaskHandler())
+	assert.Equal(t, mockTaskHandler, a2aServer.GetBackgroundTaskHandler())
+	assert.Equal(t, mockTaskHandler, a2aServer.GetStreamingTaskHandler())
 }
 
 func TestA2AServerBuilderInterface_WithMocks(t *testing.T) {
@@ -200,16 +210,20 @@ func TestA2AServerBuilderInterface_WithMocks(t *testing.T) {
 
 	fakeBuilder.WithLoggerReturns(fakeBuilder)
 	fakeBuilder.WithAgentReturns(fakeBuilder)
-	fakeBuilder.WithTaskHandlerReturns(fakeBuilder)
+	fakeBuilder.WithBackgroundTaskHandlerReturns(fakeBuilder)
+	fakeBuilder.WithStreamingTaskHandlerReturns(fakeBuilder)
 	fakeBuilder.WithTaskResultProcessorReturns(fakeBuilder)
 	fakeBuilder.BuildReturns(mockServer, nil)
 
 	logger := zap.NewNop()
 	agent := server.NewOpenAICompatibleAgent(logger)
+	mockTaskHandler := &mocks.FakeTaskHandler{}
 
 	result, err := fakeBuilder.
 		WithLogger(logger).
 		WithAgent(agent).
+		WithBackgroundTaskHandler(mockTaskHandler).
+		WithStreamingTaskHandler(mockTaskHandler).
 		Build()
 	require.NoError(t, err, "Expected no error when building server with mocks")
 
@@ -238,6 +252,7 @@ func TestA2AServerBuilderInterface_Polymorphism(t *testing.T) {
 	result, err := builder.
 		WithLogger(logger).
 		WithAgentCard(createTestAgentCard()).
+		WithDefaultTaskHandlers().
 		Build()
 	require.NoError(t, err, "Expected no error when building server with polymorphic interface")
 
@@ -250,7 +265,8 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 
 	fakeBuilder.WithLoggerReturns(fakeBuilder)
 	fakeBuilder.WithAgentReturns(fakeBuilder)
-	fakeBuilder.WithTaskHandlerReturns(fakeBuilder)
+	fakeBuilder.WithBackgroundTaskHandlerReturns(fakeBuilder)
+	fakeBuilder.WithStreamingTaskHandlerReturns(fakeBuilder)
 	fakeBuilder.WithTaskResultProcessorReturns(fakeBuilder)
 
 	mockServer := &mocks.FakeA2AServer{}
@@ -264,18 +280,48 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 	result, err := fakeBuilder.
 		WithLogger(logger).
 		WithAgent(agent).
-		WithTaskHandler(taskHandler).
+		WithBackgroundTaskHandler(taskHandler).
+		WithStreamingTaskHandler(taskHandler).
 		WithTaskResultProcessor(taskResultProcessor).
 		Build()
 	require.NoError(t, err, "Expected no error when building server with all methods")
 
 	assert.Equal(t, 1, fakeBuilder.WithLoggerCallCount())
 	assert.Equal(t, 1, fakeBuilder.WithAgentCallCount())
-	assert.Equal(t, 1, fakeBuilder.WithTaskHandlerCallCount())
+	assert.Equal(t, 1, fakeBuilder.WithBackgroundTaskHandlerCallCount())
+	assert.Equal(t, 1, fakeBuilder.WithStreamingTaskHandlerCallCount())
 	assert.Equal(t, 1, fakeBuilder.WithTaskResultProcessorCallCount())
 	assert.Equal(t, 1, fakeBuilder.BuildCallCount())
 
 	assert.Equal(t, mockServer, result)
+}
+
+func TestA2AServerBuilder_WithDefaultBackgroundTaskHandler(t *testing.T) {
+	cfg := config.Config{
+		AgentName:    "test-agent",
+		AgentVersion: "1.0.0",
+	}
+	logger := zap.NewNop()
+
+	builder := server.NewA2AServerBuilder(cfg, logger)
+
+	builderWithHandler := builder.WithDefaultBackgroundTaskHandler()
+
+	assert.Equal(t, builder, builderWithHandler)
+}
+
+func TestA2AServerBuilder_WithDefaultStreamingTaskHandler(t *testing.T) {
+	cfg := config.Config{
+		AgentName:    "test-agent",
+		AgentVersion: "1.0.0",
+	}
+	logger := zap.NewNop()
+
+	builder := server.NewA2AServerBuilder(cfg, logger)
+
+	builderWithHandler := builder.WithDefaultStreamingTaskHandler()
+
+	assert.Equal(t, builder, builderWithHandler)
 }
 
 func TestServerBuilderAppliesAgentConfigDefaults(t *testing.T) {
@@ -298,6 +344,7 @@ func TestServerBuilderAppliesAgentConfigDefaults(t *testing.T) {
 
 	server, err := builder.
 		WithAgentCard(createTestAgentCard()).
+		WithDefaultTaskHandlers().
 		Build()
 	require.NoError(t, err, "Expected no error when building server with defaults")
 
@@ -328,7 +375,7 @@ func TestServerBuilderPreservesExplicitAgentConfig(t *testing.T) {
 	assert.Equal(t, 10, cfg.AgentConfig.MaxChatCompletionIterations, "Expected explicit MaxChatCompletionIterations")
 
 	builder := server.NewA2AServerBuilder(cfg, logger)
-	srv, err := builder.WithAgentCard(createTestAgentCard()).Build()
+	srv, err := builder.WithAgentCard(createTestAgentCard()).WithDefaultTaskHandlers().Build()
 
 	require.NoError(t, err)
 	if srv == nil {
@@ -349,4 +396,108 @@ func TestA2AServerBuilder_Build_RequiresAgentCard(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, srv)
 	assert.Contains(t, err.Error(), "agent card must be configured")
+}
+
+func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
+	cfg := config.Config{
+		AgentName:    "test-agent",
+		ServerConfig: config.ServerConfig{Port: "8080"},
+	}
+	logger := zap.NewNop()
+
+	t.Run("fails when no background task handler configured", func(t *testing.T) {
+		agentCard := types.AgentCard{
+			Name:        "test-agent",
+			Description: "A test agent",
+			URL:         "http://test-agent:8080",
+			Version:     "1.0.0",
+			Capabilities: types.AgentCapabilities{
+				Streaming:              boolPtr(false), // Streaming disabled, but still need background handler
+				PushNotifications:      boolPtr(false),
+				StateTransitionHistory: boolPtr(false),
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+		}
+
+		_, err := server.NewA2AServerBuilder(cfg, logger).
+			WithAgentCard(agentCard).
+			Build()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "background task handler must be configured")
+	})
+
+	t.Run("fails when streaming enabled but no streaming task handler configured", func(t *testing.T) {
+		agentCard := types.AgentCard{
+			Name:        "test-agent",
+			Description: "A test agent",
+			URL:         "http://test-agent:8080",
+			Version:     "1.0.0",
+			Capabilities: types.AgentCapabilities{
+				Streaming:              boolPtr(true), // Streaming enabled
+				PushNotifications:      boolPtr(false),
+				StateTransitionHistory: boolPtr(false),
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+		}
+
+		_, err := server.NewA2AServerBuilder(cfg, logger).
+			WithAgentCard(agentCard).
+			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}). // Only background handler
+			Build()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "streaming task handler must be configured when streaming is enabled")
+	})
+
+	t.Run("succeeds when streaming disabled and only background task handler configured", func(t *testing.T) {
+		agentCard := types.AgentCard{
+			Name:        "test-agent",
+			Description: "A test agent",
+			URL:         "http://test-agent:8080",
+			Version:     "1.0.0",
+			Capabilities: types.AgentCapabilities{
+				Streaming:              boolPtr(false), // Streaming disabled
+				PushNotifications:      boolPtr(false),
+				StateTransitionHistory: boolPtr(false),
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+		}
+
+		serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
+			WithAgentCard(agentCard).
+			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}). // Only background handler is enough
+			Build()
+
+		require.NoError(t, err)
+		assert.NotNil(t, serverInstance)
+	})
+
+	t.Run("succeeds when both task handlers configured for streaming agent", func(t *testing.T) {
+		agentCard := types.AgentCard{
+			Name:        "test-agent",
+			Description: "A test agent",
+			URL:         "http://test-agent:8080",
+			Version:     "1.0.0",
+			Capabilities: types.AgentCapabilities{
+				Streaming:              boolPtr(true), // Streaming enabled
+				PushNotifications:      boolPtr(false),
+				StateTransitionHistory: boolPtr(false),
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+		}
+
+		serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
+			WithAgentCard(agentCard).
+			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}).
+			WithStreamingTaskHandler(&mocks.FakeTaskHandler{}).
+			Build()
+
+		require.NoError(t, err)
+		assert.NotNil(t, serverInstance)
+	})
 }

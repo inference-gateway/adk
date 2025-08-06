@@ -22,9 +22,24 @@ import (
 //	  WithAgent(agent).
 //	  Build()
 type A2AServerBuilder interface {
-	// WithTaskHandler sets a custom task handler for processing A2A tasks.
-	// If not set, a default task handler will be used.
-	WithTaskHandler(handler TaskHandler) A2AServerBuilder
+	// WithBackgroundTaskHandler sets a custom task handler for polling/queue-based scenarios.
+	// This handler will be used for message/send requests and background queue processing.
+	WithBackgroundTaskHandler(handler TaskHandler) A2AServerBuilder
+
+	// WithStreamingTaskHandler sets a custom task handler for streaming scenarios.
+	// This handler will be used for message/stream requests.
+	WithStreamingTaskHandler(handler TaskHandler) A2AServerBuilder
+
+	// WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios.
+	// This handler automatically handles input-required pausing without requiring custom implementation.
+	WithDefaultBackgroundTaskHandler() A2AServerBuilder // WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios.
+
+	// This handler automatically handles input-required pausing with streaming-aware behavior.
+	WithDefaultStreamingTaskHandler() A2AServerBuilder
+
+	// WithDefaultTaskHandlers sets both default polling and streaming task handlers.
+	// This is a convenience method that sets up optimized handlers for both scenarios.
+	WithDefaultTaskHandlers() A2AServerBuilder
 
 	// WithTaskResultProcessor sets a custom task result processor for handling tool call results.
 	// This allows custom business logic for determining when tasks should be completed.
@@ -58,12 +73,13 @@ var _ A2AServerBuilder = (*A2AServerBuilderImpl)(nil)
 // It provides a fluent interface for building A2A servers with custom configurations.
 // This struct holds the configuration and optional components that will be used to create the server.
 type A2AServerBuilderImpl struct {
-	cfg                 config.Config         // Base configuration for the server
-	logger              *zap.Logger           // Logger instance for the server
-	taskHandler         TaskHandler           // Optional custom task handler
-	taskResultProcessor TaskResultProcessor   // Optional custom task result processor
-	agent               OpenAICompatibleAgent // Optional pre-configured agent
-	agentCard           *types.AgentCard      // Optional custom agent card
+	cfg                  config.Config         // Base configuration for the server
+	logger               *zap.Logger           // Logger instance for the server
+	pollingTaskHandler   TaskHandler           // Optional custom task handler for polling scenarios
+	streamingTaskHandler TaskHandler           // Optional custom task handler for streaming scenarios
+	taskResultProcessor  TaskResultProcessor   // Optional custom task result processor
+	agent                OpenAICompatibleAgent // Optional pre-configured agent
+	agentCard            *types.AgentCard      // Optional custom agent card
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies.
@@ -129,9 +145,34 @@ func isAgentConfigEmpty(agentConfig config.AgentConfig) bool {
 		agentConfig.SystemPrompt == ""
 }
 
-// WithTaskHandler sets a custom task handler
-func (b *A2AServerBuilderImpl) WithTaskHandler(handler TaskHandler) A2AServerBuilder {
-	b.taskHandler = handler
+// WithBackgroundTaskHandler sets a custom task handler for polling/queue-based scenarios
+func (b *A2AServerBuilderImpl) WithBackgroundTaskHandler(handler TaskHandler) A2AServerBuilder {
+	b.pollingTaskHandler = handler
+	return b
+}
+
+// WithStreamingTaskHandler sets a custom task handler for streaming scenarios
+func (b *A2AServerBuilderImpl) WithStreamingTaskHandler(handler TaskHandler) A2AServerBuilder {
+	b.streamingTaskHandler = handler
+	return b
+}
+
+// WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios
+func (b *A2AServerBuilderImpl) WithDefaultBackgroundTaskHandler() A2AServerBuilder {
+	b.pollingTaskHandler = NewDefaultBackgroundTaskHandler(b.logger, b.agent)
+	return b
+}
+
+// WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios
+func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilder {
+	b.streamingTaskHandler = NewDefaultStreamingTaskHandler(b.logger, b.agent)
+	return b
+}
+
+// WithDefaultTaskHandlers sets both default background and streaming task handlers
+func (b *A2AServerBuilderImpl) WithDefaultTaskHandlers() A2AServerBuilder {
+	b.pollingTaskHandler = NewDefaultBackgroundTaskHandler(b.logger, b.agent)
+	b.streamingTaskHandler = NewDefaultStreamingTaskHandler(b.logger, b.agent)
 	return b
 }
 
@@ -209,9 +250,12 @@ func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 
 // Build creates and returns the configured A2A server.
 func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
-	// Validate that an agent card is configured
 	if b.agentCard == nil {
 		return nil, fmt.Errorf("agent card must be configured before building the server - use WithAgentCard() or WithAgentCardFromFile()")
+	}
+
+	if err := b.validateTaskHandlerConfiguration(); err != nil {
+		return nil, err
 	}
 
 	var telemetryInstance otel.OpenTelemetry
@@ -232,8 +276,12 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 		b.logger.Info("configured openai-compatible agent for optional use by task handler")
 	}
 
-	if b.taskHandler != nil {
-		server.SetTaskHandler(b.taskHandler)
+	if b.pollingTaskHandler != nil {
+		server.SetBackgroundTaskHandler(b.pollingTaskHandler)
+	}
+
+	if b.streamingTaskHandler != nil {
+		server.SetStreamingTaskHandler(b.streamingTaskHandler)
 	}
 
 	if b.taskResultProcessor != nil {
@@ -245,6 +293,24 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 	}
 
 	return server, nil
+}
+
+// validateTaskHandlerConfiguration ensures task handlers are configured based on agent card capabilities
+func (b *A2AServerBuilderImpl) validateTaskHandlerConfiguration() error {
+	streamingEnabled := false
+	if b.agentCard.Capabilities.Streaming != nil {
+		streamingEnabled = *b.agentCard.Capabilities.Streaming
+	}
+
+	if b.pollingTaskHandler == nil {
+		return fmt.Errorf("background task handler must be configured - use WithBackgroundTaskHandler() for custom handler or WithDefaultBackgroundTaskHandler() for a ready-to-use default handler")
+	}
+
+	if streamingEnabled && b.streamingTaskHandler == nil {
+		return fmt.Errorf("streaming task handler must be configured when streaming is enabled in agent capabilities - use WithStreamingTaskHandler() for custom handler or WithDefaultStreamingTaskHandler() for a ready-to-use default handler")
+	}
+
+	return nil
 }
 
 // SimpleA2AServerWithAgent creates a basic A2A server with an OpenAI-compatible agent
@@ -261,12 +327,14 @@ func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenA
 func CustomA2AServer(
 	cfg config.Config,
 	logger *zap.Logger,
-	taskHandler TaskHandler,
+	pollingTaskHandler TaskHandler,
+	streamingTaskHandler TaskHandler,
 	taskResultProcessor TaskResultProcessor,
 	agentCard types.AgentCard,
 ) (A2AServer, error) {
 	return NewA2AServerBuilder(cfg, logger).
-		WithTaskHandler(taskHandler).
+		WithBackgroundTaskHandler(pollingTaskHandler).
+		WithStreamingTaskHandler(streamingTaskHandler).
 		WithTaskResultProcessor(taskResultProcessor).
 		WithAgentCard(agentCard).
 		Build()

@@ -31,7 +31,7 @@ func main() {
 	}
 
 	// Initialize logger
-	logger, err := zap.NewProduction()
+	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}

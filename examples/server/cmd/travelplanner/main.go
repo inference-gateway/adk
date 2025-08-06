@@ -108,22 +108,11 @@ func main() {
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
 		WithAgentCard(agentCard).
+		WithDefaultTaskHandlers().
 		Build()
 	if err != nil {
 		logger.Fatal("failed to build A2A server", zap.Error(err))
 	}
-
-	// Step 8: Start the server
-	logger.Info("starting travel planning agent server",
-		zap.String("agent_name", cfg.AgentName),
-		zap.String("port", cfg.ServerConfig.Port),
-		zap.String("version", cfg.AgentVersion))
-
-	fmt.Printf("✈️  Travel Planning Agent ready!\n")
-	fmt.Printf("🌍 Agent: %s v%s\n", cfg.AgentName, cfg.AgentVersion)
-	fmt.Printf("🏠 Server: http://localhost:%s\n", cfg.ServerConfig.Port)
-	fmt.Printf("📋 Agent Info: http://localhost:%s/.well-known/agent.json\n", cfg.ServerConfig.Port)
-	fmt.Printf("🔧 Capabilities: Streaming ✅, Input Pausing ✅, Travel Expertise ✅\n\n")
 
 	// Handle shutdown gracefully
 	quit := make(chan os.Signal, 1)
