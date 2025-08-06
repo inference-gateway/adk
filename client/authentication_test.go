@@ -233,7 +233,6 @@ func TestClientAuthentication(t *testing.T) {
 		config.Logger = logger
 		client := NewClientWithConfig(config)
 
-		// Set authentication then clear it
 		client.SetAuthToken("test-token")
 		client.ClearAuth()
 
