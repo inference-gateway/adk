@@ -8,6 +8,7 @@ import (
 	oidcV3 "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
 	config "github.com/inference-gateway/adk/server/config"
+	"github.com/inference-gateway/adk/types"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -102,6 +103,167 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 
 // Middleware returns a no-op middleware for OIDCAuthenticatorNoop
 func (auth *OIDCAuthenticatorNoop) Middleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+	}
+}
+
+// SecurityValidator interface for validating security requirements
+type SecurityValidator interface {
+	ValidateSecurityRequirements(agentCard *types.AgentCard) gin.HandlerFunc
+}
+
+// SecurityValidatorImpl implements security requirement validation
+type SecurityValidatorImpl struct {
+	logger *zap.Logger
+	config config.Config
+}
+
+// SecurityValidatorNoop is a no-op security validator
+type SecurityValidatorNoop struct{}
+
+// NewSecurityValidator creates a new security validator
+func NewSecurityValidator(logger *zap.Logger, cfg config.Config) SecurityValidator {
+	if !cfg.AuthConfig.Enable {
+		return &SecurityValidatorNoop{}
+	}
+
+	return &SecurityValidatorImpl{
+		logger: logger,
+		config: cfg,
+	}
+}
+
+// ValidateSecurityRequirements validates that the request meets security requirements
+func (sv *SecurityValidatorImpl) ValidateSecurityRequirements(agentCard *types.AgentCard) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Skip validation for non-authenticated endpoints
+		if agentCard == nil || len(agentCard.Security) == 0 {
+			c.Next()
+			return
+		}
+
+		// Check if any security requirement is satisfied
+		var lastError string
+		satisfied := false
+
+		for _, securityGroup := range agentCard.Security {
+			groupSatisfied := true
+
+			for schemeName := range securityGroup {
+				scheme, exists := agentCard.SecuritySchemes[schemeName]
+				if !exists {
+					sv.logger.Warn("security scheme not found in agent card",
+						zap.String("scheme", schemeName))
+					groupSatisfied = false
+					lastError = "security scheme configuration error"
+					break
+				}
+
+				if !sv.validateSecurityScheme(c, schemeName, scheme) {
+					groupSatisfied = false
+					lastError = "authentication credentials not provided or invalid"
+					break
+				}
+			}
+
+			if groupSatisfied {
+				satisfied = true
+				break
+			}
+		}
+
+		if !satisfied {
+			sv.logger.Error("security validation failed", zap.String("error", lastError))
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "Authentication required",
+				"message": lastError,
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// validateSecurityScheme validates a specific security scheme
+func (sv *SecurityValidatorImpl) validateSecurityScheme(c *gin.Context, schemeName string, scheme types.SecurityScheme) bool {
+	switch s := scheme.(type) {
+	case types.OpenIdConnectSecurityScheme:
+		return sv.validateOIDC(c)
+	case types.HTTPAuthSecurityScheme:
+		return sv.validateHTTPAuth(c, s)
+	case types.APIKeySecurityScheme:
+		return sv.validateAPIKey(c, s)
+	case types.MutualTLSSecurityScheme:
+		return sv.validateMutualTLS(c)
+	default:
+		sv.logger.Warn("unsupported security scheme type", zap.String("scheme", schemeName))
+		return false
+	}
+}
+
+// validateOIDC validates OIDC authentication
+func (sv *SecurityValidatorImpl) validateOIDC(c *gin.Context) bool {
+	// Check if OIDC token is present in context (set by OIDC middleware)
+	token, exists := c.Get(string(IDTokenContextKey))
+	return exists && token != nil
+}
+
+// validateHTTPAuth validates HTTP authentication
+func (sv *SecurityValidatorImpl) validateHTTPAuth(c *gin.Context, scheme types.HTTPAuthSecurityScheme) bool {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		return false
+	}
+
+	if scheme.Scheme == "bearer" {
+		return strings.HasPrefix(strings.ToLower(authHeader), "bearer ")
+	}
+
+	if scheme.Scheme == "basic" {
+		return strings.HasPrefix(strings.ToLower(authHeader), "basic ")
+	}
+
+	return false
+}
+
+// validateAPIKey validates API key authentication
+func (sv *SecurityValidatorImpl) validateAPIKey(c *gin.Context, scheme types.APIKeySecurityScheme) bool {
+	var value string
+
+	switch scheme.In {
+	case "header":
+		value = c.GetHeader(scheme.Name)
+	case "query":
+		value = c.Query(scheme.Name)
+	case "cookie":
+		cookie, err := c.Cookie(scheme.Name)
+		if err != nil {
+			return false
+		}
+		value = cookie
+	default:
+		return false
+	}
+
+	return value != ""
+}
+
+// validateMutualTLS validates mutual TLS authentication
+func (sv *SecurityValidatorImpl) validateMutualTLS(c *gin.Context) bool {
+	// Check if client certificate is present
+	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
+		return false
+	}
+
+	// Additional validation could be performed here
+	return true
+}
+
+// ValidateSecurityRequirements returns a no-op middleware for SecurityValidatorNoop
+func (sv *SecurityValidatorNoop) ValidateSecurityRequirements(agentCard *types.AgentCard) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 	}

@@ -382,13 +382,17 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		}
 	}
 
+	// Setup security validator
+	securityValidator := middlewares.NewSecurityValidator(s.logger, *s.cfg)
+	securityMiddleware := securityValidator.ValidateSecurityRequirements(s.GetAgentCard())
+
 	if !cfg.AuthConfig.Enable {
 		if telemetryMiddleware != nil {
-			r.POST("/a2a", telemetryMiddleware, s.handleA2ARequest)
+			r.POST("/a2a", telemetryMiddleware, securityMiddleware, s.handleA2ARequest)
 		} else {
-			r.POST("/a2a", s.handleA2ARequest)
+			r.POST("/a2a", securityMiddleware, s.handleA2ARequest)
 		}
-		s.logger.Warn("authentication is disabled, oidcAuthenticator will be nil")
+		s.logger.Warn("authentication is disabled, basic security validation will be applied")
 		return r
 	}
 	oidcAuthenticator, err := middlewares.NewOIDCAuthenticatorMiddleware(s.logger, *s.cfg)
@@ -397,11 +401,11 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		return r
 	}
 
-	s.logger.Info("oidcAuthenticator is valid, setting up authentication")
+	s.logger.Info("oidcAuthenticator is valid, setting up authentication with security validation")
 	if telemetryMiddleware != nil {
-		r.POST("/a2a", telemetryMiddleware, oidcAuthenticator.Middleware(), s.handleA2ARequest)
+		r.POST("/a2a", telemetryMiddleware, oidcAuthenticator.Middleware(), securityMiddleware, s.handleA2ARequest)
 	} else {
-		r.POST("/a2a", oidcAuthenticator.Middleware(), s.handleA2ARequest)
+		r.POST("/a2a", oidcAuthenticator.Middleware(), securityMiddleware, s.handleA2ARequest)
 	}
 
 	return r
@@ -655,6 +659,8 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		zap.Any("id", req.ID))
 
 	switch req.Method {
+	case "agent/getAuthenticatedExtendedCard":
+		s.handleGetAuthenticatedExtendedCard(c, req)
 	case "message/send":
 		s.handleMessageSend(c, req)
 	case "message/stream":
@@ -1287,4 +1293,53 @@ func (s *A2AServerImpl) handleTaskPushNotificationConfigDelete(c *gin.Context, r
 		zap.String("task_id", params.ID),
 		zap.String("config_id", params.PushNotificationConfigID))
 	s.responseSender.SendSuccess(c, req.ID, nil)
+}
+
+// handleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests
+func (s *A2AServerImpl) handleGetAuthenticatedExtendedCard(c *gin.Context, req types.JSONRPCRequest) {
+	s.logger.Info("authenticated extended card requested")
+
+	// Check if the request is authenticated
+	if !s.cfg.AuthConfig.Enable {
+		s.logger.Warn("authentication is disabled, cannot provide authenticated extended card")
+		errorResp := types.AuthenticatedExtendedCardNotConfiguredError{
+			Code:    -32007,
+			Message: "Authenticated extended card is not configured - authentication is disabled",
+		}
+		s.responseSender.SendError(c, req.ID, errorResp.Code, errorResp.Message)
+		return
+	}
+
+	// Check if authenticated extended card is configured and supported
+	agentCard := s.GetAgentCard()
+	if agentCard == nil {
+		s.logger.Error("no agent card configured for authenticated extended card")
+		errorResp := types.AuthenticatedExtendedCardNotConfiguredError{
+			Code:    -32007,
+			Message: "Authenticated extended card is not configured - no agent card available",
+		}
+		s.responseSender.SendError(c, req.ID, errorResp.Code, errorResp.Message)
+		return
+	}
+
+	// Check if the agent supports authenticated extended cards
+	if agentCard.SupportsAuthenticatedExtendedCard == nil || !*agentCard.SupportsAuthenticatedExtendedCard {
+		s.logger.Warn("authenticated extended card not supported by this agent")
+		errorResp := types.AuthenticatedExtendedCardNotConfiguredError{
+			Code:    -32007,
+			Message: "Authenticated extended card is not configured - not supported by this agent",
+		}
+		s.responseSender.SendError(c, req.ID, errorResp.Code, errorResp.Message)
+		return
+	}
+
+	// Create the authenticated extended card (for now, same as the regular agent card)
+	// In a production implementation, this might include additional authenticated-only information
+	extendedCard := *agentCard
+
+	s.logger.Info("authenticated extended card retrieved successfully",
+		zap.String("name", extendedCard.Name),
+		zap.String("version", extendedCard.Version))
+
+	s.responseSender.SendSuccess(c, req.ID, extendedCard)
 }

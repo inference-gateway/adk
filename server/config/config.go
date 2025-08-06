@@ -73,10 +73,14 @@ type TLSConfig struct {
 
 // AuthConfig holds authentication configuration
 type AuthConfig struct {
-	Enable       bool   `env:"ENABLE,default=false"`
-	IssuerURL    string `env:"ISSUER_URL,default=http://keycloak:8080/realms/inference-gateway-realm"`
-	ClientID     string `env:"CLIENT_ID,default=inference-gateway-client"`
-	ClientSecret string `env:"CLIENT_SECRET"`
+	Enable                            bool   `env:"ENABLE,default=false"`
+	IssuerURL                         string `env:"ISSUER_URL,default=http://keycloak:8080/realms/inference-gateway-realm"`
+	ClientID                          string `env:"CLIENT_ID,default=inference-gateway-client"`
+	ClientSecret                      string `env:"CLIENT_SECRET"`
+	SupportsAuthenticatedExtendedCard bool   `env:"SUPPORTS_AUTHENTICATED_EXTENDED_CARD,default=false" description:"Enable authenticated extended card support"`
+	EnableAPIKey                      bool   `env:"ENABLE_API_KEY,default=false" description:"Enable API key authentication"`
+	APIKeyHeader                      string `env:"API_KEY_HEADER,default=X-API-Key" description:"Header name for API key authentication"`
+	EnableMutualTLS                   bool   `env:"ENABLE_MUTUAL_TLS,default=false" description:"Enable mutual TLS authentication"`
 }
 
 // QueueConfig holds task queue configuration

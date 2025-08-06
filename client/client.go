@@ -19,6 +19,7 @@ import (
 type A2AClient interface {
 	// Agent discovery
 	GetAgentCard(ctx context.Context) (*types.AgentCard, error)
+	GetAuthenticatedExtendedCard(ctx context.Context) (*types.AgentCard, error)
 	GetHealth(ctx context.Context) (*HealthResponse, error)
 
 	// Task operations
@@ -36,6 +37,11 @@ type A2AClient interface {
 	// Logger configuration
 	SetLogger(logger *zap.Logger)
 	GetLogger() *zap.Logger
+
+	// Authentication configuration
+	SetAuthToken(token string)
+	SetAPIKey(apiKey string, header ...string)
+	ClearAuth()
 }
 
 var _ A2AClient = (*Client)(nil)
@@ -43,6 +49,13 @@ var _ A2AClient = (*Client)(nil)
 // HealthResponse represents the response from the health endpoint
 type HealthResponse struct {
 	Status string `json:"status"`
+}
+
+// AuthConfig holds authentication configuration for the A2A client
+type AuthConfig struct {
+	AuthToken    string // Bearer token for authentication
+	APIKey       string // API key for API key authentication
+	APIKeyHeader string // Header name for API key (default: "X-API-Key")
 }
 
 // Config holds configuration options for the A2A client
@@ -55,6 +68,7 @@ type Config struct {
 	MaxRetries int
 	RetryDelay time.Duration
 	Logger     *zap.Logger
+	Auth       *AuthConfig
 }
 
 // DefaultConfig returns a default configuration
@@ -410,6 +424,34 @@ func (c *Client) GetAgentCard(ctx context.Context) (*types.AgentCard, error) {
 	return &agentCard, nil
 }
 
+// GetAuthenticatedExtendedCard retrieves the authenticated extended agent card via JSON-RPC
+func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context) (*types.AgentCard, error) {
+	c.logger.Debug("retrieving authenticated extended agent card", zap.String("method", "agent/getAuthenticatedExtendedCard"))
+
+	req := types.JSONRPCRequest{
+		JSONRPC: "2.0",
+		Method:  "agent/getAuthenticatedExtendedCard",
+		Params:  make(map[string]interface{}),
+	}
+
+	var resp types.JSONRPCSuccessResponse
+	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
+		c.logger.Error("failed to retrieve authenticated extended agent card", zap.Error(err))
+		return nil, err
+	}
+
+	var agentCard types.AgentCard
+	if err := json.Unmarshal(resp.Result.(json.RawMessage), &agentCard); err != nil {
+		c.logger.Error("failed to decode authenticated extended agent card response", zap.Error(err))
+		return nil, fmt.Errorf("failed to decode authenticated extended agent card response: %w", err)
+	}
+
+	c.logger.Debug("authenticated extended agent card retrieved successfully",
+		zap.String("name", agentCard.Name),
+		zap.String("version", agentCard.Version))
+	return &agentCard, nil
+}
+
 // GetHealth retrieves the health status of the agent via HTTP GET to /health
 func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
 	c.logger.Debug("retrieving agent health", zap.String("endpoint", "/health"))
@@ -586,6 +628,20 @@ func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", c.config.UserAgent)
 
+	// Add authentication headers if configured
+	if c.config.Auth != nil {
+		if c.config.Auth.AuthToken != "" {
+			req.Header.Set("Authorization", "Bearer "+c.config.Auth.AuthToken)
+		}
+		if c.config.Auth.APIKey != "" {
+			header := c.config.Auth.APIKeyHeader
+			if header == "" {
+				header = "X-API-Key" // default header name
+			}
+			req.Header.Set(header, c.config.Auth.APIKey)
+		}
+	}
+
 	for key, value := range c.config.Headers {
 		req.Header.Set(key, value)
 	}
@@ -666,4 +722,28 @@ func NewClientWithLogger(baseURL string, logger *zap.Logger) A2AClient {
 	config := DefaultConfig(baseURL)
 	config.Logger = logger
 	return NewClientWithConfig(config)
+}
+
+// SetAuthToken sets the bearer token for authentication
+func (c *Client) SetAuthToken(token string) {
+	if c.config.Auth == nil {
+		c.config.Auth = &AuthConfig{}
+	}
+	c.config.Auth.AuthToken = token
+}
+
+// SetAPIKey sets the API key for authentication
+func (c *Client) SetAPIKey(apiKey string, header ...string) {
+	if c.config.Auth == nil {
+		c.config.Auth = &AuthConfig{}
+	}
+	c.config.Auth.APIKey = apiKey
+	if len(header) > 0 {
+		c.config.Auth.APIKeyHeader = header[0]
+	}
+}
+
+// ClearAuth clears all authentication configuration
+func (c *Client) ClearAuth() {
+	c.config.Auth = nil
 }

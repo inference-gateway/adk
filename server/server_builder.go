@@ -58,6 +58,10 @@ type A2AServerBuilder interface {
 	// The optional overrides map allows dynamic replacement of JSON attribute values.
 	WithAgentCardFromFile(filePath string, overrides map[string]interface{}) A2AServerBuilder
 
+	// WithSecurityConfiguredAgentCard sets an agent card and automatically configures security
+	// based on the server's authentication configuration.
+	WithSecurityConfiguredAgentCard(agentCard types.AgentCard) A2AServerBuilder
+
 	// WithLogger sets a custom logger for the builder and resulting server.
 	// This allows using a logger configured with appropriate level based on the Debug config.
 	WithLogger(logger *zap.Logger) A2AServerBuilder
@@ -190,6 +194,18 @@ func (b *A2AServerBuilderImpl) WithAgent(agent OpenAICompatibleAgent) A2AServerB
 
 // WithAgentCard sets a custom agent card that overrides the default card generation
 func (b *A2AServerBuilderImpl) WithAgentCard(agentCard types.AgentCard) A2AServerBuilder {
+	b.agentCard = &agentCard
+	return b
+}
+
+// WithSecurityConfiguredAgentCard sets an agent card and automatically configures security
+func (b *A2AServerBuilderImpl) WithSecurityConfiguredAgentCard(agentCard types.AgentCard) A2AServerBuilder {
+	// Create security configuration from auth config
+	securityConfig := CreateSecurityConfigFromAuthConfig(b.cfg.AuthConfig)
+
+	// Configure security in the agent card
+	ConfigureAgentCardSecurity(&agentCard, securityConfig)
+
 	b.agentCard = &agentCard
 	return b
 }
