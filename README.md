@@ -1142,13 +1142,12 @@ Create custom tools to extend your agent's capabilities.
 
 The ADK provides two ways to create a toolbox:
 
-- **`NewDefaultToolBox()`** - Creates a toolbox with built-in tools including:
-  - `input_required` - Allows agents to pause tasks and request additional user input when needed
+- **`NewDefaultToolBox()`** - Creates an empty toolbox (same as NewToolBox())
 
 - **`NewToolBox()`** - Creates an empty toolbox for complete customization
 
 ```go
-// Option 1: Use default toolbox (includes input_required tool)
+// Option 1: Use default toolbox (empty by default)
 toolBox := server.NewDefaultToolBox()
 
 // Option 2: Create empty toolbox
@@ -1441,7 +1440,7 @@ a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 
 These handlers automatically:
 
-- Handle input-required pausing when agents call the `input_required` tool
+- Handle input-required pausing when agents return messages with kind "input_required"
 - Manage conversation history appropriately for polling vs streaming contexts
 - Provide appropriate error handling and logging
 - Work seamlessly with or without AI agents

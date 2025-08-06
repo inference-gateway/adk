@@ -180,26 +180,6 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 				}, err
 			}
 
-			if toolCall.Function.Name == "input_required" {
-				a.logger.Debug("input_required tool called",
-					zap.String("tool_call_id", toolCall.Id),
-					zap.String("message", toolCall.Function.Arguments))
-				inputMessage := args["message"].(string)
-				return &AgentResponse{
-					Response: &types.Message{
-						Kind:      "input_required",
-						MessageID: fmt.Sprintf("input-required-%s", toolCall.Id),
-						Role:      "assistant",
-						Parts: []types.Part{
-							map[string]interface{}{
-								"kind": "text",
-								"text": inputMessage,
-							},
-						},
-					},
-				}, nil
-			}
-
 			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
 			if toolErr != nil {
 				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
@@ -284,15 +264,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 			currentMessages = append(currentMessages, toolResultMessages...)
 
-			if len(toolResultMessages) > 0 {
-				lastToolMessage := toolResultMessages[len(toolResultMessages)-1]
-				if lastToolMessage.Kind == "input_required" {
-					a.logger.Debug("streaming completed - input required from user",
-						zap.Int("iteration", iteration),
-						zap.Int("final_message_count", len(currentMessages)))
-					return
-				}
-			}
 
 			if !toolCallsExecuted {
 				a.logger.Debug("streaming completed - no tool calls executed",
@@ -495,85 +466,6 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			case <-ctx.Done():
 			}
 		} else {
-			// Special handling for input_required tool in streaming mode
-			if toolCall.Function.Name == "input_required" {
-				a.logger.Debug("input_required tool called in streaming mode",
-					zap.String("tool_call_id", toolCall.Id),
-					zap.String("message", toolCall.Function.Arguments))
-
-				// Execute the tool to get the message but then send special input_required message
-				result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
-
-				completedEvent := &types.Message{
-					Kind:      "message",
-					MessageID: fmt.Sprintf("tool-completed-%s", toolCall.Id),
-					Role:      "assistant",
-					Parts: []types.Part{
-						map[string]interface{}{
-							"kind": "data",
-							"data": map[string]interface{}{
-								"tool_name": toolCall.Function.Name,
-								"status":    "completed",
-							},
-						},
-					},
-				}
-
-				select {
-				case outputChan <- completedEvent:
-				case <-ctx.Done():
-					return toolResultMessages
-				}
-
-				// Add the tool result message
-				toolResultMessage := types.Message{
-					Kind:      "message",
-					MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
-					Role:      "tool",
-					Parts: []types.Part{
-						map[string]interface{}{
-							"kind": "data",
-							"data": map[string]interface{}{
-								"tool_call_id": toolCall.Id,
-								"result":       result,
-								"error":        toolErr != nil,
-							},
-						},
-					},
-				}
-
-				select {
-				case outputChan <- &toolResultMessage:
-				case <-ctx.Done():
-					return toolResultMessages
-				}
-
-				toolResultMessages = append(toolResultMessages, toolResultMessage)
-
-				// Now send the special input_required message that will cause task to pause
-				inputMessage := args["message"].(string)
-				inputRequiredMessage := &types.Message{
-					Kind:      "input_required",
-					MessageID: fmt.Sprintf("input-required-%s", toolCall.Id),
-					Role:      "assistant",
-					Parts: []types.Part{
-						map[string]interface{}{
-							"kind": "text",
-							"text": inputMessage,
-						},
-					},
-				}
-
-				select {
-				case outputChan <- inputRequiredMessage:
-				case <-ctx.Done():
-				}
-
-				toolResultMessages = append(toolResultMessages, *inputRequiredMessage)
-
-				return toolResultMessages
-			}
-
 			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
 			if toolErr != nil {
 				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))

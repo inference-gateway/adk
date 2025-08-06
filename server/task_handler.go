@@ -22,6 +22,11 @@ type TaskHandler interface {
 
 	// GetAgent returns the configured OpenAI-compatible agent
 	GetAgent() OpenAICompatibleAgent
+
+	// RequestInput creates an input-required message with the specified prompt
+	// This method should be used by task handlers to request additional input from the user
+	// Returns a Message with kind "input_required" that can be used to pause the task
+	RequestInput(message string) *types.Message
 }
 
 // DefaultTaskHandler implements the TaskHandler interface for basic scenarios
@@ -55,6 +60,21 @@ func (th *DefaultTaskHandler) SetAgent(agent OpenAICompatibleAgent) {
 // GetAgent returns the configured OpenAI-compatible agent
 func (th *DefaultTaskHandler) GetAgent() OpenAICompatibleAgent {
 	return th.agent
+}
+
+// RequestInput creates an input-required message with the specified prompt
+func (th *DefaultTaskHandler) RequestInput(message string) *types.Message {
+	return &types.Message{
+		Kind:      "input_required",
+		MessageID: fmt.Sprintf("input-required-%d", time.Now().UnixNano()),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": message,
+			},
+		},
+	}
 }
 
 // HandleTask processes a task and returns the updated task
@@ -179,6 +199,21 @@ func (bth *DefaultBackgroundTaskHandler) GetAgent() OpenAICompatibleAgent {
 	return bth.agent
 }
 
+// RequestInput creates an input-required message with the specified prompt
+func (bth *DefaultBackgroundTaskHandler) RequestInput(message string) *types.Message {
+	return &types.Message{
+		Kind:      "input_required",
+		MessageID: fmt.Sprintf("input-required-%d", time.Now().UnixNano()),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": message,
+			},
+		},
+	}
+}
+
 // HandleTask processes a task with optimized logic for background scenarios
 func (bth *DefaultBackgroundTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	if bth.agent != nil {
@@ -282,17 +317,7 @@ func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inp
 		zap.String("task_id", task.ID),
 		zap.String("input_message", inputMessage))
 
-	message := &types.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": inputMessage,
-			},
-		},
-	}
+	message := bth.RequestInput(inputMessage)
 
 	if task.History == nil {
 		task.History = []types.Message{}
@@ -338,6 +363,21 @@ func (sth *DefaultStreamingTaskHandler) SetAgent(agent OpenAICompatibleAgent) {
 // GetAgent returns the configured agent
 func (sth *DefaultStreamingTaskHandler) GetAgent() OpenAICompatibleAgent {
 	return sth.agent
+}
+
+// RequestInput creates an input-required message with the specified prompt
+func (sth *DefaultStreamingTaskHandler) RequestInput(message string) *types.Message {
+	return &types.Message{
+		Kind:      "input_required",
+		MessageID: fmt.Sprintf("input-required-%d", time.Now().UnixNano()),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]interface{}{
+				"kind": "text",
+				"text": message,
+			},
+		},
+	}
 }
 
 // HandleTask processes a task optimized for streaming scenarios with automatic input pausing
@@ -456,17 +496,7 @@ func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.T
 		zap.String("task_id", task.ID),
 		zap.String("input_message", inputMessage))
 
-	message := &types.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("stream-input-request-%d", time.Now().Unix()),
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]interface{}{
-				"kind": "text",
-				"text": inputMessage,
-			},
-		},
-	}
+	message := sth.RequestInput(inputMessage)
 
 	if task.History == nil {
 		task.History = []types.Message{}
@@ -480,6 +510,23 @@ func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.T
 		zap.String("task_id", task.ID),
 		zap.String("state", string(task.Status.State)),
 		zap.Int("conversation_history_count", len(task.History)))
+
+	return task
+}
+
+// PauseTaskForInput is a utility function that pauses a task by setting it to input-required state
+// This function can be used by any task handler to request input from the user
+// It uses the handler's RequestInput method to create a consistent input-required message
+func PauseTaskForInput(handler TaskHandler, task *types.Task, inputMessage string) *types.Task {
+	message := handler.RequestInput(inputMessage)
+
+	if task.History == nil {
+		task.History = []types.Message{}
+	}
+	task.History = append(task.History, *message)
+
+	task.Status.State = types.TaskStateInputRequired
+	task.Status.Message = message
 
 	return task
 }

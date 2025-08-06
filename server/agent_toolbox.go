@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	sdk "github.com/inference-gateway/sdk"
 )
@@ -54,27 +53,6 @@ func NewToolBox() *DefaultToolBox {
 // NewDefaultToolBox creates a new DefaultToolBox with built-in tools
 func NewDefaultToolBox() *DefaultToolBox {
 	toolBox := NewToolBox()
-
-	inputRequiredTool := NewBasicTool(
-		"input_required",
-		"Request additional input from the user when current information is insufficient to complete the task",
-		map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"message": map[string]interface{}{
-					"type":        "string",
-					"description": "The message to display to the user explaining what information is needed",
-				},
-			},
-			"required": []string{"message"},
-		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
-			message := args["message"].(string)
-			return fmt.Sprintf("Input requested from user: %s", message), nil
-		},
-	)
-	toolBox.AddTool(inputRequiredTool)
-
 	return toolBox
 }
 

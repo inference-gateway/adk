@@ -35,6 +35,17 @@ type FakeTaskHandler struct {
 		result1 *types.Task
 		result2 error
 	}
+	RequestInputStub        func(string) *types.Message
+	requestInputMutex       sync.RWMutex
+	requestInputArgsForCall []struct {
+		arg1 string
+	}
+	requestInputReturns struct {
+		result1 *types.Message
+	}
+	requestInputReturnsOnCall map[int]struct {
+		result1 *types.Message
+	}
 	SetAgentStub        func(server.OpenAICompatibleAgent)
 	setAgentMutex       sync.RWMutex
 	setAgentArgsForCall []struct {
@@ -163,6 +174,67 @@ func (fake *FakeTaskHandler) HandleTaskReturnsOnCall(i int, result1 *types.Task,
 	}{result1, result2}
 }
 
+func (fake *FakeTaskHandler) RequestInput(arg1 string) *types.Message {
+	fake.requestInputMutex.Lock()
+	ret, specificReturn := fake.requestInputReturnsOnCall[len(fake.requestInputArgsForCall)]
+	fake.requestInputArgsForCall = append(fake.requestInputArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.RequestInputStub
+	fakeReturns := fake.requestInputReturns
+	fake.recordInvocation("RequestInput", []interface{}{arg1})
+	fake.requestInputMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeTaskHandler) RequestInputCallCount() int {
+	fake.requestInputMutex.RLock()
+	defer fake.requestInputMutex.RUnlock()
+	return len(fake.requestInputArgsForCall)
+}
+
+func (fake *FakeTaskHandler) RequestInputCalls(stub func(string) *types.Message) {
+	fake.requestInputMutex.Lock()
+	defer fake.requestInputMutex.Unlock()
+	fake.RequestInputStub = stub
+}
+
+func (fake *FakeTaskHandler) RequestInputArgsForCall(i int) string {
+	fake.requestInputMutex.RLock()
+	defer fake.requestInputMutex.RUnlock()
+	argsForCall := fake.requestInputArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskHandler) RequestInputReturns(result1 *types.Message) {
+	fake.requestInputMutex.Lock()
+	defer fake.requestInputMutex.Unlock()
+	fake.RequestInputStub = nil
+	fake.requestInputReturns = struct {
+		result1 *types.Message
+	}{result1}
+}
+
+func (fake *FakeTaskHandler) RequestInputReturnsOnCall(i int, result1 *types.Message) {
+	fake.requestInputMutex.Lock()
+	defer fake.requestInputMutex.Unlock()
+	fake.RequestInputStub = nil
+	if fake.requestInputReturnsOnCall == nil {
+		fake.requestInputReturnsOnCall = make(map[int]struct {
+			result1 *types.Message
+		})
+	}
+	fake.requestInputReturnsOnCall[i] = struct {
+		result1 *types.Message
+	}{result1}
+}
+
 func (fake *FakeTaskHandler) SetAgent(arg1 server.OpenAICompatibleAgent) {
 	fake.setAgentMutex.Lock()
 	fake.setAgentArgsForCall = append(fake.setAgentArgsForCall, struct {
@@ -202,6 +274,8 @@ func (fake *FakeTaskHandler) Invocations() map[string][][]interface{} {
 	defer fake.getAgentMutex.RUnlock()
 	fake.handleTaskMutex.RLock()
 	defer fake.handleTaskMutex.RUnlock()
+	fake.requestInputMutex.RLock()
+	defer fake.requestInputMutex.RUnlock()
 	fake.setAgentMutex.RLock()
 	defer fake.setAgentMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
