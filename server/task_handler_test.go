@@ -213,7 +213,7 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 			if tt.expectInputReq {
 				assert.Equal(t, types.TaskStateInputRequired, result.Status.State)
 				assert.NotNil(t, result.Status.Message)
-				assert.Contains(t, result.Status.Message.MessageID, "stream-input-request")
+				assert.Contains(t, result.Status.Message.MessageID, "stream-input-req")
 			}
 
 			assert.Greater(t, len(result.History), 0)

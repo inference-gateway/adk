@@ -258,16 +258,10 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	if agentResponse.Response != nil {
 		lastMessage := agentResponse.Response
 		if lastMessage.Kind == "input_required" {
-			inputMessage := "Please provide more information to continue."
-			if len(lastMessage.Parts) > 0 {
-				if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
-					if text, exists := textPart["text"].(string); exists && text != "" {
-						inputMessage = text
-					}
-				}
-			}
 			task.History = append(task.History, *agentResponse.Response)
-			return bth.pauseTaskForInput(task, inputMessage), nil
+			task.Status.State = types.TaskStateInputRequired
+			task.Status.Message = lastMessage
+			return task, nil
 		}
 	}
 
@@ -311,29 +305,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 	return task, nil
 }
 
-// pauseTaskForInput updates a task to input-required state with the given message
-func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inputMessage string) *types.Task {
-	bth.logger.Info("pausing background task for user input",
-		zap.String("task_id", task.ID),
-		zap.String("input_message", inputMessage))
-
-	message := bth.RequestInput(inputMessage)
-
-	if task.History == nil {
-		task.History = []types.Message{}
-	}
-	task.History = append(task.History, *message)
-
-	task.Status.State = types.TaskStateInputRequired
-	task.Status.Message = message
-
-	bth.logger.Info("background task paused for user input",
-		zap.String("task_id", task.ID),
-		zap.String("state", string(task.Status.State)),
-		zap.Int("conversation_history_count", len(task.History)))
-
-	return task
-}
 
 // DefaultStreamingTaskHandler implements the TaskHandler interface optimized for streaming scenarios
 // This handler automatically handles input-required pausing with streaming-aware behavior
@@ -440,16 +411,10 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 
 	// Check for input required in the last message
 	if lastMessage != nil && lastMessage.Kind == "input_required" {
-		inputMessage := "Please provide more information to continue streaming."
-		if len(lastMessage.Parts) > 0 {
-			if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
-				if text, exists := textPart["text"].(string); exists && text != "" {
-					inputMessage = text
-				}
-			}
-		}
 		task.History = append(task.History, additionalMessages...)
-		return sth.pauseTaskForStreamingInput(task, inputMessage), nil
+		task.Status.State = types.TaskStateInputRequired
+		task.Status.Message = lastMessage
+		return task, nil
 	}
 
 	// Add all messages to history
@@ -490,29 +455,6 @@ func (sth *DefaultStreamingTaskHandler) processWithoutAgentBackground(ctx contex
 	return task, nil
 }
 
-// pauseTaskForStreamingInput updates a task to input-required state optimized for streaming scenarios
-func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.Task, inputMessage string) *types.Task {
-	sth.logger.Info("pausing streaming task for user input",
-		zap.String("task_id", task.ID),
-		zap.String("input_message", inputMessage))
-
-	message := sth.RequestInput(inputMessage)
-
-	if task.History == nil {
-		task.History = []types.Message{}
-	}
-	task.History = append(task.History, *message)
-
-	task.Status.State = types.TaskStateInputRequired
-	task.Status.Message = message
-
-	sth.logger.Info("streaming task paused for user input",
-		zap.String("task_id", task.ID),
-		zap.String("state", string(task.Status.State)),
-		zap.Int("conversation_history_count", len(task.History)))
-
-	return task
-}
 
 // PauseTaskForInput is a utility function that pauses a task by setting it to input-required state
 // This function can be used by any task handler to request input from the user
