@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/inference-gateway/sdk v1.10.0
 	github.com/prometheus/client_golang v1.22.0
+	github.com/redis/go-redis/v9 v9.12.0
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/otel v1.36.0
@@ -50,7 +51,6 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.64.0 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/redis/go-redis/v9 v9.12.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
