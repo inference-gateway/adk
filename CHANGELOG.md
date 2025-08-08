@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0](https://github.com/inference-gateway/adk/compare/v0.8.0...v0.9.0) (2025-08-08)
+
+### ✨ Features
+
+* Add default task handlers for polling and streaming scenarios ([#38](https://github.com/inference-gateway/adk/issues/38)) ([5764b22](https://github.com/inference-gateway/adk/commit/5764b22b41c06688a8983154735d11bee3b7852a)), closes [#37](https://github.com/inference-gateway/adk/issues/37)
+* **storage:** Implement multi-broker message queue support with Redis ([#45](https://github.com/inference-gateway/adk/issues/45)) ([639daf5](https://github.com/inference-gateway/adk/commit/639daf5e6393ab88b4d6f0e5b3e92ba73e3ecded))
+
+### 📚 Documentation
+
+* Add environment variable configuration examples and Go code snippets to README ([84f59cd](https://github.com/inference-gateway/adk/commit/84f59cdc74d6034245ae1b9eab7e4302f23f4f73))
+* Add health check example client for monitoring agent status ([34af129](https://github.com/inference-gateway/adk/commit/34af129c17f30c2c9943780cd2d69b0617685d94))
+* Improve configuration section in README with detailed environment variables and examples ([e8af9a9](https://github.com/inference-gateway/adk/commit/e8af9a98948ee95e7f6512135b08194ae1f17bb1))
+* Revise examples section in README for clarity and organization ([af152f9](https://github.com/inference-gateway/adk/commit/af152f91850e20940afeae039c38cdb33ae62203))
+* Update early stage warning and streamline development setup instructions ([5af66f0](https://github.com/inference-gateway/adk/commit/5af66f0d9077973401b246c71096912dff03c43c))
+* Update terminology from "Production Ready" to "Enterprise Ready" in README ([940c18c](https://github.com/inference-gateway/adk/commit/940c18ceb69dc0620a10e1de6c0508d8580d05de))
+
+### 🔧 Miscellaneous
+
+* Add missing task for generating mocks to pre-commit hook ([802987f](https://github.com/inference-gateway/adk/commit/802987fe6fb777aecfeea8875ba2ea006a3ccf47))
+
 ## [0.8.0](https://github.com/inference-gateway/adk/compare/v0.7.4...v0.8.0) (2025-08-05)
 
 ### ✨ Features

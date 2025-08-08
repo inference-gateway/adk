@@ -130,8 +130,16 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		cfg.AgentVersion = BuildAgentVersion
 	}
 
-	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
-	storage := NewInMemoryStorage(logger, maxConversationHistory)
+	ctx := context.Background()
+	storage, err := CreateStorage(ctx, cfg.QueueConfig, logger)
+	if err != nil {
+		logger.Warn("failed to create configured storage, falling back to in-memory",
+			zap.String("provider", cfg.QueueConfig.Provider),
+			zap.Error(err))
+
+		maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
+		storage = NewInMemoryStorage(logger, maxConversationHistory)
+	}
 
 	server := &A2AServerImpl{
 		cfg:     cfg,
