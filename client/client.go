@@ -19,6 +19,7 @@ import (
 type A2AClient interface {
 	// Agent discovery
 	GetAgentCard(ctx context.Context) (*types.AgentCard, error)
+	GetAuthenticatedExtendedCard(ctx context.Context) (*types.AgentCard, error)
 	GetHealth(ctx context.Context) (*HealthResponse, error)
 
 	// Task operations
@@ -36,6 +37,10 @@ type A2AClient interface {
 	// Logger configuration
 	SetLogger(logger *zap.Logger)
 	GetLogger() *zap.Logger
+
+	// Authentication configuration
+	SetAuthToken(token string, header ...string)
+	ClearAuth()
 }
 
 var _ A2AClient = (*Client)(nil)
@@ -43,6 +48,12 @@ var _ A2AClient = (*Client)(nil)
 // HealthResponse represents the response from the health endpoint
 type HealthResponse struct {
 	Status string `json:"status"`
+}
+
+// AuthConfig holds authentication configuration for the A2A client
+type AuthConfig struct {
+	Token  string // Authentication token
+	Header string // Header name for the token (default: "Authorization" with "Bearer " prefix)
 }
 
 // Config holds configuration options for the A2A client
@@ -55,6 +66,7 @@ type Config struct {
 	MaxRetries int
 	RetryDelay time.Duration
 	Logger     *zap.Logger
+	Auth       *AuthConfig
 }
 
 // DefaultConfig returns a default configuration
@@ -410,6 +422,34 @@ func (c *Client) GetAgentCard(ctx context.Context) (*types.AgentCard, error) {
 	return &agentCard, nil
 }
 
+// GetAuthenticatedExtendedCard retrieves the authenticated extended agent card via JSON-RPC
+func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context) (*types.AgentCard, error) {
+	c.logger.Debug("retrieving authenticated extended agent card", zap.String("method", "agent/getAuthenticatedExtendedCard"))
+
+	req := types.JSONRPCRequest{
+		JSONRPC: "2.0",
+		Method:  "agent/getAuthenticatedExtendedCard",
+		Params:  make(map[string]interface{}),
+	}
+
+	var resp types.JSONRPCSuccessResponse
+	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
+		c.logger.Error("failed to retrieve authenticated extended agent card", zap.Error(err))
+		return nil, err
+	}
+
+	var agentCard types.AgentCard
+	if err := json.Unmarshal(resp.Result.(json.RawMessage), &agentCard); err != nil {
+		c.logger.Error("failed to decode authenticated extended agent card response", zap.Error(err))
+		return nil, fmt.Errorf("failed to decode authenticated extended agent card response: %w", err)
+	}
+
+	c.logger.Debug("authenticated extended agent card retrieved successfully",
+		zap.String("name", agentCard.Name),
+		zap.String("version", agentCard.Version))
+	return &agentCard, nil
+}
+
 // GetHealth retrieves the health status of the agent via HTTP GET to /health
 func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
 	c.logger.Debug("retrieving agent health", zap.String("endpoint", "/health"))
@@ -586,6 +626,17 @@ func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", c.config.UserAgent)
 
+	// Add authentication headers if configured
+	if c.config.Auth != nil && c.config.Auth.Token != "" {
+		if c.config.Auth.Header == "" {
+			// Default to Authorization Bearer
+			req.Header.Set("Authorization", "Bearer "+c.config.Auth.Token)
+		} else {
+			// Use custom header
+			req.Header.Set(c.config.Auth.Header, c.config.Auth.Token)
+		}
+	}
+
 	for key, value := range c.config.Headers {
 		req.Header.Set(key, value)
 	}
@@ -666,4 +717,24 @@ func NewClientWithLogger(baseURL string, logger *zap.Logger) A2AClient {
 	config := DefaultConfig(baseURL)
 	config.Logger = logger
 	return NewClientWithConfig(config)
+}
+
+// SetAuthToken sets the authentication token with optional custom header
+// If no header specified, defaults to "Authorization" with "Bearer " prefix
+// If header specified, uses token as-is without prefix
+func (c *Client) SetAuthToken(token string, header ...string) {
+	if c.config.Auth == nil {
+		c.config.Auth = &AuthConfig{}
+	}
+	c.config.Auth.Token = token
+	if len(header) > 0 {
+		c.config.Auth.Header = header[0]
+	} else {
+		c.config.Auth.Header = "" // Use default Authorization Bearer
+	}
+}
+
+// ClearAuth clears all authentication configuration
+func (c *Client) ClearAuth() {
+	c.config.Auth = nil
 }
