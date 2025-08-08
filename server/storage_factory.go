@@ -14,10 +14,10 @@ import (
 type StorageFactory interface {
 	// CreateStorage creates a storage instance with the given configuration
 	CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error)
-	
+
 	// SupportedProvider returns the provider name this factory supports
 	SupportedProvider() string
-	
+
 	// ValidateConfig validates the configuration for this provider
 	ValidateConfig(config config.QueueConfig) error
 }
@@ -57,11 +57,11 @@ func CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.L
 func (r *StorageFactoryRegistry) Register(provider string, factory StorageFactory) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	if factory.SupportedProvider() != provider {
 		panic(fmt.Sprintf("factory provider mismatch: expected %s, got %s", provider, factory.SupportedProvider()))
 	}
-	
+
 	r.factories[provider] = factory
 }
 
@@ -69,12 +69,12 @@ func (r *StorageFactoryRegistry) Register(provider string, factory StorageFactor
 func (r *StorageFactoryRegistry) GetFactory(provider string) (StorageFactory, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	factory, exists := r.factories[provider]
 	if !exists {
 		return nil, fmt.Errorf("unsupported storage provider: %s (supported: %v)", provider, r.getProviderNames())
 	}
-	
+
 	return factory, nil
 }
 
@@ -100,11 +100,11 @@ func (r *StorageFactoryRegistry) CreateStorage(ctx context.Context, config confi
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if err := factory.ValidateConfig(config); err != nil {
 		return nil, fmt.Errorf("invalid configuration for provider %s: %w", config.Provider, err)
 	}
-	
+
 	return factory.CreateStorage(ctx, config, logger)
 }
 
@@ -124,15 +124,14 @@ func (f *InMemoryStorageFactory) ValidateConfig(config config.QueueConfig) error
 
 // CreateStorage creates an in-memory storage instance
 func (f *InMemoryStorageFactory) CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error) {
-	// Use default max conversation history if not specified in options
-	maxConversationHistory := 20 // default value
-	
+	maxConversationHistory := 20
+
 	if maxHistoryStr, exists := config.Options["max_conversation_history"]; exists {
 		if maxHistory, err := strconv.Atoi(maxHistoryStr); err == nil && maxHistory > 0 {
 			maxConversationHistory = maxHistory
 		}
 	}
-	
+
 	return NewInMemoryStorage(logger, maxConversationHistory), nil
 }
 

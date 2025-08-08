@@ -130,16 +130,13 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		cfg.AgentVersion = BuildAgentVersion
 	}
 
-	// Create storage using factory pattern
 	ctx := context.Background()
 	storage, err := CreateStorage(ctx, cfg.QueueConfig, logger)
 	if err != nil {
-		// For tests and scenarios where storage creation might fail,
-		// fall back to in-memory storage with a warning
-		logger.Warn("failed to create configured storage, falling back to in-memory", 
-			zap.String("provider", cfg.QueueConfig.Provider), 
+		logger.Warn("failed to create configured storage, falling back to in-memory",
+			zap.String("provider", cfg.QueueConfig.Provider),
 			zap.Error(err))
-		
+
 		maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
 		storage = NewInMemoryStorage(logger, maxConversationHistory)
 	}

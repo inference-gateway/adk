@@ -33,13 +33,11 @@ func (f *RedisStorageFactory) ValidateConfig(config config.QueueConfig) error {
 
 // CreateStorage creates a Redis storage instance
 func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error) {
-	// Parse Redis URL
 	opt, err := redis.ParseURL(config.URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Redis URL: %w", err)
 	}
 
-	// Apply options from configuration
 	if dbStr, exists := config.Options["db"]; exists {
 		if db, err := strconv.Atoi(dbStr); err == nil {
 			opt.DB = db
@@ -60,7 +58,6 @@ func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config config.Q
 		}
 	}
 
-	// Override credentials if provided
 	if username, exists := config.Credentials["username"]; exists {
 		opt.Username = username
 	}
@@ -70,7 +67,6 @@ func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config config.Q
 
 	client := redis.NewClient(opt)
 
-	// Test connection
 	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
@@ -95,19 +91,18 @@ type RedisStorage struct {
 
 var _ Storage = (*RedisStorage)(nil)
 
-// Redis key patterns
 const (
-	taskQueueKey         = "a2a:queue"
-	activeTaskKeyPrefix  = "a2a:active:"
-	deadLetterKeyPrefix  = "a2a:deadletter:"
-	contextTasksPrefix   = "a2a:context:"
-	queueNotifyChannel   = "a2a:queue:notify"
+	taskQueueKey        = "a2a:queue"
+	activeTaskKeyPrefix = "a2a:active:"
+	deadLetterKeyPrefix = "a2a:deadletter:"
+	contextTasksPrefix  = "a2a:context:"
+	queueNotifyChannel  = "a2a:queue:notify"
 )
 
 // EnqueueTask adds a task to the processing queue
 func (s *RedisStorage) EnqueueTask(task *types.Task, requestID interface{}) error {
 	ctx := context.Background()
-	
+
 	if task == nil {
 		return fmt.Errorf("task cannot be nil")
 	}
@@ -117,7 +112,6 @@ func (s *RedisStorage) EnqueueTask(task *types.Task, requestID interface{}) erro
 		RequestID: requestID,
 	}
 
-	// Serialize queued task
 	data, err := json.Marshal(queuedTask)
 	if err != nil {
 		return fmt.Errorf("failed to serialize task: %w", err)
@@ -125,23 +119,19 @@ func (s *RedisStorage) EnqueueTask(task *types.Task, requestID interface{}) erro
 
 	pipe := s.client.Pipeline()
 
-	// Add to queue (FIFO using LPUSH/BRPOP)
 	pipe.LPush(ctx, taskQueueKey, data)
 
-	// Store active task metadata
 	activeKey := activeTaskKeyPrefix + task.ID
 	taskData, err := json.Marshal(task)
 	if err != nil {
 		return fmt.Errorf("failed to serialize active task: %w", err)
 	}
-	pipe.Set(ctx, activeKey, taskData, 0) // No expiration
+	pipe.Set(ctx, activeKey, taskData, 0)
 
-	// Execute pipeline
 	if _, err := pipe.Exec(ctx); err != nil {
 		return fmt.Errorf("failed to enqueue task: %w", err)
 	}
 
-	// Notify queue watchers
 	s.client.Publish(ctx, queueNotifyChannel, "task_added")
 
 	queueLength := s.GetQueueLength()
@@ -155,7 +145,6 @@ func (s *RedisStorage) EnqueueTask(task *types.Task, requestID interface{}) erro
 
 // DequeueTask retrieves and removes the next task from the processing queue
 func (s *RedisStorage) DequeueTask(ctx context.Context) (*QueuedTask, error) {
-	// Use BRPOP for blocking pop with context cancellation
 	result, err := s.client.BRPop(ctx, 0, taskQueueKey).Result()
 	if err != nil {
 		if err == redis.Nil || strings.Contains(err.Error(), "context") {
@@ -164,7 +153,6 @@ func (s *RedisStorage) DequeueTask(ctx context.Context) (*QueuedTask, error) {
 		return nil, fmt.Errorf("failed to dequeue task: %w", err)
 	}
 
-	// BRPOP returns [key, value]
 	if len(result) != 2 {
 		return nil, fmt.Errorf("unexpected BRPOP result format")
 	}
@@ -198,7 +186,7 @@ func (s *RedisStorage) GetQueueLength() int {
 func (s *RedisStorage) ClearQueue() error {
 	ctx := context.Background()
 	queueLength := s.GetQueueLength()
-	
+
 	if err := s.client.Del(ctx, taskQueueKey).Err(); err != nil {
 		return fmt.Errorf("failed to clear queue: %w", err)
 	}
@@ -211,7 +199,7 @@ func (s *RedisStorage) ClearQueue() error {
 func (s *RedisStorage) GetActiveTask(taskID string) (*types.Task, error) {
 	ctx := context.Background()
 	activeKey := activeTaskKeyPrefix + taskID
-	
+
 	data, err := s.client.Get(ctx, activeKey).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -237,7 +225,6 @@ func (s *RedisStorage) CreateActiveTask(task *types.Task) error {
 	ctx := context.Background()
 	activeKey := activeTaskKeyPrefix + task.ID
 
-	// Check if task already exists
 	exists, err := s.client.Exists(ctx, activeKey).Result()
 	if err != nil {
 		return fmt.Errorf("failed to check task existence: %w", err)
@@ -246,7 +233,6 @@ func (s *RedisStorage) CreateActiveTask(task *types.Task) error {
 		return fmt.Errorf("active task already exists: %s", task.ID)
 	}
 
-	// Store task
 	taskData, err := json.Marshal(task)
 	if err != nil {
 		return fmt.Errorf("failed to serialize task: %w", err)
@@ -273,7 +259,6 @@ func (s *RedisStorage) UpdateActiveTask(task *types.Task) error {
 	ctx := context.Background()
 	activeKey := activeTaskKeyPrefix + task.ID
 
-	// Check if task exists
 	exists, err := s.client.Exists(ctx, activeKey).Result()
 	if err != nil {
 		return fmt.Errorf("failed to check task existence: %w", err)
@@ -282,7 +267,6 @@ func (s *RedisStorage) UpdateActiveTask(task *types.Task) error {
 		return fmt.Errorf("active task not found: %s", task.ID)
 	}
 
-	// Update task
 	taskData, err := json.Marshal(task)
 	if err != nil {
 		return fmt.Errorf("failed to serialize task: %w", err)
@@ -318,13 +302,10 @@ func (s *RedisStorage) StoreDeadLetterTask(task *types.Task) error {
 
 	pipe := s.client.Pipeline()
 
-	// Store in dead letter queue
-	pipe.Set(ctx, deadLetterKey, taskData, 0) // No expiration
+	pipe.Set(ctx, deadLetterKey, taskData, 0)
 
-	// Add task ID to context set
 	pipe.SAdd(ctx, contextKey, task.ID)
 
-	// Remove from active tasks
 	pipe.Del(ctx, activeKey)
 
 	if _, err := pipe.Exec(ctx); err != nil {
@@ -380,7 +361,6 @@ func (s *RedisStorage) GetTaskByContextAndID(contextID, taskID string) (*types.T
 func (s *RedisStorage) DeleteTask(taskID string) error {
 	ctx := context.Background()
 
-	// First get the task to find its context
 	task, exists := s.GetTask(taskID)
 	if !exists {
 		return fmt.Errorf("task not found: %s", taskID)
@@ -391,10 +371,8 @@ func (s *RedisStorage) DeleteTask(taskID string) error {
 
 	pipe := s.client.Pipeline()
 
-	// Delete from dead letter queue
 	pipe.Del(ctx, deadLetterKey)
 
-	// Remove from context set
 	pipe.SRem(ctx, contextKey, taskID)
 
 	if _, err := pipe.Exec(ctx); err != nil {
@@ -413,7 +391,6 @@ func (s *RedisStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 	ctx := context.Background()
 	var allTasks []*types.Task
 
-	// Get tasks from dead letter queue
 	deadLetterPattern := deadLetterKeyPrefix + "*"
 	deadLetterKeys, err := s.client.Keys(ctx, deadLetterPattern).Result()
 	if err != nil {
@@ -429,7 +406,6 @@ func (s *RedisStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 		}
 	}
 
-	// Get tasks from active tasks
 	activePattern := activeTaskKeyPrefix + "*"
 	activeKeys, err := s.client.Keys(ctx, activePattern).Result()
 	if err != nil {
@@ -445,10 +421,8 @@ func (s *RedisStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 		}
 	}
 
-	// Sort tasks
 	s.sortTasks(allTasks, filter.SortBy, filter.SortOrder)
 
-	// Apply pagination
 	total := len(allTasks)
 	start := filter.Offset
 	if start >= total {
@@ -486,10 +460,8 @@ func (s *RedisStorage) ListTasksByContext(contextID string, filter TaskFilter) (
 		}
 	}
 
-	// Sort tasks
 	s.sortTasks(filteredTasks, filter.SortBy, filter.SortOrder)
 
-	// Apply pagination
 	total := len(filteredTasks)
 	start := filter.Offset
 	if start >= total {
@@ -555,7 +527,7 @@ func (s *RedisStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, orde
 func (s *RedisStorage) GetContexts() []string {
 	ctx := context.Background()
 	contextPattern := contextTasksPrefix + "*"
-	
+
 	contextKeys, err := s.client.Keys(ctx, contextPattern).Result()
 	if err != nil {
 		s.logger.Error("failed to get contexts", zap.Error(err))
@@ -585,19 +557,17 @@ func (s *RedisStorage) DeleteContextAndTasks(contextID string) error {
 	ctx := context.Background()
 	contextKey := contextTasksPrefix + contextID
 
-	// Get all task IDs for this context
 	taskIDs, err := s.client.SMembers(ctx, contextKey).Result()
 	if err != nil && err != redis.Nil {
 		return fmt.Errorf("failed to get context tasks: %w", err)
 	}
 
 	if len(taskIDs) == 0 {
-		return nil // Nothing to delete
+		return nil
 	}
 
 	pipe := s.client.Pipeline()
 
-	// Delete all tasks from dead letter queue
 	for _, taskID := range taskIDs {
 		deadLetterKey := deadLetterKeyPrefix + taskID
 		activeKey := activeTaskKeyPrefix + taskID
@@ -605,7 +575,6 @@ func (s *RedisStorage) DeleteContextAndTasks(contextID string) error {
 		pipe.Del(ctx, activeKey)
 	}
 
-	// Delete context set
 	pipe.Del(ctx, contextKey)
 
 	if _, err := pipe.Exec(ctx); err != nil {
@@ -620,7 +589,7 @@ func (s *RedisStorage) DeleteContextAndTasks(contextID string) error {
 func (s *RedisStorage) CleanupCompletedTasks() int {
 	ctx := context.Background()
 	deadLetterPattern := deadLetterKeyPrefix + "*"
-	
+
 	deadLetterKeys, err := s.client.Keys(ctx, deadLetterPattern).Result()
 	if err != nil {
 		s.logger.Error("failed to get tasks for cleanup", zap.Error(err))
@@ -647,13 +616,11 @@ func (s *RedisStorage) CleanupCompletedTasks() int {
 
 	pipe := s.client.Pipeline()
 
-	// Delete tasks
 	for _, taskID := range toRemove {
 		deadLetterKey := deadLetterKeyPrefix + taskID
 		pipe.Del(ctx, deadLetterKey)
 	}
 
-	// Update context sets
 	for contextID, taskIDs := range contextUpdates {
 		contextKey := contextTasksPrefix + contextID
 		for _, taskID := range taskIDs {
@@ -671,11 +638,9 @@ func (s *RedisStorage) CleanupCompletedTasks() int {
 
 // CleanupTasksWithRetention removes old completed and failed tasks while keeping specified number
 func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) int {
-	// This implementation is simplified - in production, you'd want to optimize this
-	// by using Redis SORT with LIMIT or implementing more efficient cleanup logic
 	ctx := context.Background()
 	deadLetterPattern := deadLetterKeyPrefix + "*"
-	
+
 	deadLetterKeys, err := s.client.Keys(ctx, deadLetterPattern).Result()
 	if err != nil {
 		s.logger.Error("failed to get tasks for retention cleanup", zap.Error(err))
@@ -696,14 +661,12 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 		}
 	}
 
-	// Sort by timestamp (newest first)
 	s.sortTasksByTimestamp(completedTasks, true)
 	s.sortTasksByTimestamp(failedTasks, true)
 
 	var toRemove []string
 	contextUpdates := make(map[string][]string)
 
-	// Remove excess completed tasks
 	if len(completedTasks) > maxCompleted {
 		for i := maxCompleted; i < len(completedTasks); i++ {
 			task := completedTasks[i]
@@ -712,7 +675,6 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 		}
 	}
 
-	// Remove excess failed tasks
 	if len(failedTasks) > maxFailed {
 		for i := maxFailed; i < len(failedTasks); i++ {
 			task := failedTasks[i]
@@ -727,13 +689,11 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 
 	pipe := s.client.Pipeline()
 
-	// Delete tasks
 	for _, taskID := range toRemove {
 		deadLetterKey := deadLetterKeyPrefix + taskID
 		pipe.Del(ctx, deadLetterKey)
 	}
 
-	// Update context sets
 	for contextID, taskIDs := range contextUpdates {
 		contextKey := contextTasksPrefix + contextID
 		for _, taskID := range taskIDs {
@@ -761,19 +721,18 @@ func (s *RedisStorage) sortTasksByTimestamp(tasks []*types.Task, desc bool) {
 		}
 
 		compareResult := strings.Compare(time1, time2)
-		
+
 		if desc {
-			return compareResult > 0 // For descending (newest first)
+			return compareResult > 0
 		}
-		return compareResult < 0 // For ascending (oldest first)
+		return compareResult < 0
 	})
 }
 
 // GetStats provides statistics about the storage
 func (s *RedisStorage) GetStats() StorageStats {
 	ctx := context.Background()
-	
-	// Count dead letter tasks by state
+
 	deadLetterPattern := deadLetterKeyPrefix + "*"
 	deadLetterKeys, err := s.client.Keys(ctx, deadLetterPattern).Result()
 	if err != nil {
@@ -793,7 +752,6 @@ func (s *RedisStorage) GetStats() StorageStats {
 		}
 	}
 
-	// Count contexts
 	contextPattern := contextTasksPrefix + "*"
 	contextKeys, err := s.client.Keys(ctx, contextPattern).Result()
 	if err != nil {
