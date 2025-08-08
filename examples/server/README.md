@@ -199,6 +199,61 @@ The agent metadata appears in:
 - `AGENT_CLIENT_MODEL` - Model name (uses provider defaults if not specified)
 - `PORT` - Server port (default: "8080")
 
+### Redis Storage Configuration
+
+For persistent task storage and message queuing with Redis:
+
+**Environment Variables:**
+
+- `QUEUE_PROVIDER=redis` - Enable Redis as the storage provider (default: "memory")
+- `QUEUE_URL` - Redis connection URL (e.g., "redis://localhost:6379", "redis://username:password@localhost:6379/0")
+- `QUEUE_MAX_SIZE` - Maximum queue size (default: 100)
+- `QUEUE_CLEANUP_INTERVAL` - How often to clean up completed tasks (default: "30s")
+
+**Basic Redis Setup:**
+
+```bash
+# Start Redis server
+docker run -d --name redis -p 6379:6379 redis:alpine
+
+# Configure your A2A server to use Redis
+export QUEUE_PROVIDER=redis
+export QUEUE_URL=redis://localhost:6379
+
+# Run your A2A server
+go run cmd/aipowered/main.go
+```
+
+**Redis with Authentication:**
+
+```bash
+# For Redis with password
+export QUEUE_URL=redis://:password@localhost:6379
+
+# For Redis with username and password
+export QUEUE_URL=redis://username:password@localhost:6379
+
+# For Redis with specific database
+export QUEUE_URL=redis://localhost:6379/1
+```
+
+**Production Redis Example:**
+
+```bash
+# Redis with TLS (Redis 6.0+)
+export QUEUE_URL=rediss://username:password@redis.example.com:6380/0
+
+# Redis Cluster (use any node URL)
+export QUEUE_URL=redis://node1.redis.example.com:6379
+```
+
+**Benefits of Redis Storage:**
+
+- ✅ **Persistent Tasks** - Tasks survive server restarts
+- ✅ **Distributed Processing** - Multiple server instances can share the same queue
+- ✅ **High Performance** - Redis provides fast task queuing and retrieval
+- ✅ **Task History** - Completed and failed tasks are retained based on configuration
+
 ### Configuration Examples
 
 ```bash

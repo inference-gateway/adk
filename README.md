@@ -60,6 +60,15 @@
     - [Agent Health Monitoring](#agent-health-monitoring)
   - [LLM Client](#llm-client)
   - [Configuration](#configuration)
+    - [Core Server Configuration](#core-server-configuration)
+    - [Agent & LLM Configuration](#agent--llm-configuration)
+    - [Agent Capabilities](#agent-capabilities)
+    - [Authentication (Optional)](#authentication-optional)
+    - [Task Management](#task-management)
+    - [Storage Configuration (Optional)](#storage-configuration-optional)
+    - [TLS Configuration (Optional)](#tls-configuration-optional)
+    - [Telemetry (Optional)](#telemetry-optional)
+    - [Example Configuration](#example-configuration)
 - [🔧 Advanced Usage](#-advanced-usage)
   - [Building Custom Agents with AgentBuilder](#building-custom-agents-with-agentbuilder)
   - [Custom Tools](#custom-tools)
@@ -552,6 +561,7 @@ func main() {
 - 🔐 **Secure Authentication**: Built-in OIDC/OAuth2 authentication support
 - 📨 **Push Notifications**: Webhook notifications for real-time task state updates
 - ⏸️ **Task Pausing**: Built-in support for input-required state pausing and resumption
+- 🗄️ **Multiple Storage Backends**: Support for in-memory and Redis storage with horizontal scaling
 
 ### Developer Experience
 
@@ -899,6 +909,46 @@ Configure your A2A agent using environment variables. All configuration is optio
 | `TASK_RETENTION_MAX_COMPLETED_TASKS` | `100`   | Max completed tasks to keep (0 = unlimited) |
 | `TASK_RETENTION_MAX_FAILED_TASKS`    | `50`    | Max failed tasks to keep (0 = unlimited)    |
 | `TASK_RETENTION_CLEANUP_INTERVAL`    | `5m`    | Cleanup frequency (0 = manual only)         |
+
+#### Storage Configuration (Optional)
+
+| Variable                 | Default  | Description                                      |
+| ------------------------ | -------- | ------------------------------------------------ |
+| `QUEUE_PROVIDER`         | `memory` | Storage backend: `memory` or `redis`             |
+| `QUEUE_URL`              | -        | Redis connection URL (required when using Redis) |
+| `QUEUE_MAX_SIZE`         | `100`    | Maximum queue size                               |
+| `QUEUE_CLEANUP_INTERVAL` | `30s`    | How often to clean up completed tasks            |
+
+**Storage Backends:**
+
+- **Memory Storage (Default)**: Fast in-memory storage for development and single-instance deployments
+- **Redis Storage**: Persistent storage with horizontal scaling support for production deployments
+
+**Redis Configuration Examples:**
+
+```bash
+# Basic Redis setup
+export QUEUE_PROVIDER=redis
+export QUEUE_URL=redis://localhost:6379
+
+# Redis with authentication
+export QUEUE_URL=redis://:password@localhost:6379
+export QUEUE_URL=redis://username:password@localhost:6379
+
+# Redis with specific database
+export QUEUE_URL=redis://localhost:6379/1
+
+# Redis with TLS (Redis 6.0+)
+export QUEUE_URL=rediss://username:password@redis.example.com:6380/0
+```
+
+**Benefits of Redis Storage:**
+
+- ✅ **Persistent Tasks** - Tasks survive server restarts
+- ✅ **Distributed Processing** - Multiple server instances can share the same queue
+- ✅ **High Performance** - Redis provides fast task queuing and retrieval
+- ✅ **Task History** - Completed and failed tasks are retained based on configuration
+- ✅ **Horizontal Scaling** - Scale to N number of A2A servers processing the same queue
 
 #### TLS Configuration (Optional)
 
