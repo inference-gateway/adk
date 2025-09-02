@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.1](https://github.com/inference-gateway/adk/compare/v0.9.0...v0.9.1) (2025-09-02)
+
+### ♻️ Improvements
+
+* Refactor message part types to use 'any' instead of 'interface{}' ([d4eb538](https://github.com/inference-gateway/adk/commit/d4eb538a3b0d4345656ab3a26c448dfaeeda9bda))
+
+### 🐛 Bug Fixes
+
+* **metadata:** Clear build-time metadata variables and update server builder to use agent card details ([129a020](https://github.com/inference-gateway/adk/commit/129a0209198d95961d0fd5f3d32d852ac6b9c63e))
+
 ## [0.9.0](https://github.com/inference-gateway/adk/compare/v0.8.0...v0.9.0) (2025-08-08)
 
 ### ✨ Features
