@@ -258,6 +258,12 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 		return nil, err
 	}
 
+	if b.agentCard != nil {
+		b.cfg.AgentName = b.agentCard.Name
+		b.cfg.AgentDescription = b.agentCard.Description
+		b.cfg.AgentVersion = b.agentCard.Version
+	}
+
 	var telemetryInstance otel.OpenTelemetry
 	if b.cfg.TelemetryConfig.Enable {
 		var err error
