@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.2](https://github.com/inference-gateway/adk/compare/v0.9.1...v0.9.2) (2025-09-02)
+
+### ♻️ Improvements
+
+* **task:** Add sources and generates fields for A2A type generation ([647018c](https://github.com/inference-gateway/adk/commit/647018cd057dd1ee757cfef65afc47d94f3439b4))
+
+### 🐛 Bug Fixes
+
+* **ci:** Update generator tool version to v0.1.2 ([802c809](https://github.com/inference-gateway/adk/commit/802c8096c6777e6d0ddab30eb418a37752532da8))
+* **task:** Update generator version to v0.1.2 for A2A type generation ([318f885](https://github.com/inference-gateway/adk/commit/318f885af9037d2e7e72a2f907bc8618ea39c03a))
+
 ## [0.9.1](https://github.com/inference-gateway/adk/compare/v0.9.0...v0.9.1) (2025-09-02)
 
 ### ♻️ Improvements
