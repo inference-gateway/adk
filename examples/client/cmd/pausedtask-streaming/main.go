@@ -77,7 +77,7 @@ func main() {
 			MessageID: fmt.Sprintf("paused-streaming-msg-%d", time.Now().Unix()),
 			Role:      "user",
 			Parts: []adk.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "I need help planning a vacation. Please ask me questions to understand my preferences and then create a detailed itinerary.",
 				},
@@ -93,10 +93,10 @@ func main() {
 		zap.String("message_id", msgParams.Message.MessageID))
 
 	fmt.Printf("🚀 Starting paused task streaming example...\n")
-	fmt.Printf("📝 Initial request: %s\n\n", msgParams.Message.Parts[0].(map[string]interface{})["text"])
+	fmt.Printf("📝 Initial request: %s\n\n", msgParams.Message.Parts[0].(map[string]any)["text"])
 
 	// Create channel to receive streaming events
-	eventChan := make(chan interface{}, 100)
+	eventChan := make(chan any, 100)
 
 	// Track streaming progress
 	var wg sync.WaitGroup
@@ -134,7 +134,7 @@ func main() {
 						zap.String("content", v))
 					fmt.Printf("💬 Text: %s\n", v)
 
-				case map[string]interface{}:
+				case map[string]any:
 					// Complex event objects (task updates, messages)
 					if eventType, exists := v["kind"]; exists {
 						switch eventType {
@@ -290,12 +290,12 @@ func main() {
 	fmt.Printf("\n🎉 Paused task streaming example completed!\n")
 }
 
-func handleStatusUpdate(event map[string]interface{}, currentTaskID *string, taskPaused *bool, pauseMessage *string, eventCount int, logger *zap.Logger) {
+func handleStatusUpdate(event map[string]any, currentTaskID *string, taskPaused *bool, pauseMessage *string, eventCount int, logger *zap.Logger) {
 	if taskId, exists := event["taskId"]; exists {
 		*currentTaskID = fmt.Sprintf("%v", taskId)
 
 		if status, exists := event["status"]; exists {
-			if statusMap, ok := status.(map[string]interface{}); ok {
+			if statusMap, ok := status.(map[string]any); ok {
 				if state, exists := statusMap["state"]; exists {
 					stateStr := fmt.Sprintf("%v", state)
 
@@ -311,7 +311,7 @@ func handleStatusUpdate(event map[string]interface{}, currentTaskID *string, tas
 
 						// Extract pause message if available
 						if message, exists := statusMap["message"]; exists {
-							if msgMap, ok := message.(map[string]interface{}); ok {
+							if msgMap, ok := message.(map[string]any); ok {
 								*pauseMessage = extractTextFromMessageMap(msgMap)
 							}
 						}
@@ -321,11 +321,11 @@ func handleStatusUpdate(event map[string]interface{}, currentTaskID *string, tas
 
 						// Show streaming content
 						if message, exists := statusMap["message"]; exists {
-							if msgMap, ok := message.(map[string]interface{}); ok {
+							if msgMap, ok := message.(map[string]any); ok {
 								if parts, exists := msgMap["parts"]; exists {
-									if partsArray, ok := parts.([]interface{}); ok {
+									if partsArray, ok := parts.([]any); ok {
 										for _, part := range partsArray {
-											if partMap, ok := part.(map[string]interface{}); ok {
+											if partMap, ok := part.(map[string]any); ok {
 												if text, exists := partMap["text"]; exists {
 													fmt.Printf("💬 %v", text)
 												}
@@ -360,7 +360,7 @@ func resumeTaskWithStreaming(ctx context.Context, a2aClient client.A2AClient, ta
 			Role:      "user",
 			TaskID:    &taskID,
 			Parts: []adk.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": userInput,
 				},
@@ -382,7 +382,7 @@ func resumeTaskWithStreaming(ctx context.Context, a2aClient client.A2AClient, ta
 	defer cancel()
 
 	// Create channel for resume streaming events
-	eventChan := make(chan interface{}, 100)
+	eventChan := make(chan any, 100)
 
 	// Process streaming events for resume
 	var wg sync.WaitGroup
@@ -397,16 +397,16 @@ func resumeTaskWithStreaming(ctx context.Context, a2aClient client.A2AClient, ta
 				}
 
 				switch v := event.(type) {
-				case map[string]interface{}:
+				case map[string]any:
 					if eventType, exists := v["kind"]; exists && eventType == "status-update" {
 						if status, exists := v["status"]; exists {
-							if statusMap, ok := status.(map[string]interface{}); ok {
+							if statusMap, ok := status.(map[string]any); ok {
 								if message, exists := statusMap["message"]; exists {
-									if msgMap, ok := message.(map[string]interface{}); ok {
+									if msgMap, ok := message.(map[string]any); ok {
 										if parts, exists := msgMap["parts"]; exists {
-											if partsArray, ok := parts.([]interface{}); ok {
+											if partsArray, ok := parts.([]any); ok {
 												for _, part := range partsArray {
-													if partMap, ok := part.(map[string]interface{}); ok {
+													if partMap, ok := part.(map[string]any); ok {
 														if text, exists := partMap["text"]; exists {
 															fmt.Printf("💬 %v", text)
 														}
@@ -510,7 +510,7 @@ func extractTextFromMessage(message *adk.Message) string {
 
 	var texts []string
 	for _, part := range message.Parts {
-		if partMap, ok := part.(map[string]interface{}); ok {
+		if partMap, ok := part.(map[string]any); ok {
 			if text, exists := partMap["text"]; exists {
 				if textStr, ok := text.(string); ok && textStr != "" {
 					texts = append(texts, textStr)
@@ -522,12 +522,12 @@ func extractTextFromMessage(message *adk.Message) string {
 	return strings.Join(texts, " ")
 }
 
-func extractTextFromMessageMap(msgMap map[string]interface{}) string {
+func extractTextFromMessageMap(msgMap map[string]any) string {
 	if parts, exists := msgMap["parts"]; exists {
-		if partsArray, ok := parts.([]interface{}); ok {
+		if partsArray, ok := parts.([]any); ok {
 			var texts []string
 			for _, part := range partsArray {
-				if partMap, ok := part.(map[string]interface{}); ok {
+				if partMap, ok := part.(map[string]any); ok {
 					if text, exists := partMap["text"]; exists {
 						if textStr, ok := text.(string); ok && textStr != "" {
 							texts = append(texts, textStr)

@@ -74,7 +74,7 @@ func main() {
 			MessageID: fmt.Sprintf("streaming-msg-%d", time.Now().Unix()),
 			Role:      "user",
 			Parts: []adk.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Please write a detailed explanation about machine learning in artificial intelligence. Stream your response as you generate it.",
 				},
@@ -90,7 +90,7 @@ func main() {
 		zap.String("message_id", msgParams.Message.MessageID))
 
 	// Create channel to receive streaming events
-	eventChan := make(chan interface{}, 100)
+	eventChan := make(chan any, 100)
 
 	// Track streaming progress
 	var wg sync.WaitGroup
@@ -123,14 +123,14 @@ func main() {
 						zap.String("content", v))
 					fmt.Printf("[Event %d] Text: %s\n", eventCount, v)
 
-				case map[string]interface{}:
+				case map[string]any:
 					// Complex event objects (e.g., task updates, messages)
 					if eventType, exists := v["kind"]; exists {
 						switch eventType {
 						case "message":
-							if parts, ok := v["parts"].([]interface{}); ok {
+							if parts, ok := v["parts"].([]any); ok {
 								for _, part := range parts {
-									if partMap, ok := part.(map[string]interface{}); ok {
+									if partMap, ok := part.(map[string]any); ok {
 										if text, exists := partMap["text"]; exists {
 											logger.Info("received streaming message part",
 												zap.Int("event_number", eventCount),

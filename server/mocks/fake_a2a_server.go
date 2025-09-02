@@ -50,11 +50,11 @@ type FakeA2AServer struct {
 	getStreamingTaskHandlerReturnsOnCall map[int]struct {
 		result1 server.TaskHandler
 	}
-	LoadAgentCardFromFileStub        func(string, map[string]interface{}) error
+	LoadAgentCardFromFileStub        func(string, map[string]any) error
 	loadAgentCardFromFileMutex       sync.RWMutex
 	loadAgentCardFromFileArgsForCall []struct {
 		arg1 string
-		arg2 map[string]interface{}
+		arg2 map[string]any
 	}
 	loadAgentCardFromFileReturns struct {
 		result1 error
@@ -345,12 +345,12 @@ func (fake *FakeA2AServer) GetStreamingTaskHandlerReturnsOnCall(i int, result1 s
 	}{result1}
 }
 
-func (fake *FakeA2AServer) LoadAgentCardFromFile(arg1 string, arg2 map[string]interface{}) error {
+func (fake *FakeA2AServer) LoadAgentCardFromFile(arg1 string, arg2 map[string]any) error {
 	fake.loadAgentCardFromFileMutex.Lock()
 	ret, specificReturn := fake.loadAgentCardFromFileReturnsOnCall[len(fake.loadAgentCardFromFileArgsForCall)]
 	fake.loadAgentCardFromFileArgsForCall = append(fake.loadAgentCardFromFileArgsForCall, struct {
 		arg1 string
-		arg2 map[string]interface{}
+		arg2 map[string]any
 	}{arg1, arg2})
 	stub := fake.LoadAgentCardFromFileStub
 	fakeReturns := fake.loadAgentCardFromFileReturns
@@ -371,13 +371,13 @@ func (fake *FakeA2AServer) LoadAgentCardFromFileCallCount() int {
 	return len(fake.loadAgentCardFromFileArgsForCall)
 }
 
-func (fake *FakeA2AServer) LoadAgentCardFromFileCalls(stub func(string, map[string]interface{}) error) {
+func (fake *FakeA2AServer) LoadAgentCardFromFileCalls(stub func(string, map[string]any) error) {
 	fake.loadAgentCardFromFileMutex.Lock()
 	defer fake.loadAgentCardFromFileMutex.Unlock()
 	fake.LoadAgentCardFromFileStub = stub
 }
 
-func (fake *FakeA2AServer) LoadAgentCardFromFileArgsForCall(i int) (string, map[string]interface{}) {
+func (fake *FakeA2AServer) LoadAgentCardFromFileArgsForCall(i int) (string, map[string]any) {
 	fake.loadAgentCardFromFileMutex.RLock()
 	defer fake.loadAgentCardFromFileMutex.RUnlock()
 	argsForCall := fake.loadAgentCardFromFileArgsForCall[i]

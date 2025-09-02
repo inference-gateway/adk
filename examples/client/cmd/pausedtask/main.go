@@ -76,7 +76,7 @@ func main() {
 			MessageID: fmt.Sprintf("msg-%d", time.Now().Unix()),
 			Role:      "user",
 			Parts: []adk.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "I need to write a presentation about climate change. Can you help me create an outline? But first, what is the specific audience for this presentation?",
 				},
@@ -213,7 +213,7 @@ func monitorTaskWithInputHandling(ctx context.Context, a2aClient client.A2AClien
 						MessageID: fmt.Sprintf("resume-msg-%d", time.Now().Unix()),
 						Role:      "user",
 						Parts: []adk.Part{
-							map[string]interface{}{
+							map[string]any{
 								"kind": "text",
 								"text": userInput,
 							},
@@ -337,7 +337,7 @@ func getUserInput() (string, error) {
 func extractTextFromMessage(message *adk.Message) string {
 	var textContent string
 	for _, part := range message.Parts {
-		if partMap, ok := part.(map[string]interface{}); ok {
+		if partMap, ok := part.(map[string]any); ok {
 			if text, exists := partMap["text"]; exists {
 				if textStr, ok := text.(string); ok {
 					textContent += textStr
@@ -355,7 +355,7 @@ func displayMessage(message *adk.Message) {
 	}
 
 	for _, part := range message.Parts {
-		if partMap, ok := part.(map[string]interface{}); ok {
+		if partMap, ok := part.(map[string]any); ok {
 			if textContent, exists := partMap["text"]; exists {
 				if textStr, ok := textContent.(string); ok {
 					fmt.Println(textStr)

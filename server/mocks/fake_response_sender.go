@@ -9,30 +9,30 @@ import (
 )
 
 type FakeResponseSender struct {
-	SendErrorStub        func(*gin.Context, interface{}, int, string)
+	SendErrorStub        func(*gin.Context, any, int, string)
 	sendErrorMutex       sync.RWMutex
 	sendErrorArgsForCall []struct {
 		arg1 *gin.Context
-		arg2 interface{}
+		arg2 any
 		arg3 int
 		arg4 string
 	}
-	SendSuccessStub        func(*gin.Context, interface{}, interface{})
+	SendSuccessStub        func(*gin.Context, any, any)
 	sendSuccessMutex       sync.RWMutex
 	sendSuccessArgsForCall []struct {
 		arg1 *gin.Context
-		arg2 interface{}
-		arg3 interface{}
+		arg2 any
+		arg3 any
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeResponseSender) SendError(arg1 *gin.Context, arg2 interface{}, arg3 int, arg4 string) {
+func (fake *FakeResponseSender) SendError(arg1 *gin.Context, arg2 any, arg3 int, arg4 string) {
 	fake.sendErrorMutex.Lock()
 	fake.sendErrorArgsForCall = append(fake.sendErrorArgsForCall, struct {
 		arg1 *gin.Context
-		arg2 interface{}
+		arg2 any
 		arg3 int
 		arg4 string
 	}{arg1, arg2, arg3, arg4})
@@ -50,25 +50,25 @@ func (fake *FakeResponseSender) SendErrorCallCount() int {
 	return len(fake.sendErrorArgsForCall)
 }
 
-func (fake *FakeResponseSender) SendErrorCalls(stub func(*gin.Context, interface{}, int, string)) {
+func (fake *FakeResponseSender) SendErrorCalls(stub func(*gin.Context, any, int, string)) {
 	fake.sendErrorMutex.Lock()
 	defer fake.sendErrorMutex.Unlock()
 	fake.SendErrorStub = stub
 }
 
-func (fake *FakeResponseSender) SendErrorArgsForCall(i int) (*gin.Context, interface{}, int, string) {
+func (fake *FakeResponseSender) SendErrorArgsForCall(i int) (*gin.Context, any, int, string) {
 	fake.sendErrorMutex.RLock()
 	defer fake.sendErrorMutex.RUnlock()
 	argsForCall := fake.sendErrorArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *FakeResponseSender) SendSuccess(arg1 *gin.Context, arg2 interface{}, arg3 interface{}) {
+func (fake *FakeResponseSender) SendSuccess(arg1 *gin.Context, arg2 any, arg3 any) {
 	fake.sendSuccessMutex.Lock()
 	fake.sendSuccessArgsForCall = append(fake.sendSuccessArgsForCall, struct {
 		arg1 *gin.Context
-		arg2 interface{}
-		arg3 interface{}
+		arg2 any
+		arg3 any
 	}{arg1, arg2, arg3})
 	stub := fake.SendSuccessStub
 	fake.recordInvocation("SendSuccess", []interface{}{arg1, arg2, arg3})
@@ -84,13 +84,13 @@ func (fake *FakeResponseSender) SendSuccessCallCount() int {
 	return len(fake.sendSuccessArgsForCall)
 }
 
-func (fake *FakeResponseSender) SendSuccessCalls(stub func(*gin.Context, interface{}, interface{})) {
+func (fake *FakeResponseSender) SendSuccessCalls(stub func(*gin.Context, any, any)) {
 	fake.sendSuccessMutex.Lock()
 	defer fake.sendSuccessMutex.Unlock()
 	fake.SendSuccessStub = stub
 }
 
-func (fake *FakeResponseSender) SendSuccessArgsForCall(i int) (*gin.Context, interface{}, interface{}) {
+func (fake *FakeResponseSender) SendSuccessArgsForCall(i int) (*gin.Context, any, any) {
 	fake.sendSuccessMutex.RLock()
 	defer fake.sendSuccessMutex.RUnlock()
 	argsForCall := fake.sendSuccessArgsForCall[i]

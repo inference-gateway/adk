@@ -30,7 +30,7 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 						MessageID: "test-msg",
 						Role:      "user",
 						Parts: []types.Part{
-							map[string]interface{}{
+							map[string]any{
 								"kind": "text",
 								"text": "Hello from task",
 							},
@@ -128,7 +128,7 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Test message",
 					},
@@ -197,7 +197,7 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Test streaming message",
 					},
@@ -231,7 +231,7 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 			MessageID: "input-req-123",
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "I need more information from you to continue.",
 				},
@@ -248,7 +248,7 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 		MessageID: "stream-input-req-123",
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "I need more information from you to continue.",
 			},

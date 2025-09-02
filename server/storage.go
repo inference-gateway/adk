@@ -12,14 +12,14 @@ import (
 // QueuedTask represents a task in the processing queue
 type QueuedTask struct {
 	Task      *types.Task
-	RequestID interface{}
+	RequestID any
 }
 
 // Storage defines the interface for queue-centric task management
 // Tasks carry their complete message history and flow through: Queue -> Processing -> Dead Letter
 type Storage interface {
 	// Task Queue Management (primary storage for active tasks)
-	EnqueueTask(task *types.Task, requestID interface{}) error
+	EnqueueTask(task *types.Task, requestID any) error
 	DequeueTask(ctx context.Context) (*QueuedTask, error)
 	GetQueueLength() int
 	ClearQueue() error
@@ -729,7 +729,7 @@ func (s *InMemoryStorage) GetStats() StorageStats {
 }
 
 // EnqueueTask adds a task to the processing queue
-func (s *InMemoryStorage) EnqueueTask(task *types.Task, requestID interface{}) error {
+func (s *InMemoryStorage) EnqueueTask(task *types.Task, requestID any) error {
 	if task == nil {
 		return fmt.Errorf("task cannot be nil")
 	}

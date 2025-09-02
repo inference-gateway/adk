@@ -158,7 +158,7 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 		additionalMessages = append(additionalMessages, *assistantA2A)
 
 		for _, toolCall := range *assistantMessage.ToolCalls {
-			var args map[string]interface{}
+			var args map[string]any
 			var result string
 			var toolErr error
 
@@ -171,7 +171,7 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 						MessageID: fmt.Sprintf("tool-error-%s", toolCall.Id),
 						Role:      "tool",
 						Parts: []types.Part{
-							map[string]interface{}{
+							map[string]any{
 								"kind": "text",
 								"text": fmt.Sprintf("Error parsing tool arguments: %s", err.Error()),
 							},
@@ -191,7 +191,7 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 						MessageID: fmt.Sprintf("input-required-%s", toolCall.Id),
 						Role:      "assistant",
 						Parts: []types.Part{
-							map[string]interface{}{
+							map[string]any{
 								"kind": "text",
 								"text": inputMessage,
 							},
@@ -218,9 +218,9 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 				MessageID: fmt.Sprintf("tool-%s-%d", toolCall.Function.Name, time.Now().UnixNano()),
 				Role:      "tool",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "data",
-						"data": map[string]interface{}{
+						"data": map[string]any{
 							"tool_call_id": toolCall.Id,
 							"tool_name":    toolCall.Function.Name,
 							"result":       result,
@@ -352,7 +352,7 @@ func (a *OpenAICompatibleAgentImpl) processStreamIteration(
 					MessageID: fmt.Sprintf("chunk-%d-%d", iteration, len(fullContent)),
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": choice.Delta.Content,
 						},
@@ -395,7 +395,7 @@ func (a *OpenAICompatibleAgentImpl) processStreamIteration(
 				}
 
 				if fullContent != "" {
-					assistantMessage.Parts = append(assistantMessage.Parts, map[string]interface{}{
+					assistantMessage.Parts = append(assistantMessage.Parts, map[string]any{
 						"kind": "text",
 						"text": fullContent,
 					})
@@ -407,9 +407,9 @@ func (a *OpenAICompatibleAgentImpl) processStreamIteration(
 						toolCalls = append(toolCalls, *toolCall)
 					}
 
-					assistantMessage.Parts = append(assistantMessage.Parts, map[string]interface{}{
+					assistantMessage.Parts = append(assistantMessage.Parts, map[string]any{
 						"kind": "data",
-						"data": map[string]interface{}{
+						"data": map[string]any{
 							"tool_calls": toolCalls,
 						},
 					})
@@ -450,9 +450,9 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			MessageID: fmt.Sprintf("tool-start-%s", toolCall.Id),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "data",
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"tool_name": toolCall.Function.Name,
 						"status":    "started",
 					},
@@ -466,7 +466,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			return toolResultMessages
 		}
 
-		var args map[string]interface{}
+		var args map[string]any
 		var result string
 		var toolErr error
 
@@ -480,9 +480,9 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 				MessageID: fmt.Sprintf("tool-failed-%s", toolCall.Id),
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "data",
-						"data": map[string]interface{}{
+						"data": map[string]any{
 							"tool_name": toolCall.Function.Name,
 							"status":    "failed",
 						},
@@ -509,9 +509,9 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 					MessageID: fmt.Sprintf("tool-completed-%s", toolCall.Id),
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "data",
-							"data": map[string]interface{}{
+							"data": map[string]any{
 								"tool_name": toolCall.Function.Name,
 								"status":    "completed",
 							},
@@ -531,9 +531,9 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 					MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
 					Role:      "tool",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "data",
-							"data": map[string]interface{}{
+							"data": map[string]any{
 								"tool_call_id": toolCall.Id,
 								"result":       result,
 								"error":        toolErr != nil,
@@ -557,7 +557,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 					MessageID: fmt.Sprintf("input-required-%s", toolCall.Id),
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": inputMessage,
 						},
@@ -584,9 +584,9 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 					MessageID: fmt.Sprintf("tool-failed-%s", toolCall.Id),
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "data",
-							"data": map[string]interface{}{
+							"data": map[string]any{
 								"tool_name": toolCall.Function.Name,
 								"status":    "failed",
 							},
@@ -604,9 +604,9 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 					MessageID: fmt.Sprintf("tool-completed-%s", toolCall.Id),
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "data",
-							"data": map[string]interface{}{
+							"data": map[string]any{
 								"tool_name": toolCall.Function.Name,
 								"status":    "completed",
 							},
@@ -627,9 +627,9 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			MessageID: fmt.Sprintf("tool-result-%s", toolCall.Id),
 			Role:      "tool",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "data",
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"tool_call_id": toolCall.Id,
 						"result":       result,
 						"error":        toolErr != nil,

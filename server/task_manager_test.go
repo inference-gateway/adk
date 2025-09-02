@@ -28,7 +28,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 				MessageID: "msg-1",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Test message",
 					},
@@ -44,7 +44,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 				MessageID: "msg-2",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Processing...",
 					},
@@ -60,7 +60,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 				MessageID: "msg-3",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Task completed",
 					},
@@ -76,7 +76,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 				MessageID: "msg-4",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Task failed",
 					},
@@ -133,7 +133,7 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 		MessageID: "test-msg",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Test message",
 			},
@@ -267,7 +267,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Hello, what's the weather like?",
 			},
@@ -285,7 +285,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		MessageID: "msg-response-1",
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "It's sunny today with a temperature of 72°F.",
 			},
@@ -308,7 +308,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "What about tomorrow?",
 			},
@@ -330,7 +330,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		MessageID: "msg-response-2",
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Tomorrow will be partly cloudy with a high of 68°F.",
 			},
@@ -355,7 +355,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Should I bring an umbrella?",
 			},
@@ -382,7 +382,7 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Message for context 1",
 			},
@@ -394,7 +394,7 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Message for context 2",
 			},
@@ -415,7 +415,7 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 		MessageID: "response-1",
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Response to context 1",
 			},
@@ -438,7 +438,7 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Follow-up for context 1",
 			},
@@ -455,7 +455,7 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 		MessageID: "msg-4",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Follow-up for context 2",
 			},
@@ -491,7 +491,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Test message",
 			},
@@ -505,7 +505,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 		MessageID: "response-1",
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Test response",
 			},
@@ -524,7 +524,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	assert.Equal(t, *response, history[1])
 
 	history[0].Parts = []types.Part{
-		map[string]interface{}{
+		map[string]any{
 			"kind": "text",
 			"text": "Modified message",
 		},
@@ -532,7 +532,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 
 	freshHistory := taskManager.GetConversationHistory(contextID)
 	assert.Len(t, freshHistory, 2)
-	assert.Equal(t, "Test message", freshHistory[0].Parts[0].(map[string]interface{})["text"])
+	assert.Equal(t, "Test message", freshHistory[0].Parts[0].(map[string]any)["text"])
 }
 
 func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
@@ -547,7 +547,7 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 			MessageID: "msg-1",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "First message",
 				},
@@ -558,7 +558,7 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 			MessageID: "msg-2",
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "First response",
 				},
@@ -574,14 +574,14 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 	assert.Equal(t, messages[1], history[1])
 
 	messages[0].Parts = []types.Part{
-		map[string]interface{}{
+		map[string]any{
 			"kind": "text",
 			"text": "Modified message",
 		},
 	}
 
 	freshHistory := taskManager.GetConversationHistory(contextID)
-	assert.Equal(t, "First message", freshHistory[0].Parts[0].(map[string]interface{})["text"])
+	assert.Equal(t, "First message", freshHistory[0].Parts[0].(map[string]any)["text"])
 }
 
 func TestDefaultTaskManager_TaskRetention(t *testing.T) {
@@ -595,7 +595,7 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 			Kind:      "message",
 			MessageID: fmt.Sprintf("completed-msg-%d", i),
 			Role:      "user",
-			Parts:     []types.Part{map[string]interface{}{"kind": "text", "text": fmt.Sprintf("Completed message %d", i)}},
+			Parts:     []types.Part{map[string]any{"kind": "text", "text": fmt.Sprintf("Completed message %d", i)}},
 		}
 		task := taskManager.CreateTask(contextID, types.TaskStateCompleted, message)
 		assert.NotNil(t, task)
@@ -606,7 +606,7 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 			Kind:      "message",
 			MessageID: fmt.Sprintf("failed-msg-%d", i),
 			Role:      "user",
-			Parts:     []types.Part{map[string]interface{}{"kind": "text", "text": fmt.Sprintf("Failed message %d", i)}},
+			Parts:     []types.Part{map[string]any{"kind": "text", "text": fmt.Sprintf("Failed message %d", i)}},
 		}
 		task := taskManager.CreateTask(contextID, types.TaskStateFailed, message)
 		assert.NotNil(t, task)
@@ -656,7 +656,7 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "First message",
 			},
@@ -673,7 +673,7 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Second message",
 			},
@@ -686,7 +686,7 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Third message",
 			},
@@ -772,7 +772,7 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 				MessageID: "test-msg",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Test message",
 					},
@@ -812,7 +812,7 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 			MessageID: "initial-msg",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Initial message",
 				},
@@ -827,7 +827,7 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 			MessageID: "pause-msg",
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Please provide more information",
 				},
@@ -886,7 +886,7 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 			MessageID: "resume-msg",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Here is the additional information",
 				},
@@ -1001,7 +1001,7 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 		MessageID: "initial-msg",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Process this request",
 			},
@@ -1017,7 +1017,7 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 		MessageID: "pause-msg",
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "I need more information. What is your preference?",
 			},
@@ -1046,7 +1046,7 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 		MessageID: "resume-msg",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "I prefer option A",
 			},

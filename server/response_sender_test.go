@@ -13,18 +13,18 @@ import (
 func TestDefaultResponseSender_SendSuccess(t *testing.T) {
 	tests := []struct {
 		name   string
-		id     interface{}
-		result interface{}
+		id     any
+		result any
 	}{
 		{
 			name:   "send success with string id",
 			id:     "test-id-string",
-			result: map[string]interface{}{"status": "success", "data": "test data"},
+			result: map[string]any{"status": "success", "data": "test data"},
 		},
 		{
 			name:   "send success with int id",
 			id:     123,
-			result: map[string]interface{}{"message": "operation completed"},
+			result: map[string]any{"message": "operation completed"},
 		},
 		{
 			name:   "send success with nil id",
@@ -34,8 +34,8 @@ func TestDefaultResponseSender_SendSuccess(t *testing.T) {
 		{
 			name: "send success with complex result",
 			id:   "complex-id",
-			result: map[string]interface{}{
-				"user": map[string]interface{}{
+			result: map[string]any{
+				"user": map[string]any{
 					"name":  "John Doe",
 					"email": "john@example.com",
 				},
@@ -67,7 +67,7 @@ func TestDefaultResponseSender_SendSuccess(t *testing.T) {
 func TestDefaultResponseSender_SendError(t *testing.T) {
 	tests := []struct {
 		name    string
-		id      interface{}
+		id      any
 		code    int
 		message string
 	}{

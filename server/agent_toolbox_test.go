@@ -26,7 +26,7 @@ func TestNewDefaultToolBox_IncludesInputRequiredTool(t *testing.T) {
 		t.Error("Expected 'input_required' to be in tool names list")
 	}
 
-	result, err := toolBox.ExecuteTool(context.Background(), "input_required", map[string]interface{}{
+	result, err := toolBox.ExecuteTool(context.Background(), "input_required", map[string]any{
 		"message": "Please provide more details about your request",
 	})
 	if err != nil {
@@ -94,11 +94,11 @@ func TestNewToolBox_CreatesEmptyToolBox(t *testing.T) {
 	testTool := NewBasicTool(
 		"test_tool",
 		"A test tool",
-		map[string]interface{}{
+		map[string]any{
 			"type":       "object",
-			"properties": map[string]interface{}{},
+			"properties": map[string]any{},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			return "test result", nil
 		},
 	)

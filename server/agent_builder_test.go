@@ -32,7 +32,7 @@ func TestAgentBuilder_Build_WithDefaults(t *testing.T) {
 	message := &types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Hello",
 			},
@@ -345,17 +345,17 @@ func TestAgentBuilder_WithCompleteConfiguration(t *testing.T) {
 	testTool := server.NewBasicTool(
 		"test_tool",
 		"A test tool for demonstration",
-		map[string]interface{}{
+		map[string]any{
 			"type": "object",
-			"properties": map[string]interface{}{
-				"input": map[string]interface{}{
+			"properties": map[string]any{
+				"input": map[string]any{
 					"type":        "string",
 					"description": "Test input parameter",
 				},
 			},
 			"required": []string{"input"},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			return "test result", nil
 		},
 	)

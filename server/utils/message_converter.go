@@ -85,7 +85,7 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg types.Message) (sdk
 						zap.String("message_id", msg.MessageID))
 				}
 			}
-		} else if partMap, ok := part.(map[string]interface{}); ok {
+		} else if partMap, ok := part.(map[string]any); ok {
 			c.logger.Debug("using fallback map processing for message part",
 				zap.String("message_id", msg.MessageID))
 
@@ -103,7 +103,7 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg types.Message) (sdk
 				}
 			case "data":
 				if data, exists := partMap["data"]; exists {
-					if dataMap, ok := data.(map[string]interface{}); ok {
+					if dataMap, ok := data.(map[string]any); ok {
 						if err := c.processDataPart(dataMap, role, &content, &toolCallId, &toolCalls); err != nil {
 							c.logger.Warn("failed to process map data part",
 								zap.String("message_id", msg.MessageID),
@@ -139,7 +139,7 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg types.Message) (sdk
 
 // processDataPart handles the extraction of data from data parts for both typed and map formats
 func (c *OptimizedMessageConverter) processDataPart(
-	data map[string]interface{},
+	data map[string]any,
 	role string,
 	content *string,
 	toolCallId **string,
@@ -205,10 +205,10 @@ func (c *OptimizedMessageConverter) processDataPart(
 
 // extractSingleToolCall extracts a single tool call from data part
 func (c *OptimizedMessageConverter) extractSingleToolCall(
-	toolCallData interface{},
+	toolCallData any,
 	toolCalls **[]sdk.ChatCompletionMessageToolCall,
 ) error {
-	if toolCallMap, ok := toolCallData.(map[string]interface{}); ok {
+	if toolCallMap, ok := toolCallData.(map[string]any); ok {
 		toolCall, err := c.mapToToolCall(toolCallMap)
 		if err != nil {
 			return err
@@ -234,7 +234,7 @@ func (c *OptimizedMessageConverter) extractSingleToolCall(
 
 // extractToolCallsArray extracts tool calls from an array in data part
 func (c *OptimizedMessageConverter) extractToolCallsArray(
-	toolCallsData interface{},
+	toolCallsData any,
 	toolCalls **[]sdk.ChatCompletionMessageToolCall,
 ) error {
 	if toolCallsSlice, ok := toolCallsData.([]sdk.ChatCompletionMessageToolCall); ok {
@@ -242,10 +242,10 @@ func (c *OptimizedMessageConverter) extractToolCallsArray(
 		return nil
 	}
 
-	if toolCallsInterface, ok := toolCallsData.([]interface{}); ok {
+	if toolCallsInterface, ok := toolCallsData.([]any); ok {
 		var extractedToolCalls []sdk.ChatCompletionMessageToolCall
 		for _, item := range toolCallsInterface {
-			if toolCallMap, ok := item.(map[string]interface{}); ok {
+			if toolCallMap, ok := item.(map[string]any); ok {
 				toolCall, err := c.mapToToolCall(toolCallMap)
 				if err != nil {
 					return err
@@ -263,7 +263,7 @@ func (c *OptimizedMessageConverter) extractToolCallsArray(
 }
 
 // mapToToolCall converts a map to sdk.ChatCompletionMessageToolCall
-func (c *OptimizedMessageConverter) mapToToolCall(toolCallMap map[string]interface{}) (sdk.ChatCompletionMessageToolCall, error) {
+func (c *OptimizedMessageConverter) mapToToolCall(toolCallMap map[string]any) (sdk.ChatCompletionMessageToolCall, error) {
 	var toolCall sdk.ChatCompletionMessageToolCall
 
 	if id, exists := toolCallMap["id"]; exists {
@@ -279,7 +279,7 @@ func (c *OptimizedMessageConverter) mapToToolCall(toolCallMap map[string]interfa
 	}
 
 	if function, exists := toolCallMap["function"]; exists {
-		if functionMap, ok := function.(map[string]interface{}); ok {
+		if functionMap, ok := function.(map[string]any); ok {
 			if name, exists := functionMap["name"]; exists {
 				if nameStr, ok := name.(string); ok {
 					toolCall.Function.Name = nameStr
@@ -311,7 +311,7 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 
 	switch role {
 	case "tool":
-		toolData := map[string]interface{}{
+		toolData := map[string]any{
 			"result": response.Content,
 		}
 
@@ -325,7 +325,7 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 			toolData["tool_name"] = ""
 		}
 
-		message.Parts = append(message.Parts, map[string]interface{}{
+		message.Parts = append(message.Parts, map[string]any{
 			"kind": string(types.MessagePartKindData),
 			"data": toolData,
 		})
@@ -334,29 +334,29 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 		hasToolCalls := response.ToolCalls != nil && len(*response.ToolCalls) > 0
 
 		if response.Content != "" {
-			message.Parts = append(message.Parts, map[string]interface{}{
+			message.Parts = append(message.Parts, map[string]any{
 				"kind": string(types.MessagePartKindText),
 				"text": response.Content,
 			})
 		}
 
 		if hasToolCalls {
-			toolCallData := map[string]interface{}{
+			toolCallData := map[string]any{
 				"tool_calls": *response.ToolCalls,
 			}
-			message.Parts = append(message.Parts, map[string]interface{}{
+			message.Parts = append(message.Parts, map[string]any{
 				"kind": string(types.MessagePartKindData),
 				"data": toolCallData,
 			})
 		}
 
 		if response.ReasoningContent != nil && *response.ReasoningContent != "" {
-			message.Parts = append(message.Parts, map[string]interface{}{
+			message.Parts = append(message.Parts, map[string]any{
 				"kind": string(types.MessagePartKindText),
 				"text": *response.ReasoningContent,
 			})
 		} else if response.Reasoning != nil && *response.Reasoning != "" {
-			message.Parts = append(message.Parts, map[string]interface{}{
+			message.Parts = append(message.Parts, map[string]any{
 				"kind": string(types.MessagePartKindText),
 				"text": *response.Reasoning,
 			})
@@ -364,7 +364,7 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 
 	default:
 		if response.Content != "" {
-			message.Parts = append(message.Parts, map[string]interface{}{
+			message.Parts = append(message.Parts, map[string]any{
 				"kind": string(types.MessagePartKindText),
 				"text": response.Content,
 			})
@@ -372,7 +372,7 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 	}
 
 	if len(message.Parts) == 0 {
-		message.Parts = append(message.Parts, map[string]interface{}{
+		message.Parts = append(message.Parts, map[string]any{
 			"kind": string(types.MessagePartKindText),
 			"text": "",
 		})
@@ -415,7 +415,7 @@ func (c *OptimizedMessageConverter) ValidateMessagePart(part types.Part) error {
 		return nil
 	}
 
-	if partMap, ok := part.(map[string]interface{}); ok {
+	if partMap, ok := part.(map[string]any); ok {
 		kind, hasKind := partMap["kind"]
 		if !hasKind {
 			return fmt.Errorf("message part missing kind field")

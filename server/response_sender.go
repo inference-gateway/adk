@@ -9,10 +9,10 @@ import (
 // ResponseSender defines how to send JSON-RPC responses
 type ResponseSender interface {
 	// SendSuccess sends a JSON-RPC success response
-	SendSuccess(c *gin.Context, id interface{}, result interface{})
+	SendSuccess(c *gin.Context, id any, result any)
 
 	// SendError sends a JSON-RPC error response
-	SendError(c *gin.Context, id interface{}, code int, message string)
+	SendError(c *gin.Context, id any, code int, message string)
 }
 
 // DefaultResponseSender implements the ResponseSender interface
@@ -28,7 +28,7 @@ func NewDefaultResponseSender(logger *zap.Logger) *DefaultResponseSender {
 }
 
 // SendSuccess sends a JSON-RPC success response
-func (rs *DefaultResponseSender) SendSuccess(c *gin.Context, id interface{}, result interface{}) {
+func (rs *DefaultResponseSender) SendSuccess(c *gin.Context, id any, result any) {
 	resp := adk.JSONRPCSuccessResponse{
 		JSONRPC: "2.0",
 		ID:      id,
@@ -39,7 +39,7 @@ func (rs *DefaultResponseSender) SendSuccess(c *gin.Context, id interface{}, res
 }
 
 // SendError sends a JSON-RPC error response
-func (rs *DefaultResponseSender) SendError(c *gin.Context, id interface{}, code int, message string) {
+func (rs *DefaultResponseSender) SendError(c *gin.Context, id any, code int, message string) {
 	resp := adk.JSONRPCErrorResponse{
 		JSONRPC: "2.0",
 		ID:      id,

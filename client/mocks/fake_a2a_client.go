@@ -115,12 +115,12 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
-	SendTaskStreamingStub        func(context.Context, types.MessageSendParams, chan<- interface{}) error
+	SendTaskStreamingStub        func(context.Context, types.MessageSendParams, chan<- any) error
 	sendTaskStreamingMutex       sync.RWMutex
 	sendTaskStreamingArgsForCall []struct {
 		arg1 context.Context
 		arg2 types.MessageSendParams
-		arg3 chan<- interface{}
+		arg3 chan<- any
 	}
 	sendTaskStreamingReturns struct {
 		result1 error
@@ -641,13 +641,13 @@ func (fake *FakeA2AClient) SendTaskReturnsOnCall(i int, result1 *types.JSONRPCSu
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) SendTaskStreaming(arg1 context.Context, arg2 types.MessageSendParams, arg3 chan<- interface{}) error {
+func (fake *FakeA2AClient) SendTaskStreaming(arg1 context.Context, arg2 types.MessageSendParams, arg3 chan<- any) error {
 	fake.sendTaskStreamingMutex.Lock()
 	ret, specificReturn := fake.sendTaskStreamingReturnsOnCall[len(fake.sendTaskStreamingArgsForCall)]
 	fake.sendTaskStreamingArgsForCall = append(fake.sendTaskStreamingArgsForCall, struct {
 		arg1 context.Context
 		arg2 types.MessageSendParams
-		arg3 chan<- interface{}
+		arg3 chan<- any
 	}{arg1, arg2, arg3})
 	stub := fake.SendTaskStreamingStub
 	fakeReturns := fake.sendTaskStreamingReturns
@@ -668,13 +668,13 @@ func (fake *FakeA2AClient) SendTaskStreamingCallCount() int {
 	return len(fake.sendTaskStreamingArgsForCall)
 }
 
-func (fake *FakeA2AClient) SendTaskStreamingCalls(stub func(context.Context, types.MessageSendParams, chan<- interface{}) error) {
+func (fake *FakeA2AClient) SendTaskStreamingCalls(stub func(context.Context, types.MessageSendParams, chan<- any) error) {
 	fake.sendTaskStreamingMutex.Lock()
 	defer fake.sendTaskStreamingMutex.Unlock()
 	fake.SendTaskStreamingStub = stub
 }
 
-func (fake *FakeA2AClient) SendTaskStreamingArgsForCall(i int) (context.Context, types.MessageSendParams, chan<- interface{}) {
+func (fake *FakeA2AClient) SendTaskStreamingArgsForCall(i int) (context.Context, types.MessageSendParams, chan<- any) {
 	fake.sendTaskStreamingMutex.RLock()
 	defer fake.sendTaskStreamingMutex.RUnlock()
 	argsForCall := fake.sendTaskStreamingArgsForCall[i]

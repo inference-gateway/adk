@@ -56,17 +56,17 @@ func main() {
 	weatherTool := server.NewBasicTool(
 		"get_weather",
 		"Get current weather information for a location",
-		map[string]interface{}{
+		map[string]any{
 			"type": "object",
-			"properties": map[string]interface{}{
-				"location": map[string]interface{}{
+			"properties": map[string]any{
+				"location": map[string]any{
 					"type":        "string",
 					"description": "The city name",
 				},
 			},
 			"required": []string{"location"},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			location := args["location"].(string)
 			return fmt.Sprintf(`{"location": "%s", "temperature": "22°C", "condition": "sunny", "humidity": "65%%"}`, location), nil
 		},
@@ -76,11 +76,11 @@ func main() {
 	timeTool := server.NewBasicTool(
 		"get_current_time",
 		"Get the current date and time",
-		map[string]interface{}{
+		map[string]any{
 			"type":       "object",
-			"properties": map[string]interface{}{},
+			"properties": map[string]any{},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			now := time.Now()
 			return fmt.Sprintf(`{"current_time": "%s", "timezone": "%s"}`,
 				now.Format("2006-01-02 15:04:05"), now.Location()), nil
@@ -220,7 +220,7 @@ func (p *PausableTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 		if lastMessage.Kind == "input_required" {
 			inputMessage := "Please provide more information to continue."
 			if len(lastMessage.Parts) > 0 {
-				if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
+				if textPart, ok := lastMessage.Parts[0].(map[string]any); ok {
 					if text, exists := textPart["text"].(string); exists && text != "" {
 						inputMessage = text
 					}
@@ -261,7 +261,7 @@ func (p *PausableTaskHandler) handleWithoutAgent(ctx context.Context, task *type
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "I received your message. I'm a pausable task handler but no AI agent is configured. To enable AI responses with pausable capabilities, configure an OpenAI-compatible agent.",
 			},
@@ -290,7 +290,7 @@ func (p *PausableTaskHandler) pauseTaskForInput(task *types.Task, inputMessage s
 		MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": inputMessage,
 			},

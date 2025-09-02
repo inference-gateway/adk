@@ -23,7 +23,7 @@ type A2AClient interface {
 
 	// Task operations
 	SendTask(ctx context.Context, params types.MessageSendParams) (*types.JSONRPCSuccessResponse, error)
-	SendTaskStreaming(ctx context.Context, params types.MessageSendParams, eventChan chan<- interface{}) error
+	SendTaskStreaming(ctx context.Context, params types.MessageSendParams, eventChan chan<- any) error
 	GetTask(ctx context.Context, params types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error)
 	ListTasks(ctx context.Context, params types.TaskListParams) (*types.JSONRPCSuccessResponse, error)
 	CancelTask(ctx context.Context, params types.TaskIdParams) (*types.JSONRPCSuccessResponse, error)
@@ -128,7 +128,7 @@ func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		Method:  "message/send",
-		Params:  make(map[string]interface{}),
+		Params:  make(map[string]any),
 	}
 
 	paramsBytes, err := json.Marshal(params)
@@ -137,7 +137,7 @@ func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (
 		return nil, fmt.Errorf("failed to marshal params: %w", err)
 	}
 
-	var paramsMap map[string]interface{}
+	var paramsMap map[string]any
 	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
 		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
 		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
@@ -155,7 +155,7 @@ func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (
 }
 
 // SendTaskStreaming sends a task and streams the response (primary interface following official A2A pattern)
-func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSendParams, eventChan chan<- interface{}) error {
+func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSendParams, eventChan chan<- any) error {
 	c.logger.Debug("starting task streaming",
 		zap.String("method", "message/stream"),
 		zap.String("message_id", params.Message.MessageID),
@@ -164,7 +164,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		Method:  "message/stream",
-		Params:  make(map[string]interface{}),
+		Params:  make(map[string]any),
 	}
 
 	paramsBytes, err := json.Marshal(params)
@@ -173,7 +173,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 		return fmt.Errorf("failed to marshal params: %w", err)
 	}
 
-	var paramsMap map[string]interface{}
+	var paramsMap map[string]any
 	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
 		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
 		return fmt.Errorf("failed to unmarshal params to map: %w", err)
@@ -272,7 +272,7 @@ func (c *Client) GetTask(ctx context.Context, params types.TaskQueryParams) (*ty
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		Method:  "tasks/get",
-		Params:  make(map[string]interface{}),
+		Params:  make(map[string]any),
 	}
 
 	paramsBytes, err := json.Marshal(params)
@@ -281,7 +281,7 @@ func (c *Client) GetTask(ctx context.Context, params types.TaskQueryParams) (*ty
 		return nil, fmt.Errorf("failed to marshal params: %w", err)
 	}
 
-	var paramsMap map[string]interface{}
+	var paramsMap map[string]any
 	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
 		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
 		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
@@ -305,7 +305,7 @@ func (c *Client) CancelTask(ctx context.Context, params types.TaskIdParams) (*ty
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		Method:  "tasks/cancel",
-		Params:  make(map[string]interface{}),
+		Params:  make(map[string]any),
 	}
 
 	paramsBytes, err := json.Marshal(params)
@@ -314,7 +314,7 @@ func (c *Client) CancelTask(ctx context.Context, params types.TaskIdParams) (*ty
 		return nil, fmt.Errorf("failed to marshal params: %w", err)
 	}
 
-	var paramsMap map[string]interface{}
+	var paramsMap map[string]any
 	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
 		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
 		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
@@ -338,7 +338,7 @@ func (c *Client) ListTasks(ctx context.Context, params types.TaskListParams) (*t
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		Method:  "tasks/list",
-		Params:  make(map[string]interface{}),
+		Params:  make(map[string]any),
 	}
 
 	paramsBytes, err := json.Marshal(params)
@@ -347,7 +347,7 @@ func (c *Client) ListTasks(ctx context.Context, params types.TaskListParams) (*t
 		return nil, fmt.Errorf("failed to marshal params: %w", err)
 	}
 
-	var paramsMap map[string]interface{}
+	var paramsMap map[string]any
 	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
 		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
 		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
@@ -553,7 +553,7 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 
 	var rawResp struct {
 		JSONRPC string              `json:"jsonrpc"`
-		ID      interface{}         `json:"id,omitempty"`
+		ID      any                 `json:"id,omitempty"`
 		Result  json.RawMessage     `json:"result,omitempty"`
 		Error   *types.JSONRPCError `json:"error,omitempty"`
 	}

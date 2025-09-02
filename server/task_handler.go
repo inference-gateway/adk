@@ -96,7 +96,7 @@ func (th *DefaultTaskHandler) processWithAgentBackground(ctx context.Context, ta
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": errorText,
 				},
@@ -129,7 +129,7 @@ func (th *DefaultTaskHandler) processWithoutAgentBackground(ctx context.Context,
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "I received your message. I'm a basic task handler without AI capabilities. To enable AI responses, configure an OpenAI-compatible agent.",
 			},
@@ -211,7 +211,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": errorText,
 				},
@@ -225,7 +225,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		if lastMessage.Kind == "input_required" {
 			inputMessage := "Please provide more information to continue."
 			if len(lastMessage.Parts) > 0 {
-				if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
+				if textPart, ok := lastMessage.Parts[0].(map[string]any); ok {
 					if text, exists := textPart["text"].(string); exists && text != "" {
 						inputMessage = text
 					}
@@ -259,7 +259,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "I received your message. I'm a default polling task handler without AI capabilities. To enable AI responses with automatic input-required pausing, configure an OpenAI-compatible agent.",
 			},
@@ -287,7 +287,7 @@ func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inp
 		MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": inputMessage,
 			},
@@ -378,7 +378,7 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 			MessageID: fmt.Sprintf("stream-error-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": errorText,
 				},
@@ -402,7 +402,7 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 	if lastMessage != nil && lastMessage.Kind == "input_required" {
 		inputMessage := "Please provide more information to continue streaming."
 		if len(lastMessage.Parts) > 0 {
-			if textPart, ok := lastMessage.Parts[0].(map[string]interface{}); ok {
+			if textPart, ok := lastMessage.Parts[0].(map[string]any); ok {
 				if text, exists := textPart["text"].(string); exists && text != "" {
 					inputMessage = text
 				}
@@ -433,7 +433,7 @@ func (sth *DefaultStreamingTaskHandler) processWithoutAgentBackground(ctx contex
 		MessageID: fmt.Sprintf("stream-response-%s", task.ID),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "I received your message in streaming context. I'm a default streaming task handler without AI capabilities. To enable AI responses with automatic streaming input-required pausing, configure an OpenAI-compatible agent.",
 			},
@@ -461,7 +461,7 @@ func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.T
 		MessageID: fmt.Sprintf("stream-input-request-%d", time.Now().Unix()),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": inputMessage,
 			},

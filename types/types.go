@@ -33,11 +33,11 @@ func (k MessagePartKind) IsValid() bool {
 
 // OptimizedMessagePart provides strongly-typed message parts
 type OptimizedMessagePart struct {
-	Kind     MessagePartKind        `json:"kind"`
-	Text     *string                `json:"text,omitempty"`
-	File     *FileData              `json:"file,omitempty"`
-	Data     map[string]interface{} `json:"data,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Kind     MessagePartKind `json:"kind"`
+	Text     *string         `json:"text,omitempty"`
+	File     *FileData       `json:"file,omitempty"`
+	Data     map[string]any  `json:"data,omitempty"`
+	Metadata map[string]any  `json:"metadata,omitempty"`
 }
 
 // FileData represents file information with proper typing

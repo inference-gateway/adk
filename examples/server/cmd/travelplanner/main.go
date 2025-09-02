@@ -148,21 +148,21 @@ func createTravelPlanningToolBox() server.ToolBox {
 	weatherTool := server.NewBasicTool(
 		"get_destination_weather",
 		"Get current weather information and seasonal climate data for a travel destination",
-		map[string]interface{}{
+		map[string]any{
 			"type": "object",
-			"properties": map[string]interface{}{
-				"destination": map[string]interface{}{
+			"properties": map[string]any{
+				"destination": map[string]any{
 					"type":        "string",
 					"description": "The destination city or location",
 				},
-				"travel_dates": map[string]interface{}{
+				"travel_dates": map[string]any{
 					"type":        "string",
 					"description": "Optional travel dates to check seasonal weather",
 				},
 			},
 			"required": []string{"destination"},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			dest := args["destination"].(string)
 
 			// Mock weather data - in production, this would call a real weather API
@@ -176,22 +176,22 @@ func createTravelPlanningToolBox() server.ToolBox {
 	budgetTool := server.NewBasicTool(
 		"estimate_travel_budget",
 		"Estimate budget breakdown for a trip including flights, accommodation, food, and activities",
-		map[string]interface{}{
+		map[string]any{
 			"type": "object",
-			"properties": map[string]interface{}{
-				"destination": map[string]interface{}{
+			"properties": map[string]any{
+				"destination": map[string]any{
 					"type":        "string",
 					"description": "Travel destination",
 				},
-				"duration": map[string]interface{}{
+				"duration": map[string]any{
 					"type":        "number",
 					"description": "Trip duration in days",
 				},
-				"travelers": map[string]interface{}{
+				"travelers": map[string]any{
 					"type":        "number",
 					"description": "Number of travelers",
 				},
-				"style": map[string]interface{}{
+				"style": map[string]any{
 					"type":        "string",
 					"description": "Travel style: budget, mid-range, or luxury",
 					"enum":        []string{"budget", "mid-range", "luxury"},
@@ -199,7 +199,7 @@ func createTravelPlanningToolBox() server.ToolBox {
 			},
 			"required": []string{"destination", "duration", "travelers", "style"},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			dest := args["destination"].(string)
 			duration := int(args["duration"].(float64))
 			travelers := int(args["travelers"].(float64))
@@ -227,26 +227,26 @@ func createTravelPlanningToolBox() server.ToolBox {
 	activitiesTool := server.NewBasicTool(
 		"get_destination_activities",
 		"Get recommended activities and attractions for a travel destination",
-		map[string]interface{}{
+		map[string]any{
 			"type": "object",
-			"properties": map[string]interface{}{
-				"destination": map[string]interface{}{
+			"properties": map[string]any{
+				"destination": map[string]any{
 					"type":        "string",
 					"description": "Travel destination",
 				},
-				"interests": map[string]interface{}{
+				"interests": map[string]any{
 					"type":        "array",
 					"items":       map[string]string{"type": "string"},
 					"description": "Travel interests (culture, adventure, food, nature, etc.)",
 				},
-				"duration": map[string]interface{}{
+				"duration": map[string]any{
 					"type":        "number",
 					"description": "Available days for activities",
 				},
 			},
 			"required": []string{"destination"},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			dest := args["destination"].(string)
 
 			// Mock activity recommendations - in production, this would use tourism APIs

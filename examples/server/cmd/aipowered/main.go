@@ -58,17 +58,17 @@ func main() {
 	weatherTool := server.NewBasicTool(
 		"get_weather",
 		"Get current weather information for a location",
-		map[string]interface{}{
+		map[string]any{
 			"type": "object",
-			"properties": map[string]interface{}{
-				"location": map[string]interface{}{
+			"properties": map[string]any{
+				"location": map[string]any{
 					"type":        "string",
 					"description": "The city name",
 				},
 			},
 			"required": []string{"location"},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			location := args["location"].(string)
 			return fmt.Sprintf(`{"location": "%s", "temperature": "22°C", "condition": "sunny", "humidity": "65%%"}`, location), nil
 		},
@@ -79,11 +79,11 @@ func main() {
 	timeTool := server.NewBasicTool(
 		"get_current_time",
 		"Get the current date and time",
-		map[string]interface{}{
+		map[string]any{
 			"type":       "object",
-			"properties": map[string]interface{}{},
+			"properties": map[string]any{},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			now := time.Now()
 			return fmt.Sprintf(`{"current_time": "%s", "timezone": "%s"}`,
 				now.Format("2006-01-02 15:04:05"), now.Location()), nil

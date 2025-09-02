@@ -70,7 +70,7 @@ type A2AServer interface {
 
 	// LoadAgentCardFromFile loads and sets an agent card from a JSON file
 	// The optional overrides map allows dynamic replacement of JSON attribute values
-	LoadAgentCardFromFile(filePath string, overrides map[string]interface{}) error
+	LoadAgentCardFromFile(filePath string, overrides map[string]any) error
 }
 
 // TaskResultProcessor defines how to process tool call results for task completion
@@ -320,7 +320,7 @@ func (s *A2AServerImpl) validateStreamingConfiguration() {
 
 // LoadAgentCardFromFile loads and sets an agent card from a JSON file
 // The optional overrides map allows dynamic replacement of JSON attribute values
-func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string, overrides map[string]interface{}) error {
+func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string, overrides map[string]any) error {
 	if filePath == "" {
 		return nil
 	}
@@ -332,7 +332,7 @@ func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string, overrides map[str
 		return fmt.Errorf("failed to read agent card file: %w", err)
 	}
 
-	var rawData map[string]interface{}
+	var rawData map[string]any
 	if err := json.Unmarshal(data, &rawData); err != nil {
 		return fmt.Errorf("failed to parse agent card JSON: %w", err)
 	}
@@ -581,7 +581,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": err.Error(),
 				},
@@ -654,7 +654,7 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		req.JSONRPC = "2.0"
 	}
 	if req.ID == nil {
-		id := interface{}(uuid.New().String())
+		id := any(uuid.New().String())
 		req.ID = &id
 	}
 
@@ -769,7 +769,7 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCReque
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Failed to queue task for processing. Please try again later.",
 				},

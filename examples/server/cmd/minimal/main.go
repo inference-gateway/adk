@@ -31,7 +31,7 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 	userInput := ""
 	if message != nil {
 		for _, part := range message.Parts {
-			if partMap, ok := part.(map[string]interface{}); ok {
+			if partMap, ok := part.(map[string]any); ok {
 				if text, ok := partMap["text"].(string); ok {
 					userInput = text
 					break
@@ -50,7 +50,7 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": responseText,
 			},

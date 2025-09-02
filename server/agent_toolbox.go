@@ -15,7 +15,7 @@ type ToolBox interface {
 
 	// ExecuteTool executes a tool by name with the provided arguments
 	// Returns the tool result as a string and any error that occurred
-	ExecuteTool(ctx context.Context, toolName string, arguments map[string]interface{}) (string, error)
+	ExecuteTool(ctx context.Context, toolName string, arguments map[string]any) (string, error)
 
 	// GetToolNames returns a list of all available tool names
 	GetToolNames() []string
@@ -33,10 +33,10 @@ type Tool interface {
 	GetDescription() string
 
 	// GetParameters returns the JSON schema for the tool parameters
-	GetParameters() map[string]interface{}
+	GetParameters() map[string]any
 
 	// Execute runs the tool with the provided arguments
-	Execute(ctx context.Context, arguments map[string]interface{}) (string, error)
+	Execute(ctx context.Context, arguments map[string]any) (string, error)
 }
 
 // DefaultToolBox is a default implementation of ToolBox
@@ -58,17 +58,17 @@ func NewDefaultToolBox() *DefaultToolBox {
 	inputRequiredTool := NewBasicTool(
 		"input_required",
 		"Request additional input from the user when current information is insufficient to complete the task",
-		map[string]interface{}{
+		map[string]any{
 			"type": "object",
-			"properties": map[string]interface{}{
-				"message": map[string]interface{}{
+			"properties": map[string]any{
+				"message": map[string]any{
 					"type":        "string",
 					"description": "The message to display to the user explaining what information is needed",
 				},
 			},
 			"required": []string{"message"},
 		},
-		func(ctx context.Context, args map[string]interface{}) (string, error) {
+		func(ctx context.Context, args map[string]any) (string, error) {
 			message := args["message"].(string)
 			return fmt.Sprintf("Input requested from user: %s", message), nil
 		},
@@ -105,7 +105,7 @@ func (tb *DefaultToolBox) GetTools() []sdk.ChatCompletionTool {
 }
 
 // ExecuteTool executes a tool by name with the provided arguments
-func (tb *DefaultToolBox) ExecuteTool(ctx context.Context, toolName string, arguments map[string]interface{}) (string, error) {
+func (tb *DefaultToolBox) ExecuteTool(ctx context.Context, toolName string, arguments map[string]any) (string, error) {
 	tool, exists := tb.tools[toolName]
 	if !exists {
 		return "", &ToolNotFoundError{ToolName: toolName}
@@ -142,16 +142,16 @@ func (e *ToolNotFoundError) Error() string {
 type BasicTool struct {
 	name        string
 	description string
-	parameters  map[string]interface{}
-	executor    func(ctx context.Context, arguments map[string]interface{}) (string, error)
+	parameters  map[string]any
+	executor    func(ctx context.Context, arguments map[string]any) (string, error)
 }
 
 // NewBasicTool creates a new BasicTool
 func NewBasicTool(
 	name string,
 	description string,
-	parameters map[string]interface{},
-	executor func(ctx context.Context, arguments map[string]interface{}) (string, error),
+	parameters map[string]any,
+	executor func(ctx context.Context, arguments map[string]any) (string, error),
 ) *BasicTool {
 	return &BasicTool{
 		name:        name,
@@ -169,16 +169,16 @@ func (t *BasicTool) GetDescription() string {
 	return t.description
 }
 
-func (t *BasicTool) GetParameters() map[string]interface{} {
+func (t *BasicTool) GetParameters() map[string]any {
 	return t.parameters
 }
 
-func (t *BasicTool) Execute(ctx context.Context, arguments map[string]interface{}) (string, error) {
+func (t *BasicTool) Execute(ctx context.Context, arguments map[string]any) (string, error) {
 	return t.executor(ctx, arguments)
 }
 
 // JSONTool creates a tool result that can be marshaled to JSON
-func JSONTool(result interface{}) (string, error) {
+func JSONTool(result any) (string, error) {
 	data, err := json.Marshal(result)
 	if err != nil {
 		return "", err

@@ -56,7 +56,7 @@ type A2AServerBuilder interface {
 	// WithAgentCardFromFile loads and sets an agent card from a JSON file.
 	// This provides a convenient way to load agent configuration from a static file.
 	// The optional overrides map allows dynamic replacement of JSON attribute values.
-	WithAgentCardFromFile(filePath string, overrides map[string]interface{}) A2AServerBuilder
+	WithAgentCardFromFile(filePath string, overrides map[string]any) A2AServerBuilder
 
 	// WithLogger sets a custom logger for the builder and resulting server.
 	// This allows using a logger configured with appropriate level based on the Debug config.
@@ -196,7 +196,7 @@ func (b *A2AServerBuilderImpl) WithAgentCard(agentCard types.AgentCard) A2AServe
 
 // WithAgentCardFromFile loads and sets an agent card from a JSON file
 // The optional overrides map allows dynamic replacement of JSON attribute values
-func (b *A2AServerBuilderImpl) WithAgentCardFromFile(filePath string, overrides map[string]interface{}) A2AServerBuilder {
+func (b *A2AServerBuilderImpl) WithAgentCardFromFile(filePath string, overrides map[string]any) A2AServerBuilder {
 	if filePath == "" {
 		return b
 	}
@@ -209,7 +209,7 @@ func (b *A2AServerBuilderImpl) WithAgentCardFromFile(filePath string, overrides 
 		return b
 	}
 
-	var rawData map[string]interface{}
+	var rawData map[string]any
 	if err := json.Unmarshal(data, &rawData); err != nil {
 		b.logger.Error("failed to parse agent card JSON", zap.String("file_path", filePath), zap.Error(err))
 		return b

@@ -169,7 +169,7 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
     userInput := ""
     if message != nil {
         for _, part := range message.Parts {
-            if partMap, ok := part.(map[string]interface{}); ok {
+            if partMap, ok := part.(map[string]any); ok {
                 if text, ok := partMap["text"].(string); ok {
                     userInput = text
                     break
@@ -188,7 +188,7 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
         MessageID: fmt.Sprintf("response-%s", task.ID),
         Role:      "assistant",
         Parts: []types.Part{
-            map[string]interface{}{
+            map[string]any{
                 "kind": "text",
                 "text": responseText,
             },
@@ -380,17 +380,17 @@ func main() {
     weatherTool := server.NewBasicTool(
         "get_weather",
         "Get current weather information for a location",
-        map[string]interface{}{
+        map[string]any{
             "type": "object",
-            "properties": map[string]interface{}{
-                "location": map[string]interface{}{
+            "properties": map[string]any{
+                "location": map[string]any{
                     "type":        "string",
                     "description": "The city name",
                 },
             },
             "required": []string{"location"},
         },
-        func(ctx context.Context, args map[string]interface{}) (string, error) {
+        func(ctx context.Context, args map[string]any) (string, error) {
             location := args["location"].(string)
             return fmt.Sprintf(`{"location": "%s", "temperature": "22°C", "condition": "sunny", "humidity": "65%%"}`, location), nil
         },
@@ -401,11 +401,11 @@ func main() {
     timeTool := server.NewBasicTool(
         "get_current_time",
         "Get the current date and time",
-        map[string]interface{}{
+        map[string]any{
             "type":       "object",
-            "properties": map[string]interface{}{},
+            "properties": map[string]any{},
         },
-        func(ctx context.Context, args map[string]interface{}) (string, error) {
+        func(ctx context.Context, args map[string]any) (string, error) {
             now := time.Now()
             return fmt.Sprintf(`{"current_time": "%s", "timezone": "%s"}`,
                 now.Format("2006-01-02 15:04:05"), now.Location()), nil
@@ -1208,17 +1208,17 @@ toolBox := server.NewToolBox()
 weatherTool := server.NewBasicTool(
     "get_weather",
     "Get current weather for a location",
-    map[string]interface{}{
+    map[string]any{
         "type": "object",
-        "properties": map[string]interface{}{
-            "location": map[string]interface{}{
+        "properties": map[string]any{
+            "location": map[string]any{
                 "type":        "string",
                 "description": "The city and state, e.g. San Francisco, CA",
             },
         },
         "required": []string{"location"},
     },
-    func(ctx context.Context, args map[string]interface{}) (string, error) {
+    func(ctx context.Context, args map[string]any) (string, error) {
         location := args["location"].(string)
 
         // Your weather API logic here
@@ -1410,13 +1410,13 @@ Leverage standard tool use patterns and Model Context Protocol (MCP) with task p
 inputTool := server.NewBasicTool(
     "request_user_input",
     "Request additional input from the user",
-    map[string]interface{}{
+    map[string]any{
         "type": "object",
-        "properties": map[string]interface{}{
+        "properties": map[string]any{
             "prompt": {"type": "string", "description": "Question for the user"},
         },
     },
-    func(ctx context.Context, args map[string]interface{}) (string, error) {
+    func(ctx context.Context, args map[string]any) (string, error) {
         prompt := args["prompt"].(string)
 
         // Extract taskID from context (set by agent)
@@ -1440,14 +1440,14 @@ inputTool := server.NewBasicTool(
 mcpConfirmTool := server.NewBasicTool(
     "mcp_confirm_action",
     "Request user confirmation via MCP protocol",
-    map[string]interface{}{
+    map[string]any{
         "type": "object",
-        "properties": map[string]interface{}{
+        "properties": map[string]any{
             "action": {"type": "string", "description": "Action requiring confirmation"},
             "details": {"type": "object", "description": "Action details"},
         },
     },
-    func(ctx context.Context, args map[string]interface{}) (string, error) {
+    func(ctx context.Context, args map[string]any) (string, error) {
         // Use MCP to present structured confirmation request
         confirmationRequest := buildMCPConfirmation(args)
 
@@ -1505,7 +1505,7 @@ type CustomTaskProcessor struct{}
 
 func (ctp *CustomTaskProcessor) ProcessToolResult(toolCallResult string) *adk.Message {
     // Parse the tool result
-    var result map[string]interface{}
+    var result map[string]any
     json.Unmarshal([]byte(toolCallResult), &result)
 
     // Apply your business logic

@@ -281,10 +281,10 @@ func TestClient_SendTask(t *testing.T) {
 					response := types.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
 						ID:      req.ID,
-						Result: map[string]interface{}{
+						Result: map[string]any{
 							"id":        "task-123",
 							"contextId": "ctx-456",
-							"status": map[string]interface{}{
+							"status": map[string]any{
 								"state": "submitted",
 							},
 						},
@@ -303,7 +303,7 @@ func TestClient_SendTask(t *testing.T) {
 					MessageID: "test-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Hello, world!",
 						},
@@ -317,10 +317,10 @@ func TestClient_SendTask(t *testing.T) {
 			name: "server returns error response",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					response := map[string]interface{}{
+					response := map[string]any{
 						"jsonrpc": "2.0",
 						"id":      1,
-						"error": map[string]interface{}{
+						"error": map[string]any{
 							"code":    -32602,
 							"message": "invalid params",
 						},
@@ -360,7 +360,7 @@ func TestClient_SendTask(t *testing.T) {
 					MessageID: "test-msg-500",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "This should fail",
 						},
@@ -387,7 +387,7 @@ func TestClient_SendTask(t *testing.T) {
 					MessageID: "test-msg-invalid",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Invalid response test",
 						},
@@ -449,17 +449,17 @@ func TestClient_GetTask(t *testing.T) {
 					response := types.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
 						ID:      req.ID,
-						Result: map[string]interface{}{
+						Result: map[string]any{
 							"id":        "task-123",
 							"contextId": "ctx-456",
-							"status": map[string]interface{}{
+							"status": map[string]any{
 								"state": "completed",
-								"message": map[string]interface{}{
+								"message": map[string]any{
 									"kind":      "message",
 									"messageId": "response-msg",
 									"role":      "assistant",
-									"parts": []interface{}{
-										map[string]interface{}{
+									"parts": []any{
+										map[string]any{
 											"kind": "text",
 											"text": "Task completed successfully",
 										},
@@ -487,10 +487,10 @@ func TestClient_GetTask(t *testing.T) {
 			name: "task not found error",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					response := map[string]interface{}{
+					response := map[string]any{
 						"jsonrpc": "2.0",
 						"id":      1,
-						"error": map[string]interface{}{
+						"error": map[string]any{
 							"code":    -32001,
 							"message": "task not found",
 						},
@@ -520,10 +520,10 @@ func TestClient_GetTask(t *testing.T) {
 					response := types.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
 						ID:      req.ID,
-						Result: map[string]interface{}{
+						Result: map[string]any{
 							"id":        "task-minimal",
 							"contextId": "ctx-minimal",
-							"status": map[string]interface{}{
+							"status": map[string]any{
 								"state": "working",
 							},
 						},
@@ -594,10 +594,10 @@ func TestClient_CancelTask(t *testing.T) {
 					response := types.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
 						ID:      req.ID,
-						Result: map[string]interface{}{
+						Result: map[string]any{
 							"id":        "task-123",
 							"contextId": "ctx-456",
-							"status": map[string]interface{}{
+							"status": map[string]any{
 								"state": "canceled",
 							},
 						},
@@ -620,10 +620,10 @@ func TestClient_CancelTask(t *testing.T) {
 			name: "task not cancelable error",
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					response := map[string]interface{}{
+					response := map[string]any{
 						"jsonrpc": "2.0",
 						"id":      1,
-						"error": map[string]interface{}{
+						"error": map[string]any{
 							"code":    -32002,
 							"message": "task not cancelable",
 						},
@@ -653,10 +653,10 @@ func TestClient_CancelTask(t *testing.T) {
 					response := types.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
 						ID:      req.ID,
-						Result: map[string]interface{}{
+						Result: map[string]any{
 							"id":        "task-with-metadata",
 							"contextId": "ctx-metadata",
-							"status": map[string]interface{}{
+							"status": map[string]any{
 								"state": "canceled",
 							},
 						},
@@ -671,7 +671,7 @@ func TestClient_CancelTask(t *testing.T) {
 			},
 			params: types.TaskIdParams{
 				ID: "task-with-metadata",
-				Metadata: map[string]interface{}{
+				Metadata: map[string]any{
 					"reason": "user_requested",
 				},
 			},
@@ -786,7 +786,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					MessageID: "stream-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Stream this message",
 						},
@@ -811,7 +811,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					MessageID: "stream-error",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "This should fail",
 						},
@@ -837,7 +837,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					MessageID: "stream-invalid",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Invalid stream test",
 						},
@@ -865,7 +865,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					MessageID: "stream-empty",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Empty stream test",
 						},
@@ -886,7 +886,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			eventChan := make(chan interface{}, 10)
+			eventChan := make(chan any, 10)
 
 			err := c.SendTaskStreaming(ctx, tt.params, eventChan)
 
@@ -1035,7 +1035,7 @@ func TestClient_RetryMechanism(t *testing.T) {
 					MessageID: "retry-test",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Testing retry mechanism",
 						},
@@ -1154,7 +1154,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 					MessageID: "context-test",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Testing context cancellation",
 						},
@@ -1316,7 +1316,7 @@ func TestClient_HeadersAndAuthentication(t *testing.T) {
 					MessageID: "header-test",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Testing headers",
 						},
@@ -1354,17 +1354,17 @@ func TestClient_LargeResponses(t *testing.T) {
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
 			ID:      1,
-			Result: map[string]interface{}{
+			Result: map[string]any{
 				"id":        "large-task",
 				"contextId": "large-ctx",
-				"status": map[string]interface{}{
+				"status": map[string]any{
 					"state": "completed",
-					"message": map[string]interface{}{
+					"message": map[string]any{
 						"kind":      "message",
 						"messageId": "large-response",
 						"role":      "assistant",
-						"parts": []interface{}{
-							map[string]interface{}{
+						"parts": []any{
+							map[string]any{
 								"kind": "text",
 								"text": largeText,
 							},
@@ -1391,7 +1391,7 @@ func TestClient_LargeResponses(t *testing.T) {
 			MessageID: "large-test",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Request large response",
 				},
@@ -1438,7 +1438,7 @@ func TestClient_ConcurrentRequests(t *testing.T) {
 					MessageID: fmt.Sprintf("concurrent-msg-%d", index),
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": fmt.Sprintf("Concurrent request %d", index),
 						},
@@ -1852,10 +1852,10 @@ func TestClient_ListTasks_ServerError(t *testing.T) {
 			return
 		}
 
-		response := map[string]interface{}{
+		response := map[string]any{
 			"jsonrpc": "2.0",
 			"id":      req.ID,
-			"error": map[string]interface{}{
+			"error": map[string]any{
 				"code":    -32603,
 				"message": "Internal server error",
 			},

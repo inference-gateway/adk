@@ -100,7 +100,7 @@ const (
 )
 
 // EnqueueTask adds a task to the processing queue
-func (s *RedisStorage) EnqueueTask(task *types.Task, requestID interface{}) error {
+func (s *RedisStorage) EnqueueTask(task *types.Task, requestID any) error {
 	ctx := context.Background()
 
 	if task == nil {

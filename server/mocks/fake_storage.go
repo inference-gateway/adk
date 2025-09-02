@@ -99,11 +99,11 @@ type FakeStorage struct {
 		result1 *server.QueuedTask
 		result2 error
 	}
-	EnqueueTaskStub        func(*types.Task, interface{}) error
+	EnqueueTaskStub        func(*types.Task, any) error
 	enqueueTaskMutex       sync.RWMutex
 	enqueueTaskArgsForCall []struct {
 		arg1 *types.Task
-		arg2 interface{}
+		arg2 any
 	}
 	enqueueTaskReturns struct {
 		result1 error
@@ -720,12 +720,12 @@ func (fake *FakeStorage) DequeueTaskReturnsOnCall(i int, result1 *server.QueuedT
 	}{result1, result2}
 }
 
-func (fake *FakeStorage) EnqueueTask(arg1 *types.Task, arg2 interface{}) error {
+func (fake *FakeStorage) EnqueueTask(arg1 *types.Task, arg2 any) error {
 	fake.enqueueTaskMutex.Lock()
 	ret, specificReturn := fake.enqueueTaskReturnsOnCall[len(fake.enqueueTaskArgsForCall)]
 	fake.enqueueTaskArgsForCall = append(fake.enqueueTaskArgsForCall, struct {
 		arg1 *types.Task
-		arg2 interface{}
+		arg2 any
 	}{arg1, arg2})
 	stub := fake.EnqueueTaskStub
 	fakeReturns := fake.enqueueTaskReturns
@@ -746,13 +746,13 @@ func (fake *FakeStorage) EnqueueTaskCallCount() int {
 	return len(fake.enqueueTaskArgsForCall)
 }
 
-func (fake *FakeStorage) EnqueueTaskCalls(stub func(*types.Task, interface{}) error) {
+func (fake *FakeStorage) EnqueueTaskCalls(stub func(*types.Task, any) error) {
 	fake.enqueueTaskMutex.Lock()
 	defer fake.enqueueTaskMutex.Unlock()
 	fake.EnqueueTaskStub = stub
 }
 
-func (fake *FakeStorage) EnqueueTaskArgsForCall(i int) (*types.Task, interface{}) {
+func (fake *FakeStorage) EnqueueTaskArgsForCall(i int) (*types.Task, any) {
 	fake.enqueueTaskMutex.RLock()
 	defer fake.enqueueTaskMutex.RUnlock()
 	argsForCall := fake.enqueueTaskArgsForCall[i]

@@ -44,11 +44,11 @@ type FakeA2AServerBuilder struct {
 	withAgentCardReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
-	WithAgentCardFromFileStub        func(string, map[string]interface{}) server.A2AServerBuilder
+	WithAgentCardFromFileStub        func(string, map[string]any) server.A2AServerBuilder
 	withAgentCardFromFileMutex       sync.RWMutex
 	withAgentCardFromFileArgsForCall []struct {
 		arg1 string
-		arg2 map[string]interface{}
+		arg2 map[string]any
 	}
 	withAgentCardFromFileReturns struct {
 		result1 server.A2AServerBuilder
@@ -312,12 +312,12 @@ func (fake *FakeA2AServerBuilder) WithAgentCardReturnsOnCall(i int, result1 serv
 	}{result1}
 }
 
-func (fake *FakeA2AServerBuilder) WithAgentCardFromFile(arg1 string, arg2 map[string]interface{}) server.A2AServerBuilder {
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFile(arg1 string, arg2 map[string]any) server.A2AServerBuilder {
 	fake.withAgentCardFromFileMutex.Lock()
 	ret, specificReturn := fake.withAgentCardFromFileReturnsOnCall[len(fake.withAgentCardFromFileArgsForCall)]
 	fake.withAgentCardFromFileArgsForCall = append(fake.withAgentCardFromFileArgsForCall, struct {
 		arg1 string
-		arg2 map[string]interface{}
+		arg2 map[string]any
 	}{arg1, arg2})
 	stub := fake.WithAgentCardFromFileStub
 	fakeReturns := fake.withAgentCardFromFileReturns
@@ -338,13 +338,13 @@ func (fake *FakeA2AServerBuilder) WithAgentCardFromFileCallCount() int {
 	return len(fake.withAgentCardFromFileArgsForCall)
 }
 
-func (fake *FakeA2AServerBuilder) WithAgentCardFromFileCalls(stub func(string, map[string]interface{}) server.A2AServerBuilder) {
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileCalls(stub func(string, map[string]any) server.A2AServerBuilder) {
 	fake.withAgentCardFromFileMutex.Lock()
 	defer fake.withAgentCardFromFileMutex.Unlock()
 	fake.WithAgentCardFromFileStub = stub
 }
 
-func (fake *FakeA2AServerBuilder) WithAgentCardFromFileArgsForCall(i int) (string, map[string]interface{}) {
+func (fake *FakeA2AServerBuilder) WithAgentCardFromFileArgsForCall(i int) (string, map[string]any) {
 	fake.withAgentCardFromFileMutex.RLock()
 	defer fake.withAgentCardFromFileMutex.RUnlock()
 	argsForCall := fake.withAgentCardFromFileArgsForCall[i]

@@ -71,7 +71,7 @@ func main() {
 			MessageID: fmt.Sprintf("msg-%d", time.Now().Unix()),
 			Role:      "user",
 			Parts: []adk.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Explain the benefits of renewable energy in 3 key points",
 				},
@@ -89,7 +89,7 @@ func main() {
 		logger.Fatal("failed to send task", zap.Error(err))
 	}
 
-	// Parse task from response - handle interface{} type
+	// Parse task from response - handle any type
 	var task adk.Task
 	resultBytes, ok := resp.Result.(json.RawMessage)
 	if !ok {
@@ -140,7 +140,7 @@ func main() {
 					continue // Continue polling on error
 				}
 
-				// Parse updated task - handle interface{} type
+				// Parse updated task - handle any type
 				var updatedTask adk.Task
 				taskResultBytes, ok := taskResp.Result.(json.RawMessage)
 				if !ok {
@@ -176,7 +176,7 @@ func main() {
 					if updatedTask.Status.Message != nil {
 						// Extract text from error message
 						for _, part := range updatedTask.Status.Message.Parts {
-							if partMap, ok := part.(map[string]interface{}); ok {
+							if partMap, ok := part.(map[string]any); ok {
 								if textContent, exists := partMap["text"]; exists {
 									if textStr, ok := textContent.(string); ok {
 										errorMsg = textStr
@@ -222,7 +222,7 @@ func main() {
 				// Extract text from final response
 				var responseText string
 				for _, part := range lastMessage.Parts {
-					if partMap, ok := part.(map[string]interface{}); ok {
+					if partMap, ok := part.(map[string]any); ok {
 						if textContent, exists := partMap["text"]; exists {
 							if textStr, ok := textContent.(string); ok {
 								responseText += textStr

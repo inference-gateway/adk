@@ -56,7 +56,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 				MessageID: "test-message-1",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Hello world",
 					},
@@ -72,7 +72,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 				MessageID: "test-message-2",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Processing your request",
 					},
@@ -130,7 +130,7 @@ func TestA2AServer_ResponseSender_SendSuccess(t *testing.T) {
 	w := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(w)
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"status": "success",
 		"data":   "test data",
 	}
@@ -372,7 +372,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 				MessageID: "response-msg",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Hello! I received your message.",
 					},
@@ -406,7 +406,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		MessageID: "original-msg",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "What is the weather like today?",
 			},
@@ -438,7 +438,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	assert.Len(t, actualMessage.Parts, 1)
 
 	part := actualMessage.Parts[0]
-	partMap, ok := part.(map[string]interface{})
+	partMap, ok := part.(map[string]any)
 	assert.True(t, ok)
 	assert.Equal(t, "text", partMap["kind"])
 	assert.Equal(t, "What is the weather like today?", partMap["text"])
@@ -458,7 +458,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 				MessageID: "response-msg",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "I received your weather question and here's the answer...",
 					},
@@ -492,7 +492,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		MessageID: "user-msg-123",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "What is the weather like today in San Francisco?",
 			},
@@ -533,7 +533,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 	assert.Len(t, actualMessage.Parts, 1, "Should have exactly one message part")
 
 	part := actualMessage.Parts[0]
-	partMap, ok := part.(map[string]interface{})
+	partMap, ok := part.(map[string]any)
 	assert.True(t, ok, "Message part should be a map")
 	assert.Equal(t, "text", partMap["kind"], "Message part should be of kind 'text'")
 	assert.Equal(t, "What is the weather like today in San Francisco?", partMap["text"],
@@ -545,26 +545,26 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 func TestTaskGetWithInvalidFieldName(t *testing.T) {
 	tests := []struct {
 		name    string
-		params  map[string]interface{}
+		params  map[string]any
 		wantErr bool
 	}{
 		{
 			name: "correct field name 'id' should work",
-			params: map[string]interface{}{
+			params: map[string]any{
 				"id": "some-task-id",
 			},
 			wantErr: true,
 		},
 		{
 			name: "incorrect field name 'taskId' should result in empty task ID",
-			params: map[string]interface{}{
+			params: map[string]any{
 				"taskId": "some-task-id",
 			},
 			wantErr: true,
 		},
 		{
 			name:    "missing task ID parameter",
-			params:  map[string]interface{}{},
+			params:  map[string]any{},
 			wantErr: true,
 		},
 	}
@@ -580,12 +580,12 @@ func TestTaskGetWithInvalidFieldName(t *testing.T) {
 
 func TestToolResultProcessingFix(t *testing.T) {
 	t.Run("tool result messages should have role 'tool'", func(t *testing.T) {
-		toolResultMsg := map[string]interface{}{
+		toolResultMsg := map[string]any{
 			"role": "tool",
-			"parts": []map[string]interface{}{
+			"parts": []map[string]any{
 				{
 					"kind": "data",
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"tool_call_id": "call_123",
 						"tool_name":    "list_events",
 						"result":       `{"events": [], "success": true}`,
@@ -598,14 +598,14 @@ func TestToolResultProcessingFix(t *testing.T) {
 		assert.True(t, ok, "Role should be a string")
 		assert.Equal(t, "tool", role, "Tool result messages should have role 'tool'")
 
-		parts, ok := toolResultMsg["parts"].([]map[string]interface{})
+		parts, ok := toolResultMsg["parts"].([]map[string]any)
 		assert.True(t, ok, "Parts should be an array")
 		assert.Len(t, parts, 1, "Should have one part")
 
 		part := parts[0]
 		assert.Equal(t, "data", part["kind"], "Tool result should use DataPart with kind 'data'")
 
-		data, exists := part["data"].(map[string]interface{})
+		data, exists := part["data"].(map[string]any)
 		assert.True(t, exists, "Tool result should have 'data' field")
 
 		result, exists := data["result"]
@@ -614,10 +614,10 @@ func TestToolResultProcessingFix(t *testing.T) {
 	})
 
 	t.Run("convertToSDKMessages should handle A2A compliant tool results", func(t *testing.T) {
-		parts := []map[string]interface{}{
+		parts := []map[string]any{
 			{
 				"kind": "data",
-				"data": map[string]interface{}{
+				"data": map[string]any{
 					"tool_call_id": "call_123",
 					"tool_name":    "test_tool",
 					"result":       "Tool execution successful",
@@ -628,7 +628,7 @@ func TestToolResultProcessingFix(t *testing.T) {
 		var content string
 		for _, part := range parts {
 			if part["kind"] == "data" {
-				if data, exists := part["data"].(map[string]interface{}); exists {
+				if data, exists := part["data"].(map[string]any); exists {
 					if result, exists := data["result"]; exists {
 						if resultStr, ok := result.(string); ok {
 							content += resultStr
@@ -649,7 +649,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 	tests := []struct {
 		name           string
 		userMessage    string
-		llmResponses   []interface{}
+		llmResponses   []any
 		expectedStates []types.TaskState
 		toolCallsCount int
 		description    string
@@ -657,7 +657,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 		{
 			name:        "simple text response without tools",
 			userMessage: "Hello, how are you?",
-			llmResponses: []interface{}{
+			llmResponses: []any{
 				&sdk.CreateChatCompletionResponse{
 					Id:     "chatcmpl-simple-response",
 					Object: "chat.completion",
@@ -680,7 +680,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 		{
 			name:        "workflow with tool calls",
 			userMessage: "What's the weather like today?",
-			llmResponses: []interface{}{
+			llmResponses: []any{
 				&sdk.CreateChatCompletionResponse{
 					Choices: []sdk.ChatCompletionChoice{
 						{
@@ -723,7 +723,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 		{
 			name:        "multiple tool calls in sequence",
 			userMessage: "Schedule a meeting and check my calendar",
-			llmResponses: []interface{}{
+			llmResponses: []any{
 				&sdk.CreateChatCompletionResponse{
 					Choices: []sdk.ChatCompletionChoice{
 						{
@@ -774,7 +774,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 		{
 			name:        "LLM error handling",
 			userMessage: "Process this complex request",
-			llmResponses: []interface{}{
+			llmResponses: []any{
 				fmt.Errorf("LLM service temporarily unavailable"),
 			},
 			expectedStates: []types.TaskState{types.TaskStateFailed},
@@ -812,17 +812,17 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 			weatherTool := server.NewBasicTool(
 				"get_weather",
 				"Get current weather information",
-				map[string]interface{}{
+				map[string]any{
 					"type": "object",
-					"properties": map[string]interface{}{
-						"location": map[string]interface{}{
+					"properties": map[string]any{
+						"location": map[string]any{
 							"type":        "string",
 							"description": "Location for weather",
 						},
 					},
 					"required": []string{"location"},
 				},
-				func(ctx context.Context, args map[string]interface{}) (string, error) {
+				func(ctx context.Context, args map[string]any) (string, error) {
 					return `{"temperature": 72, "condition": "sunny", "humidity": 45}`, nil
 				},
 			)
@@ -830,17 +830,17 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 			calendarTool := server.NewBasicTool(
 				"check_calendar",
 				"Check calendar availability",
-				map[string]interface{}{
+				map[string]any{
 					"type": "object",
-					"properties": map[string]interface{}{
-						"date": map[string]interface{}{
+					"properties": map[string]any{
+						"date": map[string]any{
 							"type":        "string",
 							"description": "Date to check",
 						},
 					},
 					"required": []string{"date"},
 				},
-				func(ctx context.Context, args map[string]interface{}) (string, error) {
+				func(ctx context.Context, args map[string]any) (string, error) {
 					return `{"free_slots": 2, "busy_slots": 3, "next_meeting": "3:00 PM"}`, nil
 				},
 			)
@@ -848,21 +848,21 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 			meetingTool := server.NewBasicTool(
 				"schedule_meeting",
 				"Schedule a new meeting",
-				map[string]interface{}{
+				map[string]any{
 					"type": "object",
-					"properties": map[string]interface{}{
-						"title": map[string]interface{}{
+					"properties": map[string]any{
+						"title": map[string]any{
 							"type":        "string",
 							"description": "Meeting title",
 						},
-						"time": map[string]interface{}{
+						"time": map[string]any{
 							"type":        "string",
 							"description": "Meeting time",
 						},
 					},
 					"required": []string{"title", "time"},
 				},
-				func(ctx context.Context, args map[string]interface{}) (string, error) {
+				func(ctx context.Context, args map[string]any) (string, error) {
 					return `{"meeting_id": "mtg_456", "status": "scheduled", "time": "2:00 PM"}`, nil
 				},
 			)
@@ -890,7 +890,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 			message := &types.Message{
 				Role: "user",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": tt.userMessage,
 					},
@@ -929,7 +929,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 				if result.Status.Message != nil {
 					finalContent := ""
 					for _, part := range result.Status.Message.Parts {
-						if partMap, ok := part.(map[string]interface{}); ok {
+						if partMap, ok := part.(map[string]any); ok {
 							if text, exists := partMap["text"]; exists {
 								if textStr, ok := text.(string); ok {
 									finalContent += textStr
@@ -956,7 +956,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 	tests := []struct {
 		name                 string
 		userMessage          string
-		openAIResponses      []interface{}
+		openAIResponses      []any
 		expectedFinalState   types.TaskState
 		expectedToolCalls    int
 		validateFinalMessage func(t *testing.T, msg *types.Message)
@@ -965,7 +965,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 		{
 			name:        "openai_simple_text_completion",
 			userMessage: "Explain quantum computing in simple terms",
-			openAIResponses: []interface{}{
+			openAIResponses: []any{
 				&sdk.CreateChatCompletionResponse{
 					Id:     "chatcmpl-simple-text",
 					Object: "chat.completion",
@@ -986,7 +986,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			validateFinalMessage: func(t *testing.T, msg *types.Message) {
 				assert.Equal(t, "assistant", msg.Role)
 				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]interface{})
+				part := msg.Parts[0].(map[string]any)
 				assert.Equal(t, "text", part["kind"])
 				assert.Contains(t, part["text"], "Quantum computing")
 			},
@@ -995,7 +995,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 		{
 			name:        "openai_function_calling_workflow",
 			userMessage: "What's the weather like in San Francisco today?",
-			openAIResponses: []interface{}{
+			openAIResponses: []any{
 				&sdk.CreateChatCompletionResponse{
 					Choices: []sdk.ChatCompletionChoice{
 						{
@@ -1036,7 +1036,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			validateFinalMessage: func(t *testing.T, msg *types.Message) {
 				assert.Equal(t, "assistant", msg.Role)
 				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]interface{})
+				part := msg.Parts[0].(map[string]any)
 				assert.Equal(t, "text", part["kind"])
 				assert.Contains(t, part["text"], "68°F")
 				assert.Contains(t, part["text"], "San Francisco")
@@ -1046,7 +1046,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 		{
 			name:        "openai_multiple_function_calls",
 			userMessage: "Schedule a meeting for tomorrow and check if I have any conflicts",
-			openAIResponses: []interface{}{
+			openAIResponses: []any{
 				&sdk.CreateChatCompletionResponse{
 					Choices: []sdk.ChatCompletionChoice{
 						{
@@ -1095,7 +1095,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			validateFinalMessage: func(t *testing.T, msg *types.Message) {
 				assert.Equal(t, "assistant", msg.Role)
 				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]interface{})
+				part := msg.Parts[0].(map[string]any)
 				assert.Equal(t, "text", part["kind"])
 				content := part["text"].(string)
 				assert.Contains(t, content, "scheduled")
@@ -1107,7 +1107,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 		{
 			name:        "openai_streaming_simulation",
 			userMessage: "Write a short poem about AI",
-			openAIResponses: []interface{}{
+			openAIResponses: []any{
 				&sdk.CreateChatCompletionResponse{
 					Id:     "chatcmpl-poem-response",
 					Object: "chat.completion",
@@ -1128,7 +1128,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			validateFinalMessage: func(t *testing.T, msg *types.Message) {
 				assert.Equal(t, "assistant", msg.Role)
 				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]interface{})
+				part := msg.Parts[0].(map[string]any)
 				assert.Equal(t, "text", part["kind"])
 				content := part["text"].(string)
 				assert.Contains(t, content, "AI")
@@ -1139,7 +1139,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 		{
 			name:        "openai_error_response_simulation",
 			userMessage: "This request will trigger an error",
-			openAIResponses: []interface{}{
+			openAIResponses: []any{
 				fmt.Errorf("openai api error: rate limit exceeded (status: 429)"),
 			},
 			expectedFinalState: types.TaskStateFailed,
@@ -1147,7 +1147,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			validateFinalMessage: func(t *testing.T, msg *types.Message) {
 				assert.Equal(t, "assistant", msg.Role)
 				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]interface{})
+				part := msg.Parts[0].(map[string]any)
 				assert.Equal(t, "text", part["kind"])
 				content := part["text"].(string)
 				assert.Contains(t, content, "LLM request failed")
@@ -1181,17 +1181,17 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			weatherTool := server.NewBasicTool(
 				"get_weather",
 				"Get current weather information for a location",
-				map[string]interface{}{
+				map[string]any{
 					"type": "object",
-					"properties": map[string]interface{}{
-						"location": map[string]interface{}{
+					"properties": map[string]any{
+						"location": map[string]any{
 							"type":        "string",
 							"description": "The location to get weather for",
 						},
 					},
 					"required": []string{"location"},
 				},
-				func(ctx context.Context, args map[string]interface{}) (string, error) {
+				func(ctx context.Context, args map[string]any) (string, error) {
 					location := args["location"].(string)
 					return fmt.Sprintf(`{"location": "%s", "temperature": 68, "condition": "sunny", "humidity": 65}`, location), nil
 				},
@@ -1200,17 +1200,17 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			calendarTool := server.NewBasicTool(
 				"check_calendar",
 				"Check calendar for availability",
-				map[string]interface{}{
+				map[string]any{
 					"type": "object",
-					"properties": map[string]interface{}{
-						"date": map[string]interface{}{
+					"properties": map[string]any{
+						"date": map[string]any{
 							"type":        "string",
 							"description": "Date to check",
 						},
 					},
 					"required": []string{"date"},
 				},
-				func(ctx context.Context, args map[string]interface{}) (string, error) {
+				func(ctx context.Context, args map[string]any) (string, error) {
 					return `{"available_slots": ["2:00 PM", "3:00 PM"], "conflicts": []}`, nil
 				},
 			)
@@ -1218,16 +1218,16 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			scheduleTool := server.NewBasicTool(
 				"schedule_meeting",
 				"Schedule a new meeting",
-				map[string]interface{}{
+				map[string]any{
 					"type": "object",
-					"properties": map[string]interface{}{
-						"title":    map[string]interface{}{"type": "string"},
-						"time":     map[string]interface{}{"type": "string"},
-						"duration": map[string]interface{}{"type": "string"},
+					"properties": map[string]any{
+						"title":    map[string]any{"type": "string"},
+						"time":     map[string]any{"type": "string"},
+						"duration": map[string]any{"type": "string"},
 					},
 					"required": []string{"title", "time"},
 				},
-				func(ctx context.Context, args map[string]interface{}) (string, error) {
+				func(ctx context.Context, args map[string]any) (string, error) {
 					title := args["title"].(string)
 					timeArg := args["time"].(string)
 					return fmt.Sprintf(`{"meeting_id": "mtg_%d", "title": "%s", "time": "%s", "status": "scheduled"}`,
@@ -1258,7 +1258,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 			message := &types.Message{
 				Role: "user",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": tt.userMessage,
 					},
@@ -1340,7 +1340,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 		message := &types.Message{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Test message",
 				},
@@ -1363,7 +1363,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 		assert.NotEmpty(t, finalMessage.MessageID)
 		assert.Len(t, finalMessage.Parts, 1)
 
-		part := finalMessage.Parts[0].(map[string]interface{})
+		part := finalMessage.Parts[0].(map[string]any)
 		assert.Equal(t, "text", part["kind"])
 		assert.Equal(t, "This is a test response from OpenAI format", part["text"])
 	})
@@ -1429,17 +1429,17 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 		testTool := server.NewBasicTool(
 			"test_function",
 			"A test function for validation",
-			map[string]interface{}{
+			map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"param": map[string]interface{}{
+				"properties": map[string]any{
+					"param": map[string]any{
 						"type":        "string",
 						"description": "Test parameter",
 					},
 				},
 				"required": []string{"param"},
 			},
-			func(ctx context.Context, args map[string]interface{}) (string, error) {
+			func(ctx context.Context, args map[string]any) (string, error) {
 				return "test_result", nil
 			},
 		)
@@ -1460,7 +1460,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 		message := &types.Message{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Execute test function",
 				},
@@ -1482,10 +1482,10 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 				toolResultFound = true
 				assert.Len(t, historyMsg.Parts, 1)
 
-				part := historyMsg.Parts[0].(map[string]interface{})
+				part := historyMsg.Parts[0].(map[string]any)
 				assert.Equal(t, "data", part["kind"], "Tool result should use DataPart")
 
-				data := part["data"].(map[string]interface{})
+				data := part["data"].(map[string]any)
 				assert.Equal(t, "call_test_function", data["tool_call_id"])
 				assert.Equal(t, "test_function", data["tool_name"])
 				assert.Equal(t, "test_result", data["result"])
@@ -1495,7 +1495,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 
 		finalContent := ""
 		for _, part := range result.Status.Message.Parts {
-			if partMap, ok := part.(map[string]interface{}); ok {
+			if partMap, ok := part.(map[string]any); ok {
 				if text, exists := partMap["text"]; exists {
 					if textStr, ok := text.(string); ok {
 						finalContent += textStr

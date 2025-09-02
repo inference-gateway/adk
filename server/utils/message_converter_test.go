@@ -28,7 +28,7 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Hello, world!",
 						},
@@ -51,7 +51,7 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-2",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Hi there!",
 						},
@@ -74,7 +74,7 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-3",
 					Role:      "system",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "You are a helpful assistant.",
 						},
@@ -97,7 +97,7 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-4",
 					Role:      "",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Default role test",
 						},
@@ -120,11 +120,11 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-5",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Part 1. ",
 						},
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Part 2.",
 						},
@@ -147,9 +147,9 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-6",
 					Role:      "tool",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "data",
-							"data": map[string]interface{}{
+							"data": map[string]any{
 								"tool_call_id": "call_test_function",
 								"tool_name":    "test_function",
 								"result":       "Tool execution result",
@@ -198,7 +198,7 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-8",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Please analyze this file: ",
 						},
@@ -229,7 +229,7 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-9",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "First message",
 						},
@@ -240,7 +240,7 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-10",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]interface{}{
+						map[string]any{
 							"kind": "text",
 							"text": "Second message",
 						},
@@ -301,7 +301,7 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Hello from SDK",
 					},
@@ -319,7 +319,7 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Response from assistant",
 					},
@@ -337,7 +337,7 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "system",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "System instructions",
 					},
@@ -356,9 +356,9 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "tool",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "data",
-						"data": map[string]interface{}{
+						"data": map[string]any{
 							"tool_call_id": "call_123",
 							"tool_name":    "",
 							"result":       "Tool response",
@@ -388,13 +388,13 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "I'll help you with that",
 					},
-					map[string]interface{}{
+					map[string]any{
 						"kind": "data",
-						"data": map[string]interface{}{
+						"data": map[string]any{
 							"tool_calls": []sdk.ChatCompletionMessageToolCall{
 								{
 									Id:   "call_123",
@@ -421,7 +421,7 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "",
 					},
@@ -446,17 +446,17 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 			assert.Equal(t, len(tt.expectedOutput.Parts), len(result.Parts))
 
 			for i, expectedPart := range tt.expectedOutput.Parts {
-				if partMap, ok := expectedPart.(map[string]interface{}); ok {
-					resultPartMap, ok := result.Parts[i].(map[string]interface{})
-					require.True(t, ok, "Expected result part to be map[string]interface{}")
+				if partMap, ok := expectedPart.(map[string]any); ok {
+					resultPartMap, ok := result.Parts[i].(map[string]any)
+					require.True(t, ok, "Expected result part to be map[string]any")
 					assert.Equal(t, partMap["kind"], resultPartMap["kind"])
 
 					switch partMap["kind"] {
 					case "text":
 						assert.Equal(t, partMap["text"], resultPartMap["text"])
 					case "data":
-						expectedData := partMap["data"].(map[string]interface{})
-						resultData := resultPartMap["data"].(map[string]interface{})
+						expectedData := partMap["data"].(map[string]any)
+						resultData := resultPartMap["data"].(map[string]any)
 						assert.Equal(t, expectedData, resultData)
 					}
 				}
@@ -498,7 +498,7 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 			name: "valid strongly-typed data part",
 			input: types.OptimizedMessagePart{
 				Kind: types.MessagePartKindData,
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"key": "value",
 				},
 			},
@@ -533,7 +533,7 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "valid map-based text part",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"kind": "text",
 				"text": "Valid text content",
 			},
@@ -541,9 +541,9 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "valid map-based data part",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"kind": "data",
-				"data": map[string]interface{}{
+				"data": map[string]any{
 					"result": "some result",
 				},
 			},
@@ -551,9 +551,9 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "valid map-based file part",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"kind": "file",
-				"file": map[string]interface{}{
+				"file": map[string]any{
 					"name":     "test.txt",
 					"mimeType": "text/plain",
 				},
@@ -562,7 +562,7 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "invalid map-based part (missing kind)",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"text": "Missing kind field",
 			},
 			expectError: true,
@@ -570,7 +570,7 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "invalid map-based part (non-string kind)",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"kind": 123,
 				"text": "Invalid kind type",
 			},
@@ -579,7 +579,7 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "invalid map-based part (invalid kind value)",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"kind": "invalid_kind",
 				"text": "Invalid kind value",
 			},
@@ -619,7 +619,7 @@ func TestOptimizedMessageConverter_RoundTrip(t *testing.T) {
 		MessageID: "round-trip-test",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]interface{}{
+			map[string]any{
 				"kind": "text",
 				"text": "Round trip test message",
 			},
@@ -637,8 +637,8 @@ func TestOptimizedMessageConverter_RoundTrip(t *testing.T) {
 	assert.Equal(t, originalMessage.Role, convertedMessage.Role)
 	assert.Len(t, convertedMessage.Parts, 1)
 
-	originalPart := originalMessage.Parts[0].(map[string]interface{})
-	convertedPart := convertedMessage.Parts[0].(map[string]interface{})
+	originalPart := originalMessage.Parts[0].(map[string]any)
+	convertedPart := convertedMessage.Parts[0].(map[string]any)
 	assert.Equal(t, originalPart["kind"], convertedPart["kind"])
 	assert.Equal(t, originalPart["text"], convertedPart["text"])
 }
@@ -654,7 +654,7 @@ func TestOptimizedMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 			MessageID: "perf-test-" + string(rune(i)),
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Performance test message number " + string(rune(i)),
 				},
@@ -689,9 +689,9 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 				Role:      "assistant",
 				Kind:      "message",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "data",
-						"data": map[string]interface{}{
+						"data": map[string]any{
 							"tool_calls": []sdk.ChatCompletionMessageToolCall{
 								{
 									Id:   "call_123",
@@ -726,7 +726,7 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 				Role:      "assistant",
 				Kind:      "message",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "Hello, how can I help you?",
 					},
@@ -742,9 +742,9 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 				Role:      "user",
 				Kind:      "message",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "data",
-						"data": map[string]interface{}{
+						"data": map[string]any{
 							"tool_calls": []sdk.ChatCompletionMessageToolCall{
 								{
 									Id:   "call_456",
@@ -790,7 +790,7 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) 
 			Role:      "user",
 			Kind:      "message",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "What's on my calendar today?",
 				},
@@ -801,9 +801,9 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) 
 			Role:      "assistant",
 			Kind:      "message",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "data",
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"tool_calls": []sdk.ChatCompletionMessageToolCall{
 							{
 								Id:   "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
@@ -824,9 +824,9 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) 
 			Role:      "tool",
 			Kind:      "message",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "data",
-					"data": map[string]interface{}{
+					"data": map[string]any{
 						"tool_call_id": "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
 						"tool_name":    "list_calendar_events",
 						"result":       `{"message":"Found 0 events between 2025-06-16 00:00 and 2025-06-16 23:59","success":true}`,

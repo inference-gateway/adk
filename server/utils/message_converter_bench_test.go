@@ -18,7 +18,7 @@ func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 			MessageID: "bench-msg-1",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "This is a benchmark test message with some content to convert.",
 				},
@@ -29,7 +29,7 @@ func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 			MessageID: "bench-msg-2",
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "This is a response message from the assistant.",
 				},
@@ -40,7 +40,7 @@ func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 			MessageID: "bench-msg-3",
 			Role:      "system",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "System message with instructions for the assistant.",
 				},
@@ -129,7 +129,7 @@ func BenchmarkMessageConverter_ConvertToSDK_LargeMessages(b *testing.B) {
 			MessageID: "bench-large-msg",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": largeContent,
 				},
@@ -157,7 +157,7 @@ func BenchmarkMessageConverter_ConvertToSDK_ManyMessages(b *testing.B) {
 			MessageID: "bench-many-msg-" + string(rune(i)),
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]interface{}{
+				map[string]any{
 					"kind": "text",
 					"text": "Message number " + string(rune(i)),
 				},
@@ -178,7 +178,7 @@ func BenchmarkMessageConverter_ValidateMessagePart(b *testing.B) {
 	logger := zap.NewNop()
 	converter := NewOptimizedMessageConverter(logger)
 
-	part := map[string]interface{}{
+	part := map[string]any{
 		"kind": "text",
 		"text": "This is a test message part for validation benchmarking.",
 	}

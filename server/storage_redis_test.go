@@ -262,7 +262,7 @@ func TestRedisStorageDeadLetterOperations(t *testing.T) {
 				Kind:      "message",
 				MessageID: "msg-1",
 				Parts: []types.Part{
-					map[string]interface{}{
+					map[string]any{
 						"kind": "text",
 						"text": "test message",
 					},
@@ -316,21 +316,21 @@ func TestRedisStorageListOperations(t *testing.T) {
 			ContextID: "context-1",
 			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateCompleted},
-			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg1", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "msg1"}}}},
+			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg1", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg1"}}}},
 		},
 		{
 			ID:        "task-2",
 			ContextID: "context-1",
 			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateFailed},
-			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg2", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "msg2"}}}},
+			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg2", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg2"}}}},
 		},
 		{
 			ID:        "task-3",
 			ContextID: "context-2",
 			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateCompleted},
-			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg3", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "msg3"}}}},
+			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg3", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg3"}}}},
 		},
 	}
 
@@ -476,14 +476,14 @@ func TestRedisStorageGetStats(t *testing.T) {
 		ContextID: "context-1",
 		Kind:      "task",
 		Status:    types.TaskStatus{State: types.TaskStateCompleted},
-		History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg1", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "msg1"}}}},
+		History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg1", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg1"}}}},
 	}
 	failedTask := &types.Task{
 		ID:        "failed-task",
 		ContextID: "context-2",
 		Kind:      "task",
 		Status:    types.TaskStatus{State: types.TaskStateFailed},
-		History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg2", Parts: []types.Part{map[string]interface{}{"kind": "text", "text": "msg2"}}}},
+		History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg2", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg2"}}}},
 	}
 
 	err = storage.StoreDeadLetterTask(completedTask)
