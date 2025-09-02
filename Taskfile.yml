@@ -15,7 +15,7 @@ tasks:
   a2a:generate-types:
     desc: 'Generate the Golang ADK types from the A2A schema'
     cmds:
-      - go run github.com/inference-gateway/tools/cmd/generator@v0.1.1 -generator jsonrpc -package types schema.yaml types/generated_types.go
+      - go run github.com/inference-gateway/tools/cmd/generator@v0.1.2 -generator jsonrpc -package types schema.yaml types/generated_types.go
 
   tidy:
     desc: 'Tidy all Go modules'
