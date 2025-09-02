@@ -32,7 +32,7 @@ jobs:
         run: go install go.uber.org/mock/mockgen@v0.5.0
 
       - name: Install generator tool
-        run: go install github.com/inference-gateway/tools/cmd/generator@v0.1.1
+        run: go install github.com/inference-gateway/tools/cmd/generator@v0.1.2
 
       - name: Setup Node.js
         uses: actions/setup-node@v4.4.0
