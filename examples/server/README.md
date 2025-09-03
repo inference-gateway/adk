@@ -10,6 +10,7 @@ This directory contains examples demonstrating how to create A2A (Agent-to-Agent
    2. [AI-Powered Server (API Key Required)](#2-ai-powered-server-api-key-required)
    3. [Pausable Task Server (API Key Required)](#3-pausable-task-server-api-key-required)
    4. [Travel Planning Server (Domain Expert)](#4-travel-planning-server-domain-expert)
+   5. [Extended Configuration Server](#5-extended-configuration-server)
 3. [Example Usage](#example-usage)
 
 ## Overview
@@ -20,6 +21,7 @@ The A2A protocol enables agents to communicate with each other using JSON-RPC ov
 2. **AI-Powered Server** - A full-featured server with LLM integration and tool calling capabilities
 3. **Pausable Task Server** - An AI-powered server that demonstrates intelligent task pausing with the `input-required` state
 4. **Travel Planning Server** - A specialized domain expert agent for vacation planning with streaming and paused tasks
+5. **Extended Configuration Server** - Demonstrates how to extend A2A server configuration with custom application settings
 
 ## Quick Start
 
@@ -118,6 +120,35 @@ This travel planning example:
 - ✅ **Real-world Pattern** - Shows how to build domain-specific A2A agents
 
 **Perfect for testing with**: `examples/client/cmd/pausedtask-streaming` - Send "I need help planning a vacation" to see the full interactive planning process!
+
+### 5. Extended Configuration Server
+
+Demonstrates how to extend the A2A server configuration with custom application-specific settings while maintaining full compatibility with the base A2A configuration system:
+
+```bash
+go run cmd/extended-config/main.go
+```
+
+This extended configuration example:
+
+- ✅ **Configuration Extension** - Shows how to embed base config and add custom fields
+- ✅ **Environment Variable Support** - All custom fields support environment variables with defaults  
+- ✅ **Custom Validation** - Implements custom validation logic for extended configuration
+- ✅ **Nested Configuration** - Demonstrates nested config structures with prefixed env vars
+- ✅ **Best Practices** - Shows the recommended patterns for extending A2A server configuration
+- ✅ **Multiple Patterns** - Supports embedding, interface-based, and named field approaches
+
+**Example with custom configuration:**
+```bash
+export DATABASE_URL="postgresql://localhost/myapp"
+export APP_NAME="MyCustomApp"
+export MAX_CONNECTIONS="50"
+export FEATURE_ENABLE_NEW_UI="true"
+export DEBUG="true"
+go run cmd/extended-config/main.go
+```
+
+**Perfect for**: Applications that need custom configuration beyond the standard A2A settings, demonstrating configuration extension patterns, and learning configuration best practices.
 
 ## Example Usage
 
@@ -332,6 +363,8 @@ curl http://localhost:8080/.well-known/agent.json | jq
 - `cmd/minimal/main.go` - Simple working server with custom task handler
 - `cmd/aipowered/main.go` - AI-powered server with LLM integration and tools
 - `cmd/pausedtask/main.go` - AI-powered server with intelligent task pausing capabilities
+- `cmd/extended-config/main.go` - Server with extended configuration demonstration
+- `cmd/extended-config/README.md` - Extended configuration documentation and examples
 - `README.md` - This documentation
 
 ## Next Steps
