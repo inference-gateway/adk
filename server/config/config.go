@@ -206,10 +206,6 @@ type ExtendableConfig interface {
 	Validate() error
 }
 
-// Configurable interface for structs that embed Config
-type Configurable interface {
-	GetConfig() *Config
-}
 
 // LoadExtended loads configuration with support for extended/custom configuration structs.
 // This function allows clients to define their own configuration structs that embed
@@ -270,41 +266,6 @@ func LoadExtendedWithDefaults(ctx context.Context, target any) error {
 	return LoadExtendedWithLookuper(ctx, target, &emptyLookuper{})
 }
 
-// MergeConfigs merges a base Config with an extended configuration struct.
-// This is useful for combining programmatic configuration with environment-based configuration.
-func MergeConfigs(ctx context.Context, base *Config, target any) error {
-	if base == nil {
-		return LoadExtended(ctx, target)
-	}
-
-	// First, set the base config in the target
-	if err := setBaseConfig(target, base); err != nil {
-		return fmt.Errorf("failed to set base config: %w", err)
-	}
-
-	return nil
-}
-
-// MergeConfigsWithEnvironment merges a base Config with an extended configuration struct and applies environment variables.
-// This is useful for combining programmatic configuration with environment-based configuration.
-//
-// Note: Due to the behavior of the underlying envconfig library, environment variables will only override 
-// fields that are zero-valued in the base config. Non-zero values in the base config will not be overridden
-// by environment variables. For most use cases, use LoadExtended directly instead of this function.
-func MergeConfigsWithEnvironment(ctx context.Context, base *Config, target any) error {
-	if base == nil {
-		return LoadExtended(ctx, target)
-	}
-
-	// First, set the base config in the target
-	if err := setBaseConfig(target, base); err != nil {
-		return fmt.Errorf("failed to set base config: %w", err)
-	}
-
-	// Then load environment variables on top
-	// Note: Environment variables will only override zero-valued fields
-	return LoadExtended(ctx, target)
-}
 
 // ExtractBaseConfig extracts the base Config from various target types
 func ExtractBaseConfig(target any) (*Config, error) {
@@ -326,80 +287,13 @@ func ExtractBaseConfig(target any) (*Config, error) {
 		return extendable.GetBaseConfig(), nil
 	}
 
-	// Method 2: Check if it implements Configurable
-	if configurable, ok := target.(Configurable); ok {
-		return configurable.GetConfig(), nil
-	}
 
-	// Method 3: Look for embedded Config field
+	// Look for embedded Config field
 	configField := val.FieldByName("Config")
 	if configField.IsValid() && configField.Type() == reflect.TypeOf(Config{}) {
 		return configField.Addr().Interface().(*Config), nil
 	}
 
-	// Method 4: Look for any field of type Config
-	typ := val.Type()
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		fieldType := typ.Field(i)
-		
-		if field.Type() == reflect.TypeOf(Config{}) {
-			return field.Addr().Interface().(*Config), nil
-		}
-
-		// Check for pointer to Config
-		if field.Type() == reflect.TypeOf((*Config)(nil)) && !field.IsNil() {
-			return field.Interface().(*Config), nil
-		}
-
-		// Check embedded structs recursively
-		if fieldType.Anonymous && field.Kind() == reflect.Struct {
-			if config, err := ExtractBaseConfig(field.Addr().Interface()); err == nil {
-				return config, nil
-			}
-		}
-	}
-
 	return nil, fmt.Errorf("no Config field found in target struct")
 }
 
-// setBaseConfig sets the base Config in the target struct
-func setBaseConfig(target any, base *Config) error {
-	if target == nil || base == nil {
-		return fmt.Errorf("target and base cannot be nil")
-	}
-
-	val := reflect.ValueOf(target)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
-
-	if val.Kind() != reflect.Struct {
-		return fmt.Errorf("target must be a struct or pointer to struct")
-	}
-
-	// Look for Config field and set it
-	configField := val.FieldByName("Config")
-	if configField.IsValid() && configField.CanSet() && configField.Type() == reflect.TypeOf(Config{}) {
-		configField.Set(reflect.ValueOf(*base))
-		return nil
-	}
-
-	// Look for any field of type Config
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		
-		if field.Type() == reflect.TypeOf(Config{}) && field.CanSet() {
-			field.Set(reflect.ValueOf(*base))
-			return nil
-		}
-
-		// Check for pointer to Config
-		if field.Type() == reflect.TypeOf((*Config)(nil)) && field.CanSet() {
-			field.Set(reflect.ValueOf(base))
-			return nil
-		}
-	}
-
-	return fmt.Errorf("no settable Config field found in target struct")
-}

@@ -123,7 +123,7 @@ This travel planning example:
 
 ### 5. Extended Configuration Server
 
-Demonstrates how to extend the A2A server configuration with custom application-specific settings while maintaining full compatibility with the base A2A configuration system:
+Demonstrates how to extend the A2A server configuration with custom application-specific settings:
 
 ```bash
 go run cmd/extended-config/main.go
@@ -132,18 +132,13 @@ go run cmd/extended-config/main.go
 This extended configuration example:
 
 - ✅ **Configuration Extension** - Shows how to embed base config and add custom fields
-- ✅ **Environment Variable Support** - All custom fields support environment variables with defaults  
-- ✅ **Custom Validation** - Implements custom validation logic for extended configuration
-- ✅ **Nested Configuration** - Demonstrates nested config structures with prefixed env vars
-- ✅ **Best Practices** - Shows the recommended patterns for extending A2A server configuration
-- ✅ **Multiple Patterns** - Supports embedding, interface-based, and named field approaches
+- ✅ **Environment Variable Support** - Custom fields support environment variables with defaults  
+- ✅ **Custom Validation** - Implements validation logic for extended configuration
 
 **Example with custom configuration:**
 ```bash
 export DATABASE_URL="postgresql://localhost/myapp"
 export APP_NAME="MyCustomApp"
-export MAX_CONNECTIONS="50"
-export FEATURE_ENABLE_NEW_UI="true"
 export DEBUG="true"
 go run cmd/extended-config/main.go
 ```

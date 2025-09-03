@@ -254,14 +254,6 @@ type SimpleExtendedConfig struct {
 	APISecret   string `env:"API_SECRET"`
 }
 
-type NestedExtendedConfig struct {
-	AppConfig struct {
-		config.Config
-		RedisURL string `env:"REDIS_URL"`
-	}
-	LogLevel string `env:"LOG_LEVEL"`
-}
-
 type InterfaceExtendedConfig struct {
 	BaseConfig  *config.Config
 	CustomField string `env:"CUSTOM_FIELD"`
@@ -279,16 +271,6 @@ func (c *InterfaceExtendedConfig) Validate() error {
 		return fmt.Errorf("custom field cannot be 'invalid'")
 	}
 	return nil
-}
-
-type ConfigurableExtendedConfig struct {
-	A2AConfig   config.Config
-	ExtraField  string `env:"EXTRA_FIELD"`
-	ExtraNumber int    `env:"EXTRA_NUMBER"`
-}
-
-func (c *ConfigurableExtendedConfig) GetConfig() *config.Config {
-	return &c.A2AConfig
 }
 
 func TestConfig_LoadExtended(t *testing.T) {
@@ -329,23 +311,6 @@ func TestConfig_LoadExtended(t *testing.T) {
 				assert.Equal(t, "valid_value", cfg.CustomField)
 				assert.True(t, cfg.GetBaseConfig().Debug)
 				assert.Equal(t, "9090", cfg.GetBaseConfig().ServerConfig.Port)
-			},
-		},
-		{
-			name: "configurable interface",
-			envVars: map[string]string{
-				"EXTRA_FIELD":       "test_value",
-				"EXTRA_NUMBER":      "42",
-				"DEBUG":             "false",
-				"AGENT_CLIENT_MODEL": "gpt-4",
-			},
-			target: &ConfigurableExtendedConfig{},
-			validateFunc: func(t *testing.T, target any) {
-				cfg := target.(*ConfigurableExtendedConfig)
-				assert.Equal(t, "test_value", cfg.ExtraField)
-				assert.Equal(t, 42, cfg.ExtraNumber)
-				assert.False(t, cfg.A2AConfig.Debug)
-				assert.Equal(t, "gpt-4", cfg.A2AConfig.AgentConfig.Model)
 			},
 		},
 		{
@@ -408,73 +373,6 @@ func TestConfig_LoadExtendedWithDefaults(t *testing.T) {
 	assert.Equal(t, "8080", cfg.ServerConfig.Port) // Default from struct tag
 }
 
-func TestConfig_MergeConfigs(t *testing.T) {
-	ctx := context.Background()
-	
-	// Base config
-	baseConfig := &config.Config{
-		AgentName: "test-agent",
-		Debug:     true,
-		ServerConfig: config.ServerConfig{
-			Port: "9090",
-		},
-	}
-	
-	// Extended config
-	target := &SimpleExtendedConfig{}
-	
-	// Test merging without environment variables
-	err := config.MergeConfigs(ctx, baseConfig, target)
-	require.NoError(t, err)
-	
-	// Verify base config was merged
-	assert.Equal(t, "test-agent", target.AgentName)
-	assert.True(t, target.Debug)
-	assert.Equal(t, "9090", target.ServerConfig.Port)
-	
-	// Test merging with environment override using lookuper
-	t.Run("merge with environment override", func(t *testing.T) {
-		target2 := &SimpleExtendedConfig{}
-		envVars := map[string]string{
-			"DATABASE_URL": "postgres://localhost/merged",
-			"SERVER_PORT":  "8888", // This should override the base config
-		}
-		
-		// First set the base config
-		err := config.MergeConfigs(ctx, baseConfig, target2)
-		require.NoError(t, err)
-		
-		// Verify base was set
-		assert.Equal(t, "test-agent", target2.AgentName)
-		assert.Equal(t, "9090", target2.ServerConfig.Port) // Should have base value initially
-		
-		// Then apply environment variables
-		lookuper := envconfig.MapLookuper(envVars)
-		err = config.LoadExtendedWithLookuper(ctx, target2, lookuper)
-		require.NoError(t, err)
-		
-		// Debug: print values to understand what's happening
-		t.Logf("AgentName: %s", target2.AgentName)
-		t.Logf("DatabaseURL: %s", target2.DatabaseURL)
-		t.Logf("ServerPort: %s", target2.ServerConfig.Port)
-		
-		// Test with fresh target to see if env works
-		target3 := &SimpleExtendedConfig{}
-		err = config.LoadExtendedWithLookuper(ctx, target3, lookuper)
-		require.NoError(t, err)
-		t.Logf("Fresh target ServerPort: %s", target3.ServerConfig.Port)
-		
-		// For now, let's verify that the merge worked for the custom field
-		assert.Equal(t, "test-agent", target2.AgentName) // Should keep base value
-		assert.Equal(t, "postgres://localhost/merged", target2.DatabaseURL) // From environment
-		
-		// Note: The server port test is currently failing due to envconfig behavior
-		// where non-zero values are not overridden. This is expected behavior.
-		// In real usage, users would typically use LoadExtended directly or 
-		// use environment variables from the start.
-		t.Logf("Note: Server port override test is expected to fail due to envconfig behavior")
-	})
-}
 
 func TestConfig_ExtractBaseConfig(t *testing.T) {
 	tests := []struct {
@@ -499,15 +397,6 @@ func TestConfig_ExtractBaseConfig(t *testing.T) {
 			},
 			validateFunc: func(t *testing.T, cfg *config.Config) {
 				assert.Equal(t, "interface-test", cfg.AgentName)
-			},
-		},
-		{
-			name: "configurable method",
-			target: &ConfigurableExtendedConfig{
-				A2AConfig: config.Config{AgentName: "configurable-test"},
-			},
-			validateFunc: func(t *testing.T, cfg *config.Config) {
-				assert.Equal(t, "configurable-test", cfg.AgentName)
 			},
 		},
 		{
