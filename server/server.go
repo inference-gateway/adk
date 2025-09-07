@@ -958,7 +958,6 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 				zap.Int("message_count", messageCount),
 				zap.String("message_id", streamMessage.MessageID))
 
-			// Create status update for this streaming message
 			task.Status.State = types.TaskStateWorking
 			task.Status.Message = streamMessage
 
