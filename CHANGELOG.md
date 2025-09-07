@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.5](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.4...v0.9.4-rc.5) (2025-09-07)
+
+### ♻️ Improvements
+
+* **server:** Improve delta message handling in A2A protocol ([25c9b38](https://github.com/inference-gateway/adk/commit/25c9b38d48b01900c94412bc75132d28eca50478))
+* **task:** Remove deprecated HandleTask method and related processing logic ([429cfb0](https://github.com/inference-gateway/adk/commit/429cfb0ec0a6603b847bdb3c6cdde8eead5c1780))
+
 ## [0.9.4-rc.4](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.3...v0.9.4-rc.4) (2025-09-07)
 
 ### ♻️ Improvements
