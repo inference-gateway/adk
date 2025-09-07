@@ -387,79 +387,26 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		return task, nil
 	}
 
-	var additionalMessages []types.Message
-	var lastMessage *types.Message
-
 	for streamMessage := range streamChan {
-		if streamMessage != nil {
-			additionalMessages = append(additionalMessages, *streamMessage)
-			lastMessage = streamMessage
-		}
-	}
-
-	if lastMessage != nil && lastMessage.Kind == "input_required" {
-		inputMessage := "Please provide more information to continue streaming."
-		if len(lastMessage.Parts) > 0 {
-			if textPart, ok := lastMessage.Parts[0].(map[string]any); ok {
-				if text, exists := textPart["text"].(string); exists && text != "" {
-					inputMessage = text
-				}
-			}
-		}
-		task.History = append(task.History, additionalMessages...)
-		return sth.pauseTaskForStreamingInput(task, inputMessage), nil
-	}
-
-	if len(additionalMessages) > 0 {
-		var consolidatedMessage *types.Message
-
-		for i := len(additionalMessages) - 1; i >= 0; i-- {
-			msg := &additionalMessages[i]
-			if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
-				consolidatedMessage = msg
-				break
-			}
-		}
-
-		if consolidatedMessage == nil {
-			var fullContent strings.Builder
-			var finalMessageID string
-
-			for _, msg := range additionalMessages {
-				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
-					for _, part := range msg.Parts {
-						if partMap, ok := part.(map[string]any); ok {
-							if text, exists := partMap["text"].(string); exists {
-								fullContent.WriteString(text)
-							}
-						}
+		if streamMessage != nil && streamMessage.Kind == "input_required" {
+			inputMessage := "Please provide more information to continue streaming."
+			if len(streamMessage.Parts) > 0 {
+				if textPart, ok := streamMessage.Parts[0].(map[string]any); ok {
+					if text, exists := textPart["text"].(string); exists && text != "" {
+						inputMessage = text
 					}
-					finalMessageID = msg.MessageID
 				}
 			}
-
-			if fullContent.Len() > 0 {
-				consolidatedMessage = &types.Message{
-					Kind:      "message",
-					MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
-					Role:      "assistant",
-					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": fullContent.String(),
-						},
-					},
-				}
-			}
-		}
-
-		if consolidatedMessage != nil {
-			task.History = append(task.History, *consolidatedMessage)
+			return sth.pauseTaskForStreamingInput(task, inputMessage), nil
 		}
 	}
 
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = lastMessage
+	if len(task.History) > 0 {
+		task.Status.Message = &task.History[len(task.History)-1]
+	} else {
+		task.Status.Message = nil
+	}
 
 	return task, nil
 }

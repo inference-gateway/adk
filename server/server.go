@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
@@ -761,7 +760,6 @@ func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCReque
 		return
 	}
 
-	// Enqueue task using storage layer for horizontal scaling
 	err = s.storage.EnqueueTask(task, req.ID)
 	if err != nil {
 		s.logger.Error("failed to enqueue task", zap.Error(err))
@@ -943,23 +941,62 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 		return
 	}
 
-	var allMessages []types.Message
-	var lastMessage *types.Message
 	messageCount := 0
 
-	for streamDelta := range streamChan {
-		if streamDelta != nil {
+	for streamMessage := range streamChan {
+		if streamMessage != nil {
 			messageCount++
-			allMessages = append(allMessages, *streamDelta)
-			lastMessage = streamDelta
 
-			s.logger.Debug("received streaming delta",
+			s.logger.Debug("received streaming message",
 				zap.String("task_id", task.ID),
 				zap.Int("message_count", messageCount),
-				zap.String("message_id", streamDelta.MessageID))
+				zap.String("message_id", streamMessage.MessageID),
+				zap.String("message_kind", streamMessage.Kind))
+
+			if streamMessage.Kind == "input_required" {
+				task.Status.State = types.TaskStateInputRequired
+				task.Status.Message = streamMessage
+
+				finalResponse := types.TaskStatusUpdateEvent{
+					Kind:      "status-update",
+					TaskID:    task.ID,
+					ContextID: task.ContextID,
+					Status:    task.Status,
+					Final:     true,
+				}
+
+				jsonRPCResponse := types.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  finalResponse,
+				}
+
+				if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+					s.logger.Error("failed to write final streaming response", zap.Error(err))
+				}
+
+				if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+					s.logger.Error("failed to write stream termination signal", zap.Error(err))
+				} else {
+					c.Writer.Flush()
+					s.logger.Debug("sent stream termination signal [DONE]")
+				}
+
+				if err := s.taskManager.UpdateTask(task); err != nil {
+					s.logger.Error("failed to update streaming task",
+						zap.Error(err),
+						zap.String("task_id", task.ID),
+						zap.String("context_id", task.ContextID))
+				}
+
+				s.logger.Info("streaming task requires input",
+					zap.String("task_id", task.ID),
+					zap.String("context_id", task.ContextID))
+				return
+			}
 
 			task.Status.State = types.TaskStateWorking
-			task.Status.Message = streamDelta
+			task.Status.Message = streamMessage
 
 			statusUpdate := types.TaskStatusUpdateEvent{
 				Kind:      "status-update",
@@ -987,64 +1024,11 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 		zap.String("task_id", task.ID),
 		zap.Int("total_messages", messageCount))
 
-	if len(allMessages) > 0 {
-		var consolidatedMessage *types.Message
-
-		for i := len(allMessages) - 1; i >= 0; i-- {
-			msg := &allMessages[i]
-			if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
-				consolidatedMessage = msg
-				break
-			}
-		}
-
-		if consolidatedMessage == nil {
-			var fullContent strings.Builder
-			var finalMessageID string
-
-			for _, msg := range allMessages {
-				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
-					for _, part := range msg.Parts {
-						if partMap, ok := part.(map[string]any); ok {
-							if text, exists := partMap["text"].(string); exists {
-								fullContent.WriteString(text)
-							}
-						}
-					}
-					finalMessageID = msg.MessageID
-				}
-			}
-
-			if fullContent.Len() > 0 {
-				consolidatedMessage = &types.Message{
-					Kind:      "message",
-					MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
-					Role:      "assistant",
-					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": fullContent.String(),
-						},
-					},
-				}
-			}
-		}
-
-		if consolidatedMessage != nil {
-			task.History = append(task.History, *consolidatedMessage)
-		}
-	}
-
-	if lastMessage != nil && lastMessage.Kind == "input_required" {
-		task.Status.State = types.TaskStateInputRequired
-		task.Status.Message = lastMessage
+	task.Status.State = types.TaskStateCompleted
+	if len(task.History) > 0 {
+		task.Status.Message = &task.History[len(task.History)-1]
 	} else {
-		task.Status.State = types.TaskStateCompleted
-		if len(task.History) > 0 {
-			task.Status.Message = &task.History[len(task.History)-1]
-		} else {
-			task.Status.Message = lastMessage
-		}
+		task.Status.Message = nil
 	}
 
 	if err := s.taskManager.UpdateTask(task); err != nil {

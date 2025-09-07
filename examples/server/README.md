@@ -53,7 +53,7 @@ For AI capabilities with LLM integration and tool calling:
 cp .env.gateway.example .env
 
 # Edit .env to configure the Inference Gateway URL and other settings
-docker run -d --name inference-gateway -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
+docker run --rm --name inference-gateway --env-file .env -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
 export AGENT_CLIENT_BASE_URL=http://localhost:8081/v1
 export AGENT_CLIENT_PROVIDER=deepseek # Choose your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
 export AGENT_CLIENT_MODEL=deepseek-chat
@@ -79,7 +79,7 @@ Demonstrates intelligent task pausing where the LLM decides when to request user
 cp .env.gateway.example .env
 
 # Edit .env to configure the Inference Gateway URL and other settings
-docker run -d --name inference-gateway --env-file .env -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
+docker run --rm --name inference-gateway --env-file .env -p 8081:8080 ghcr.io/inference-gateway/inference-gateway:latest
 export AGENT_CLIENT_BASE_URL=http://localhost:8081/v1
 export AGENT_CLIENT_PROVIDER='deepseek' # Choose your LLM provider (openai, anthropic, ollama, deepseek, google, claudflare, etc.)
 export AGENT_CLIENT_MODEL='deepseek-chat'
