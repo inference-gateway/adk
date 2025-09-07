@@ -988,12 +988,9 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 		zap.String("task_id", task.ID),
 		zap.Int("total_messages", messageCount))
 
-	// Accumulate streaming deltas into a single assistant message
 	if len(allMessages) > 0 {
-		// Find the last non-chunk message or create a consolidated message
 		var consolidatedMessage *types.Message
 
-		// Look for the final assistant message (non-chunk)
 		for i := len(allMessages) - 1; i >= 0; i-- {
 			msg := &allMessages[i]
 			if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
@@ -1002,7 +999,6 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 			}
 		}
 
-		// If no consolidated message found, create one from chunks
 		if consolidatedMessage == nil {
 			var fullContent strings.Builder
 			var finalMessageID string
@@ -1016,11 +1012,10 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 							}
 						}
 					}
-					finalMessageID = msg.MessageID // Keep track of the last chunk ID
+					finalMessageID = msg.MessageID
 				}
 			}
 
-			// Create consolidated message only if we have content
 			if fullContent.Len() > 0 {
 				consolidatedMessage = &types.Message{
 					Kind:      "message",
@@ -1036,7 +1031,6 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 			}
 		}
 
-		// Add only the consolidated message to history
 		if consolidatedMessage != nil {
 			task.History = append(task.History, *consolidatedMessage)
 		}
