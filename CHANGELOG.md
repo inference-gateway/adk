@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.1](https://github.com/inference-gateway/adk/compare/v0.9.3...v0.9.4-rc.1) (2025-09-07)
+
+### ♻️ Improvements
+
+* **server:** Consolidate the streaming messages and storage capabilities in the agent RunWithStream method ([8935f0a](https://github.com/inference-gateway/adk/commit/8935f0a2982928f6a497c4ec9990848dc1a2a164))
+* **tests:** Remove redundant comments in streaming message accumulation tests ([a1f4c42](https://github.com/inference-gateway/adk/commit/a1f4c42afb6a748be17e8bcb5167792d75fff8e9))
+
+### 🐛 Bug Fixes
+
+* **server:** Rename streamMessage to streamDelta for clarity in streaming handler ([b29793a](https://github.com/inference-gateway/adk/commit/b29793a63f6d1a07cde71582e8ff5c9e5f9332d4))
+* **server:** Use consolidated message in task status instead of last chunk ([86f5631](https://github.com/inference-gateway/adk/commit/86f56315e0f5f6eaf7baa3c511812ec6717d30d3))
+
+### ✅ Miscellaneous
+
+* **server:** Add comprehensive streaming message accumulation tests ([f3694c3](https://github.com/inference-gateway/adk/commit/f3694c34360ba166bd307ac1b8aada5c611814f3))
+
 ## [0.9.3](https://github.com/inference-gateway/adk/compare/v0.9.2...v0.9.3) (2025-09-07)
 
 ### 🐛 Bug Fixes
