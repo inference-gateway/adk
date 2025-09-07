@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.3](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.2...v0.9.4-rc.3) (2025-09-07)
+
+### ♻️ Improvements
+
+* Add A2A protocol handler and fake OpenAI compatible agent implementation ([6c02f09](https://github.com/inference-gateway/adk/commit/6c02f09e79b488008bfff03da3f4da569776cd1d))
+* **server:** Update task handler interfaces to support streaming tasks ([1a5ba6b](https://github.com/inference-gateway/adk/commit/1a5ba6b6aad245984807167d47dd65e59bee6577))
+
 ## [0.9.4-rc.2](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.1...v0.9.4-rc.2) (2025-09-07)
 
 ### ♻️ Improvements
