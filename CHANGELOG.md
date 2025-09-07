@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.7](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.6...v0.9.4-rc.7) (2025-09-07)
+
+### ♻️ Improvements
+
+* **agent:** Update condition for logging when no tool calls are executed ([29837dd](https://github.com/inference-gateway/adk/commit/29837dd747e9279e11d2555278d5ea43587adc8a))
+
 ## [0.9.4-rc.6](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.5...v0.9.4-rc.6) (2025-09-07)
 
 ### ♻️ Improvements
