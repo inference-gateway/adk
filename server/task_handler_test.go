@@ -147,13 +147,12 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 				assert.NotNil(t, result.Status.Message)
 			}
 
-			// Check that history contains at least one message
 			assert.Greater(t, len(result.History), 0)
 		})
 	}
 }
 
-func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
+func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 	logger := zap.NewNop()
 	ctx := context.Background()
 
@@ -161,20 +160,19 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 		name           string
 		task           *types.Task
 		agent          server.OpenAICompatibleAgent
-		expectedState  types.TaskState
+		expectError    bool
 		expectInputReq bool
 	}{
 		{
-			name: "successful streaming task without agent",
+			name: "streaming task without agent should error",
 			task: &types.Task{
 				ID:        "test-task-1",
 				ContextID: "test-context-1",
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
-			agent:          nil,
-			expectedState:  types.TaskStateCompleted,
-			expectInputReq: false,
+			agent:       nil,
+			expectError: true,
 		},
 		{
 			name: "streaming task with agent requiring input",
@@ -185,7 +183,7 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 				History:   []types.Message{},
 			},
 			agent:          createMockAgentWithInputRequired(),
-			expectedState:  types.TaskStateInputRequired,
+			expectError:    false,
 			expectInputReq: true,
 		},
 	}
@@ -193,7 +191,6 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			taskHandler := server.NewDefaultStreamingTaskHandler(logger, tt.agent)
-			taskHandler.SetAgent(tt.agent)
 			message := &types.Message{
 				Kind: "message",
 				Role: "user",
@@ -205,19 +202,40 @@ func TestDefaultStreamingTaskHandler_HandleTask(t *testing.T) {
 				},
 			}
 
-			result, err := taskHandler.HandleTask(ctx, tt.task, message)
+			eventsChan, err := taskHandler.HandleStreamingTask(ctx, tt.task, message)
 
 			assert.NoError(t, err)
-			assert.NotNil(t, result)
-			assert.Equal(t, tt.expectedState, result.Status.State)
+			assert.NotNil(t, eventsChan)
 
-			if tt.expectInputReq {
-				assert.Equal(t, types.TaskStateInputRequired, result.Status.State)
-				assert.NotNil(t, result.Status.Message)
-				assert.Contains(t, result.Status.Message.MessageID, "stream-input-request")
+			var events []server.StreamEvent
+			for event := range eventsChan {
+				events = append(events, event)
 			}
 
-			assert.Greater(t, len(result.History), 0)
+			if tt.expectError {
+				hasErrorEvent := false
+				for _, event := range events {
+					if event.GetEventType() == "error" {
+						hasErrorEvent = true
+						break
+					}
+				}
+				assert.True(t, hasErrorEvent, "Expected an error event")
+			} else {
+				hasCompleteEvent := false
+				for _, event := range events {
+					if event.GetEventType() == "task_complete" {
+						hasCompleteEvent = true
+						if tt.expectInputReq {
+							if taskData, ok := event.GetData().(*types.Task); ok {
+								assert.Equal(t, types.TaskStateInputRequired, taskData.Status.State)
+							}
+						}
+						break
+					}
+				}
+				assert.True(t, hasCompleteEvent, "Expected a task completion event")
+			}
 		})
 	}
 }
