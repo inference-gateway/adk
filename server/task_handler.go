@@ -387,7 +387,6 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		return task, nil
 	}
 
-	// Collect all streaming messages
 	var additionalMessages []types.Message
 	var lastMessage *types.Message
 
@@ -398,7 +397,6 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		}
 	}
 
-	// Check for input required in the last message
 	if lastMessage != nil && lastMessage.Kind == "input_required" {
 		inputMessage := "Please provide more information to continue streaming."
 		if len(lastMessage.Parts) > 0 {
@@ -412,9 +410,52 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		return sth.pauseTaskForStreamingInput(task, inputMessage), nil
 	}
 
-	// Add all messages to history
 	if len(additionalMessages) > 0 {
-		task.History = append(task.History, additionalMessages...)
+		var consolidatedMessage *types.Message
+
+		for i := len(additionalMessages) - 1; i >= 0; i-- {
+			msg := &additionalMessages[i]
+			if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
+				consolidatedMessage = msg
+				break
+			}
+		}
+
+		if consolidatedMessage == nil {
+			var fullContent strings.Builder
+			var finalMessageID string
+
+			for _, msg := range additionalMessages {
+				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+					for _, part := range msg.Parts {
+						if partMap, ok := part.(map[string]any); ok {
+							if text, exists := partMap["text"].(string); exists {
+								fullContent.WriteString(text)
+							}
+						}
+					}
+					finalMessageID = msg.MessageID
+				}
+			}
+
+			if fullContent.Len() > 0 {
+				consolidatedMessage = &types.Message{
+					Kind:      "message",
+					MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]any{
+							"kind": "text",
+							"text": fullContent.String(),
+						},
+					},
+				}
+			}
+		}
+
+		if consolidatedMessage != nil {
+			task.History = append(task.History, *consolidatedMessage)
+		}
 	}
 
 	task.Status.State = types.TaskStateCompleted

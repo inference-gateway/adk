@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
@@ -957,7 +958,6 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 				zap.Int("message_count", messageCount),
 				zap.String("message_id", streamMessage.MessageID))
 
-			// Create status update for this streaming message
 			task.Status.State = types.TaskStateWorking
 			task.Status.Message = streamMessage
 
@@ -988,7 +988,51 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 		zap.Int("total_messages", messageCount))
 
 	if len(allMessages) > 0 {
-		task.History = append(task.History, allMessages...)
+		var consolidatedMessage *types.Message
+
+		for i := len(allMessages) - 1; i >= 0; i-- {
+			msg := &allMessages[i]
+			if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
+				consolidatedMessage = msg
+				break
+			}
+		}
+
+		if consolidatedMessage == nil {
+			var fullContent strings.Builder
+			var finalMessageID string
+
+			for _, msg := range allMessages {
+				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+					for _, part := range msg.Parts {
+						if partMap, ok := part.(map[string]any); ok {
+							if text, exists := partMap["text"].(string); exists {
+								fullContent.WriteString(text)
+							}
+						}
+					}
+					finalMessageID = msg.MessageID
+				}
+			}
+
+			if fullContent.Len() > 0 {
+				consolidatedMessage = &types.Message{
+					Kind:      "message",
+					MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]any{
+							"kind": "text",
+							"text": fullContent.String(),
+						},
+					},
+				}
+			}
+		}
+
+		if consolidatedMessage != nil {
+			task.History = append(task.History, *consolidatedMessage)
+		}
 	}
 
 	if lastMessage != nil && lastMessage.Kind == "input_required" {
