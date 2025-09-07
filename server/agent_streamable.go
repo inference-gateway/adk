@@ -211,7 +211,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				}
 			}
 
-			if len(toolResults) == 0 {
+			if assistantMessage != nil && len(toolResultMessages) == 0 {
 				a.logger.Debug("streaming completed - no tool calls executed",
 					zap.Int("iteration", iteration),
 					zap.Int("final_message_count", len(currentMessages)),
