@@ -1,6 +1,11 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+)
 
 // NewToolResultMessage creates a standardized tool result message
 func NewToolResultMessage(toolCallID string, result any, hasError bool) *Message {
@@ -88,4 +93,59 @@ func NewInputRequiredMessage(toolCallID, message string) *Message {
 			NewTextPart(message),
 		},
 	}
+}
+
+// NewAgentEvent creates a CloudEvent for agent lifecycle events
+func NewAgentEvent(eventType, eventID string, data map[string]any) cloudevents.Event {
+	event := cloudevents.NewEvent()
+	event.SetID(eventID)
+	event.SetType(eventType)
+	event.SetSource("adk/agent")
+	event.SetTime(time.Now())
+	_ = event.SetData(cloudevents.ApplicationJSON, data)
+
+	return event
+}
+
+// NewDeltaEvent creates a CloudEvent for streaming deltas, with the message in the data field
+func NewDeltaEvent(message *Message) cloudevents.Event {
+	event := cloudevents.NewEvent()
+	event.SetID(message.MessageID)
+	event.SetType("adk.agent.delta")
+	event.SetSource("adk/agent")
+	event.SetTime(time.Now())
+	_ = event.SetData(cloudevents.ApplicationJSON, message)
+
+	return event
+}
+
+// NewIterationCompletedEvent creates a CloudEvent for iteration completed with the final message
+func NewIterationCompletedEvent(iteration int, taskID string, finalMessage *Message) cloudevents.Event {
+	event := cloudevents.NewEvent()
+	event.SetID(fmt.Sprintf("iteration-completed-%s-%d", taskID, iteration))
+	event.SetType("adk.agent.iteration.completed")
+	event.SetSource("adk/agent")
+	event.SetTime(time.Now())
+
+	event.SetExtension("iteration", iteration)
+	event.SetExtension("task_id", taskID)
+	_ = event.SetData(cloudevents.ApplicationJSON, finalMessage)
+
+	return event
+}
+
+// NewMessageEvent creates a CloudEvent with a message payload and custom event type
+func NewMessageEvent(eventType, eventID string, message *Message, extensions map[string]any) cloudevents.Event {
+	event := cloudevents.NewEvent()
+	event.SetID(eventID)
+	event.SetType(eventType)
+	event.SetSource("adk/agent")
+	event.SetTime(time.Now())
+	_ = event.SetData(cloudevents.ApplicationJSON, message)
+
+	for key, value := range extensions {
+		event.SetExtension(key, value)
+	}
+
+	return event
 }

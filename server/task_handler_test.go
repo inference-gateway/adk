@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	server "github.com/inference-gateway/adk/server"
 	mocks "github.com/inference-gateway/adk/server/mocks"
 	types "github.com/inference-gateway/adk/types"
@@ -242,8 +243,9 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 
 	mockAgent.RunReturns(inputRequiredResponse, nil)
 
-	streamChan := make(chan *types.Message, 1)
-	streamChan <- &types.Message{
+	streamChan := make(chan cloudevents.Event, 1)
+
+	inputMessage := &types.Message{
 		Kind:      "input_required",
 		MessageID: "stream-input-req-123",
 		Role:      "assistant",
@@ -254,6 +256,9 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 			},
 		},
 	}
+
+	event := types.NewMessageEvent("adk.agent.input.required", "stream-input-req-123", inputMessage, nil)
+	streamChan <- event
 	close(streamChan)
 
 	mockAgent.RunWithStreamReturns(streamChan, nil)

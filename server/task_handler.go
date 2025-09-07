@@ -387,17 +387,41 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		return task, nil
 	}
 
-	for streamMessage := range streamChan {
-		if streamMessage != nil && streamMessage.Kind == "input_required" {
-			inputMessage := "Please provide more information to continue streaming."
-			if len(streamMessage.Parts) > 0 {
-				if textPart, ok := streamMessage.Parts[0].(map[string]any); ok {
-					if text, exists := textPart["text"].(string); exists && text != "" {
-						inputMessage = text
+	for event := range streamChan {
+		if event.Type() == "adk.agent.iteration.completed" {
+			var finalMessage types.Message
+			if err := event.DataAs(&finalMessage); err != nil {
+				sth.logger.Error("failed to parse iteration completed event data", zap.Error(err))
+				continue
+			}
+
+			task.History = append(task.History, finalMessage)
+			sth.logger.Debug("stored iteration completed message to history",
+				zap.String("task_id", task.ID),
+				zap.String("message_id", finalMessage.MessageID),
+				zap.String("event_id", event.ID()))
+		}
+
+		if event.Type() == "adk.agent.input.required" {
+			var inputMessage types.Message
+			if err := event.DataAs(&inputMessage); err != nil {
+				sth.logger.Error("failed to parse input required event data", zap.Error(err))
+				continue
+			}
+
+			if inputMessage.Kind == "input_required" {
+				inputText := "Please provide more information to continue streaming."
+				if len(inputMessage.Parts) > 0 {
+					if textPart, ok := inputMessage.Parts[0].(map[string]any); ok {
+						if text, exists := textPart["text"].(string); exists && text != "" {
+							inputText = text
+						}
 					}
 				}
+
+				task.History = append(task.History, inputMessage)
+				return sth.pauseTaskForStreamingInput(task, inputText), nil
 			}
-			return sth.pauseTaskForStreamingInput(task, inputMessage), nil
 		}
 	}
 

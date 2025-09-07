@@ -5,6 +5,7 @@ import (
 	"context"
 	"sync"
 
+	v2 "github.com/cloudevents/sdk-go/v2"
 	"github.com/inference-gateway/adk/server"
 	"github.com/inference-gateway/adk/types"
 )
@@ -24,18 +25,18 @@ type FakeOpenAICompatibleAgent struct {
 		result1 *server.AgentResponse
 		result2 error
 	}
-	RunWithStreamStub        func(context.Context, []types.Message) (<-chan *types.Message, error)
+	RunWithStreamStub        func(context.Context, []types.Message) (<-chan v2.Event, error)
 	runWithStreamMutex       sync.RWMutex
 	runWithStreamArgsForCall []struct {
 		arg1 context.Context
 		arg2 []types.Message
 	}
 	runWithStreamReturns struct {
-		result1 <-chan *types.Message
+		result1 <-chan v2.Event
 		result2 error
 	}
 	runWithStreamReturnsOnCall map[int]struct {
-		result1 <-chan *types.Message
+		result1 <-chan v2.Event
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -112,7 +113,7 @@ func (fake *FakeOpenAICompatibleAgent) RunReturnsOnCall(i int, result1 *server.A
 	}{result1, result2}
 }
 
-func (fake *FakeOpenAICompatibleAgent) RunWithStream(arg1 context.Context, arg2 []types.Message) (<-chan *types.Message, error) {
+func (fake *FakeOpenAICompatibleAgent) RunWithStream(arg1 context.Context, arg2 []types.Message) (<-chan v2.Event, error) {
 	var arg2Copy []types.Message
 	if arg2 != nil {
 		arg2Copy = make([]types.Message, len(arg2))
@@ -143,7 +144,7 @@ func (fake *FakeOpenAICompatibleAgent) RunWithStreamCallCount() int {
 	return len(fake.runWithStreamArgsForCall)
 }
 
-func (fake *FakeOpenAICompatibleAgent) RunWithStreamCalls(stub func(context.Context, []types.Message) (<-chan *types.Message, error)) {
+func (fake *FakeOpenAICompatibleAgent) RunWithStreamCalls(stub func(context.Context, []types.Message) (<-chan v2.Event, error)) {
 	fake.runWithStreamMutex.Lock()
 	defer fake.runWithStreamMutex.Unlock()
 	fake.RunWithStreamStub = stub
@@ -156,28 +157,28 @@ func (fake *FakeOpenAICompatibleAgent) RunWithStreamArgsForCall(i int) (context.
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeOpenAICompatibleAgent) RunWithStreamReturns(result1 <-chan *types.Message, result2 error) {
+func (fake *FakeOpenAICompatibleAgent) RunWithStreamReturns(result1 <-chan v2.Event, result2 error) {
 	fake.runWithStreamMutex.Lock()
 	defer fake.runWithStreamMutex.Unlock()
 	fake.RunWithStreamStub = nil
 	fake.runWithStreamReturns = struct {
-		result1 <-chan *types.Message
+		result1 <-chan v2.Event
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeOpenAICompatibleAgent) RunWithStreamReturnsOnCall(i int, result1 <-chan *types.Message, result2 error) {
+func (fake *FakeOpenAICompatibleAgent) RunWithStreamReturnsOnCall(i int, result1 <-chan v2.Event, result2 error) {
 	fake.runWithStreamMutex.Lock()
 	defer fake.runWithStreamMutex.Unlock()
 	fake.RunWithStreamStub = nil
 	if fake.runWithStreamReturnsOnCall == nil {
 		fake.runWithStreamReturnsOnCall = make(map[int]struct {
-			result1 <-chan *types.Message
+			result1 <-chan v2.Event
 			result2 error
 		})
 	}
 	fake.runWithStreamReturnsOnCall[i] = struct {
-		result1 <-chan *types.Message
+		result1 <-chan v2.Event
 		result2 error
 	}{result1, result2}
 }
