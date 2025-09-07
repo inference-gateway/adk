@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.4](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.3...v0.9.4-rc.4) (2025-09-07)
+
+### ♻️ Improvements
+
+* **schema:** Download the latest schema ([adbf5af](https://github.com/inference-gateway/adk/commit/adbf5af9c22e130b2291f9f4354870ab43a9c012))
+* **tests:** Add 'Kind' field to task initialization in test cases ([eba3526](https://github.com/inference-gateway/adk/commit/eba35265d3ccf9fff13ccd589f9b47dbef574e43))
+
 ## [0.9.4-rc.3](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.2...v0.9.4-rc.3) (2025-09-07)
 
 ### ♻️ Improvements
