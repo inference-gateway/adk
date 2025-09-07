@@ -387,7 +387,6 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		return task, nil
 	}
 
-	// Collect all streaming messages
 	var additionalMessages []types.Message
 	var lastMessage *types.Message
 
@@ -398,7 +397,6 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		}
 	}
 
-	// Check for input required in the last message
 	if lastMessage != nil && lastMessage.Kind == "input_required" {
 		inputMessage := "Please provide more information to continue streaming."
 		if len(lastMessage.Parts) > 0 {
