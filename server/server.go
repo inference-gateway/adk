@@ -114,6 +114,9 @@ type A2AServerImpl struct {
 	// Separate task handlers for different scenarios
 	backgroundTaskHandler TaskHandler
 	streamingTaskHandler  TaskHandler
+
+	// Protocol handler
+	protocolHandler A2AProtocolHandler
 }
 
 var _ A2AServer = (*A2AServerImpl)(nil)
@@ -152,6 +155,14 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger, server.agent)
 	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger, server.agent)
+	server.protocolHandler = NewDefaultA2AProtocolHandler(
+		logger,
+		server.storage,
+		server.taskManager,
+		server.responseSender,
+		server.backgroundTaskHandler,
+		server.streamingTaskHandler,
+	)
 
 	return server
 }
@@ -224,6 +235,14 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 	server.responseSender = NewDefaultResponseSender(logger)
 	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger, server.agent)
 	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger, server.agent)
+	server.protocolHandler = NewDefaultA2AProtocolHandler(
+		logger,
+		server.storage,
+		server.taskManager,
+		server.responseSender,
+		server.backgroundTaskHandler,
+		server.streamingTaskHandler,
+	)
 
 	return server
 }
@@ -664,508 +683,25 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 
 	switch req.Method {
 	case "message/send":
-		s.handleMessageSend(c, req)
+		s.protocolHandler.HandleMessageSend(c, req)
 	case "message/stream":
-		s.handleMessageStream(c, req)
+		s.protocolHandler.HandleMessageStream(c, req)
 	case "tasks/get":
-		s.handleTaskGet(c, req)
+		s.protocolHandler.HandleTaskGet(c, req)
 	case "tasks/list":
-		s.handleTaskList(c, req)
+		s.protocolHandler.HandleTaskList(c, req)
 	case "tasks/cancel":
-		s.handleTaskCancel(c, req)
+		s.protocolHandler.HandleTaskCancel(c, req)
 	case "tasks/pushNotificationConfig/set":
-		s.handleTaskPushNotificationConfigSet(c, req)
+		s.protocolHandler.HandleTaskPushNotificationConfigSet(c, req)
 	case "tasks/pushNotificationConfig/get":
-		s.handleTaskPushNotificationConfigGet(c, req)
+		s.protocolHandler.HandleTaskPushNotificationConfigGet(c, req)
 	case "tasks/pushNotificationConfig/list":
-		s.handleTaskPushNotificationConfigList(c, req)
+		s.protocolHandler.HandleTaskPushNotificationConfigList(c, req)
 	case "tasks/pushNotificationConfig/delete":
-		s.handleTaskPushNotificationConfigDelete(c, req)
+		s.protocolHandler.HandleTaskPushNotificationConfigDelete(c, req)
 	default:
 		s.logger.Warn("unknown method requested", zap.String("method", req.Method))
 		s.responseSender.SendError(c, req.ID, int(ErrMethodNotFound), "method not found")
 	}
-}
-
-// createTaskFromMessage creates a task directly from message parameters
-func (s *A2AServerImpl) createTaskFromMessage(ctx context.Context, params types.MessageSendParams) (*types.Task, error) {
-	if len(params.Message.Parts) == 0 {
-		return nil, fmt.Errorf("empty message parts not allowed")
-	}
-
-	if params.Message.TaskID != nil {
-		taskID := *params.Message.TaskID
-
-		err := s.taskManager.ResumeTaskWithInput(taskID, &params.Message)
-		if err != nil {
-			s.logger.Error("failed to resume task with input",
-				zap.String("task_id", taskID),
-				zap.Error(err))
-			return nil, fmt.Errorf("failed to resume task: %w", err)
-		}
-
-		task, exists := s.taskManager.GetTask(taskID)
-		if !exists {
-			s.logger.Error("failed to get resumed task",
-				zap.String("task_id", taskID))
-			return nil, fmt.Errorf("resumed task not found: %s", taskID)
-		}
-
-		s.logger.Info("task resumed with user input",
-			zap.String("task_id", taskID),
-			zap.String("context_id", task.ContextID))
-
-		return task, nil
-	}
-
-	contextID := params.Message.ContextID
-	if contextID == nil {
-		newContextID := uuid.New().String()
-		contextID = &newContextID
-	}
-
-	task := s.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
-
-	if task != nil {
-		s.logger.Info("task created for processing",
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
-	} else {
-		s.logger.Error("failed to create task - task manager returned nil")
-		return nil, fmt.Errorf("failed to create task")
-	}
-	return task, nil
-}
-
-// handleMessageSend processes message/send requests
-func (s *A2AServerImpl) handleMessageSend(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.MessageSendParams
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse message/send request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	task, err := s.createTaskFromMessage(c.Request.Context(), params)
-	if err != nil {
-		s.logger.Error("failed to create task", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
-		return
-	}
-
-	err = s.storage.EnqueueTask(task, req.ID)
-	if err != nil {
-		s.logger.Error("failed to enqueue task", zap.Error(err))
-		err := s.taskManager.UpdateError(task.ID, &types.Message{
-			Kind:      "message",
-			MessageID: uuid.New().String(),
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Failed to queue task for processing. Please try again later.",
-				},
-			},
-		})
-		if err != nil {
-			s.logger.Error("failed to update task to failed state due to enqueue failure",
-				zap.Error(err),
-				zap.String("task_id", task.ID),
-				zap.String("context_id", task.ContextID))
-		}
-		s.responseSender.SendError(c, req.ID, int(ErrInternalError), "Failed to queue task")
-		return
-	}
-
-	s.responseSender.SendSuccess(c, req.ID, *task)
-}
-
-// handleMessageStream processes message/stream requests
-func (s *A2AServerImpl) handleMessageStream(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.MessageSendParams
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse message/stream request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("Access-Control-Allow-Headers", "Cache-Control")
-
-	ctx := c.Request.Context()
-
-	task, err := s.createTaskFromMessage(ctx, params)
-	if err != nil {
-		s.logger.Error("failed to create streaming task", zap.Error(err))
-		errorResponse := types.JSONRPCErrorResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error: &types.JSONRPCError{
-				Code:    int(ErrInternalError),
-				Message: err.Error(),
-			},
-		}
-		if writeErr := s.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
-			s.logger.Error("failed to write streaming error response", zap.Error(writeErr))
-		}
-		return
-	}
-
-	s.logger.Info("processing streaming task",
-		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
-
-	err = s.taskManager.UpdateState(task.ID, types.TaskStateWorking)
-	if err != nil {
-		s.logger.Error("failed to update streaming task state", zap.Error(err))
-		return
-	}
-
-	var message *types.Message
-	if task.Status.Message != nil {
-		message = task.Status.Message
-	} else {
-		message = &types.Message{
-			Kind:      "message",
-			MessageID: uuid.New().String(),
-			Role:      "user",
-			Parts:     []types.Part{},
-		}
-	}
-
-	updatedTask, err := s.streamingTaskHandler.HandleTask(ctx, task, message)
-	if err != nil {
-		s.logger.Error("failed to process streaming task",
-			zap.Error(err),
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
-
-		errorResponse := types.JSONRPCErrorResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error: &types.JSONRPCError{
-				Code:    int(ErrInternalError),
-				Message: err.Error(),
-			},
-		}
-		if writeErr := s.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
-			s.logger.Error("failed to write streaming error response", zap.Error(writeErr))
-		}
-		return
-	}
-
-	if err := s.taskManager.UpdateTask(updatedTask); err != nil {
-		s.logger.Error("failed to update streaming task",
-			zap.Error(err),
-			zap.String("task_id", updatedTask.ID),
-			zap.String("context_id", updatedTask.ContextID))
-	}
-
-	finalResponse := types.TaskStatusUpdateEvent{
-		Kind:      "status-update",
-		TaskID:    updatedTask.ID,
-		ContextID: updatedTask.ContextID,
-		Status:    updatedTask.Status,
-		Final:     true,
-	}
-
-	jsonRPCResponse := types.JSONRPCSuccessResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result:  finalResponse,
-	}
-
-	if err := s.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
-		s.logger.Error("failed to write final streaming response", zap.Error(err))
-	}
-
-	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
-		s.logger.Error("failed to write stream termination signal", zap.Error(err))
-	} else {
-		c.Writer.Flush()
-		s.logger.Debug("sent stream termination signal [DONE]")
-	}
-
-	s.logger.Info("streaming task processed successfully",
-		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
-}
-
-// writeStreamingResponse writes a JSON-RPC response to the streaming connection in SSE format
-func (s *A2AServerImpl) writeStreamingResponse(c *gin.Context, response *types.JSONRPCSuccessResponse) error {
-	responseBytes, err := json.Marshal(response)
-	if err != nil {
-		return fmt.Errorf("failed to marshal response: %w", err)
-	}
-
-	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
-		return fmt.Errorf("failed to write data prefix: %w", err)
-	}
-
-	if _, err := c.Writer.Write(responseBytes); err != nil {
-		return fmt.Errorf("failed to write response: %w", err)
-	}
-
-	if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
-		return fmt.Errorf("failed to write SSE terminator: %w", err)
-	}
-
-	c.Writer.Flush()
-	return nil
-}
-
-// writeStreamingErrorResponse writes a JSON-RPC error response to the streaming connection in SSE format
-func (s *A2AServerImpl) writeStreamingErrorResponse(c *gin.Context, response *types.JSONRPCErrorResponse) error {
-	responseBytes, err := json.Marshal(response)
-	if err != nil {
-		return fmt.Errorf("failed to marshal error response: %w", err)
-	}
-
-	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
-		return fmt.Errorf("failed to write data prefix: %w", err)
-	}
-
-	if _, err := c.Writer.Write(responseBytes); err != nil {
-		return fmt.Errorf("failed to write error response: %w", err)
-	}
-
-	if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
-		return fmt.Errorf("failed to write SSE terminator: %w", err)
-	}
-
-	c.Writer.Flush()
-	return nil
-}
-
-// handleTaskGet processes tasks/get requests
-func (s *A2AServerImpl) handleTaskGet(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.TaskQueryParams
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse tasks/get request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	s.logger.Info("retrieving task", zap.String("task_id", params.ID))
-
-	task, exists := s.taskManager.GetTask(params.ID)
-	if !exists {
-		s.logger.Error("task not found", zap.String("task_id", params.ID))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "task not found")
-		return
-	}
-
-	s.logger.Info("task retrieved successfully",
-		zap.String("task_id", params.ID),
-		zap.String("context_id", task.ContextID),
-		zap.String("status", string(task.Status.State)))
-	s.responseSender.SendSuccess(c, req.ID, *task)
-}
-
-// handleTaskCancel processes tasks/cancel requests
-func (s *A2AServerImpl) handleTaskCancel(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.TaskIdParams
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse tasks/cancel request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	s.logger.Info("canceling task", zap.String("task_id", params.ID))
-
-	err = s.taskManager.CancelTask(params.ID)
-	if err != nil {
-		s.logger.Error("failed to cancel task",
-			zap.Error(err),
-			zap.String("task_id", params.ID))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), err.Error())
-		return
-	}
-
-	task, _ := s.taskManager.GetTask(params.ID)
-	s.responseSender.SendSuccess(c, req.ID, *task)
-}
-
-// handleTaskList processes tasks/list requests
-func (s *A2AServerImpl) handleTaskList(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.TaskListParams
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse tasks/list request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	s.logger.Info("listing tasks")
-
-	taskList, err := s.taskManager.ListTasks(params)
-	if err != nil {
-		s.logger.Error("failed to list tasks", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
-		return
-	}
-
-	s.logger.Info("tasks listed successfully", zap.Int("count", len(taskList.Tasks)), zap.Int("total", taskList.Total))
-	s.responseSender.SendSuccess(c, req.ID, taskList)
-}
-
-// handleTaskPushNotificationConfigSet processes tasks/pushNotificationConfig/set requests
-func (s *A2AServerImpl) handleTaskPushNotificationConfigSet(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.TaskPushNotificationConfig
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse tasks/pushNotificationConfig/set request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	s.logger.Info("setting push notification config for task",
-		zap.String("task_id", params.TaskID),
-		zap.String("url", params.PushNotificationConfig.URL))
-
-	config, err := s.taskManager.SetTaskPushNotificationConfig(params)
-	if err != nil {
-		s.logger.Error("failed to set push notification config", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
-		return
-	}
-
-	s.logger.Info("push notification config set successfully", zap.String("task_id", params.TaskID))
-	s.responseSender.SendSuccess(c, req.ID, config)
-}
-
-// handleTaskPushNotificationConfigGet processes tasks/pushNotificationConfig/get requests
-func (s *A2AServerImpl) handleTaskPushNotificationConfigGet(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.GetTaskPushNotificationConfigParams
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse tasks/pushNotificationConfig/get request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	s.logger.Info("getting push notification config for task", zap.String("task_id", params.ID))
-
-	config, err := s.taskManager.GetTaskPushNotificationConfig(params)
-	if err != nil {
-		s.logger.Error("failed to get push notification config", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
-		return
-	}
-
-	s.logger.Info("push notification config retrieved successfully", zap.String("task_id", params.ID))
-	s.responseSender.SendSuccess(c, req.ID, config)
-}
-
-// handleTaskPushNotificationConfigList processes tasks/pushNotificationConfig/list requests
-func (s *A2AServerImpl) handleTaskPushNotificationConfigList(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.ListTaskPushNotificationConfigParams
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse tasks/pushNotificationConfig/list request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	s.logger.Info("listing push notification configs for task", zap.String("task_id", params.ID))
-
-	configs, err := s.taskManager.ListTaskPushNotificationConfigs(params)
-	if err != nil {
-		s.logger.Error("failed to list push notification configs", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
-		return
-	}
-
-	s.logger.Info("push notification configs listed successfully",
-		zap.String("task_id", params.ID),
-		zap.Int("count", len(configs)))
-	s.responseSender.SendSuccess(c, req.ID, configs)
-}
-
-// handleTaskPushNotificationConfigDelete processes tasks/pushNotificationConfig/delete requests
-func (s *A2AServerImpl) handleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.DeleteTaskPushNotificationConfigParams
-	paramsBytes, err := json.Marshal(req.Params)
-	if err != nil {
-		s.logger.Error("failed to marshal params", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		s.logger.Error("failed to parse tasks/pushNotificationConfig/delete request", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
-		return
-	}
-
-	s.logger.Info("deleting push notification config",
-		zap.String("task_id", params.ID),
-		zap.String("config_id", params.PushNotificationConfigID))
-
-	err = s.taskManager.DeleteTaskPushNotificationConfig(params)
-	if err != nil {
-		s.logger.Error("failed to delete push notification config", zap.Error(err))
-		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
-		return
-	}
-
-	s.logger.Info("push notification config deleted successfully",
-		zap.String("task_id", params.ID),
-		zap.String("config_id", params.PushNotificationConfigID))
-	s.responseSender.SendSuccess(c, req.ID, nil)
 }
