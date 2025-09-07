@@ -947,19 +947,19 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 	var lastMessage *types.Message
 	messageCount := 0
 
-	for streamMessage := range streamChan {
-		if streamMessage != nil {
+	for streamDelta := range streamChan {
+		if streamDelta != nil {
 			messageCount++
-			allMessages = append(allMessages, *streamMessage)
-			lastMessage = streamMessage
+			allMessages = append(allMessages, *streamDelta)
+			lastMessage = streamDelta
 
-			s.logger.Debug("received streaming message",
+			s.logger.Debug("received streaming delta",
 				zap.String("task_id", task.ID),
 				zap.Int("message_count", messageCount),
-				zap.String("message_id", streamMessage.MessageID))
+				zap.String("message_id", streamDelta.MessageID))
 
 			task.Status.State = types.TaskStateWorking
-			task.Status.Message = streamMessage
+			task.Status.Message = streamDelta
 
 			statusUpdate := types.TaskStatusUpdateEvent{
 				Kind:      "status-update",
@@ -1040,7 +1040,6 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 		task.Status.Message = lastMessage
 	} else {
 		task.Status.State = types.TaskStateCompleted
-		// Use consolidated message if available, otherwise fall back to last message
 		if len(task.History) > 0 {
 			task.Status.Message = &task.History[len(task.History)-1]
 		} else {
