@@ -202,7 +202,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a test task
 			task := &types.Task{
 				ID:        "test-task-123",
 				ContextID: "test-context-123",
@@ -212,18 +211,15 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 				History: []types.Message{},
 			}
 
-			// Simulate the streaming messages we received
 			allMessages := tt.streamingMessages
 			var lastMessage *types.Message
 			if len(allMessages) > 0 {
 				lastMessage = &allMessages[len(allMessages)-1]
 			}
 
-			// Apply the streaming completion logic from server.go lines 990-1049
 			if len(allMessages) > 0 {
 				var consolidatedMessage *types.Message
 
-				// Look for non-chunk assistant message first
 				for i := len(allMessages) - 1; i >= 0; i-- {
 					msg := &allMessages[i]
 					if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
@@ -232,7 +228,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					}
 				}
 
-				// If no non-chunk message found, accumulate chunks
 				if consolidatedMessage == nil {
 					var fullContent string
 					var finalMessageID string
@@ -270,13 +265,11 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 				}
 			}
 
-			// Apply task status update logic
 			if lastMessage != nil && lastMessage.Kind == "input_required" {
 				task.Status.State = types.TaskStateInputRequired
 				task.Status.Message = lastMessage
 			} else {
 				task.Status.State = types.TaskStateCompleted
-				// Use consolidated message if available, otherwise fall back to last message
 				if len(task.History) > 0 {
 					task.Status.Message = &task.History[len(task.History)-1]
 				} else {
@@ -284,7 +277,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 				}
 			}
 
-			// Verify results
 			assert.Equal(t, tt.expectedTaskState, task.Status.State, "Task state should match expected")
 
 			if tt.expectedConsolidatedText != "" && task.Status.Message != nil {
@@ -301,7 +293,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					t.Fatalf("Status message part should be a map")
 				}
 			} else if tt.expectedConsolidatedText == "" && len(allMessages) == 0 {
-				// For empty messages test case, we expect no status message
 				assert.Nil(t, task.Status.Message, "Status message should be nil for empty message list")
 			}
 		})
@@ -309,7 +300,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 }
 
 func TestStreamingMessageAccumulationPerformance(t *testing.T) {
-	// Test performance with a large number of streaming messages
 	const numMessages = 1000
 	messages := make([]types.Message, numMessages)
 
@@ -329,7 +319,6 @@ func TestStreamingMessageAccumulationPerformance(t *testing.T) {
 
 	start := time.Now()
 
-	// Simulate accumulation logic
 	var fullContent string
 	for _, msg := range messages {
 		if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
@@ -346,7 +335,6 @@ func TestStreamingMessageAccumulationPerformance(t *testing.T) {
 	duration := time.Since(start)
 	t.Logf("Processing %d streaming messages took %v", numMessages, duration)
 
-	// Should complete within reasonable time (less than 1 second for 1000 messages)
 	assert.Less(t, duration, time.Second, "Performance test should complete quickly")
 	assert.NotEmpty(t, fullContent, "Consolidated content should not be empty")
 }
@@ -368,7 +356,6 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 					Parts: []types.Part{
 						map[string]any{
 							"kind": "text",
-							// Missing "text" field
 						},
 					},
 				},
@@ -397,7 +384,7 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 					Parts: []types.Part{
 						map[string]any{
 							"kind": "text",
-							"text": 123, // Non-string text field
+							"text": 123,
 						},
 					},
 				},
@@ -409,7 +396,6 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Apply the streaming accumulation logic
 			var fullContent string
 			for _, msg := range tt.streamingMessages {
 				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
