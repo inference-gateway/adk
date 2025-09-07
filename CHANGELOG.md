@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.3](https://github.com/inference-gateway/adk/compare/v0.9.2...v0.9.3) (2025-09-07)
+
+### 🐛 Bug Fixes
+
+* **streaming:** Accumulate streaming deltas into single assistant message ([#53](https://github.com/inference-gateway/adk/issues/53)) ([541fe8b](https://github.com/inference-gateway/adk/commit/541fe8b78f0fbe22caa3874c9e07276ec5ef52c4)), closes [#52](https://github.com/inference-gateway/adk/issues/52)
+* **task:** Allow resuming tasks in any non-completed state ([#51](https://github.com/inference-gateway/adk/issues/51)) ([cb6f2cf](https://github.com/inference-gateway/adk/commit/cb6f2cf815654196ddd0f2a21114460d21adcc8b)), closes [#50](https://github.com/inference-gateway/adk/issues/50)
+
+### 🔨 Miscellaneous
+
+* **env:** Add environment configuration files for flox setup ([567c386](https://github.com/inference-gateway/adk/commit/567c386db28c7f71e7bb72f7067673800dc594e4))
+
 ## [0.9.2](https://github.com/inference-gateway/adk/compare/v0.9.1...v0.9.2) (2025-09-02)
 
 ### ♻️ Improvements
