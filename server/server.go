@@ -1037,10 +1037,16 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 
 	if lastMessage != nil && lastMessage.Kind == "input_required" {
 		task.Status.State = types.TaskStateInputRequired
+		task.Status.Message = lastMessage
 	} else {
 		task.Status.State = types.TaskStateCompleted
+		// Use consolidated message if available, otherwise fall back to last message
+		if len(task.History) > 0 {
+			task.Status.Message = &task.History[len(task.History)-1]
+		} else {
+			task.Status.Message = lastMessage
+		}
 	}
-	task.Status.Message = lastMessage
 
 	if err := s.taskManager.UpdateTask(task); err != nil {
 		s.logger.Error("failed to update streaming task",
