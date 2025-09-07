@@ -40,15 +40,15 @@ type FakeA2AServer struct {
 	getBackgroundTaskHandlerReturnsOnCall map[int]struct {
 		result1 server.TaskHandler
 	}
-	GetStreamingTaskHandlerStub        func() server.TaskHandler
+	GetStreamingTaskHandlerStub        func() server.StreamableTaskHandler
 	getStreamingTaskHandlerMutex       sync.RWMutex
 	getStreamingTaskHandlerArgsForCall []struct {
 	}
 	getStreamingTaskHandlerReturns struct {
-		result1 server.TaskHandler
+		result1 server.StreamableTaskHandler
 	}
 	getStreamingTaskHandlerReturnsOnCall map[int]struct {
-		result1 server.TaskHandler
+		result1 server.StreamableTaskHandler
 	}
 	LoadAgentCardFromFileStub        func(string, map[string]any) error
 	loadAgentCardFromFileMutex       sync.RWMutex
@@ -97,10 +97,10 @@ type FakeA2AServer struct {
 	setBackgroundTaskHandlerArgsForCall []struct {
 		arg1 server.TaskHandler
 	}
-	SetStreamingTaskHandlerStub        func(server.TaskHandler)
+	SetStreamingTaskHandlerStub        func(server.StreamableTaskHandler)
 	setStreamingTaskHandlerMutex       sync.RWMutex
 	setStreamingTaskHandlerArgsForCall []struct {
-		arg1 server.TaskHandler
+		arg1 server.StreamableTaskHandler
 	}
 	StartStub        func(context.Context) error
 	startMutex       sync.RWMutex
@@ -292,7 +292,7 @@ func (fake *FakeA2AServer) GetBackgroundTaskHandlerReturnsOnCall(i int, result1 
 	}{result1}
 }
 
-func (fake *FakeA2AServer) GetStreamingTaskHandler() server.TaskHandler {
+func (fake *FakeA2AServer) GetStreamingTaskHandler() server.StreamableTaskHandler {
 	fake.getStreamingTaskHandlerMutex.Lock()
 	ret, specificReturn := fake.getStreamingTaskHandlerReturnsOnCall[len(fake.getStreamingTaskHandlerArgsForCall)]
 	fake.getStreamingTaskHandlerArgsForCall = append(fake.getStreamingTaskHandlerArgsForCall, struct {
@@ -316,32 +316,32 @@ func (fake *FakeA2AServer) GetStreamingTaskHandlerCallCount() int {
 	return len(fake.getStreamingTaskHandlerArgsForCall)
 }
 
-func (fake *FakeA2AServer) GetStreamingTaskHandlerCalls(stub func() server.TaskHandler) {
+func (fake *FakeA2AServer) GetStreamingTaskHandlerCalls(stub func() server.StreamableTaskHandler) {
 	fake.getStreamingTaskHandlerMutex.Lock()
 	defer fake.getStreamingTaskHandlerMutex.Unlock()
 	fake.GetStreamingTaskHandlerStub = stub
 }
 
-func (fake *FakeA2AServer) GetStreamingTaskHandlerReturns(result1 server.TaskHandler) {
+func (fake *FakeA2AServer) GetStreamingTaskHandlerReturns(result1 server.StreamableTaskHandler) {
 	fake.getStreamingTaskHandlerMutex.Lock()
 	defer fake.getStreamingTaskHandlerMutex.Unlock()
 	fake.GetStreamingTaskHandlerStub = nil
 	fake.getStreamingTaskHandlerReturns = struct {
-		result1 server.TaskHandler
+		result1 server.StreamableTaskHandler
 	}{result1}
 }
 
-func (fake *FakeA2AServer) GetStreamingTaskHandlerReturnsOnCall(i int, result1 server.TaskHandler) {
+func (fake *FakeA2AServer) GetStreamingTaskHandlerReturnsOnCall(i int, result1 server.StreamableTaskHandler) {
 	fake.getStreamingTaskHandlerMutex.Lock()
 	defer fake.getStreamingTaskHandlerMutex.Unlock()
 	fake.GetStreamingTaskHandlerStub = nil
 	if fake.getStreamingTaskHandlerReturnsOnCall == nil {
 		fake.getStreamingTaskHandlerReturnsOnCall = make(map[int]struct {
-			result1 server.TaskHandler
+			result1 server.StreamableTaskHandler
 		})
 	}
 	fake.getStreamingTaskHandlerReturnsOnCall[i] = struct {
-		result1 server.TaskHandler
+		result1 server.StreamableTaskHandler
 	}{result1}
 }
 
@@ -631,10 +631,10 @@ func (fake *FakeA2AServer) SetBackgroundTaskHandlerArgsForCall(i int) server.Tas
 	return argsForCall.arg1
 }
 
-func (fake *FakeA2AServer) SetStreamingTaskHandler(arg1 server.TaskHandler) {
+func (fake *FakeA2AServer) SetStreamingTaskHandler(arg1 server.StreamableTaskHandler) {
 	fake.setStreamingTaskHandlerMutex.Lock()
 	fake.setStreamingTaskHandlerArgsForCall = append(fake.setStreamingTaskHandlerArgsForCall, struct {
-		arg1 server.TaskHandler
+		arg1 server.StreamableTaskHandler
 	}{arg1})
 	stub := fake.SetStreamingTaskHandlerStub
 	fake.recordInvocation("SetStreamingTaskHandler", []interface{}{arg1})
@@ -650,13 +650,13 @@ func (fake *FakeA2AServer) SetStreamingTaskHandlerCallCount() int {
 	return len(fake.setStreamingTaskHandlerArgsForCall)
 }
 
-func (fake *FakeA2AServer) SetStreamingTaskHandlerCalls(stub func(server.TaskHandler)) {
+func (fake *FakeA2AServer) SetStreamingTaskHandlerCalls(stub func(server.StreamableTaskHandler)) {
 	fake.setStreamingTaskHandlerMutex.Lock()
 	defer fake.setStreamingTaskHandlerMutex.Unlock()
 	fake.SetStreamingTaskHandlerStub = stub
 }
 
-func (fake *FakeA2AServer) SetStreamingTaskHandlerArgsForCall(i int) server.TaskHandler {
+func (fake *FakeA2AServer) SetStreamingTaskHandlerArgsForCall(i int) server.StreamableTaskHandler {
 	fake.setStreamingTaskHandlerMutex.RLock()
 	defer fake.setStreamingTaskHandlerMutex.RUnlock()
 	argsForCall := fake.setStreamingTaskHandlerArgsForCall[i]

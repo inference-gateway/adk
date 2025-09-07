@@ -108,10 +108,10 @@ type FakeA2AServerBuilder struct {
 	withLoggerReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
-	WithStreamingTaskHandlerStub        func(server.TaskHandler) server.A2AServerBuilder
+	WithStreamingTaskHandlerStub        func(server.StreamableTaskHandler) server.A2AServerBuilder
 	withStreamingTaskHandlerMutex       sync.RWMutex
 	withStreamingTaskHandlerArgsForCall []struct {
-		arg1 server.TaskHandler
+		arg1 server.StreamableTaskHandler
 	}
 	withStreamingTaskHandlerReturns struct {
 		result1 server.A2AServerBuilder
@@ -655,11 +655,11 @@ func (fake *FakeA2AServerBuilder) WithLoggerReturnsOnCall(i int, result1 server.
 	}{result1}
 }
 
-func (fake *FakeA2AServerBuilder) WithStreamingTaskHandler(arg1 server.TaskHandler) server.A2AServerBuilder {
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandler(arg1 server.StreamableTaskHandler) server.A2AServerBuilder {
 	fake.withStreamingTaskHandlerMutex.Lock()
 	ret, specificReturn := fake.withStreamingTaskHandlerReturnsOnCall[len(fake.withStreamingTaskHandlerArgsForCall)]
 	fake.withStreamingTaskHandlerArgsForCall = append(fake.withStreamingTaskHandlerArgsForCall, struct {
-		arg1 server.TaskHandler
+		arg1 server.StreamableTaskHandler
 	}{arg1})
 	stub := fake.WithStreamingTaskHandlerStub
 	fakeReturns := fake.withStreamingTaskHandlerReturns
@@ -680,13 +680,13 @@ func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerCallCount() int {
 	return len(fake.withStreamingTaskHandlerArgsForCall)
 }
 
-func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerCalls(stub func(server.TaskHandler) server.A2AServerBuilder) {
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerCalls(stub func(server.StreamableTaskHandler) server.A2AServerBuilder) {
 	fake.withStreamingTaskHandlerMutex.Lock()
 	defer fake.withStreamingTaskHandlerMutex.Unlock()
 	fake.WithStreamingTaskHandlerStub = stub
 }
 
-func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerArgsForCall(i int) server.TaskHandler {
+func (fake *FakeA2AServerBuilder) WithStreamingTaskHandlerArgsForCall(i int) server.StreamableTaskHandler {
 	fake.withStreamingTaskHandlerMutex.RLock()
 	defer fake.withStreamingTaskHandlerMutex.RUnlock()
 	argsForCall := fake.withStreamingTaskHandlerArgsForCall[i]

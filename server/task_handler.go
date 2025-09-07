@@ -57,6 +57,61 @@ type TaskHandler interface {
 	GetAgent() OpenAICompatibleAgent
 }
 
+// StreamableTaskHandler defines how to handle streaming task processing
+// This interface should be implemented by streaming task handlers that need to return real-time data
+type StreamableTaskHandler interface {
+	// HandleStreamingTask processes a task and returns a channel of streaming events
+	// The channel should be closed when streaming is complete
+	HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan StreamEvent, error)
+
+	// SetAgent sets the OpenAI-compatible agent for the task handler
+	SetAgent(agent OpenAICompatibleAgent)
+
+	// GetAgent returns the configured OpenAI-compatible agent
+	GetAgent() OpenAICompatibleAgent
+}
+
+// StreamEvent represents a streaming event that can be sent to clients
+type StreamEvent interface {
+	// GetEventType returns the type of the streaming event (delta, status, error, etc.)
+	GetEventType() string
+
+	// GetData returns the event data
+	GetData() interface{}
+}
+
+// DeltaStreamEvent represents a delta streaming event
+type DeltaStreamEvent struct {
+	Data interface{}
+}
+
+func (e *DeltaStreamEvent) GetEventType() string { return "delta" }
+func (e *DeltaStreamEvent) GetData() interface{} { return e.Data }
+
+// StatusStreamEvent represents a status update streaming event
+type StatusStreamEvent struct {
+	Status interface{}
+}
+
+func (e *StatusStreamEvent) GetEventType() string { return "status" }
+func (e *StatusStreamEvent) GetData() interface{} { return e.Status }
+
+// ErrorStreamEvent represents an error streaming event
+type ErrorStreamEvent struct {
+	ErrorMessage string
+}
+
+func (e *ErrorStreamEvent) GetEventType() string { return "error" }
+func (e *ErrorStreamEvent) GetData() interface{} { return e.ErrorMessage }
+
+// TaskCompleteStreamEvent represents a task completion streaming event
+type TaskCompleteStreamEvent struct {
+	Task *types.Task
+}
+
+func (e *TaskCompleteStreamEvent) GetEventType() string { return "task_complete" }
+func (e *TaskCompleteStreamEvent) GetData() interface{} { return e.Task }
+
 // DefaultTaskHandler implements the TaskHandler interface for basic scenarios
 // For optimized background or streaming with automatic input-required pausing,
 // use DefaultBackgroundTaskHandler or DefaultStreamingTaskHandler instead
@@ -373,7 +428,121 @@ func (sth *DefaultStreamingTaskHandler) GetAgent() OpenAICompatibleAgent {
 	return sth.agent
 }
 
-// HandleTask processes a task optimized for streaming scenarios with automatic input pausing
+// HandleStreamingTask processes a task and returns a channel of streaming events
+func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan StreamEvent, error) {
+	eventsChan := make(chan StreamEvent, 100)
+
+	go func() {
+		defer close(eventsChan)
+
+		sth.logger.Info("processing streaming task internally",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID),
+			zap.Bool("has_agent", sth.agent != nil))
+
+		var updatedTask *types.Task
+		var err error
+
+		if sth.agent == nil {
+			eventsChan <- &ErrorStreamEvent{ErrorMessage: "streaming task handler requires an agent to be configured - use SetAgent() to configure an OpenAI-compatible agent for streaming support"}
+			return
+		}
+
+		sth.logger.Info("processing streaming task with agent capabilities",
+			zap.String("task_id", task.ID))
+
+		eventsChan <- &StatusStreamEvent{Status: "starting"}
+
+		messages := make([]types.Message, len(task.History))
+		copy(messages, task.History)
+
+		streamChan, err := sth.agent.RunWithStream(ctx, messages)
+		if err != nil {
+			sth.logger.Error("agent streaming failed", zap.Error(err))
+
+			task.Status.State = types.TaskStateFailed
+			errorText := err.Error()
+			if strings.Contains(errorText, "failed to create chat completion") {
+				errorText = "LLM streaming request failed: " + err.Error()
+			}
+
+			task.Status.Message = &types.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("stream-error-%s", task.ID),
+				Role:      "assistant",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": errorText,
+					},
+				},
+			}
+			eventsChan <- &ErrorStreamEvent{ErrorMessage: err.Error()}
+			return
+		}
+
+		for event := range streamChan {
+			if event.Type() == "adk.agent.delta" {
+				var deltaMessage types.Message
+				if err := event.DataAs(&deltaMessage); err == nil {
+					eventsChan <- &DeltaStreamEvent{Data: deltaMessage}
+				}
+			}
+
+			if event.Type() == "adk.agent.iteration.completed" {
+				var finalMessage types.Message
+				if err := event.DataAs(&finalMessage); err != nil {
+					sth.logger.Error("failed to parse iteration completed event data", zap.Error(err))
+					continue
+				}
+
+				task.History = append(task.History, finalMessage)
+				sth.logger.Debug("stored iteration completed message to history",
+					zap.String("task_id", task.ID),
+					zap.String("message_id", finalMessage.MessageID),
+					zap.String("event_id", event.ID()))
+			}
+
+			if event.Type() == "adk.agent.input.required" {
+				var inputMessage types.Message
+				if err := event.DataAs(&inputMessage); err != nil {
+					sth.logger.Error("failed to parse input required event data", zap.Error(err))
+					continue
+				}
+
+				if inputMessage.Kind == "input_required" {
+					inputText := "Please provide more information to continue streaming."
+					if len(inputMessage.Parts) > 0 {
+						if textPart, ok := inputMessage.Parts[0].(map[string]any); ok {
+							if text, exists := textPart["text"].(string); exists && text != "" {
+								inputText = text
+							}
+						}
+					}
+
+					task.History = append(task.History, inputMessage)
+					updatedTask = sth.pauseTaskForStreamingInput(task, inputText)
+					eventsChan <- &TaskCompleteStreamEvent{Task: updatedTask}
+					return
+				}
+			}
+		}
+
+		task.Status.State = types.TaskStateCompleted
+		if len(task.History) > 0 {
+			task.Status.Message = &task.History[len(task.History)-1]
+		} else {
+			task.Status.Message = nil
+		}
+
+		eventsChan <- &StatusStreamEvent{Status: "completed"}
+		eventsChan <- &TaskCompleteStreamEvent{Task: task}
+	}()
+
+	return eventsChan, nil
+}
+
+// HandleTask processes a task optimized for streaming scenarios with automatic input pausing (deprecated, use HandleStreamingTask)
 func (sth *DefaultStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	sth.logger.Info("processing task with default streaming task handler",
 		zap.String("task_id", task.ID),
@@ -536,7 +705,7 @@ type DefaultA2AProtocolHandler struct {
 	taskManager           TaskManager
 	responseSender        ResponseSender
 	backgroundTaskHandler TaskHandler
-	streamingTaskHandler  TaskHandler
+	streamingTaskHandler  StreamableTaskHandler
 }
 
 // NewDefaultA2AProtocolHandler creates a new default A2A protocol handler
@@ -546,7 +715,7 @@ func NewDefaultA2AProtocolHandler(
 	taskManager TaskManager,
 	responseSender ResponseSender,
 	backgroundTaskHandler TaskHandler,
-	streamingTaskHandler TaskHandler,
+	streamingTaskHandler StreamableTaskHandler,
 ) *DefaultA2AProtocolHandler {
 	return &DefaultA2AProtocolHandler{
 		logger:                logger,
@@ -767,9 +936,9 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		}
 	}
 
-	updatedTask, err := h.streamingTaskHandler.HandleTask(ctx, task, message)
+	eventsChan, err := h.streamingTaskHandler.HandleStreamingTask(ctx, task, message)
 	if err != nil {
-		h.logger.Error("failed to process streaming task",
+		h.logger.Error("failed to start streaming task",
 			zap.Error(err),
 			zap.String("task_id", task.ID),
 			zap.String("context_id", task.ContextID))
@@ -788,29 +957,67 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		return
 	}
 
-	if err := h.taskManager.UpdateTask(updatedTask); err != nil {
-		h.logger.Error("failed to update streaming task",
-			zap.Error(err),
-			zap.String("task_id", updatedTask.ID),
-			zap.String("context_id", updatedTask.ContextID))
+	var finalTask *types.Task
+	for event := range eventsChan {
+		switch event.GetEventType() {
+		case "delta":
+			deltaResponse := types.JSONRPCSuccessResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  event.GetData(),
+			}
+			if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
+				h.logger.Error("failed to write streaming delta", zap.Error(err))
+				return
+			}
+		case "status":
+			h.logger.Debug("received status update", zap.Any("status", event.GetData()))
+		case "task_complete":
+			if taskData, ok := event.GetData().(*types.Task); ok {
+				finalTask = taskData
+			}
+		case "error":
+			h.logger.Error("streaming task error", zap.Any("error", event.GetData()))
+			errorResponse := types.JSONRPCErrorResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Error: &types.JSONRPCError{
+					Code:    int(ErrInternalError),
+					Message: fmt.Sprintf("streaming error: %v", event.GetData()),
+				},
+			}
+			if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+				h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+			}
+			return
+		}
 	}
 
-	finalResponse := types.TaskStatusUpdateEvent{
-		Kind:      "status-update",
-		TaskID:    updatedTask.ID,
-		ContextID: updatedTask.ContextID,
-		Status:    updatedTask.Status,
-		Final:     true,
-	}
+	if finalTask != nil {
+		if err := h.taskManager.UpdateTask(finalTask); err != nil {
+			h.logger.Error("failed to update streaming task",
+				zap.Error(err),
+				zap.String("task_id", finalTask.ID),
+				zap.String("context_id", finalTask.ContextID))
+		}
 
-	jsonRPCResponse := types.JSONRPCSuccessResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result:  finalResponse,
-	}
+		finalResponse := types.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    finalTask.ID,
+			ContextID: finalTask.ContextID,
+			Status:    finalTask.Status,
+			Final:     true,
+		}
 
-	if err := h.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
-		h.logger.Error("failed to write final streaming response", zap.Error(err))
+		jsonRPCResponse := types.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  finalResponse,
+		}
+
+		if err := h.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+			h.logger.Error("failed to write final streaming response", zap.Error(err))
+		}
 	}
 
 	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {

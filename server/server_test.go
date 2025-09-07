@@ -223,7 +223,7 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	a2aServer.SetBackgroundTaskHandler(mockTaskHandler)
-	a2aServer.SetStreamingTaskHandler(mockTaskHandler)
+	a2aServer.SetStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{})
 
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 	a2aServer.SetTaskResultProcessor(mockProcessor)
@@ -399,7 +399,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
 	serverInstance.SetBackgroundTaskHandler(mockTaskHandler)
-	serverInstance.SetStreamingTaskHandler(mockTaskHandler)
+	serverInstance.SetStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{})
 
 	originalMessage := &types.Message{
 		Kind:      "message",
@@ -485,7 +485,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
 	serverInstance.SetBackgroundTaskHandler(mockTaskHandler)
-	serverInstance.SetStreamingTaskHandler(mockTaskHandler)
+	serverInstance.SetStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{})
 
 	originalUserMessage := &types.Message{
 		Kind:      "message",

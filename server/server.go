@@ -42,10 +42,10 @@ type A2AServer interface {
 	GetBackgroundTaskHandler() TaskHandler
 
 	// SetStreamingTaskHandler sets the task handler for streaming scenarios
-	SetStreamingTaskHandler(handler TaskHandler)
+	SetStreamingTaskHandler(handler StreamableTaskHandler)
 
 	// GetStreamingTaskHandler returns the configured streaming task handler
-	GetStreamingTaskHandler() TaskHandler
+	GetStreamingTaskHandler() StreamableTaskHandler
 
 	// SetAgent sets the OpenAI-compatible agent for processing tasks
 	SetAgent(agent OpenAICompatibleAgent)
@@ -113,7 +113,7 @@ type A2AServerImpl struct {
 
 	// Separate task handlers for different scenarios
 	backgroundTaskHandler TaskHandler
-	streamingTaskHandler  TaskHandler
+	streamingTaskHandler  StreamableTaskHandler
 
 	// Protocol handler
 	protocolHandler A2AProtocolHandler
@@ -258,12 +258,12 @@ func (s *A2AServerImpl) GetBackgroundTaskHandler() TaskHandler {
 }
 
 // SetStreamingTaskHandler sets the task handler for streaming scenarios
-func (s *A2AServerImpl) SetStreamingTaskHandler(handler TaskHandler) {
+func (s *A2AServerImpl) SetStreamingTaskHandler(handler StreamableTaskHandler) {
 	s.streamingTaskHandler = handler
 }
 
 // GetStreamingTaskHandler returns the configured streaming task handler
-func (s *A2AServerImpl) GetStreamingTaskHandler() TaskHandler {
+func (s *A2AServerImpl) GetStreamingTaskHandler() StreamableTaskHandler {
 	return s.streamingTaskHandler
 }
 

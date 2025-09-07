@@ -61,6 +61,7 @@ tasks:
       - task: generate:mock:agent-builder
       - task: generate:mock:openai-compatible-agent
       - task: generate:mock:task-handler
+      - task: generate:mock:streamable-task-handler
       - task: generate:mock:a2a-protocol-handler
       - task: generate:mock:task-manager
       - task: generate:mock:storage
@@ -112,6 +113,15 @@ tasks:
       - server/mocks/fake_task_handler.go
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_task_handler.go server TaskHandler
+
+  generate:mock:streamable-task-handler:
+    desc: 'Generate mock for StreamableTaskHandler interface'
+    sources:
+      - server/task_handler.go
+    generates:
+      - server/mocks/fake_streamable_task_handler.go
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_streamable_task_handler.go server StreamableTaskHandler
 
   generate:mock:a2a-protocol-handler:
     desc: 'Generate mock for A2AProtocolHandler interface'
