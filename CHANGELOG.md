@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.2](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.1...v0.9.4-rc.2) (2025-09-07)
+
+### ♻️ Improvements
+
+* **server:** Integrate CloudEvents SDK for enhanced streaming message handling and event generation ([0d9e712](https://github.com/inference-gateway/adk/commit/0d9e712011681dbb4c37455ae6b01dec01a0f25a))
+
 ## [0.9.4-rc.1](https://github.com/inference-gateway/adk/compare/v0.9.3...v0.9.4-rc.1) (2025-09-07)
 
 ### ♻️ Improvements
