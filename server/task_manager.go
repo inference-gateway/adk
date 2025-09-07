@@ -743,8 +743,8 @@ func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.
 		return NewTaskNotFoundError(taskID)
 	}
 
-	if task.Status.State != types.TaskStateInputRequired {
-		return fmt.Errorf("task %s is not in input-required state, current state: %s", taskID, task.Status.State)
+	if task.Status.State == types.TaskStateCompleted {
+		return fmt.Errorf("task %s is already completed and cannot be resumed, current state: %s", taskID, task.Status.State)
 	}
 
 	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
