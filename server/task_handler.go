@@ -412,9 +412,58 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 		return sth.pauseTaskForStreamingInput(task, inputMessage), nil
 	}
 
-	// Add all messages to history
+	// Accumulate streaming deltas into a single assistant message
 	if len(additionalMessages) > 0 {
-		task.History = append(task.History, additionalMessages...)
+		// Find the last non-chunk message or create a consolidated message
+		var consolidatedMessage *types.Message
+
+		// Look for the final assistant message (non-chunk)
+		for i := len(additionalMessages) - 1; i >= 0; i-- {
+			msg := &additionalMessages[i]
+			if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
+				consolidatedMessage = msg
+				break
+			}
+		}
+
+		// If no consolidated message found, create one from chunks
+		if consolidatedMessage == nil {
+			var fullContent strings.Builder
+			var finalMessageID string
+
+			for _, msg := range additionalMessages {
+				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+					for _, part := range msg.Parts {
+						if partMap, ok := part.(map[string]any); ok {
+							if text, exists := partMap["text"].(string); exists {
+								fullContent.WriteString(text)
+							}
+						}
+					}
+					finalMessageID = msg.MessageID // Keep track of the last chunk ID
+				}
+			}
+
+			// Create consolidated message only if we have content
+			if fullContent.Len() > 0 {
+				consolidatedMessage = &types.Message{
+					Kind:      "message",
+					MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]any{
+							"kind": "text",
+							"text": fullContent.String(),
+						},
+					},
+				}
+			}
+		}
+
+		// Add only the consolidated message to history
+		if consolidatedMessage != nil {
+			task.History = append(task.History, *consolidatedMessage)
+		}
 	}
 
 	task.Status.State = types.TaskStateCompleted

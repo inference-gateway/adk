@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
@@ -987,8 +988,58 @@ func (s *A2AServerImpl) handleAgentStreaming(c *gin.Context, req types.JSONRPCRe
 		zap.String("task_id", task.ID),
 		zap.Int("total_messages", messageCount))
 
+	// Accumulate streaming deltas into a single assistant message
 	if len(allMessages) > 0 {
-		task.History = append(task.History, allMessages...)
+		// Find the last non-chunk message or create a consolidated message
+		var consolidatedMessage *types.Message
+
+		// Look for the final assistant message (non-chunk)
+		for i := len(allMessages) - 1; i >= 0; i-- {
+			msg := &allMessages[i]
+			if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
+				consolidatedMessage = msg
+				break
+			}
+		}
+
+		// If no consolidated message found, create one from chunks
+		if consolidatedMessage == nil {
+			var fullContent strings.Builder
+			var finalMessageID string
+
+			for _, msg := range allMessages {
+				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+					for _, part := range msg.Parts {
+						if partMap, ok := part.(map[string]any); ok {
+							if text, exists := partMap["text"].(string); exists {
+								fullContent.WriteString(text)
+							}
+						}
+					}
+					finalMessageID = msg.MessageID // Keep track of the last chunk ID
+				}
+			}
+
+			// Create consolidated message only if we have content
+			if fullContent.Len() > 0 {
+				consolidatedMessage = &types.Message{
+					Kind:      "message",
+					MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]any{
+							"kind": "text",
+							"text": fullContent.String(),
+						},
+					},
+				}
+			}
+		}
+
+		// Add only the consolidated message to history
+		if consolidatedMessage != nil {
+			task.History = append(task.History, *consolidatedMessage)
+		}
 	}
 
 	if lastMessage != nil && lastMessage.Kind == "input_required" {
