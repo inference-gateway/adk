@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.6](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.5...v0.9.4-rc.6) (2025-09-07)
+
+### ♻️ Improvements
+
+* **task:** Add handling for tool result events in task history ([7fb6038](https://github.com/inference-gateway/adk/commit/7fb60389354711b09423f0e79a77e5815391396d))
+
 ## [0.9.4-rc.5](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.4...v0.9.4-rc.5) (2025-09-07)
 
 ### ♻️ Improvements
