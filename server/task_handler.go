@@ -503,6 +503,20 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 					zap.String("event_id", event.ID()))
 			}
 
+			if event.Type() == "adk.agent.tool.result" {
+				var toolResultMessage types.Message
+				if err := event.DataAs(&toolResultMessage); err != nil {
+					sth.logger.Error("failed to parse tool result event data", zap.Error(err))
+					continue
+				}
+
+				task.History = append(task.History, toolResultMessage)
+				sth.logger.Debug("stored tool result message to history",
+					zap.String("task_id", task.ID),
+					zap.String("message_id", toolResultMessage.MessageID),
+					zap.String("event_id", event.ID()))
+			}
+
 			if event.Type() == "adk.agent.input.required" {
 				var inputMessage types.Message
 				if err := event.DataAs(&inputMessage); err != nil {
