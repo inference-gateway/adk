@@ -905,16 +905,30 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 		assert.Equal(t, resumeMessage.MessageID, retrievedTask.History[0].MessageID)
 	})
 
-	t.Run("resume task not in input-required state", func(t *testing.T) {
+	t.Run("resume task in non-completed state should succeed", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
 
 		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-2")
 		assert.NoError(t, err)
 
 		err = taskManager.ResumeTaskWithInput(task.ID, nil)
+		assert.NoError(t, err)
+
+		retrievedTask, exists := taskManager.GetTask(task.ID)
+		assert.True(t, exists)
+		assert.Equal(t, types.TaskStateWorking, retrievedTask.Status.State)
+	})
+
+	t.Run("resume completed task should fail", func(t *testing.T) {
+		task := taskManager.CreateTask("test-context-3", types.TaskStateCompleted, nil)
+
+		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-3")
+		assert.NoError(t, err)
+
+		err = taskManager.ResumeTaskWithInput(task.ID, nil)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not in input-required state")
-		assert.Contains(t, err.Error(), "current state: working")
+		assert.Contains(t, err.Error(), "already completed and cannot be resumed")
+		assert.Contains(t, err.Error(), "current state: completed")
 	})
 
 	t.Run("resume non-existent task", func(t *testing.T) {
