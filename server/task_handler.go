@@ -413,7 +413,6 @@ func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Co
 	}
 
 	if len(additionalMessages) > 0 {
-		// Find the last non-chunk message or create a consolidated message
 		var consolidatedMessage *types.Message
 
 		for i := len(additionalMessages) - 1; i >= 0; i-- {
