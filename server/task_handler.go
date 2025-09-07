@@ -962,31 +962,36 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		switch event.GetEventType() {
 		case "delta":
 			deltaData := event.GetData()
+			var deltaMessage *types.Message
+
 			switch msg := deltaData.(type) {
 			case types.Message:
-				h.logger.Debug("sending delta message (value)",
-					zap.String("kind", msg.Kind),
-					zap.String("message_id", msg.MessageID),
-					zap.String("role", msg.Role),
-					zap.Int("parts_count", len(msg.Parts)))
+				deltaMessage = &msg
 			case *types.Message:
-				h.logger.Debug("sending delta message (pointer)",
-					zap.String("kind", msg.Kind),
-					zap.String("message_id", msg.MessageID),
-					zap.String("role", msg.Role),
-					zap.Int("parts_count", len(msg.Parts)))
-			default:
-				h.logger.Debug("unexpected delta data type",
-					zap.String("type", fmt.Sprintf("%T", deltaData)))
+				deltaMessage = msg
 			}
-			deltaResponse := types.JSONRPCSuccessResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Result:  deltaData,
-			}
-			if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
-				h.logger.Error("failed to write streaming delta", zap.Error(err))
-				return
+
+			if deltaMessage != nil {
+				statusUpdate := types.TaskStatusUpdateEvent{
+					Kind:      "status-update",
+					TaskID:    task.ID,
+					ContextID: task.ContextID,
+					Status: types.TaskStatus{
+						State:   "working",
+						Message: deltaMessage,
+					},
+					Final: false,
+				}
+
+				deltaResponse := types.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  statusUpdate,
+				}
+				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
+					h.logger.Error("failed to write streaming delta", zap.Error(err))
+					return
+				}
 			}
 		case "status":
 			h.logger.Debug("received status update", zap.Any("status", event.GetData()))
