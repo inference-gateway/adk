@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.8](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.7...v0.9.5-rc.8) (2025-09-08)
+
+### ♻️ Improvements
+
+* **test:** Add toolbox mock generation and implement tool call accumulator tests ([2b40564](https://github.com/inference-gateway/adk/commit/2b405648ea20e9ccab62cdd3b9787bd0a6ac3fab))
+
 ## [0.9.5-rc.7](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.6...v0.9.5-rc.7) (2025-09-08)
 
 ### 🐛 Bug Fixes
