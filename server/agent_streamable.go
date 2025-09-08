@@ -146,12 +146,10 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					}
 
 					for _, toolCallChunk := range choice.Delta.ToolCalls {
-						// Create unique key for each tool call (index + function name + counter)
 						var key string
 						baseKey := fmt.Sprintf("%d_%s", toolCallChunk.Index, toolCallChunk.Function.Name)
 						key = baseKey
 
-						// Handle duplicate function calls by adding a counter
 						counter := 1
 						for toolCallAccumulator[key] != nil {
 							key = fmt.Sprintf("%s_%d", baseKey, counter)
@@ -159,7 +157,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 
 						if toolCallAccumulator[key] == nil {
+							toolCallID := fmt.Sprintf("call_%d_%d_%s", time.Now().Unix(), toolCallChunk.Index, key)
 							toolCallAccumulator[key] = &sdk.ChatCompletionMessageToolCall{
+								Id:       toolCallID,
 								Type:     "function",
 								Function: sdk.ChatCompletionMessageToolCallFunction{},
 							}
@@ -295,14 +295,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- cloudevents.Event) []types.Message {
 	toolResultMessages := make([]types.Message, 0)
 
-	for i, toolCall := range toolCalls {
+	for _, toolCall := range toolCalls {
 		if toolCall.Function.Name == "" {
 			continue
-		}
-
-		// Generate ID if missing (some providers like Google Gemini don't provide IDs)
-		if toolCall.Id == "" {
-			toolCall.Id = fmt.Sprintf("call_%d_%d", time.Now().Unix(), i)
 		}
 
 		startEvent := types.NewStreamingStatusMessage(
