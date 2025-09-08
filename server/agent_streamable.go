@@ -55,7 +55,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 			var fullContent string
 			toolCallAccumulator := make(map[string]*sdk.ChatCompletionMessageToolCall)
-			toolCallOrder := make([]string, 0)
 			var assistantMessage *types.Message
 			var toolResultMessages []types.Message
 			toolResults := make(map[string]*types.Message)
@@ -146,24 +145,13 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					}
 
 					for _, toolCallChunk := range choice.Delta.ToolCalls {
-						var key string
-						baseKey := fmt.Sprintf("%d_%s", toolCallChunk.Index, toolCallChunk.Function.Name)
-						key = baseKey
-
-						counter := 1
-						for toolCallAccumulator[key] != nil {
-							key = fmt.Sprintf("%s_%d", baseKey, counter)
-							counter++
-						}
+						key := fmt.Sprintf("%d", toolCallChunk.Index)
 
 						if toolCallAccumulator[key] == nil {
-							toolCallID := fmt.Sprintf("call_%d_%d_%s", time.Now().Unix(), toolCallChunk.Index, key)
 							toolCallAccumulator[key] = &sdk.ChatCompletionMessageToolCall{
-								Id:       toolCallID,
 								Type:     "function",
 								Function: sdk.ChatCompletionMessageToolCallFunction{},
 							}
-							toolCallOrder = append(toolCallOrder, key)
 						}
 
 						toolCall := toolCallAccumulator[key]
@@ -196,8 +184,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 
 						if len(toolCallAccumulator) > 0 && a.toolBox != nil {
-							for _, key := range toolCallOrder {
-								toolCall := toolCallAccumulator[key]
+							for key, toolCall := range toolCallAccumulator {
 								a.logger.Debug("tool call accumulator",
 									zap.String("key", key),
 									zap.String("id", toolCall.Id),
@@ -206,8 +193,8 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 							}
 
 							toolCalls := make([]sdk.ChatCompletionMessageToolCall, 0, len(toolCallAccumulator))
-							for _, key := range toolCallOrder {
-								toolCalls = append(toolCalls, *toolCallAccumulator[key])
+							for _, toolCall := range toolCallAccumulator {
+								toolCalls = append(toolCalls, *toolCall)
 							}
 
 							assistantMessage.Parts = append(assistantMessage.Parts, map[string]any{
