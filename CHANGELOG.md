@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.8](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.7...v0.9.5-rc.8) (2025-09-08)
+
+### ♻️ Improvements
+
+* **test:** Add toolbox mock generation and implement tool call accumulator tests ([2b40564](https://github.com/inference-gateway/adk/commit/2b405648ea20e9ccab62cdd3b9787bd0a6ac3fab))
+
+## [0.9.5-rc.7](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.6...v0.9.5-rc.7) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **agent:** Improve tool call ID generation and improve handling of duplicate function calls ([b286909](https://github.com/inference-gateway/adk/commit/b2869094f679f1c2f5baf156d2b29b9ce98d3c82))
+
+## [0.9.5-rc.6](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.5...v0.9.5-rc.6) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **agent:** Improve tool call handling with unique key generation and order tracking ([38baf3f](https://github.com/inference-gateway/adk/commit/38baf3f6bb8f28c4ed4298d11440d7367f7c8ef8))
+
+## [0.9.5-rc.5](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.4...v0.9.5-rc.5) (2025-09-08)
+
+### ♻️ Improvements
+
+* **agent:** Add debug logging for tool call accumulator in RunWithStream ([01d08aa](https://github.com/inference-gateway/adk/commit/01d08aab46c822455a3288f0435752dbe067bcd8))
+
+## [0.9.5-rc.4](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.3...v0.9.5-rc.4) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **agent:** Improve handling of tool call arguments and add JSON completeness check ([da66433](https://github.com/inference-gateway/adk/commit/da664334f9501407cedbe91d40700348c89e0ecd))
+
+## [0.9.5-rc.3](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.2...v0.9.5-rc.3) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **agent:** Apply the fix also to non-streaming tasks and also update the function ([28c2b23](https://github.com/inference-gateway/adk/commit/28c2b2364c8c78f86d5cabf8ba17c669d0e533b4))
+
+## [0.9.5-rc.2](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.1...v0.9.5-rc.2) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **streaming:** Ensure tool calls have unique IDs when missing ([14d55ac](https://github.com/inference-gateway/adk/commit/14d55ac2e7618cf9260a2d18ed5f82961b0e5677))
+
+## [0.9.5-rc.1](https://github.com/inference-gateway/adk/compare/v0.9.4...v0.9.5-rc.1) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **streaming:** Handle streaming failure events and update task status ([36c5ca2](https://github.com/inference-gateway/adk/commit/36c5ca2d045105f3c6f0ed5ce9d5923b09afb83c))
+
 ## [0.9.4](https://github.com/inference-gateway/adk/compare/v0.9.3...v0.9.4) (2025-09-08)
 
 ### 🐛 Bug Fixes

@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inference-gateway/adk/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	types "github.com/inference-gateway/adk/types"
+	sdk "github.com/inference-gateway/sdk"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 )
 
 func TestStreamingMessageAccumulation(t *testing.T) {
@@ -410,6 +411,439 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.expectedConsolidatedText, fullContent, "Consolidated text should match expected")
+		})
+	}
+}
+
+func TestToolCallAccumulator(t *testing.T) {
+	tests := []struct {
+		name              string
+		toolCallChunks    [][]sdk.ChatCompletionMessageToolCallChunk
+		expectedToolCalls []sdk.ChatCompletionMessageToolCall
+		description       string
+	}{
+		{
+			name: "single_tool_call_in_one_chunk",
+			toolCallChunks: [][]sdk.ChatCompletionMessageToolCallChunk{
+				{
+					{
+						Index: 0,
+						ID:    "call_abc123",
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "get_weather",
+							Arguments: `{"location":"New York"}`,
+						},
+					},
+				},
+			},
+			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "call_abc123",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "get_weather",
+						Arguments: `{"location":"New York"}`,
+					},
+				},
+			},
+			description: "Single tool call delivered in one complete chunk",
+		},
+		{
+			name: "tool_call_with_arguments_spread_across_deltas",
+			toolCallChunks: [][]sdk.ChatCompletionMessageToolCallChunk{
+				{
+					{
+						Index: 0,
+						ID:    "call_xyz789",
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "search_database",
+							Arguments: `{"query":`,
+						},
+					},
+				},
+				{
+					{
+						Index: 0,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `"user data",`,
+						},
+					},
+				},
+				{
+					{
+						Index: 0,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `"limit":100}`,
+						},
+					},
+				},
+			},
+			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "call_xyz789",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "search_database",
+						Arguments: `{"query":"user data","limit":100}`,
+					},
+				},
+			},
+			description: "Tool call with arguments spread across multiple deltas (common with streaming providers)",
+		},
+		{
+			name: "tool_call_without_id_initially",
+			toolCallChunks: [][]sdk.ChatCompletionMessageToolCallChunk{
+				{
+					{
+						Index: 0,
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "calculate_sum",
+							Arguments: `{"a":5,`,
+						},
+					},
+				},
+				{
+					{
+						Index: 0,
+						ID:    "call_late_id",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `"b":10}`,
+						},
+					},
+				},
+			},
+			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "call_late_id",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "calculate_sum",
+						Arguments: `{"a":5,"b":10}`,
+					},
+				},
+			},
+			description: "Tool call where ID is provided in a later chunk (some providers do this)",
+		},
+		{
+			name: "multiple_tool_calls_interleaved",
+			toolCallChunks: [][]sdk.ChatCompletionMessageToolCallChunk{
+				{
+					{
+						Index: 0,
+						ID:    "call_first",
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "get_time",
+							Arguments: `{"timezone":`,
+						},
+					},
+					{
+						Index: 1,
+						ID:    "call_second",
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "get_date",
+							Arguments: `{"format":`,
+						},
+					},
+				},
+				{
+					{
+						Index: 0,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `"UTC"}`,
+						},
+					},
+					{
+						Index: 1,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `"ISO8601"}`,
+						},
+					},
+				},
+			},
+			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "call_first",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "get_time",
+						Arguments: `{"timezone":"UTC"}`,
+					},
+				},
+				{
+					Id:   "call_second",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "get_date",
+						Arguments: `{"format":"ISO8601"}`,
+					},
+				},
+			},
+			description: "Multiple tool calls with interleaved chunks using index to track them",
+		},
+		{
+			name: "tool_call_with_empty_chunks",
+			toolCallChunks: [][]sdk.ChatCompletionMessageToolCallChunk{
+				{
+					{
+						Index: 0,
+						ID:    "call_with_gaps",
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name: "process_data",
+						},
+					},
+				},
+				{},
+				{
+					{
+						Index: 0,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `{"input":"test"}`,
+						},
+					},
+				},
+			},
+			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "call_with_gaps",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "process_data",
+						Arguments: `{"input":"test"}`,
+					},
+				},
+			},
+			description: "Tool call with empty chunks in between (network delays or provider quirks)",
+		},
+		{
+			name: "tool_call_name_provided_later",
+			toolCallChunks: [][]sdk.ChatCompletionMessageToolCallChunk{
+				{
+					{
+						Index: 0,
+						ID:    "call_name_later",
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `{"param":`,
+						},
+					},
+				},
+				{
+					{
+						Index: 0,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "delayed_function",
+							Arguments: `"value"}`,
+						},
+					},
+				},
+			},
+			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "call_name_later",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "delayed_function",
+						Arguments: `{"param":"value"}`,
+					},
+				},
+			},
+			description: "Tool call where function name is provided in a later chunk",
+		},
+		{
+			name: "complex_json_arguments_spread",
+			toolCallChunks: [][]sdk.ChatCompletionMessageToolCallChunk{
+				{
+					{
+						Index: 0,
+						ID:    "call_complex",
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "process_order",
+							Arguments: `{"items":[`,
+						},
+					},
+				},
+				{
+					{
+						Index: 0,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `{"id":1,"qty":2},`,
+						},
+					},
+				},
+				{
+					{
+						Index: 0,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `{"id":2,"qty":1}],`,
+						},
+					},
+				},
+				{
+					{
+						Index: 0,
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Arguments: `"total":99.99}`,
+						},
+					},
+				},
+			},
+			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "call_complex",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "process_order",
+						Arguments: `{"items":[{"id":1,"qty":2},{"id":2,"qty":1}],"total":99.99}`,
+					},
+				},
+			},
+			description: "Complex nested JSON arguments spread across multiple chunks",
+		},
+		{
+			name: "tool_call_no_id_ever_provided",
+			toolCallChunks: [][]sdk.ChatCompletionMessageToolCallChunk{
+				{
+					{
+						Index: 0,
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "anonymous_function",
+							Arguments: `{"data":"test"}`,
+						},
+					},
+				},
+			},
+			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
+				{
+					Id:   "",
+					Type: "function",
+					Function: sdk.ChatCompletionMessageToolCallFunction{
+						Name:      "anonymous_function",
+						Arguments: `{"data":"test"}`,
+					},
+				},
+			},
+			description: "Tool call where no ID is ever provided (some providers omit this)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			toolCallAccumulator := make(map[string]*sdk.ChatCompletionMessageToolCall)
+
+			for _, chunkBatch := range tt.toolCallChunks {
+				for _, toolCallChunk := range chunkBatch {
+					key := fmt.Sprintf("%d", toolCallChunk.Index)
+
+					if toolCallAccumulator[key] == nil {
+						toolCallAccumulator[key] = &sdk.ChatCompletionMessageToolCall{
+							Type:     "function",
+							Function: sdk.ChatCompletionMessageToolCallFunction{},
+						}
+					}
+
+					toolCall := toolCallAccumulator[key]
+					if toolCallChunk.ID != "" {
+						toolCall.Id = toolCallChunk.ID
+					}
+					if toolCallChunk.Function.Name != "" {
+						toolCall.Function.Name = toolCallChunk.Function.Name
+					}
+					if toolCallChunk.Function.Arguments != "" {
+						if toolCall.Function.Arguments == "" {
+							toolCall.Function.Arguments = toolCallChunk.Function.Arguments
+						} else if !isCompleteJSON(toolCall.Function.Arguments) {
+							toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+						}
+					}
+				}
+			}
+
+			var actualToolCalls []sdk.ChatCompletionMessageToolCall
+			for i := 0; i < len(toolCallAccumulator); i++ {
+				key := fmt.Sprintf("%d", i)
+				if toolCall, exists := toolCallAccumulator[key]; exists {
+					actualToolCalls = append(actualToolCalls, *toolCall)
+				}
+			}
+
+			require.Equal(t, len(tt.expectedToolCalls), len(actualToolCalls),
+				"Number of tool calls should match expected")
+
+			for i, expected := range tt.expectedToolCalls {
+				assert.Equal(t, expected.Id, actualToolCalls[i].Id,
+					"Tool call ID should match")
+				assert.Equal(t, expected.Type, actualToolCalls[i].Type,
+					"Tool call type should match")
+				assert.Equal(t, expected.Function.Name, actualToolCalls[i].Function.Name,
+					"Function name should match")
+				assert.Equal(t, expected.Function.Arguments, actualToolCalls[i].Function.Arguments,
+					"Function arguments should match")
+			}
 		})
 	}
 }

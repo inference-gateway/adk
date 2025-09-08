@@ -550,6 +550,27 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 				}
 			}
 
+			if event.Type() == "adk.agent.stream.failed" {
+				var errorMessage types.Message
+				if err := event.DataAs(&errorMessage); err != nil {
+					sth.logger.Error("failed to parse stream failed event data", zap.Error(err))
+					continue
+				}
+
+				sth.logger.Error("streaming failed",
+					zap.String("task_id", task.ID),
+					zap.String("context_id", task.ContextID),
+					zap.String("event_id", event.ID()))
+
+				task.History = append(task.History, errorMessage)
+
+				task.Status.State = types.TaskStateFailed
+				task.Status.Message = &errorMessage
+
+				eventsChan <- &TaskCompleteStreamEvent{Task: task}
+				return
+			}
+
 			if event.Type() == "adk.agent.task.interrupted" {
 				var interruptMessage types.Message
 				if err := event.DataAs(&interruptMessage); err != nil {
@@ -940,6 +961,20 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			}
 		case "error":
 			h.logger.Error("streaming task error", zap.Any("error", event.GetData()))
+
+			if taskData, ok := event.GetData().(*types.Task); ok && taskData != nil {
+				h.logger.Info("saving failed streaming task with error in history",
+					zap.String("task_id", taskData.ID),
+					zap.String("context_id", taskData.ContextID),
+					zap.Int("history_count", len(taskData.History)))
+
+				if err := h.taskManager.UpdateTask(taskData); err != nil {
+					h.logger.Error("failed to save failed streaming task to storage",
+						zap.String("task_id", taskData.ID),
+						zap.Error(err))
+				}
+			}
+
 			errorResponse := types.JSONRPCErrorResponse{
 				JSONRPC: "2.0",
 				ID:      req.ID,

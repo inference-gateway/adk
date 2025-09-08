@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -53,7 +54,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			streamResponseChan, streamErrorChan := a.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
 
 			var fullContent string
-			toolCallAccumulator := make(map[int]*sdk.ChatCompletionMessageToolCall)
+			toolCallAccumulator := make(map[string]*sdk.ChatCompletionMessageToolCall)
 			var assistantMessage *types.Message
 			var toolResultMessages []types.Message
 			toolResults := make(map[string]*types.Message)
@@ -99,6 +100,20 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				case streamErr := <-streamErrorChan:
 					if streamErr != nil {
 						a.logger.Error("streaming failed", zap.Error(streamErr))
+
+						errorMessage := types.NewStreamingStatusMessage(
+							fmt.Sprintf("streaming-error-%d", iteration),
+							"failed",
+							map[string]any{
+								"error":     streamErr.Error(),
+								"iteration": iteration,
+							},
+						)
+						select {
+						case outputChan <- types.NewMessageEvent("adk.agent.stream.failed", errorMessage.MessageID, errorMessage, nil):
+						default:
+						}
+						return
 					}
 					streaming = false
 
@@ -130,14 +145,16 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					}
 
 					for _, toolCallChunk := range choice.Delta.ToolCalls {
-						if toolCallAccumulator[toolCallChunk.Index] == nil {
-							toolCallAccumulator[toolCallChunk.Index] = &sdk.ChatCompletionMessageToolCall{
+						key := fmt.Sprintf("%d", toolCallChunk.Index)
+
+						if toolCallAccumulator[key] == nil {
+							toolCallAccumulator[key] = &sdk.ChatCompletionMessageToolCall{
 								Type:     "function",
 								Function: sdk.ChatCompletionMessageToolCallFunction{},
 							}
 						}
 
-						toolCall := toolCallAccumulator[toolCallChunk.Index]
+						toolCall := toolCallAccumulator[key]
 						if toolCallChunk.ID != "" {
 							toolCall.Id = toolCallChunk.ID
 						}
@@ -145,7 +162,11 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 							toolCall.Function.Name = toolCallChunk.Function.Name
 						}
 						if toolCallChunk.Function.Arguments != "" {
-							toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+							if toolCall.Function.Arguments == "" {
+								toolCall.Function.Arguments = toolCallChunk.Function.Arguments
+							} else if !isCompleteJSON(toolCall.Function.Arguments) {
+								toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+							}
 						}
 					}
 
@@ -163,6 +184,14 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 
 						if len(toolCallAccumulator) > 0 && a.toolBox != nil {
+							for key, toolCall := range toolCallAccumulator {
+								a.logger.Debug("tool call accumulator",
+									zap.String("key", key),
+									zap.String("id", toolCall.Id),
+									zap.String("name", toolCall.Function.Name),
+									zap.String("arguments", toolCall.Function.Arguments))
+							}
+
 							toolCalls := make([]sdk.ChatCompletionMessageToolCall, 0, len(toolCallAccumulator))
 							for _, toolCall := range toolCallAccumulator {
 								toolCalls = append(toolCalls, *toolCall)
@@ -254,7 +283,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 	toolResultMessages := make([]types.Message, 0)
 
 	for _, toolCall := range toolCalls {
-		if toolCall.Function.Name == "" || toolCall.Id == "" {
+		if toolCall.Function.Name == "" {
 			continue
 		}
 
@@ -315,7 +344,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 					return toolResultMessages
 				}
 
-				toolResultMessage := types.NewToolResultMessage(toolCall.Id, result, toolErr != nil)
+				toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
 
 				select {
 				case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
@@ -372,7 +401,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			}
 		}
 
-		toolResultMessage := types.NewToolResultMessage(toolCall.Id, result, toolErr != nil)
+		toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
 
 		select {
 		case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
@@ -384,4 +413,24 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 	}
 
 	return toolResultMessages
+}
+
+// isCompleteJSON checks if a string contains complete JSON by counting balanced braces
+func isCompleteJSON(s string) bool {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "{") || !strings.HasSuffix(s, "}") {
+		return false
+	}
+
+	openCount := 0
+	for _, char := range s {
+		switch char {
+		case '{':
+			openCount++
+		case '}':
+			openCount--
+		}
+	}
+
+	return openCount == 0
 }

@@ -157,6 +157,7 @@ func (c *OptimizedMessageConverter) processDataPart(
 				*toolCallId = &idStr
 			}
 		}
+
 		return nil
 	}
 

@@ -159,6 +159,10 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 		additionalMessages = append(additionalMessages, *assistantA2A)
 
 		for _, toolCall := range *assistantMessage.ToolCalls {
+			if toolCall.Function.Name == "" {
+				continue
+			}
+
 			var args map[string]any
 			var result string
 			var toolErr error
