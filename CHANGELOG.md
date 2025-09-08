@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.10](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.9...v0.9.4-rc.10) (2025-09-08)
+
+### ♻️ Improvements
+
+* **task:** Ensure messages are stored when the task gets interrupted due to connectivity so it can be resumed later ([84b6ea9](https://github.com/inference-gateway/adk/commit/84b6ea961068a443b3c417fff95c47746488279f))
+
 ## [0.9.4-rc.9](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.8...v0.9.4-rc.9) (2025-09-08)
 
 ### ♻️ Improvements
