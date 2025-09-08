@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.2](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.1...v0.9.5-rc.2) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **streaming:** Ensure tool calls have unique IDs when missing ([14d55ac](https://github.com/inference-gateway/adk/commit/14d55ac2e7618cf9260a2d18ed5f82961b0e5677))
+
 ## [0.9.5-rc.1](https://github.com/inference-gateway/adk/compare/v0.9.4...v0.9.5-rc.1) (2025-09-08)
 
 ### 🐛 Bug Fixes
