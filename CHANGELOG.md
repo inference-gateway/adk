@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.13](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.12...v0.9.4-rc.13) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Handle interrupted tool calls and log failed results during streaming ([43e495b](https://github.com/inference-gateway/adk/commit/43e495bd4de6aaa87d358fb577a2ce01e77d4275))
+
 ## [0.9.4-rc.12](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.11...v0.9.4-rc.12) (2025-09-08)
 
 ### 🐛 Bug Fixes
