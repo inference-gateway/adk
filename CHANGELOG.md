@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.15](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.14...v0.9.4-rc.15) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Streamline iteration event handling and remove redundant message logging ([86d9594](https://github.com/inference-gateway/adk/commit/86d95943c7cb1dd4829f23f6df7c7a750500cc26))
+
 ## [0.9.4-rc.14](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.13...v0.9.4-rc.14) (2025-09-08)
 
 ### 🐛 Bug Fixes
