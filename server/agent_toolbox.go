@@ -57,13 +57,13 @@ func NewDefaultToolBox() *DefaultToolBox {
 
 	inputRequiredTool := NewBasicTool(
 		"input_required",
-		"Request additional input from the user when current information is insufficient to complete the task",
+		"REQUIRED: Use this tool when you need additional information from the user to provide a complete and accurate response. Call this instead of making assumptions or providing incomplete answers. Examples: missing location for weather, unclear requirements, ambiguous requests, or when more context would significantly improve the response quality.",
 		map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"message": map[string]any{
 					"type":        "string",
-					"description": "The message to display to the user explaining what information is needed",
+					"description": "Clear, specific message explaining exactly what additional information you need from the user to complete their request. Be specific about what's missing and why it's needed.",
 				},
 			},
 			"required": []string{"message"},
