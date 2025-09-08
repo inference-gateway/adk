@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.6](https://github.com/inference-gateway/adk/compare/v0.9.5...v0.9.6) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **toolbox:** Improve descriptions for input_required tool and message parameter ([8036645](https://github.com/inference-gateway/adk/commit/8036645e9143c44eca417bc4e1183c7966ecadc2))
+
 ## [0.9.5](https://github.com/inference-gateway/adk/compare/v0.9.4...v0.9.5) (2025-09-08)
 
 ### 🐛 Bug Fixes
