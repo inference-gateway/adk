@@ -112,6 +112,15 @@ type TaskCompleteStreamEvent struct {
 func (e *TaskCompleteStreamEvent) GetEventType() string { return "task_complete" }
 func (e *TaskCompleteStreamEvent) GetData() interface{} { return e.Task }
 
+// TaskInterruptedStreamEvent represents a task interruption streaming event
+type TaskInterruptedStreamEvent struct {
+	Task   *types.Task
+	Reason string
+}
+
+func (e *TaskInterruptedStreamEvent) GetEventType() string { return "task_interrupted" }
+func (e *TaskInterruptedStreamEvent) GetData() interface{} { return e.Task }
+
 // DefaultTaskHandler implements the TaskHandler interface for basic scenarios
 // For optimized background or streaming with automatic input-required pausing,
 // use DefaultBackgroundTaskHandler or DefaultStreamingTaskHandler instead
@@ -540,6 +549,22 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 					return
 				}
 			}
+
+			if event.Type() == "adk.agent.task.interrupted" {
+				var interruptMessage types.Message
+				if err := event.DataAs(&interruptMessage); err != nil {
+					sth.logger.Error("failed to parse task interrupted event data", zap.Error(err))
+					continue
+				}
+
+				sth.logger.Info("streaming task was interrupted by agent",
+					zap.String("task_id", task.ID),
+					zap.String("context_id", task.ContextID))
+
+				task.Status.State = types.TaskStateWorking
+				eventsChan <- &TaskInterruptedStreamEvent{Task: task, Reason: "context_cancelled"}
+				return
+			}
 		}
 
 		task.Status.State = types.TaskStateCompleted
@@ -890,6 +915,13 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		case "task_complete":
 			if taskData, ok := event.GetData().(*types.Task); ok {
 				finalTask = taskData
+			}
+		case "task_interrupted":
+			if taskData, ok := event.GetData().(*types.Task); ok {
+				h.logger.Info("streaming task was interrupted, not updating final state",
+					zap.String("task_id", taskData.ID),
+					zap.String("context_id", taskData.ContextID))
+				return
 			}
 		case "error":
 			h.logger.Error("streaming task error", zap.Any("error", event.GetData()))

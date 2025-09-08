@@ -61,6 +61,23 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			for streaming {
 				select {
 				case <-ctx.Done():
+					interruptedTask := &types.Task{
+						ID:        fmt.Sprintf("interrupted-%d", iteration),
+						ContextID: fmt.Sprintf("streaming-task-%d", iteration),
+						Status:    types.TaskStatus{State: types.TaskStateWorking},
+					}
+					interruptMessage := types.NewStreamingStatusMessage(
+						fmt.Sprintf("task-interrupted-%d", iteration),
+						"interrupted",
+						map[string]any{
+							"reason": "context_cancelled",
+							"task":   interruptedTask,
+						},
+					)
+					select {
+					case outputChan <- types.NewMessageEvent("adk.agent.task.interrupted", interruptMessage.MessageID, interruptMessage, nil):
+					default:
+					}
 					return
 
 				case streamErr := <-streamErrorChan:
