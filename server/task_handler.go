@@ -922,9 +922,20 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			}
 		case "task_interrupted":
 			if taskData, ok := event.GetData().(*types.Task); ok {
-				h.logger.Info("streaming task was interrupted, not updating final state",
+				h.logger.Info("streaming task was interrupted, saving task with preserved history",
 					zap.String("task_id", taskData.ID),
-					zap.String("context_id", taskData.ContextID))
+					zap.String("context_id", taskData.ContextID),
+					zap.Int("history_count", len(taskData.History)))
+
+				if err := h.taskManager.UpdateTask(taskData); err != nil {
+					h.logger.Error("failed to save interrupted task to storage",
+						zap.String("task_id", taskData.ID),
+						zap.Error(err))
+				} else {
+					h.logger.Info("successfully saved interrupted task with history to storage",
+						zap.String("task_id", taskData.ID),
+						zap.Int("history_count", len(taskData.History)))
+				}
 				return
 			}
 		case "error":
