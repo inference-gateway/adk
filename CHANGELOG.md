@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.7](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.6...v0.9.5-rc.7) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **agent:** Improve tool call ID generation and improve handling of duplicate function calls ([b286909](https://github.com/inference-gateway/adk/commit/b2869094f679f1c2f5baf156d2b29b9ce98d3c82))
+
 ## [0.9.5-rc.6](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.5...v0.9.5-rc.6) (2025-09-08)
 
 ### 🐛 Bug Fixes
