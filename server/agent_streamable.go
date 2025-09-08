@@ -175,28 +175,33 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 								},
 							})
 
+							currentMessages = append(currentMessages, *assistantMessage)
+							iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
 							select {
-							case outputChan <- types.NewMessageEvent("adk.agent.assistant.message", assistantMessage.MessageID, assistantMessage, nil):
-								toolResultMessages = a.executeToolCallsWithEvents(ctx, toolCalls, outputChan)
+							case outputChan <- iterationEvent:
+							case <-ctx.Done():
+								return
+							}
 
-								for _, toolResult := range toolResultMessages {
-									for _, part := range toolResult.Parts {
-										if partMap, ok := part.(map[string]any); ok {
-											if dataMap, exists := partMap["data"].(map[string]any); exists {
-												if toolCallID, idExists := dataMap["tool_call_id"].(string); idExists {
-													toolResults[toolCallID] = &toolResult
-													break
-												}
+							toolResultMessages = a.executeToolCallsWithEvents(ctx, toolCalls, outputChan)
+
+							for _, toolResult := range toolResultMessages {
+								for _, part := range toolResult.Parts {
+									if partMap, ok := part.(map[string]any); ok {
+										if dataMap, exists := partMap["data"].(map[string]any); exists {
+											if toolCallID, idExists := dataMap["tool_call_id"].(string); idExists {
+												toolResults[toolCallID] = &toolResult
+												break
 											}
 										}
 									}
 								}
-							case <-ctx.Done():
-								return
 							}
 						} else {
+							currentMessages = append(currentMessages, *assistantMessage)
+							iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
 							select {
-							case outputChan <- types.NewMessageEvent("adk.agent.assistant.message", assistantMessage.MessageID, assistantMessage, nil):
+							case outputChan <- iterationEvent:
 							case <-ctx.Done():
 								return
 							}
@@ -206,32 +211,11 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				}
 			}
 
-			if assistantMessage != nil {
-				currentMessages = append(currentMessages, *assistantMessage)
-				a.logger.Debug("persisted accumulated assistant message",
-					zap.Int("iteration", iteration),
-					zap.String("message_id", assistantMessage.MessageID),
-					zap.Int("content_length", len(fullContent)),
-					zap.Int("tool_calls_count", len(toolResults)))
-			}
-
 			if len(toolResultMessages) > 0 {
 				currentMessages = append(currentMessages, toolResultMessages...)
 				a.logger.Debug("persisted tool result messages",
 					zap.Int("iteration", iteration),
 					zap.Int("tool_result_count", len(toolResultMessages)))
-			}
-
-			if assistantMessage != nil {
-				iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
-				select {
-				case outputChan <- iterationEvent:
-				case <-ctx.Done():
-					return
-				}
-				a.logger.Debug("emitted iteration completed event",
-					zap.Int("iteration", iteration),
-					zap.String("message_id", assistantMessage.MessageID))
 			}
 
 			if len(toolResultMessages) > 0 {
