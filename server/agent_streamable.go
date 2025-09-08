@@ -267,9 +267,14 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- cloudevents.Event) []types.Message {
 	toolResultMessages := make([]types.Message, 0)
 
-	for _, toolCall := range toolCalls {
-		if toolCall.Function.Name == "" || toolCall.Id == "" {
+	for i, toolCall := range toolCalls {
+		if toolCall.Function.Name == "" {
 			continue
+		}
+
+		// Generate ID if missing (some providers like Google Gemini don't provide IDs)
+		if toolCall.Id == "" {
+			toolCall.Id = fmt.Sprintf("call_%d_%d", time.Now().Unix(), i)
 		}
 
 		startEvent := types.NewStreamingStatusMessage(
