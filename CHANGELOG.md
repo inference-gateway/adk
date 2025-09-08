@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4](https://github.com/inference-gateway/adk/compare/v0.9.3...v0.9.4) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **server:** Improve the logic of events ([#55](https://github.com/inference-gateway/adk/issues/55)) ([b68d034](https://github.com/inference-gateway/adk/commit/b68d0345892c505897f18522f503df0b25d87252)), closes [#56](https://github.com/inference-gateway/adk/issues/56)
+
 ## [0.9.4-rc.15](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.14...v0.9.4-rc.15) (2025-09-08)
 
 ### 🐛 Bug Fixes
