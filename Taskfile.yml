@@ -71,6 +71,7 @@ tasks:
       - task: generate:mock:telemetry
       - task: generate:mock:opentelemetry
       - task: generate:mock:llm-client
+      - task: generate:mock:toolbox
 
   generate:mocks:clean:
     desc: 'Clean and regenerate all mocks'
@@ -230,6 +231,15 @@ tasks:
       - server/mocks/fake_openai_compatible_agent.go
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_openai_compatible_agent.go server OpenAICompatibleAgent
+
+  generate:mock:toolbox:
+    desc: 'Generate mock for ToolBox interface'
+    sources:
+      - server/agent_toolbox.go
+    generates:
+      - server/mocks/fake_tool_box.go
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_tool_box.go server ToolBox
 
   precommit:install:
     desc: 'Install the pre-commit hook'

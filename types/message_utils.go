@@ -8,7 +8,7 @@ import (
 )
 
 // NewToolResultMessage creates a standardized tool result message
-func NewToolResultMessage(toolCallID string, result any, hasError bool) *Message {
+func NewToolResultMessage(toolCallID string, toolName string, result any, hasError bool) *Message {
 	return &Message{
 		Kind:      "message",
 		MessageID: fmt.Sprintf("tool-result-%s", toolCallID),
@@ -18,6 +18,7 @@ func NewToolResultMessage(toolCallID string, result any, hasError bool) *Message
 				"kind": "data",
 				"data": map[string]any{
 					"tool_call_id": toolCallID,
+					"tool_name":    toolName,
 					"result":       result,
 					"error":        hasError,
 				},
