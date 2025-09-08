@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.12](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.11...v0.9.4-rc.12) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Save interrupted task with preserved history and log success or failure ([ef93aa3](https://github.com/inference-gateway/adk/commit/ef93aa34ab552de0bb9d8e47191a55e37fb495fa))
+
 ## [0.9.4-rc.11](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.10...v0.9.4-rc.11) (2025-09-08)
 
 ### 🐛 Bug Fixes
