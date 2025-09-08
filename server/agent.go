@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	config "github.com/inference-gateway/adk/server/config"
 	utils "github.com/inference-gateway/adk/server/utils"
 	types "github.com/inference-gateway/adk/types"
@@ -34,7 +35,7 @@ type OpenAICompatibleAgent interface {
 
 	// RunWithStream processes a conversation and returns a streaming response
 	// Uses the agent's configured toolbox for tool execution
-	RunWithStream(ctx context.Context, messages []types.Message) (<-chan *types.Message, error)
+	RunWithStream(ctx context.Context, messages []types.Message) (<-chan cloudevents.Event, error)
 }
 
 // OpenAICompatibleAgentImpl is the implementation of OpenAICompatibleAgent

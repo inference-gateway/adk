@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
 	zap "go.uber.org/zap"
 )
 
 // RunWithStream processes a conversation and returns a streaming response with iterative tool calling support
-func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages []types.Message) (<-chan *types.Message, error) {
+func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages []types.Message) (<-chan cloudevents.Event, error) {
 	if a.llmClient == nil {
 		return nil, fmt.Errorf("no LLM client configured for agent")
 	}
@@ -21,7 +23,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		tools = a.toolBox.GetTools()
 	}
 
-	outputChan := make(chan *types.Message, 100)
+	outputChan := make(chan cloudevents.Event, 100)
 
 	go func() {
 		defer close(outputChan)
@@ -60,6 +62,38 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			for streaming {
 				select {
 				case <-ctx.Done():
+					a.logger.Info("streaming context cancelled, preserving partial state",
+						zap.Int("iteration", iteration),
+						zap.Bool("has_assistant_message", assistantMessage != nil),
+						zap.Int("content_length", len(fullContent)),
+						zap.Int("tool_result_count", len(toolResultMessages)),
+						zap.Int("pending_tool_calls", len(toolCallAccumulator)))
+
+					if assistantMessage != nil {
+						iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
+						select {
+						case outputChan <- iterationEvent:
+						case <-time.After(100 * time.Millisecond):
+						}
+					}
+
+					interruptedTask := &types.Task{
+						ID:        fmt.Sprintf("interrupted-%d", iteration),
+						ContextID: fmt.Sprintf("streaming-task-%d", iteration),
+						Status:    types.TaskStatus{State: types.TaskStateWorking},
+					}
+					interruptMessage := types.NewStreamingStatusMessage(
+						fmt.Sprintf("task-interrupted-%d", iteration),
+						"interrupted",
+						map[string]any{
+							"reason": "context_cancelled",
+							"task":   interruptedTask,
+						},
+					)
+					select {
+					case outputChan <- types.NewMessageEvent("adk.agent.task.interrupted", interruptMessage.MessageID, interruptMessage, nil):
+					default:
+					}
 					return
 
 				case streamErr := <-streamErrorChan:
@@ -89,7 +123,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						)
 
 						select {
-						case outputChan <- chunkMessage:
+						case outputChan <- types.NewDeltaEvent(chunkMessage):
 						case <-ctx.Done():
 							return
 						}
@@ -141,28 +175,33 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 								},
 							})
 
+							currentMessages = append(currentMessages, *assistantMessage)
+							iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
 							select {
-							case outputChan <- assistantMessage:
-								toolResultMessages = a.executeToolCallsWithEvents(ctx, toolCalls, outputChan)
+							case outputChan <- iterationEvent:
+							case <-ctx.Done():
+								return
+							}
 
-								for _, toolResult := range toolResultMessages {
-									for _, part := range toolResult.Parts {
-										if partMap, ok := part.(map[string]any); ok {
-											if dataMap, exists := partMap["data"].(map[string]any); exists {
-												if toolCallID, idExists := dataMap["tool_call_id"].(string); idExists {
-													toolResults[toolCallID] = &toolResult
-													break
-												}
+							toolResultMessages = a.executeToolCallsWithEvents(ctx, toolCalls, outputChan)
+
+							for _, toolResult := range toolResultMessages {
+								for _, part := range toolResult.Parts {
+									if partMap, ok := part.(map[string]any); ok {
+										if dataMap, exists := partMap["data"].(map[string]any); exists {
+											if toolCallID, idExists := dataMap["tool_call_id"].(string); idExists {
+												toolResults[toolCallID] = &toolResult
+												break
 											}
 										}
 									}
 								}
-							case <-ctx.Done():
-								return
 							}
 						} else {
+							currentMessages = append(currentMessages, *assistantMessage)
+							iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
 							select {
-							case outputChan <- assistantMessage:
+							case outputChan <- iterationEvent:
 							case <-ctx.Done():
 								return
 							}
@@ -170,15 +209,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						streaming = false
 					}
 				}
-			}
-
-			if assistantMessage != nil {
-				currentMessages = append(currentMessages, *assistantMessage)
-				a.logger.Debug("persisted accumulated assistant message",
-					zap.Int("iteration", iteration),
-					zap.String("message_id", assistantMessage.MessageID),
-					zap.Int("content_length", len(fullContent)),
-					zap.Int("tool_calls_count", len(toolResults)))
 			}
 
 			if len(toolResultMessages) > 0 {
@@ -198,7 +228,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				}
 			}
 
-			if len(toolResults) == 0 {
+			if assistantMessage != nil && len(toolResultMessages) == 0 {
 				a.logger.Debug("streaming completed - no tool calls executed",
 					zap.Int("iteration", iteration),
 					zap.Int("final_message_count", len(currentMessages)),
@@ -220,7 +250,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 }
 
 // executeToolCallsWithEvents executes tool calls and emits events, returning tool result messages
-func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- *types.Message) []types.Message {
+func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- cloudevents.Event) []types.Message {
 	toolResultMessages := make([]types.Message, 0)
 
 	for _, toolCall := range toolCalls {
@@ -237,7 +267,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 		)
 
 		select {
-		case outputChan <- startEvent:
+		case outputChan <- types.NewMessageEvent("adk.agent.tool.started", startEvent.MessageID, startEvent, nil):
 		case <-ctx.Done():
 			return toolResultMessages
 		}
@@ -260,7 +290,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			)
 
 			select {
-			case outputChan <- failedEvent:
+			case outputChan <- types.NewMessageEvent("adk.agent.tool.failed", failedEvent.MessageID, failedEvent, nil):
 			case <-ctx.Done():
 			}
 		} else {
@@ -280,7 +310,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 				)
 
 				select {
-				case outputChan <- completedEvent:
+				case outputChan <- types.NewMessageEvent("adk.agent.tool.completed", completedEvent.MessageID, completedEvent, nil):
 				case <-ctx.Done():
 					return toolResultMessages
 				}
@@ -288,7 +318,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 				toolResultMessage := types.NewToolResultMessage(toolCall.Id, result, toolErr != nil)
 
 				select {
-				case outputChan <- toolResultMessage:
+				case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
 				case <-ctx.Done():
 					return toolResultMessages
 				}
@@ -299,7 +329,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 				inputRequiredMessage := types.NewInputRequiredMessage(toolCall.Id, inputMessage)
 
 				select {
-				case outputChan <- inputRequiredMessage:
+				case outputChan <- types.NewMessageEvent("adk.agent.input.required", inputRequiredMessage.MessageID, inputRequiredMessage, nil):
 				case <-ctx.Done():
 				}
 
@@ -322,7 +352,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 				)
 
 				select {
-				case outputChan <- failedEvent:
+				case outputChan <- types.NewMessageEvent("adk.agent.tool.failed", failedEvent.MessageID, failedEvent, nil):
 				case <-ctx.Done():
 				}
 			} else {
@@ -335,7 +365,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 				)
 
 				select {
-				case outputChan <- completedEvent:
+				case outputChan <- types.NewMessageEvent("adk.agent.tool.completed", completedEvent.MessageID, completedEvent, nil):
 				case <-ctx.Done():
 					return toolResultMessages
 				}
@@ -345,7 +375,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 		toolResultMessage := types.NewToolResultMessage(toolCall.Id, result, toolErr != nil)
 
 		select {
-		case outputChan <- toolResultMessage:
+		case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
 		case <-ctx.Done():
 			return toolResultMessages
 		}

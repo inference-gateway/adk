@@ -223,7 +223,7 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	a2aServer.SetBackgroundTaskHandler(mockTaskHandler)
-	a2aServer.SetStreamingTaskHandler(mockTaskHandler)
+	a2aServer.SetStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{})
 
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 	a2aServer.SetTaskResultProcessor(mockProcessor)
@@ -399,7 +399,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
 	serverInstance.SetBackgroundTaskHandler(mockTaskHandler)
-	serverInstance.SetStreamingTaskHandler(mockTaskHandler)
+	serverInstance.SetStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{})
 
 	originalMessage := &types.Message{
 		Kind:      "message",
@@ -416,6 +416,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	task := &types.Task{
 		ID:        "test-task",
 		ContextID: "test-context",
+		Kind:      "task",
 		Status: types.TaskStatus{
 			State:   types.TaskStateSubmitted,
 			Message: originalMessage,
@@ -485,7 +486,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
 	serverInstance.SetBackgroundTaskHandler(mockTaskHandler)
-	serverInstance.SetStreamingTaskHandler(mockTaskHandler)
+	serverInstance.SetStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{})
 
 	originalUserMessage := &types.Message{
 		Kind:      "message",
@@ -502,6 +503,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 	task := &types.Task{
 		ID:        "task-456",
 		ContextID: "context-789",
+		Kind:      "task",
 		Status: types.TaskStatus{
 			State:   types.TaskStateSubmitted,
 			Message: originalUserMessage,
@@ -881,6 +883,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 
 			task := &types.Task{
 				ID:      fmt.Sprintf("test-task-%s", tt.name),
+				Kind:    "task",
 				History: []types.Message{},
 				Status: types.TaskStatus{
 					State: types.TaskStateSubmitted,
@@ -1249,6 +1252,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 
 			task := &types.Task{
 				ID:      fmt.Sprintf("openai-test-%s", tt.name),
+				Kind:    "task",
 				History: []types.Message{},
 				Status: types.TaskStatus{
 					State: types.TaskStateSubmitted,
@@ -1333,6 +1337,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 
 		task := &types.Task{
 			ID:      "format-validation-test",
+			Kind:    "task",
 			History: []types.Message{},
 			Status:  types.TaskStatus{State: types.TaskStateSubmitted},
 		}
@@ -1453,6 +1458,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 
 		task := &types.Task{
 			ID:      "tool-format-test",
+			Kind:    "task",
 			History: []types.Message{},
 			Status:  types.TaskStatus{State: types.TaskStateSubmitted},
 		}

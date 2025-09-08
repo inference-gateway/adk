@@ -211,6 +211,55 @@ func (h *SimpleTaskHandler) GetAgent() server.OpenAICompatibleAgent {
     return h.agent
 }
 
+// SimpleStreamingTaskHandler implements a basic streaming task handler
+// For streaming scenarios, you need to implement StreamableTaskHandler which returns a channel
+type SimpleStreamingTaskHandler struct {
+    logger *zap.Logger
+    agent  server.OpenAICompatibleAgent
+}
+
+// NewSimpleStreamingTaskHandler creates a new simple streaming task handler
+func NewSimpleStreamingTaskHandler(logger *zap.Logger) *SimpleStreamingTaskHandler {
+    return &SimpleStreamingTaskHandler{logger: logger}
+}
+
+// HandleStreamingTask processes tasks and returns a channel of streaming events
+func (h *SimpleStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
+    eventsChan := make(chan server.StreamEvent, 10)
+
+    go func() {
+        defer close(eventsChan)
+
+        // Must have agent configured for streaming
+        if h.agent == nil {
+            eventsChan <- &server.ErrorStreamEvent{
+                ErrorMessage: "streaming handler requires an agent - use SetAgent() to configure",
+            }
+            return
+        }
+
+        // Process with agent streaming capabilities
+        // (Implementation would use h.agent.RunWithStream and forward events)
+        // This is a simplified example - see DefaultStreamingTaskHandler for full implementation
+
+        // Send completion event
+        task.Status.State = types.TaskStateCompleted
+        eventsChan <- &server.TaskCompleteStreamEvent{Task: task}
+    }()
+
+    return eventsChan, nil
+}
+
+// SetAgent sets the OpenAI-compatible agent
+func (h *SimpleStreamingTaskHandler) SetAgent(agent server.OpenAICompatibleAgent) {
+    h.agent = agent
+}
+
+// GetAgent returns the configured OpenAI-compatible agent
+func (h *SimpleStreamingTaskHandler) GetAgent() server.OpenAICompatibleAgent {
+    return h.agent
+}
+
 func main() {
     fmt.Println("🤖 Starting Minimal A2A Server...")
 
@@ -742,9 +791,59 @@ if err != nil {
 - Use `WithDefaultTaskHandlers()` for both background and streaming support
 - Use `WithDefaultBackgroundTaskHandler()` for polling-only scenarios
 - Use `WithDefaultStreamingTaskHandler()` for streaming-only scenarios
-- Use `WithBackgroundTaskHandler()` and `WithStreamingTaskHandler()` for custom handlers
+- Use `WithBackgroundTaskHandler()` for custom background handlers (implements `TaskHandler`)
+- Use `WithStreamingTaskHandler()` for custom streaming handlers (implements `StreamableTaskHandler`)
 
 The builder will validate that appropriate task handlers are configured based on your agent card capabilities.
+
+#### Task Handler Interfaces
+
+The ADK provides two distinct interfaces for handling tasks:
+
+**TaskHandler** - For background/polling scenarios:
+
+```go
+type TaskHandler interface {
+    HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error)
+    SetAgent(agent OpenAICompatibleAgent)
+    GetAgent() OpenAICompatibleAgent
+}
+```
+
+**StreamableTaskHandler** - For real-time streaming scenarios:
+
+```go
+type StreamableTaskHandler interface {
+    HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan StreamEvent, error)
+    SetAgent(agent OpenAICompatibleAgent)
+    GetAgent() OpenAICompatibleAgent
+}
+```
+
+Key differences:
+
+- **TaskHandler**: Returns a completed task synchronously
+- **StreamableTaskHandler**: Returns a channel of streaming events for real-time communication
+- Streaming handlers **require** an agent to be configured (will send error events if no agent is set)
+- Use the appropriate interface based on whether you need `message/send` (background) or `message/stream` (streaming) support
+
+**Example using both interfaces:**
+
+```go
+// Create background task handler
+backgroundHandler := NewSimpleTaskHandler(logger)
+
+// Create streaming task handler
+streamingHandler := NewSimpleStreamingTaskHandler(logger)
+streamingHandler.SetAgent(agent) // Required for streaming
+
+// Build server with both handlers
+a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+    WithBackgroundTaskHandler(backgroundHandler).      // For message/send
+    WithStreamingTaskHandler(streamingHandler).        // For message/stream
+    WithAgentCard(agentCard).
+    Build()
+```
 
 #### AgentBuilder
 

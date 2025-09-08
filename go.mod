@@ -3,6 +3,7 @@ module github.com/inference-gateway/adk
 go 1.24
 
 require (
+	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/coreos/go-oidc/v3 v3.14.1
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0

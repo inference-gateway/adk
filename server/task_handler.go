@@ -2,13 +2,46 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
+	gin "github.com/gin-gonic/gin"
+	uuid "github.com/google/uuid"
 	types "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
 )
+
+// A2AProtocolHandler defines the interface for handling A2A protocol requests
+type A2AProtocolHandler interface {
+	// HandleMessageSend processes message/send requests
+	HandleMessageSend(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleMessageStream processes message/stream requests
+	HandleMessageStream(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleTaskGet processes tasks/get requests
+	HandleTaskGet(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleTaskList processes tasks/list requests
+	HandleTaskList(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleTaskCancel processes tasks/cancel requests
+	HandleTaskCancel(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleTaskPushNotificationConfigSet processes tasks/pushNotificationConfig/set requests
+	HandleTaskPushNotificationConfigSet(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleTaskPushNotificationConfigGet processes tasks/pushNotificationConfig/get requests
+	HandleTaskPushNotificationConfigGet(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleTaskPushNotificationConfigList processes tasks/pushNotificationConfig/list requests
+	HandleTaskPushNotificationConfigList(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleTaskPushNotificationConfigDelete processes tasks/pushNotificationConfig/delete requests
+	HandleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest)
+}
 
 // TaskHandler defines how to handle task processing
 // This interface should be implemented by domain-specific task handlers
@@ -23,6 +56,70 @@ type TaskHandler interface {
 	// GetAgent returns the configured OpenAI-compatible agent
 	GetAgent() OpenAICompatibleAgent
 }
+
+// StreamableTaskHandler defines how to handle streaming task processing
+// This interface should be implemented by streaming task handlers that need to return real-time data
+type StreamableTaskHandler interface {
+	// HandleStreamingTask processes a task and returns a channel of streaming events
+	// The channel should be closed when streaming is complete
+	HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan StreamEvent, error)
+
+	// SetAgent sets the OpenAI-compatible agent for the task handler
+	SetAgent(agent OpenAICompatibleAgent)
+
+	// GetAgent returns the configured OpenAI-compatible agent
+	GetAgent() OpenAICompatibleAgent
+}
+
+// StreamEvent represents a streaming event that can be sent to clients
+type StreamEvent interface {
+	// GetEventType returns the type of the streaming event (delta, status, error, etc.)
+	GetEventType() string
+
+	// GetData returns the event data
+	GetData() interface{}
+}
+
+// DeltaStreamEvent represents a delta streaming event
+type DeltaStreamEvent struct {
+	Data interface{}
+}
+
+func (e *DeltaStreamEvent) GetEventType() string { return "delta" }
+func (e *DeltaStreamEvent) GetData() interface{} { return e.Data }
+
+// StatusStreamEvent represents a status update streaming event
+type StatusStreamEvent struct {
+	Status interface{}
+}
+
+func (e *StatusStreamEvent) GetEventType() string { return "status" }
+func (e *StatusStreamEvent) GetData() interface{} { return e.Status }
+
+// ErrorStreamEvent represents an error streaming event
+type ErrorStreamEvent struct {
+	ErrorMessage string
+}
+
+func (e *ErrorStreamEvent) GetEventType() string { return "error" }
+func (e *ErrorStreamEvent) GetData() interface{} { return e.ErrorMessage }
+
+// TaskCompleteStreamEvent represents a task completion streaming event
+type TaskCompleteStreamEvent struct {
+	Task *types.Task
+}
+
+func (e *TaskCompleteStreamEvent) GetEventType() string { return "task_complete" }
+func (e *TaskCompleteStreamEvent) GetData() interface{} { return e.Task }
+
+// TaskInterruptedStreamEvent represents a task interruption streaming event
+type TaskInterruptedStreamEvent struct {
+	Task   *types.Task
+	Reason string
+}
+
+func (e *TaskInterruptedStreamEvent) GetEventType() string { return "task_interrupted" }
+func (e *TaskInterruptedStreamEvent) GetData() interface{} { return e.Task }
 
 // DefaultTaskHandler implements the TaskHandler interface for basic scenarios
 // For optimized background or streaming with automatic input-required pausing,
@@ -340,102 +437,152 @@ func (sth *DefaultStreamingTaskHandler) GetAgent() OpenAICompatibleAgent {
 	return sth.agent
 }
 
-// HandleTask processes a task optimized for streaming scenarios with automatic input pausing
-func (sth *DefaultStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	sth.logger.Info("processing task with default streaming task handler",
-		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
-		zap.Bool("has_agent", sth.agent != nil))
+// HandleStreamingTask processes a task and returns a channel of streaming events
+func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan StreamEvent, error) {
+	eventsChan := make(chan StreamEvent, 100)
 
-	if sth.agent != nil {
-		return sth.processWithAgentStreaming(ctx, task, message)
-	}
+	go func() {
+		defer close(eventsChan)
 
-	return sth.processWithoutAgentBackground(ctx, task, message)
-}
+		sth.logger.Info("processing streaming task internally",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID),
+			zap.Bool("has_agent", sth.agent != nil))
 
-// processWithAgentStreaming processes a task using agent capabilities optimized for streaming with automatic input-required handling
-func (sth *DefaultStreamingTaskHandler) processWithAgentStreaming(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	sth.logger.Info("processing streaming task with agent capabilities",
-		zap.String("task_id", task.ID))
+		var updatedTask *types.Task
+		var err error
 
-	messages := make([]types.Message, len(task.History))
-	copy(messages, task.History)
-
-	streamChan, err := sth.agent.RunWithStream(ctx, messages)
-	if err != nil {
-		sth.logger.Error("agent streaming failed", zap.Error(err))
-
-		task.Status.State = types.TaskStateFailed
-
-		errorText := err.Error()
-		if strings.Contains(errorText, "failed to create chat completion") {
-			errorText = "LLM streaming request failed: " + err.Error()
+		if sth.agent == nil {
+			eventsChan <- &ErrorStreamEvent{ErrorMessage: "streaming task handler requires an agent to be configured - use SetAgent() to configure an OpenAI-compatible agent for streaming support"}
+			return
 		}
 
-		task.Status.Message = &types.Message{
-			Kind:      "message",
-			MessageID: fmt.Sprintf("stream-error-%s", task.ID),
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": errorText,
+		sth.logger.Info("processing streaming task with agent capabilities",
+			zap.String("task_id", task.ID))
+
+		eventsChan <- &StatusStreamEvent{Status: "starting"}
+
+		messages := make([]types.Message, len(task.History))
+		copy(messages, task.History)
+
+		streamChan, err := sth.agent.RunWithStream(ctx, messages)
+		if err != nil {
+			sth.logger.Error("agent streaming failed", zap.Error(err))
+
+			task.Status.State = types.TaskStateFailed
+			errorText := err.Error()
+			if strings.Contains(errorText, "failed to create chat completion") {
+				errorText = "LLM streaming request failed: " + err.Error()
+			}
+
+			task.Status.Message = &types.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("stream-error-%s", task.ID),
+				Role:      "assistant",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": errorText,
+					},
 				},
-			},
+			}
+			eventsChan <- &ErrorStreamEvent{ErrorMessage: err.Error()}
+			return
 		}
-		return task, nil
-	}
 
-	for streamMessage := range streamChan {
-		if streamMessage != nil && streamMessage.Kind == "input_required" {
-			inputMessage := "Please provide more information to continue streaming."
-			if len(streamMessage.Parts) > 0 {
-				if textPart, ok := streamMessage.Parts[0].(map[string]any); ok {
-					if text, exists := textPart["text"].(string); exists && text != "" {
-						inputMessage = text
-					}
+		for event := range streamChan {
+			if event.Type() == "adk.agent.delta" {
+				var deltaMessage types.Message
+				if err := event.DataAs(&deltaMessage); err == nil {
+					eventsChan <- &DeltaStreamEvent{Data: deltaMessage}
 				}
 			}
-			return sth.pauseTaskForStreamingInput(task, inputMessage), nil
+
+			if event.Type() == "adk.agent.iteration.completed" {
+				var finalMessage types.Message
+				if err := event.DataAs(&finalMessage); err != nil {
+					sth.logger.Error("failed to parse iteration completed event data", zap.Error(err))
+					continue
+				}
+
+				task.History = append(task.History, finalMessage)
+				sth.logger.Debug("stored iteration completed message to history",
+					zap.String("task_id", task.ID),
+					zap.String("message_id", finalMessage.MessageID),
+					zap.String("event_id", event.ID()))
+			}
+
+			if event.Type() == "adk.agent.tool.result" {
+				var toolResultMessage types.Message
+				if err := event.DataAs(&toolResultMessage); err != nil {
+					sth.logger.Error("failed to parse tool result event data", zap.Error(err))
+					continue
+				}
+
+				task.History = append(task.History, toolResultMessage)
+				sth.logger.Debug("stored tool result message to history",
+					zap.String("task_id", task.ID),
+					zap.String("message_id", toolResultMessage.MessageID),
+					zap.String("event_id", event.ID()))
+			}
+
+			if event.Type() == "adk.agent.input.required" {
+				var inputMessage types.Message
+				if err := event.DataAs(&inputMessage); err != nil {
+					sth.logger.Error("failed to parse input required event data", zap.Error(err))
+					continue
+				}
+
+				if inputMessage.Kind == "input_required" {
+					inputText := "Please provide more information to continue streaming."
+					if len(inputMessage.Parts) > 0 {
+						if textPart, ok := inputMessage.Parts[0].(map[string]any); ok {
+							if text, exists := textPart["text"].(string); exists && text != "" {
+								inputText = text
+							}
+						}
+					}
+
+					task.History = append(task.History, inputMessage)
+					updatedTask = sth.pauseTaskForStreamingInput(task, inputText)
+					eventsChan <- &TaskCompleteStreamEvent{Task: updatedTask}
+					return
+				}
+			}
+
+			if event.Type() == "adk.agent.task.interrupted" {
+				var interruptMessage types.Message
+				if err := event.DataAs(&interruptMessage); err != nil {
+					sth.logger.Error("failed to parse task interrupted event data", zap.Error(err))
+					continue
+				}
+
+				sth.logger.Info("streaming task was interrupted by agent",
+					zap.String("task_id", task.ID),
+					zap.String("context_id", task.ContextID),
+					zap.Int("preserved_history_count", len(task.History)))
+
+				task.Status.State = types.TaskStateWorking
+				if len(task.History) > 0 {
+					task.Status.Message = &task.History[len(task.History)-1]
+				}
+				eventsChan <- &TaskInterruptedStreamEvent{Task: task, Reason: "context_cancelled"}
+				return
+			}
 		}
-	}
 
-	task.Status.State = types.TaskStateCompleted
-	if len(task.History) > 0 {
-		task.Status.Message = &task.History[len(task.History)-1]
-	} else {
-		task.Status.Message = nil
-	}
+		task.Status.State = types.TaskStateCompleted
+		if len(task.History) > 0 {
+			task.Status.Message = &task.History[len(task.History)-1]
+		} else {
+			task.Status.Message = nil
+		}
 
-	return task, nil
-}
+		eventsChan <- &StatusStreamEvent{Status: "completed"}
+		eventsChan <- &TaskCompleteStreamEvent{Task: task}
+	}()
 
-// processWithoutAgentBackground processes a task without agent capabilities for streaming
-func (sth *DefaultStreamingTaskHandler) processWithoutAgentBackground(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	sth.logger.Info("processing streaming task without agent",
-		zap.String("task_id", task.ID))
-
-	response := &types.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("stream-response-%s", task.ID),
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "I received your message in streaming context. I'm a default streaming task handler without AI capabilities. To enable AI responses with automatic streaming input-required pausing, configure an OpenAI-compatible agent.",
-			},
-		},
-	}
-
-	if task.History == nil {
-		task.History = []types.Message{}
-	}
-	task.History = append(task.History, *response)
-	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = response
-
-	return task, nil
+	return eventsChan, nil
 }
 
 // pauseTaskForStreamingInput updates a task to input-required state optimized for streaming scenarios
@@ -470,4 +617,595 @@ func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.T
 		zap.Int("conversation_history_count", len(task.History)))
 
 	return task
+}
+
+// DefaultA2AProtocolHandler implements the A2AProtocolHandler interface
+type DefaultA2AProtocolHandler struct {
+	logger                *zap.Logger
+	storage               Storage
+	taskManager           TaskManager
+	responseSender        ResponseSender
+	backgroundTaskHandler TaskHandler
+	streamingTaskHandler  StreamableTaskHandler
+}
+
+// NewDefaultA2AProtocolHandler creates a new default A2A protocol handler
+func NewDefaultA2AProtocolHandler(
+	logger *zap.Logger,
+	storage Storage,
+	taskManager TaskManager,
+	responseSender ResponseSender,
+	backgroundTaskHandler TaskHandler,
+	streamingTaskHandler StreamableTaskHandler,
+) *DefaultA2AProtocolHandler {
+	return &DefaultA2AProtocolHandler{
+		logger:                logger,
+		storage:               storage,
+		taskManager:           taskManager,
+		responseSender:        responseSender,
+		backgroundTaskHandler: backgroundTaskHandler,
+		streamingTaskHandler:  streamingTaskHandler,
+	}
+}
+
+// createTaskFromMessage creates a task directly from message parameters
+func (h *DefaultA2AProtocolHandler) createTaskFromMessage(ctx context.Context, params types.MessageSendParams) (*types.Task, error) {
+	if len(params.Message.Parts) == 0 {
+		return nil, fmt.Errorf("empty message parts not allowed")
+	}
+
+	if params.Message.TaskID != nil {
+		taskID := *params.Message.TaskID
+
+		err := h.taskManager.ResumeTaskWithInput(taskID, &params.Message)
+		if err != nil {
+			h.logger.Error("failed to resume task with input",
+				zap.String("task_id", taskID),
+				zap.Error(err))
+			return nil, fmt.Errorf("failed to resume task: %w", err)
+		}
+
+		task, exists := h.taskManager.GetTask(taskID)
+		if !exists {
+			h.logger.Error("failed to get resumed task",
+				zap.String("task_id", taskID))
+			return nil, fmt.Errorf("resumed task not found: %s", taskID)
+		}
+
+		h.logger.Info("task resumed with user input",
+			zap.String("task_id", taskID),
+			zap.String("context_id", task.ContextID))
+
+		return task, nil
+	}
+
+	contextID := params.Message.ContextID
+	if contextID == nil {
+		newContextID := uuid.New().String()
+		contextID = &newContextID
+	}
+
+	task := h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+
+	if task != nil {
+		h.logger.Info("task created for processing",
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
+	} else {
+		h.logger.Error("failed to create task - task manager returned nil")
+		return nil, fmt.Errorf("failed to create task")
+	}
+	return task, nil
+}
+
+// HandleMessageSend processes message/send requests
+func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.MessageSendParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse message/send request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	task, err := h.createTaskFromMessage(c.Request.Context(), params)
+	if err != nil {
+		h.logger.Error("failed to create task", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	err = h.storage.EnqueueTask(task, req.ID)
+	if err != nil {
+		h.logger.Error("failed to enqueue task", zap.Error(err))
+		err := h.taskManager.UpdateError(task.ID, &types.Message{
+			Kind:      "message",
+			MessageID: uuid.New().String(),
+			Role:      "assistant",
+			Parts: []types.Part{
+				map[string]any{
+					"kind": "text",
+					"text": "Failed to queue task for processing. Please try again later.",
+				},
+			},
+		})
+		if err != nil {
+			h.logger.Error("failed to update task to failed state due to enqueue failure",
+				zap.Error(err),
+				zap.String("task_id", task.ID),
+				zap.String("context_id", task.ContextID))
+		}
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), "Failed to queue task")
+		return
+	}
+
+	h.responseSender.SendSuccess(c, req.ID, *task)
+}
+
+// writeStreamingResponse writes a JSON-RPC response to the streaming connection in SSE format
+func (h *DefaultA2AProtocolHandler) writeStreamingResponse(c *gin.Context, response *types.JSONRPCSuccessResponse) error {
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
+		return fmt.Errorf("failed to write data prefix: %w", err)
+	}
+
+	if _, err := c.Writer.Write(responseBytes); err != nil {
+		return fmt.Errorf("failed to write response: %w", err)
+	}
+
+	if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
+		return fmt.Errorf("failed to write SSE terminator: %w", err)
+	}
+
+	c.Writer.Flush()
+	return nil
+}
+
+// writeStreamingErrorResponse writes a JSON-RPC error response to the streaming connection in SSE format
+func (h *DefaultA2AProtocolHandler) writeStreamingErrorResponse(c *gin.Context, response *types.JSONRPCErrorResponse) error {
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("failed to marshal error response: %w", err)
+	}
+
+	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
+		return fmt.Errorf("failed to write data prefix: %w", err)
+	}
+
+	if _, err := c.Writer.Write(responseBytes); err != nil {
+		return fmt.Errorf("failed to write error response: %w", err)
+	}
+
+	if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
+		return fmt.Errorf("failed to write SSE terminator: %w", err)
+	}
+
+	c.Writer.Flush()
+	return nil
+}
+
+// HandleMessageStream processes message/stream requests
+func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.MessageSendParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse message/stream request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Headers", "Cache-Control")
+
+	ctx := c.Request.Context()
+
+	task, err := h.createTaskFromMessage(ctx, params)
+	if err != nil {
+		h.logger.Error("failed to create streaming task", zap.Error(err))
+		errorResponse := types.JSONRPCErrorResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &types.JSONRPCError{
+				Code:    int(ErrInternalError),
+				Message: err.Error(),
+			},
+		}
+		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+		}
+		return
+	}
+
+	h.logger.Info("processing streaming task",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
+
+	err = h.taskManager.UpdateState(task.ID, types.TaskStateWorking)
+	if err != nil {
+		h.logger.Error("failed to update streaming task state", zap.Error(err))
+		return
+	}
+
+	var message *types.Message
+	if task.Status.Message != nil {
+		message = task.Status.Message
+	} else {
+		message = &types.Message{
+			Kind:      "message",
+			MessageID: uuid.New().String(),
+			Role:      "user",
+			Parts:     []types.Part{},
+		}
+	}
+
+	eventsChan, err := h.streamingTaskHandler.HandleStreamingTask(ctx, task, message)
+	if err != nil {
+		h.logger.Error("failed to start streaming task",
+			zap.Error(err),
+			zap.String("task_id", task.ID),
+			zap.String("context_id", task.ContextID))
+
+		errorResponse := types.JSONRPCErrorResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &types.JSONRPCError{
+				Code:    int(ErrInternalError),
+				Message: err.Error(),
+			},
+		}
+		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+		}
+		return
+	}
+
+	var finalTask *types.Task
+	for event := range eventsChan {
+		switch event.GetEventType() {
+		case "delta":
+			deltaData := event.GetData()
+			var deltaMessage *types.Message
+
+			switch msg := deltaData.(type) {
+			case types.Message:
+				deltaMessage = &msg
+			case *types.Message:
+				deltaMessage = msg
+			}
+
+			if deltaMessage != nil {
+				statusUpdate := types.TaskStatusUpdateEvent{
+					Kind:      "status-update",
+					TaskID:    task.ID,
+					ContextID: task.ContextID,
+					Status: types.TaskStatus{
+						State:   "working",
+						Message: deltaMessage,
+					},
+					Final: false,
+				}
+
+				deltaResponse := types.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  statusUpdate,
+				}
+				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
+					h.logger.Error("failed to write streaming delta", zap.Error(err))
+					return
+				}
+			}
+		case "status":
+			h.logger.Debug("received status update", zap.Any("status", event.GetData()))
+		case "task_complete":
+			if taskData, ok := event.GetData().(*types.Task); ok {
+				finalTask = taskData
+			}
+		case "task_interrupted":
+			if taskData, ok := event.GetData().(*types.Task); ok {
+				h.logger.Info("streaming task was interrupted, saving task with preserved history",
+					zap.String("task_id", taskData.ID),
+					zap.String("context_id", taskData.ContextID),
+					zap.Int("history_count", len(taskData.History)))
+
+				if err := h.taskManager.UpdateTask(taskData); err != nil {
+					h.logger.Error("failed to save interrupted task to storage",
+						zap.String("task_id", taskData.ID),
+						zap.Error(err))
+				} else {
+					h.logger.Info("successfully saved interrupted task with history to storage",
+						zap.String("task_id", taskData.ID),
+						zap.Int("history_count", len(taskData.History)))
+				}
+				return
+			}
+		case "error":
+			h.logger.Error("streaming task error", zap.Any("error", event.GetData()))
+			errorResponse := types.JSONRPCErrorResponse{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Error: &types.JSONRPCError{
+					Code:    int(ErrInternalError),
+					Message: fmt.Sprintf("streaming error: %v", event.GetData()),
+				},
+			}
+			if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+				h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+			}
+			return
+		}
+	}
+
+	if finalTask != nil {
+		finalResponse := types.TaskStatusUpdateEvent{
+			Kind:      "status-update",
+			TaskID:    finalTask.ID,
+			ContextID: finalTask.ContextID,
+			Status:    finalTask.Status,
+			Final:     true,
+		}
+
+		jsonRPCResponse := types.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  finalResponse,
+		}
+
+		if err := h.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
+			h.logger.Error("failed to write final streaming response", zap.Error(err))
+		} else {
+			if err := h.taskManager.UpdateTask(finalTask); err != nil {
+				h.logger.Error("failed to update streaming task",
+					zap.Error(err),
+					zap.String("task_id", finalTask.ID),
+					zap.String("context_id", finalTask.ContextID))
+			}
+		}
+	}
+
+	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+		h.logger.Error("failed to write stream termination signal", zap.Error(err))
+	} else {
+		c.Writer.Flush()
+		h.logger.Debug("sent stream termination signal [DONE]")
+	}
+
+	h.logger.Info("streaming task processed successfully",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
+}
+
+// HandleTaskGet processes tasks/get requests
+func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.TaskQueryParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse tasks/get request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	h.logger.Info("retrieving task", zap.String("task_id", params.ID))
+
+	task, exists := h.taskManager.GetTask(params.ID)
+	if !exists {
+		h.logger.Error("task not found", zap.String("task_id", params.ID))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "task not found")
+		return
+	}
+
+	h.logger.Info("task retrieved successfully",
+		zap.String("task_id", params.ID),
+		zap.String("context_id", task.ContextID),
+		zap.String("status", string(task.Status.State)))
+	h.responseSender.SendSuccess(c, req.ID, *task)
+}
+
+// HandleTaskCancel processes tasks/cancel requests
+func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.TaskIdParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse tasks/cancel request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	h.logger.Info("canceling task", zap.String("task_id", params.ID))
+
+	err = h.taskManager.CancelTask(params.ID)
+	if err != nil {
+		h.logger.Error("failed to cancel task",
+			zap.Error(err),
+			zap.String("task_id", params.ID))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), err.Error())
+		return
+	}
+
+	task, _ := h.taskManager.GetTask(params.ID)
+	h.responseSender.SendSuccess(c, req.ID, *task)
+}
+
+// HandleTaskList processes tasks/list requests
+func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.TaskListParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse tasks/list request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	h.logger.Info("listing tasks")
+
+	taskList, err := h.taskManager.ListTasks(params)
+	if err != nil {
+		h.logger.Error("failed to list tasks", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	h.logger.Info("tasks listed successfully", zap.Int("count", len(taskList.Tasks)), zap.Int("total", taskList.Total))
+	h.responseSender.SendSuccess(c, req.ID, taskList)
+}
+
+// HandleTaskPushNotificationConfigSet processes tasks/pushNotificationConfig/set requests
+func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.TaskPushNotificationConfig
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse tasks/pushNotificationConfig/set request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	h.logger.Info("setting push notification config for task",
+		zap.String("task_id", params.TaskID),
+		zap.String("url", params.PushNotificationConfig.URL))
+
+	config, err := h.taskManager.SetTaskPushNotificationConfig(params)
+	if err != nil {
+		h.logger.Error("failed to set push notification config", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	h.logger.Info("push notification config set successfully", zap.String("task_id", params.TaskID))
+	h.responseSender.SendSuccess(c, req.ID, config)
+}
+
+// HandleTaskPushNotificationConfigGet processes tasks/pushNotificationConfig/get requests
+func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.GetTaskPushNotificationConfigParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse tasks/pushNotificationConfig/get request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	h.logger.Info("getting push notification config for task", zap.String("task_id", params.ID))
+
+	config, err := h.taskManager.GetTaskPushNotificationConfig(params)
+	if err != nil {
+		h.logger.Error("failed to get push notification config", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	h.logger.Info("push notification config retrieved successfully", zap.String("task_id", params.ID))
+	h.responseSender.SendSuccess(c, req.ID, config)
+}
+
+// HandleTaskPushNotificationConfigList processes tasks/pushNotificationConfig/list requests
+func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.ListTaskPushNotificationConfigParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse tasks/pushNotificationConfig/list request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	h.logger.Info("listing push notification configs for task", zap.String("task_id", params.ID))
+
+	configs, err := h.taskManager.ListTaskPushNotificationConfigs(params)
+	if err != nil {
+		h.logger.Error("failed to list push notification configs", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	h.logger.Info("push notification configs listed successfully",
+		zap.String("task_id", params.ID),
+		zap.Int("count", len(configs)))
+	h.responseSender.SendSuccess(c, req.ID, configs)
+}
+
+// HandleTaskPushNotificationConfigDelete processes tasks/pushNotificationConfig/delete requests
+func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest) {
+	var params types.DeleteTaskPushNotificationConfigParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse tasks/pushNotificationConfig/delete request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	h.logger.Info("deleting push notification config",
+		zap.String("task_id", params.ID),
+		zap.String("config_id", params.PushNotificationConfigID))
+
+	err = h.taskManager.DeleteTaskPushNotificationConfig(params)
+	if err != nil {
+		h.logger.Error("failed to delete push notification config", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		return
+	}
+
+	h.logger.Info("push notification config deleted successfully",
+		zap.String("task_id", params.ID),
+		zap.String("config_id", params.PushNotificationConfigID))
+	h.responseSender.SendSuccess(c, req.ID, nil)
 }

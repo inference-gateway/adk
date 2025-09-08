@@ -69,10 +69,11 @@ func TestA2AServerBuilder_WithTaskHandler(t *testing.T) {
 	}
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
+	mockStreamingTaskHandler := &mocks.FakeStreamableTaskHandler{}
 
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithBackgroundTaskHandler(mockTaskHandler).
-		WithStreamingTaskHandler(mockTaskHandler).
+		WithStreamingTaskHandler(mockStreamingTaskHandler).
 		WithAgentCard(createTestAgentCard()).
 		Build()
 
@@ -80,7 +81,7 @@ func TestA2AServerBuilder_WithTaskHandler(t *testing.T) {
 
 	assert.NotNil(t, a2aServer)
 	assert.Equal(t, mockTaskHandler, a2aServer.GetBackgroundTaskHandler())
-	assert.Equal(t, mockTaskHandler, a2aServer.GetStreamingTaskHandler())
+	assert.Equal(t, mockStreamingTaskHandler, a2aServer.GetStreamingTaskHandler())
 }
 
 func TestA2AServerBuilder_WithTaskResultProcessor(t *testing.T) {
@@ -160,6 +161,7 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 	}
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
+	mockStreamingTaskHandler := &mocks.FakeStreamableTaskHandler{}
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 
 	agent, err := server.NewAgentBuilder(logger).
@@ -169,7 +171,7 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithBackgroundTaskHandler(mockTaskHandler).
-		WithStreamingTaskHandler(mockTaskHandler).
+		WithStreamingTaskHandler(mockStreamingTaskHandler).
 		WithTaskResultProcessor(mockProcessor).
 		WithAgent(agent).
 		WithAgentCard(createTestAgentCard()).
@@ -178,7 +180,7 @@ func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
 
 	assert.NotNil(t, a2aServer)
 	assert.Equal(t, mockTaskHandler, a2aServer.GetBackgroundTaskHandler())
-	assert.Equal(t, mockTaskHandler, a2aServer.GetStreamingTaskHandler())
+	assert.Equal(t, mockStreamingTaskHandler, a2aServer.GetStreamingTaskHandler())
 }
 
 func TestNewDefaultA2AServer(t *testing.T) {
@@ -194,14 +196,15 @@ func TestCustomA2AServer(t *testing.T) {
 	}
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
+	mockStreamingTaskHandler := &mocks.FakeStreamableTaskHandler{}
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
 
-	a2aServer, err := server.CustomA2AServer(cfg, logger, mockTaskHandler, mockTaskHandler, mockProcessor, createTestAgentCard())
+	a2aServer, err := server.CustomA2AServer(cfg, logger, mockTaskHandler, mockStreamingTaskHandler, mockProcessor, createTestAgentCard())
 	require.NoError(t, err)
 
 	assert.NotNil(t, a2aServer)
 	assert.Equal(t, mockTaskHandler, a2aServer.GetBackgroundTaskHandler())
-	assert.Equal(t, mockTaskHandler, a2aServer.GetStreamingTaskHandler())
+	assert.Equal(t, mockStreamingTaskHandler, a2aServer.GetStreamingTaskHandler())
 }
 
 func TestA2AServerBuilderInterface_WithMocks(t *testing.T) {
@@ -223,7 +226,7 @@ func TestA2AServerBuilderInterface_WithMocks(t *testing.T) {
 		WithLogger(logger).
 		WithAgent(agent).
 		WithBackgroundTaskHandler(mockTaskHandler).
-		WithStreamingTaskHandler(mockTaskHandler).
+		WithStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{}).
 		Build()
 	require.NoError(t, err, "Expected no error when building server with mocks")
 
@@ -281,7 +284,7 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 		WithLogger(logger).
 		WithAgent(agent).
 		WithBackgroundTaskHandler(taskHandler).
-		WithStreamingTaskHandler(taskHandler).
+		WithStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{}).
 		WithTaskResultProcessor(taskResultProcessor).
 		Build()
 	require.NoError(t, err, "Expected no error when building server with all methods")
@@ -494,7 +497,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
 			WithAgentCard(agentCard).
 			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}).
-			WithStreamingTaskHandler(&mocks.FakeTaskHandler{}).
+			WithStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{}).
 			Build()
 
 		require.NoError(t, err)
