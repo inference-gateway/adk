@@ -334,7 +334,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 					return toolResultMessages
 				}
 
-				toolResultMessage := types.NewToolResultMessage(toolCall.Id, result, toolErr != nil)
+				toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
 
 				select {
 				case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
@@ -391,7 +391,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			}
 		}
 
-		toolResultMessage := types.NewToolResultMessage(toolCall.Id, result, toolErr != nil)
+		toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
 
 		select {
 		case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):

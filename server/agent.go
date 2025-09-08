@@ -158,7 +158,16 @@ func (a *OpenAICompatibleAgentImpl) Run(ctx context.Context, messages []types.Me
 
 		additionalMessages = append(additionalMessages, *assistantA2A)
 
-		for _, toolCall := range *assistantMessage.ToolCalls {
+		for i, toolCall := range *assistantMessage.ToolCalls {
+			if toolCall.Function.Name == "" {
+				continue
+			}
+
+			// Generate ID if missing (some providers like Google Gemini don't provide IDs)
+			if toolCall.Id == "" {
+				toolCall.Id = fmt.Sprintf("call_%d_%d", time.Now().Unix(), i)
+			}
+
 			var args map[string]any
 			var result string
 			var toolErr error
