@@ -66,7 +66,8 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						zap.Int("iteration", iteration),
 						zap.Bool("has_assistant_message", assistantMessage != nil),
 						zap.Int("content_length", len(fullContent)),
-						zap.Int("tool_result_count", len(toolResultMessages)))
+						zap.Int("tool_result_count", len(toolResultMessages)),
+						zap.Int("pending_tool_calls", len(toolCallAccumulator)))
 
 					if assistantMessage != nil {
 						iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
@@ -81,6 +82,29 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						select {
 						case outputChan <- toolEvent:
 						case <-time.After(100 * time.Millisecond):
+						}
+					}
+
+					if len(toolCallAccumulator) > 0 {
+						a.logger.Info("adding failed tool results for pending tool calls due to interruption",
+							zap.Int("pending_count", len(toolCallAccumulator)))
+
+						for _, toolCall := range toolCallAccumulator {
+							if toolCall != nil && toolCall.Id != "" {
+								failedToolResult := types.NewToolResultMessage(
+									toolCall.Id,
+									"Tool execution was interrupted due to connection timeout",
+									true,
+								)
+
+								toolEvent := types.NewMessageEvent("adk.agent.tool.result", failedToolResult.MessageID, failedToolResult, nil)
+								select {
+								case outputChan <- toolEvent:
+								case <-time.After(100 * time.Millisecond):
+								}
+
+								toolResultMessages = append(toolResultMessages, *failedToolResult)
+							}
 						}
 					}
 
