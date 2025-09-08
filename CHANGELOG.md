@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.5](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.4...v0.9.5-rc.5) (2025-09-08)
+
+### ♻️ Improvements
+
+* **agent:** Add debug logging for tool call accumulator in RunWithStream ([01d08aa](https://github.com/inference-gateway/adk/commit/01d08aab46c822455a3288f0435752dbe067bcd8))
+
 ## [0.9.5-rc.4](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.3...v0.9.5-rc.4) (2025-09-08)
 
 ### 🐛 Bug Fixes
