@@ -909,13 +909,6 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 	}
 
 	if finalTask != nil {
-		if err := h.taskManager.UpdateTask(finalTask); err != nil {
-			h.logger.Error("failed to update streaming task",
-				zap.Error(err),
-				zap.String("task_id", finalTask.ID),
-				zap.String("context_id", finalTask.ContextID))
-		}
-
 		finalResponse := types.TaskStatusUpdateEvent{
 			Kind:      "status-update",
 			TaskID:    finalTask.ID,
@@ -932,6 +925,13 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 
 		if err := h.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
 			h.logger.Error("failed to write final streaming response", zap.Error(err))
+		} else {
+			if err := h.taskManager.UpdateTask(finalTask); err != nil {
+				h.logger.Error("failed to update streaming task",
+					zap.Error(err),
+					zap.String("task_id", finalTask.ID),
+					zap.String("context_id", finalTask.ContextID))
+			}
 		}
 	}
 
