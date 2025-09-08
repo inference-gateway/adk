@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.11](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.10...v0.9.4-rc.11) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Need to pass the data to preserve during cancellation ([e5c5635](https://github.com/inference-gateway/adk/commit/e5c5635963a46b30ff905af79ef9df42d795caf1))
+
 ## [0.9.4-rc.10](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.9...v0.9.4-rc.10) (2025-09-08)
 
 ### ♻️ Improvements
