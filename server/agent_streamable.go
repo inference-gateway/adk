@@ -99,6 +99,20 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				case streamErr := <-streamErrorChan:
 					if streamErr != nil {
 						a.logger.Error("streaming failed", zap.Error(streamErr))
+
+						errorMessage := types.NewStreamingStatusMessage(
+							fmt.Sprintf("streaming-error-%d", iteration),
+							"failed",
+							map[string]any{
+								"error":     streamErr.Error(),
+								"iteration": iteration,
+							},
+						)
+						select {
+						case outputChan <- types.NewMessageEvent("adk.agent.stream.failed", errorMessage.MessageID, errorMessage, nil):
+						default:
+						}
+						return
 					}
 					streaming = false
 
