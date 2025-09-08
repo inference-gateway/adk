@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.1](https://github.com/inference-gateway/adk/compare/v0.9.4...v0.9.5-rc.1) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **streaming:** Handle streaming failure events and update task status ([36c5ca2](https://github.com/inference-gateway/adk/commit/36c5ca2d045105f3c6f0ed5ce9d5923b09afb83c))
+
 ## [0.9.4](https://github.com/inference-gateway/adk/compare/v0.9.3...v0.9.4) (2025-09-08)
 
 ### 🐛 Bug Fixes
