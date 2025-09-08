@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.3](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.2...v0.9.5-rc.3) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **agent:** Apply the fix also to non-streaming tasks and also update the function ([28c2b23](https://github.com/inference-gateway/adk/commit/28c2b2364c8c78f86d5cabf8ba17c669d0e533b4))
+
 ## [0.9.5-rc.2](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.1...v0.9.5-rc.2) (2025-09-08)
 
 ### 🐛 Bug Fixes
