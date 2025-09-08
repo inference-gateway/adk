@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.6](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.5...v0.9.5-rc.6) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **agent:** Improve tool call handling with unique key generation and order tracking ([38baf3f](https://github.com/inference-gateway/adk/commit/38baf3f6bb8f28c4ed4298d11440d7367f7c8ef8))
+
 ## [0.9.5-rc.5](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.4...v0.9.5-rc.5) (2025-09-08)
 
 ### ♻️ Improvements
