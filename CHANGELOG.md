@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.9](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.8...v0.9.4-rc.9) (2025-09-08)
+
+### ♻️ Improvements
+
+* **task:** Add handling for interrupted tasks in streaming events ([1ecf8e7](https://github.com/inference-gateway/adk/commit/1ecf8e73db4e13c1d6ffed5f886aeeca9e65ca2d))
+
 ## [0.9.4-rc.8](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.7...v0.9.4-rc.8) (2025-09-08)
 
 ### ♻️ Improvements
