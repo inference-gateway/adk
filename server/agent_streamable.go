@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	types "github.com/inference-gateway/adk/types"
@@ -61,6 +62,28 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			for streaming {
 				select {
 				case <-ctx.Done():
+					a.logger.Info("streaming context cancelled, preserving partial state",
+						zap.Int("iteration", iteration),
+						zap.Bool("has_assistant_message", assistantMessage != nil),
+						zap.Int("content_length", len(fullContent)),
+						zap.Int("tool_result_count", len(toolResultMessages)))
+
+					if assistantMessage != nil {
+						iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
+						select {
+						case outputChan <- iterationEvent:
+						case <-time.After(100 * time.Millisecond):
+						}
+					}
+
+					for _, toolResult := range toolResultMessages {
+						toolEvent := types.NewMessageEvent("adk.agent.tool.result", toolResult.MessageID, &toolResult, nil)
+						select {
+						case outputChan <- toolEvent:
+						case <-time.After(100 * time.Millisecond):
+						}
+					}
+
 					interruptedTask := &types.Task{
 						ID:        fmt.Sprintf("interrupted-%d", iteration),
 						ContextID: fmt.Sprintf("streaming-task-%d", iteration),
