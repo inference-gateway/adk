@@ -2,6 +2,109 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.15](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.14...v0.9.4-rc.15) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Streamline iteration event handling and remove redundant message logging ([86d9594](https://github.com/inference-gateway/adk/commit/86d95943c7cb1dd4829f23f6df7c7a750500cc26))
+
+## [0.9.4-rc.14](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.13...v0.9.4-rc.14) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Remove redundant handling of tool result messages and failed tool results during interruption ([e333f31](https://github.com/inference-gateway/adk/commit/e333f31af0663c3b430e6c0a49702eef2cde37f8))
+
+## [0.9.4-rc.13](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.12...v0.9.4-rc.13) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Handle interrupted tool calls and log failed results during streaming ([43e495b](https://github.com/inference-gateway/adk/commit/43e495bd4de6aaa87d358fb577a2ce01e77d4275))
+
+## [0.9.4-rc.12](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.11...v0.9.4-rc.12) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Save interrupted task with preserved history and log success or failure ([ef93aa3](https://github.com/inference-gateway/adk/commit/ef93aa34ab552de0bb9d8e47191a55e37fb495fa))
+
+## [0.9.4-rc.11](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.10...v0.9.4-rc.11) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Need to pass the data to preserve during cancellation ([e5c5635](https://github.com/inference-gateway/adk/commit/e5c5635963a46b30ff905af79ef9df42d795caf1))
+
+## [0.9.4-rc.10](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.9...v0.9.4-rc.10) (2025-09-08)
+
+### ♻️ Improvements
+
+* **task:** Ensure messages are stored when the task gets interrupted due to connectivity so it can be resumed later ([84b6ea9](https://github.com/inference-gateway/adk/commit/84b6ea961068a443b3c417fff95c47746488279f))
+
+## [0.9.4-rc.9](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.8...v0.9.4-rc.9) (2025-09-08)
+
+### ♻️ Improvements
+
+* **task:** Add handling for interrupted tasks in streaming events ([1ecf8e7](https://github.com/inference-gateway/adk/commit/1ecf8e73db4e13c1d6ffed5f886aeeca9e65ca2d))
+
+## [0.9.4-rc.8](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.7...v0.9.4-rc.8) (2025-09-08)
+
+### ♻️ Improvements
+
+* **task:** Move task update logic to after successful response write ([551b8c9](https://github.com/inference-gateway/adk/commit/551b8c9f60bf72f0cc11e3f717d2788e0b50e32e))
+
+## [0.9.4-rc.7](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.6...v0.9.4-rc.7) (2025-09-07)
+
+### ♻️ Improvements
+
+* **agent:** Update condition for logging when no tool calls are executed ([29837dd](https://github.com/inference-gateway/adk/commit/29837dd747e9279e11d2555278d5ea43587adc8a))
+
+## [0.9.4-rc.6](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.5...v0.9.4-rc.6) (2025-09-07)
+
+### ♻️ Improvements
+
+* **task:** Add handling for tool result events in task history ([7fb6038](https://github.com/inference-gateway/adk/commit/7fb60389354711b09423f0e79a77e5815391396d))
+
+## [0.9.4-rc.5](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.4...v0.9.4-rc.5) (2025-09-07)
+
+### ♻️ Improvements
+
+* **server:** Improve delta message handling in A2A protocol ([25c9b38](https://github.com/inference-gateway/adk/commit/25c9b38d48b01900c94412bc75132d28eca50478))
+* **task:** Remove deprecated HandleTask method and related processing logic ([429cfb0](https://github.com/inference-gateway/adk/commit/429cfb0ec0a6603b847bdb3c6cdde8eead5c1780))
+
+## [0.9.4-rc.4](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.3...v0.9.4-rc.4) (2025-09-07)
+
+### ♻️ Improvements
+
+* **schema:** Download the latest schema ([adbf5af](https://github.com/inference-gateway/adk/commit/adbf5af9c22e130b2291f9f4354870ab43a9c012))
+* **tests:** Add 'Kind' field to task initialization in test cases ([eba3526](https://github.com/inference-gateway/adk/commit/eba35265d3ccf9fff13ccd589f9b47dbef574e43))
+
+## [0.9.4-rc.3](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.2...v0.9.4-rc.3) (2025-09-07)
+
+### ♻️ Improvements
+
+* Add A2A protocol handler and fake OpenAI compatible agent implementation ([6c02f09](https://github.com/inference-gateway/adk/commit/6c02f09e79b488008bfff03da3f4da569776cd1d))
+* **server:** Update task handler interfaces to support streaming tasks ([1a5ba6b](https://github.com/inference-gateway/adk/commit/1a5ba6b6aad245984807167d47dd65e59bee6577))
+
+## [0.9.4-rc.2](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.1...v0.9.4-rc.2) (2025-09-07)
+
+### ♻️ Improvements
+
+* **server:** Integrate CloudEvents SDK for enhanced streaming message handling and event generation ([0d9e712](https://github.com/inference-gateway/adk/commit/0d9e712011681dbb4c37455ae6b01dec01a0f25a))
+
+## [0.9.4-rc.1](https://github.com/inference-gateway/adk/compare/v0.9.3...v0.9.4-rc.1) (2025-09-07)
+
+### ♻️ Improvements
+
+* **server:** Consolidate the streaming messages and storage capabilities in the agent RunWithStream method ([8935f0a](https://github.com/inference-gateway/adk/commit/8935f0a2982928f6a497c4ec9990848dc1a2a164))
+* **tests:** Remove redundant comments in streaming message accumulation tests ([a1f4c42](https://github.com/inference-gateway/adk/commit/a1f4c42afb6a748be17e8bcb5167792d75fff8e9))
+
+### 🐛 Bug Fixes
+
+* **server:** Rename streamMessage to streamDelta for clarity in streaming handler ([b29793a](https://github.com/inference-gateway/adk/commit/b29793a63f6d1a07cde71582e8ff5c9e5f9332d4))
+* **server:** Use consolidated message in task status instead of last chunk ([86f5631](https://github.com/inference-gateway/adk/commit/86f56315e0f5f6eaf7baa3c511812ec6717d30d3))
+
+### ✅ Miscellaneous
+
+* **server:** Add comprehensive streaming message accumulation tests ([f3694c3](https://github.com/inference-gateway/adk/commit/f3694c34360ba166bd307ac1b8aada5c611814f3))
+
 ## [0.9.3](https://github.com/inference-gateway/adk/compare/v0.9.2...v0.9.3) (2025-09-07)
 
 ### 🐛 Bug Fixes

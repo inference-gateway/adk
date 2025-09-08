@@ -64,7 +64,8 @@ This is the **A2A ADK (Agent Development Kit)** - a Go library for building Agen
 
 - `A2AServer` - Main server interface with Start/Stop, task processing
 - `A2AClient` - Client interface for communicating with A2A servers
-- `TaskHandler` - Custom task processing logic
+- `TaskHandler` - Background/polling task processing (returns completed tasks)
+- `StreamableTaskHandler` - Real-time streaming task processing (returns channels of events)
 - `TaskManager` - Task lifecycle and state management
 - `OpenAICompatibleAgent` - LLM integration interface
 
@@ -84,6 +85,29 @@ HTTP endpoints:
 - `POST /a2a` - Main A2A protocol endpoint
 - `GET /.well-known/agent.json` - Agent capabilities discovery
 - `GET /health` - Health check
+
+### Task Handler Architecture
+
+The ADK uses two distinct interfaces for handling tasks:
+
+**TaskHandler** - For background/polling scenarios (`message/send`):
+
+- `HandleTask(ctx, task, message) (*Task, error)` - Returns completed task synchronously
+- Used for traditional request-response patterns
+- Can work with or without agents
+
+**StreamableTaskHandler** - For real-time streaming scenarios (`message/stream`):
+
+- `HandleStreamingTask(ctx, task, message) (<-chan StreamEvent, error)` - Returns channel of events
+- Used for real-time streaming responses
+- **Requires** an agent to be configured (sends error events if no agent is set)
+- Events include: `DeltaStreamEvent`, `StatusStreamEvent`, `ErrorStreamEvent`, `TaskCompleteStreamEvent`
+
+**Key Architectural Decision:** Streaming and background task processing are fundamentally different:
+
+- Background handlers return completed results
+- Streaming handlers return channels for real-time event flow
+- This separation ensures type safety and clear separation of concerns
 
 ### Configuration System
 
@@ -129,6 +153,16 @@ Uses table-driven tests with generated mocks:
 
 - Structured error responses following JSON-RPC specification
 - Comprehensive logging with context
+- Use lowercase log messages for consistency
+
+**Code Style Preferences:**
+
+- Table-driven testing for all tests
+- Early returns to avoid deep nesting
+- Switch statements over if-else chains for multiple conditions
+- Interface-based design for easier mocking in tests
+- Strong typing over dynamic typing
+- Each test case should have isolated mock dependencies
 
 **Concurrency:**
 
@@ -140,6 +174,8 @@ Uses table-driven tests with generated mocks:
 
 - ALWAYS run `task precommit:install` before starting any development task - This ensures code quality checks are enforced
 - Always run `task a2a:generate-types` after schema updates
+- When working with A2A protocol changes: `task a2a:download-schema` → `task a2a:generate-types`
+- Run `task generate:mocks` when interfaces are modified to update test mocks
 - The project follows Go module structure with `go.mod` at root
 - Generated types are in `types/generated_types.go` (do not edit manually)
 - Configuration supports both defaults and environment overrides

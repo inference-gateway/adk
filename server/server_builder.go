@@ -28,7 +28,7 @@ type A2AServerBuilder interface {
 
 	// WithStreamingTaskHandler sets a custom task handler for streaming scenarios.
 	// This handler will be used for message/stream requests.
-	WithStreamingTaskHandler(handler TaskHandler) A2AServerBuilder
+	WithStreamingTaskHandler(handler StreamableTaskHandler) A2AServerBuilder
 
 	// WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios.
 	// This handler automatically handles input-required pausing without requiring custom implementation.
@@ -76,7 +76,7 @@ type A2AServerBuilderImpl struct {
 	cfg                  config.Config         // Base configuration for the server
 	logger               *zap.Logger           // Logger instance for the server
 	pollingTaskHandler   TaskHandler           // Optional custom task handler for polling scenarios
-	streamingTaskHandler TaskHandler           // Optional custom task handler for streaming scenarios
+	streamingTaskHandler StreamableTaskHandler // Optional custom task handler for streaming scenarios
 	taskResultProcessor  TaskResultProcessor   // Optional custom task result processor
 	agent                OpenAICompatibleAgent // Optional pre-configured agent
 	agentCard            *types.AgentCard      // Optional custom agent card
@@ -152,7 +152,7 @@ func (b *A2AServerBuilderImpl) WithBackgroundTaskHandler(handler TaskHandler) A2
 }
 
 // WithStreamingTaskHandler sets a custom task handler for streaming scenarios
-func (b *A2AServerBuilderImpl) WithStreamingTaskHandler(handler TaskHandler) A2AServerBuilder {
+func (b *A2AServerBuilderImpl) WithStreamingTaskHandler(handler StreamableTaskHandler) A2AServerBuilder {
 	b.streamingTaskHandler = handler
 	return b
 }
@@ -334,7 +334,7 @@ func CustomA2AServer(
 	cfg config.Config,
 	logger *zap.Logger,
 	pollingTaskHandler TaskHandler,
-	streamingTaskHandler TaskHandler,
+	streamingTaskHandler StreamableTaskHandler,
 	taskResultProcessor TaskResultProcessor,
 	agentCard types.AgentCard,
 ) (A2AServer, error) {
