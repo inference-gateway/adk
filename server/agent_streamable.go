@@ -54,7 +54,8 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			streamResponseChan, streamErrorChan := a.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
 
 			var fullContent string
-			toolCallAccumulator := make(map[int]*sdk.ChatCompletionMessageToolCall)
+			toolCallAccumulator := make(map[string]*sdk.ChatCompletionMessageToolCall)
+			toolCallOrder := make([]string, 0)
 			var assistantMessage *types.Message
 			var toolResultMessages []types.Message
 			toolResults := make(map[string]*types.Message)
@@ -145,14 +146,27 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					}
 
 					for _, toolCallChunk := range choice.Delta.ToolCalls {
-						if toolCallAccumulator[toolCallChunk.Index] == nil {
-							toolCallAccumulator[toolCallChunk.Index] = &sdk.ChatCompletionMessageToolCall{
+						// Create unique key for each tool call (index + function name + counter)
+						var key string
+						baseKey := fmt.Sprintf("%d_%s", toolCallChunk.Index, toolCallChunk.Function.Name)
+						key = baseKey
+
+						// Handle duplicate function calls by adding a counter
+						counter := 1
+						for toolCallAccumulator[key] != nil {
+							key = fmt.Sprintf("%s_%d", baseKey, counter)
+							counter++
+						}
+
+						if toolCallAccumulator[key] == nil {
+							toolCallAccumulator[key] = &sdk.ChatCompletionMessageToolCall{
 								Type:     "function",
 								Function: sdk.ChatCompletionMessageToolCallFunction{},
 							}
+							toolCallOrder = append(toolCallOrder, key)
 						}
 
-						toolCall := toolCallAccumulator[toolCallChunk.Index]
+						toolCall := toolCallAccumulator[key]
 						if toolCallChunk.ID != "" {
 							toolCall.Id = toolCallChunk.ID
 						}
@@ -182,17 +196,18 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 
 						if len(toolCallAccumulator) > 0 && a.toolBox != nil {
-							for idx, toolCall := range toolCallAccumulator {
+							for _, key := range toolCallOrder {
+								toolCall := toolCallAccumulator[key]
 								a.logger.Debug("tool call accumulator",
-									zap.Int("index", idx),
+									zap.String("key", key),
 									zap.String("id", toolCall.Id),
 									zap.String("name", toolCall.Function.Name),
 									zap.String("arguments", toolCall.Function.Arguments))
 							}
 
 							toolCalls := make([]sdk.ChatCompletionMessageToolCall, 0, len(toolCallAccumulator))
-							for _, toolCall := range toolCallAccumulator {
-								toolCalls = append(toolCalls, *toolCall)
+							for _, key := range toolCallOrder {
+								toolCalls = append(toolCalls, *toolCallAccumulator[key])
 							}
 
 							assistantMessage.Parts = append(assistantMessage.Parts, map[string]any{
