@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5-rc.4](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.3...v0.9.5-rc.4) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **agent:** Improve handling of tool call arguments and add JSON completeness check ([da66433](https://github.com/inference-gateway/adk/commit/da664334f9501407cedbe91d40700348c89e0ecd))
+
 ## [0.9.5-rc.3](https://github.com/inference-gateway/adk/compare/v0.9.5-rc.2...v0.9.5-rc.3) (2025-09-08)
 
 ### 🐛 Bug Fixes
