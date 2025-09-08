@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -159,7 +160,11 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 							toolCall.Function.Name = toolCallChunk.Function.Name
 						}
 						if toolCallChunk.Function.Arguments != "" {
-							toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+							if toolCall.Function.Arguments == "" {
+								toolCall.Function.Arguments = toolCallChunk.Function.Arguments
+							} else if !isCompleteJSON(toolCall.Function.Arguments) {
+								toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+							}
 						}
 					}
 
@@ -403,4 +408,24 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 	}
 
 	return toolResultMessages
+}
+
+// isCompleteJSON checks if a string contains complete JSON by counting balanced braces
+func isCompleteJSON(s string) bool {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "{") || !strings.HasSuffix(s, "}") {
+		return false
+	}
+
+	openCount := 0
+	for _, char := range s {
+		switch char {
+		case '{':
+			openCount++
+		case '}':
+			openCount--
+		}
+	}
+
+	return openCount == 0
 }
