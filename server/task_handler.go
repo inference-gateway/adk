@@ -559,9 +559,13 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 
 				sth.logger.Info("streaming task was interrupted by agent",
 					zap.String("task_id", task.ID),
-					zap.String("context_id", task.ContextID))
+					zap.String("context_id", task.ContextID),
+					zap.Int("preserved_history_count", len(task.History)))
 
 				task.Status.State = types.TaskStateWorking
+				if len(task.History) > 0 {
+					task.Status.Message = &task.History[len(task.History)-1]
+				}
 				eventsChan <- &TaskInterruptedStreamEvent{Task: task, Reason: "context_cancelled"}
 				return
 			}
