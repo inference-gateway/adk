@@ -182,6 +182,14 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 
 						if len(toolCallAccumulator) > 0 && a.toolBox != nil {
+							for idx, toolCall := range toolCallAccumulator {
+								a.logger.Debug("tool call accumulator",
+									zap.Int("index", idx),
+									zap.String("id", toolCall.Id),
+									zap.String("name", toolCall.Function.Name),
+									zap.String("arguments", toolCall.Function.Arguments))
+							}
+
 							toolCalls := make([]sdk.ChatCompletionMessageToolCall, 0, len(toolCallAccumulator))
 							for _, toolCall := range toolCallAccumulator {
 								toolCalls = append(toolCalls, *toolCall)
