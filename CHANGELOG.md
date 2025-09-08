@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.14](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.13...v0.9.4-rc.14) (2025-09-08)
+
+### 🐛 Bug Fixes
+
+* **task:** Remove redundant handling of tool result messages and failed tool results during interruption ([e333f31](https://github.com/inference-gateway/adk/commit/e333f31af0663c3b430e6c0a49702eef2cde37f8))
+
 ## [0.9.4-rc.13](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.12...v0.9.4-rc.13) (2025-09-08)
 
 ### 🐛 Bug Fixes
