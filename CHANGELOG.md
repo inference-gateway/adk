@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4-rc.8](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.7...v0.9.4-rc.8) (2025-09-08)
+
+### ♻️ Improvements
+
+* **task:** Move task update logic to after successful response write ([551b8c9](https://github.com/inference-gateway/adk/commit/551b8c9f60bf72f0cc11e3f717d2788e0b50e32e))
+
 ## [0.9.4-rc.7](https://github.com/inference-gateway/adk/compare/v0.9.4-rc.6...v0.9.4-rc.7) (2025-09-07)
 
 ### ♻️ Improvements
