@@ -1565,7 +1565,7 @@ This pattern enables agents to seamlessly integrate human-in-the-loop workflows 
 
 ### Working with Artifacts
 
-Artifacts enable agents to generate and return rich content beyond simple text responses, including files, structured data, and multi-part content. The ADK provides comprehensive artifact support for both server and client applications.
+Artifacts enable agents to generate and return rich content beyond simple text responses, including files, structured data, and multi-part content. The ADK provides artifact support for both server and client applications.
 
 #### What are Artifacts?
 
