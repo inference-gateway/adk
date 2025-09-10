@@ -23,7 +23,6 @@ func (ah *ArtifactHelper) ExtractTaskFromResponse(response *types.JSONRPCSuccess
 		return nil, fmt.Errorf("response or result is nil")
 	}
 
-	// Handle both []byte and json.RawMessage
 	var taskBytes []byte
 	switch result := response.Result.(type) {
 	case []byte:
@@ -31,7 +30,6 @@ func (ah *ArtifactHelper) ExtractTaskFromResponse(response *types.JSONRPCSuccess
 	case json.RawMessage:
 		taskBytes = result
 	default:
-		// Try to marshal the interface{} to bytes
 		var err error
 		taskBytes, err = json.Marshal(response.Result)
 		if err != nil {
@@ -191,8 +189,8 @@ func (ah *ArtifactHelper) ExtractDataFromArtifact(artifact *types.Artifact) []ma
 type FileData struct {
 	Name     *string
 	MIMEType *string
-	Data     []byte  // For FileWithBytes
-	URI      *string // For FileWithUri
+	Data     []byte
+	URI      *string
 }
 
 // IsDataFile returns true if this file contains data (bytes), false if it's URI-based
@@ -266,7 +264,6 @@ func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData
 func (ah *ArtifactHelper) extractFileFromMap(fileMap map[string]any) (FileData, error) {
 	fileData := FileData{}
 
-	// Extract file content from the "file" field
 	fileContent, exists := fileMap["file"]
 	if !exists {
 		return FileData{}, fmt.Errorf("file map missing 'file' field")
@@ -277,17 +274,14 @@ func (ah *ArtifactHelper) extractFileFromMap(fileMap map[string]any) (FileData, 
 		return FileData{}, fmt.Errorf("file content is not a map")
 	}
 
-	// Extract name if present
 	if name, exists := fileContentMap["name"].(string); exists {
 		fileData.Name = &name
 	}
 
-	// Extract MIME type if present
 	if mimeType, exists := fileContentMap["mimeType"].(string); exists {
 		fileData.MIMEType = &mimeType
 	}
 
-	// Check if it's a file with bytes
 	if bytes, exists := fileContentMap["bytes"].(string); exists {
 		data, err := base64.StdEncoding.DecodeString(bytes)
 		if err != nil {
@@ -297,7 +291,6 @@ func (ah *ArtifactHelper) extractFileFromMap(fileMap map[string]any) (FileData, 
 		return fileData, nil
 	}
 
-	// Check if it's a file with URI
 	if uri, exists := fileContentMap["uri"].(string); exists {
 		fileData.URI = &uri
 		return fileData, nil
@@ -313,7 +306,6 @@ func (ah *ArtifactHelper) ExtractArtifactUpdateFromStreamEvent(eventData any) (*
 		return &event, true
 	case map[string]any:
 		if kind, exists := event["kind"].(string); exists && kind == "artifact-update" {
-			// Convert map to TaskArtifactUpdateEvent
 			eventBytes, err := json.Marshal(event)
 			if err != nil {
 				return nil, false

@@ -9,81 +9,97 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestArtifactHelper_CreateTextArtifact(t *testing.T) {
+func TestArtifactHelper_CreateArtifacts(t *testing.T) {
 	helper := NewArtifactHelper()
 
-	name := "Test Document"
-	description := "A test text artifact"
-	text := "Hello, World!"
+	tests := []struct {
+		name     string
+		testFunc func(t *testing.T)
+	}{
+		{
+			name: "CreateTextArtifact",
+			testFunc: func(t *testing.T) {
+				name := "Test Document"
+				description := "A test text artifact"
+				text := "Hello, World!"
 
-	artifact := helper.CreateTextArtifact(name, description, text)
+				artifact := helper.CreateTextArtifact(name, description, text)
 
-	assert.NotEmpty(t, artifact.ArtifactID)
-	assert.Equal(t, name, *artifact.Name)
-	assert.Equal(t, description, *artifact.Description)
-	require.Len(t, artifact.Parts, 1)
+				assert.NotEmpty(t, artifact.ArtifactID)
+				assert.Equal(t, name, *artifact.Name)
+				assert.Equal(t, description, *artifact.Description)
+				require.Len(t, artifact.Parts, 1)
 
-	textPart, ok := artifact.Parts[0].(types.TextPart)
-	require.True(t, ok)
-	assert.Equal(t, "text", textPart.Kind)
-	assert.Equal(t, text, textPart.Text)
-}
+				textPart, ok := artifact.Parts[0].(types.TextPart)
+				require.True(t, ok)
+				assert.Equal(t, "text", textPart.Kind)
+				assert.Equal(t, text, textPart.Text)
+			},
+		},
+		{
+			name: "CreateFileArtifactFromBytes",
+			testFunc: func(t *testing.T) {
+				name := "Test File"
+				description := "A test file artifact"
+				filename := "test.txt"
+				data := []byte("Hello, World!")
+				mimeType := "text/plain"
 
-func TestArtifactHelper_CreateFileArtifactFromBytes(t *testing.T) {
-	helper := NewArtifactHelper()
+				artifact := helper.CreateFileArtifactFromBytes(name, description, filename, data, &mimeType)
 
-	name := "Test File"
-	description := "A test file artifact"
-	filename := "test.txt"
-	data := []byte("Hello, World!")
-	mimeType := "text/plain"
+				assert.NotEmpty(t, artifact.ArtifactID)
+				assert.Equal(t, name, *artifact.Name)
+				assert.Equal(t, description, *artifact.Description)
+				require.Len(t, artifact.Parts, 1)
 
-	artifact := helper.CreateFileArtifactFromBytes(name, description, filename, data, &mimeType)
+				filePart, ok := artifact.Parts[0].(types.FilePart)
+				require.True(t, ok)
+				assert.Equal(t, "file", filePart.Kind)
 
-	assert.NotEmpty(t, artifact.ArtifactID)
-	assert.Equal(t, name, *artifact.Name)
-	assert.Equal(t, description, *artifact.Description)
-	require.Len(t, artifact.Parts, 1)
+				fileWithBytes, ok := filePart.File.(types.FileWithBytes)
+				require.True(t, ok)
+				assert.Equal(t, filename, *fileWithBytes.Name)
+				assert.Equal(t, mimeType, *fileWithBytes.MIMEType)
 
-	filePart, ok := artifact.Parts[0].(types.FilePart)
-	require.True(t, ok)
-	assert.Equal(t, "file", filePart.Kind)
+				decodedData, err := base64.StdEncoding.DecodeString(fileWithBytes.Bytes)
+				require.NoError(t, err)
+				assert.Equal(t, data, decodedData)
+			},
+		},
+		{
+			name: "CreateFileArtifactFromURI",
+			testFunc: func(t *testing.T) {
+				name := "Remote File"
+				description := "A remote file artifact"
+				filename := "remote.pdf"
+				uri := "https://example.com/file.pdf"
+				mimeType := "application/pdf"
 
-	fileWithBytes, ok := filePart.File.(types.FileWithBytes)
-	require.True(t, ok)
-	assert.Equal(t, filename, *fileWithBytes.Name)
-	assert.Equal(t, mimeType, *fileWithBytes.MIMEType)
+				artifact := helper.CreateFileArtifactFromURI(name, description, filename, uri, &mimeType)
 
-	decodedData, err := base64.StdEncoding.DecodeString(fileWithBytes.Bytes)
-	require.NoError(t, err)
-	assert.Equal(t, data, decodedData)
-}
+				assert.NotEmpty(t, artifact.ArtifactID)
+				assert.Equal(t, name, *artifact.Name)
+				assert.Equal(t, description, *artifact.Description)
+				require.Len(t, artifact.Parts, 1)
 
-func TestArtifactHelper_CreateFileArtifactFromURI(t *testing.T) {
-	helper := NewArtifactHelper()
+				filePart, ok := artifact.Parts[0].(types.FilePart)
+				require.True(t, ok)
+				assert.Equal(t, "file", filePart.Kind)
 
-	name := "Remote File"
-	description := "A remote file artifact"
-	filename := "remote.pdf"
-	uri := "https://example.com/file.pdf"
-	mimeType := "application/pdf"
+				fileWithURI, ok := filePart.File.(types.FileWithUri)
+				require.True(t, ok)
+				assert.Equal(t, filename, *fileWithURI.Name)
+				assert.Equal(t, mimeType, *fileWithURI.MIMEType)
+				assert.Equal(t, uri, fileWithURI.URI)
+			},
+		},
+	}
 
-	artifact := helper.CreateFileArtifactFromURI(name, description, filename, uri, &mimeType)
-
-	assert.NotEmpty(t, artifact.ArtifactID)
-	assert.Equal(t, name, *artifact.Name)
-	assert.Equal(t, description, *artifact.Description)
-	require.Len(t, artifact.Parts, 1)
-
-	filePart, ok := artifact.Parts[0].(types.FilePart)
-	require.True(t, ok)
-	assert.Equal(t, "file", filePart.Kind)
-
-	fileWithURI, ok := filePart.File.(types.FileWithUri)
-	require.True(t, ok)
-	assert.Equal(t, filename, *fileWithURI.Name)
-	assert.Equal(t, mimeType, *fileWithURI.MIMEType)
-	assert.Equal(t, uri, fileWithURI.URI)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.testFunc(t)
+		})
+	}
 }
 
 func TestArtifactHelper_CreateDataArtifact(t *testing.T) {
@@ -161,12 +177,10 @@ func TestArtifactHelper_GetArtifactByID(t *testing.T) {
 		Artifacts: []types.Artifact{artifact1, artifact2},
 	}
 
-	// Test finding existing artifact
 	found, exists := helper.GetArtifactByID(task, artifact1.ArtifactID)
 	assert.True(t, exists)
 	assert.Equal(t, artifact1.ArtifactID, found.ArtifactID)
 
-	// Test not finding non-existent artifact
 	_, exists = helper.GetArtifactByID(task, "non-existent")
 	assert.False(t, exists)
 }
@@ -182,17 +196,14 @@ func TestArtifactHelper_GetArtifactsByType(t *testing.T) {
 		Artifacts: []types.Artifact{textArtifact, dataArtifact},
 	}
 
-	// Get text artifacts
 	textArtifacts := helper.GetArtifactsByType(task, "text")
 	assert.Len(t, textArtifacts, 1)
 	assert.Equal(t, textArtifact.ArtifactID, textArtifacts[0].ArtifactID)
 
-	// Get data artifacts
 	dataArtifacts := helper.GetArtifactsByType(task, "data")
 	assert.Len(t, dataArtifacts, 1)
 	assert.Equal(t, dataArtifact.ArtifactID, dataArtifacts[0].ArtifactID)
 
-	// Get non-existent type
 	fileArtifacts := helper.GetArtifactsByType(task, "file")
 	assert.Len(t, fileArtifacts, 0)
 }
@@ -200,12 +211,10 @@ func TestArtifactHelper_GetArtifactsByType(t *testing.T) {
 func TestArtifactHelper_ValidateArtifact(t *testing.T) {
 	helper := NewArtifactHelper()
 
-	// Valid artifact
 	validArtifact := helper.CreateTextArtifact("Valid", "Valid artifact", "content")
 	err := helper.ValidateArtifact(validArtifact)
 	assert.NoError(t, err)
 
-	// Invalid artifact - empty ID
 	invalidArtifact := types.Artifact{
 		ArtifactID: "",
 		Parts:      []types.Part{types.TextPart{Kind: "text", Text: "content"}},
@@ -214,7 +223,6 @@ func TestArtifactHelper_ValidateArtifact(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-empty artifactId")
 
-	// Invalid artifact - no parts
 	invalidArtifact2 := types.Artifact{
 		ArtifactID: "test-id",
 		Parts:      []types.Part{},
@@ -227,24 +235,20 @@ func TestArtifactHelper_ValidateArtifact(t *testing.T) {
 func TestArtifactHelper_ValidatePart(t *testing.T) {
 	helper := NewArtifactHelper()
 
-	// Valid text part
 	textPart := types.TextPart{Kind: "text", Text: "content"}
 	err := helper.validatePart(textPart)
 	assert.NoError(t, err)
 
-	// Invalid text part - wrong kind
 	invalidTextPart := types.TextPart{Kind: "wrong", Text: "content"}
 	err = helper.validatePart(invalidTextPart)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "must have kind 'text'")
 
-	// Invalid text part - empty text
 	emptyTextPart := types.TextPart{Kind: "text", Text: ""}
 	err = helper.validatePart(emptyTextPart)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-empty text content")
 
-	// Valid file part
 	filePart := types.FilePart{
 		Kind: "file",
 		File: types.FileWithBytes{Bytes: "dGVzdA==", Name: stringPtr("test.txt")},
@@ -252,13 +256,11 @@ func TestArtifactHelper_ValidatePart(t *testing.T) {
 	err = helper.validatePart(filePart)
 	assert.NoError(t, err)
 
-	// Invalid file part - nil file
 	invalidFilePart := types.FilePart{Kind: "file", File: nil}
 	err = helper.validatePart(invalidFilePart)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-nil file content")
 
-	// Valid data part
 	dataPart := types.DataPart{
 		Kind: "data",
 		Data: map[string]any{"key": "value"},
@@ -266,7 +268,6 @@ func TestArtifactHelper_ValidatePart(t *testing.T) {
 	err = helper.validatePart(dataPart)
 	assert.NoError(t, err)
 
-	// Invalid data part - nil data
 	invalidDataPart := types.DataPart{Kind: "data", Data: nil}
 	err = helper.validatePart(invalidDataPart)
 	assert.Error(t, err)
