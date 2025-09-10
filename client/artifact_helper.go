@@ -57,6 +57,9 @@ func (ah *ArtifactHelper) ExtractArtifactsFromTask(task *types.Task) []types.Art
 
 // GetArtifactByID retrieves a specific artifact by its ID from a task
 func (ah *ArtifactHelper) GetArtifactByID(task *types.Task, artifactID string) (*types.Artifact, bool) {
+	if task == nil {
+		return nil, false
+	}
 	for i, artifact := range task.Artifacts {
 		if artifact.ArtifactID == artifactID {
 			return &task.Artifacts[i], true
@@ -67,7 +70,11 @@ func (ah *ArtifactHelper) GetArtifactByID(task *types.Task, artifactID string) (
 
 // GetArtifactsByType retrieves all artifacts containing parts of a specific type
 func (ah *ArtifactHelper) GetArtifactsByType(task *types.Task, partKind string) []types.Artifact {
-	var matchingArtifacts []types.Artifact
+	matchingArtifacts := make([]types.Artifact, 0)
+
+	if task == nil {
+		return matchingArtifacts
+	}
 
 	for _, artifact := range task.Artifacts {
 		for _, part := range artifact.Parts {
@@ -98,7 +105,11 @@ func (ah *ArtifactHelper) GetDataArtifacts(task *types.Task) []types.Artifact {
 
 // ExtractTextFromArtifact extracts all text content from an artifact
 func (ah *ArtifactHelper) ExtractTextFromArtifact(artifact *types.Artifact) []string {
-	var texts []string
+	texts := make([]string, 0)
+
+	if artifact == nil {
+		return texts
+	}
 
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
@@ -120,7 +131,11 @@ func (ah *ArtifactHelper) ExtractTextFromArtifact(artifact *types.Artifact) []st
 
 // ExtractFileDataFromArtifact extracts file data from an artifact
 func (ah *ArtifactHelper) ExtractFileDataFromArtifact(artifact *types.Artifact) ([]FileData, error) {
-	var files []FileData
+	files := make([]FileData, 0)
+
+	if artifact == nil {
+		return files, nil
+	}
 
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
@@ -148,7 +163,11 @@ func (ah *ArtifactHelper) ExtractFileDataFromArtifact(artifact *types.Artifact) 
 
 // ExtractDataFromArtifact extracts structured data from an artifact
 func (ah *ArtifactHelper) ExtractDataFromArtifact(artifact *types.Artifact) []map[string]any {
-	var dataList []map[string]any
+	dataList := make([]map[string]any, 0)
+
+	if artifact == nil {
+		return dataList
+	}
 
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
@@ -354,7 +373,12 @@ func (ah *ArtifactHelper) GetArtifactSummary(task *types.Task) map[string]int {
 
 // FilterArtifactsByName returns artifacts that match a name pattern (case-insensitive)
 func (ah *ArtifactHelper) FilterArtifactsByName(task *types.Task, namePattern string) []types.Artifact {
-	var matchingArtifacts []types.Artifact
+	matchingArtifacts := make([]types.Artifact, 0)
+
+	if task == nil {
+		return matchingArtifacts
+	}
+
 	pattern := strings.ToLower(namePattern)
 
 	for _, artifact := range task.Artifacts {
