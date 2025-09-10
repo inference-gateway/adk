@@ -36,6 +36,9 @@ type A2AClient interface {
 	// Logger configuration
 	SetLogger(logger *zap.Logger)
 	GetLogger() *zap.Logger
+
+	// Artifact utilities
+	GetArtifactHelper() *ArtifactHelper
 }
 
 var _ A2AClient = (*Client)(nil)
@@ -72,9 +75,10 @@ func DefaultConfig(baseURL string) *Config {
 
 // Client represents an A2A protocol client
 type Client struct {
-	config     *Config
-	httpClient *http.Client
-	logger     *zap.Logger
+	config         *Config
+	httpClient     *http.Client
+	logger         *zap.Logger
+	artifactHelper *ArtifactHelper
 }
 
 // NewClient creates a new A2A client with default configuration
@@ -98,9 +102,10 @@ func NewClientWithConfig(config *Config) A2AClient {
 	}
 
 	return &Client{
-		config:     config,
-		httpClient: httpClient,
-		logger:     logger,
+		config:         config,
+		httpClient:     httpClient,
+		logger:         logger,
+		artifactHelper: NewArtifactHelper(),
 	}
 }
 
@@ -659,6 +664,11 @@ func (c *Client) SetLogger(logger *zap.Logger) {
 // GetLogger returns the current logger
 func (c *Client) GetLogger() *zap.Logger {
 	return c.logger
+}
+
+// GetArtifactHelper returns the artifact helper for extracting artifacts from responses
+func (c *Client) GetArtifactHelper() *ArtifactHelper {
+	return c.artifactHelper
 }
 
 // NewClientWithLogger creates a new A2A client with a custom logger
