@@ -121,6 +121,14 @@ type TaskInterruptedStreamEvent struct {
 func (e *TaskInterruptedStreamEvent) GetEventType() string { return "task_interrupted" }
 func (e *TaskInterruptedStreamEvent) GetData() interface{} { return e.Task }
 
+// ArtifactUpdateStreamEvent represents an artifact update streaming event
+type ArtifactUpdateStreamEvent struct {
+	Event types.TaskArtifactUpdateEvent
+}
+
+func (e *ArtifactUpdateStreamEvent) GetEventType() string { return "artifact_update" }
+func (e *ArtifactUpdateStreamEvent) GetData() interface{} { return e.Event }
+
 // DefaultTaskHandler implements the TaskHandler interface for basic scenarios
 // For optimized background or streaming with automatic input-required pausing,
 // use DefaultBackgroundTaskHandler or DefaultStreamingTaskHandler instead
@@ -932,6 +940,22 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				}
 				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
 					h.logger.Error("failed to write streaming delta", zap.Error(err))
+					return
+				}
+			}
+		case "artifact_update":
+			if artifactEvent, ok := event.GetData().(types.TaskArtifactUpdateEvent); ok {
+				h.logger.Debug("received artifact update",
+					zap.String("artifact_id", artifactEvent.Artifact.ArtifactID),
+					zap.String("task_id", artifactEvent.TaskID))
+
+				artifactResponse := types.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  artifactEvent,
+				}
+				if err := h.writeStreamingResponse(c, &artifactResponse); err != nil {
+					h.logger.Error("failed to write streaming artifact update", zap.Error(err))
 					return
 				}
 			}
