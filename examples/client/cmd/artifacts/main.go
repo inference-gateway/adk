@@ -93,8 +93,8 @@ func waitForTaskCompletion(ctx context.Context, client client.A2AClient, taskID 
 			log.Fatalf("Failed to extract task: %v", err)
 		}
 
-		if task.Status.State == types.TaskStateCompleted || 
-		   task.Status.State == types.TaskStateFailed {
+		if task.Status.State == types.TaskStateCompleted ||
+			task.Status.State == types.TaskStateFailed {
 			return task
 		}
 
@@ -126,15 +126,15 @@ func demonstrateArtifactExtraction(helper *client.ArtifactHelper, task *types.Ta
 	for i, artifact := range artifacts {
 		fmt.Printf("📄 Artifact %d:\n", i+1)
 		fmt.Printf("  ID: %s\n", artifact.ArtifactID)
-		
+
 		if artifact.Name != nil {
 			fmt.Printf("  Name: %s\n", *artifact.Name)
 		}
-		
+
 		if artifact.Description != nil {
 			fmt.Printf("  Description: %s\n", *artifact.Description)
 		}
-		
+
 		fmt.Printf("  Parts: %d\n", len(artifact.Parts))
 		fmt.Println()
 	}
@@ -169,7 +169,7 @@ func demonstrateArtifactExtraction(helper *client.ArtifactHelper, task *types.Ta
 				fmt.Printf("    File %d:\n", j+1)
 				fmt.Printf("      Name: %s\n", file.GetFileName())
 				fmt.Printf("      MIME Type: %s\n", file.GetMIMEType())
-				
+
 				if file.IsDataFile() {
 					fmt.Printf("      Size: %d bytes\n", len(file.Data))
 					fmt.Printf("      Content Preview: %s\n", truncateText(string(file.Data), 50))
@@ -205,7 +205,7 @@ func demonstrateArtifactExtraction(helper *client.ArtifactHelper, task *types.Ta
 	fmt.Printf("🔍 Artifact Search Examples:\n")
 	analysisArtifacts := helper.FilterArtifactsByName(task, "analysis")
 	fmt.Printf("  Artifacts containing 'analysis': %d found\n", len(analysisArtifacts))
-	
+
 	requestArtifacts := helper.FilterArtifactsByName(task, "request")
 	fmt.Printf("  Artifacts containing 'request': %d found\n", len(requestArtifacts))
 	fmt.Println()

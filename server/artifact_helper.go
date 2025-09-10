@@ -35,7 +35,7 @@ func (ah *ArtifactHelper) CreateTextArtifact(name, description, text string) typ
 // CreateFileArtifactFromBytes creates a file artifact from byte data
 func (ah *ArtifactHelper) CreateFileArtifactFromBytes(name, description, filename string, data []byte, mimeType *string) types.Artifact {
 	encodedData := base64.StdEncoding.EncodeToString(data)
-	
+
 	fileWithBytes := types.FileWithBytes{
 		Name:     &filename,
 		MIMEType: mimeType,
@@ -130,7 +130,7 @@ func (ah *ArtifactHelper) GetArtifactByID(task *types.Task, artifactID string) (
 // GetArtifactsByType retrieves all artifacts from a task that contain parts of a specific type
 func (ah *ArtifactHelper) GetArtifactsByType(task *types.Task, partKind string) []types.Artifact {
 	var matchingArtifacts []types.Artifact
-	
+
 	for _, artifact := range task.Artifacts {
 		for _, part := range artifact.Parts {
 			switch p := part.(type) {
@@ -157,7 +157,7 @@ func (ah *ArtifactHelper) GetArtifactsByType(task *types.Task, partKind string) 
 			}
 		}
 	}
-	
+
 	return matchingArtifacts
 }
 
@@ -166,17 +166,17 @@ func (ah *ArtifactHelper) ValidateArtifact(artifact types.Artifact) error {
 	if artifact.ArtifactID == "" {
 		return fmt.Errorf("artifact must have a non-empty artifactId")
 	}
-	
+
 	if len(artifact.Parts) == 0 {
 		return fmt.Errorf("artifact must contain at least one part")
 	}
-	
+
 	for i, part := range artifact.Parts {
 		if err := ah.validatePart(part); err != nil {
 			return fmt.Errorf("invalid part at index %d: %w", i, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -215,7 +215,7 @@ func (ah *ArtifactHelper) validatePart(part types.Part) error {
 	default:
 		return fmt.Errorf("unsupported part type: %T", part)
 	}
-	
+
 	return nil
 }
 
@@ -223,7 +223,7 @@ func (ah *ArtifactHelper) validatePart(part types.Part) error {
 func (ah *ArtifactHelper) GetMimeTypeFromExtension(filename string) *string {
 	ext := filepath.Ext(filename)
 	var mimeType string
-	
+
 	switch ext {
 	case ".txt":
 		mimeType = "text/plain"
@@ -254,7 +254,7 @@ func (ah *ArtifactHelper) GetMimeTypeFromExtension(filename string) *string {
 	default:
 		mimeType = "application/octet-stream"
 	}
-	
+
 	return &mimeType
 }
 

@@ -40,6 +40,16 @@ type FakeA2AClient struct {
 		result1 *types.AgentCard
 		result2 error
 	}
+	GetArtifactHelperStub        func() *client.ArtifactHelper
+	getArtifactHelperMutex       sync.RWMutex
+	getArtifactHelperArgsForCall []struct {
+	}
+	getArtifactHelperReturns struct {
+		result1 *client.ArtifactHelper
+	}
+	getArtifactHelperReturnsOnCall map[int]struct {
+		result1 *client.ArtifactHelper
+	}
 	GetBaseURLStub        func() string
 	getBaseURLMutex       sync.RWMutex
 	getBaseURLArgsForCall []struct {
@@ -274,6 +284,59 @@ func (fake *FakeA2AClient) GetAgentCardReturnsOnCall(i int, result1 *types.Agent
 		result1 *types.AgentCard
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeA2AClient) GetArtifactHelper() *client.ArtifactHelper {
+	fake.getArtifactHelperMutex.Lock()
+	ret, specificReturn := fake.getArtifactHelperReturnsOnCall[len(fake.getArtifactHelperArgsForCall)]
+	fake.getArtifactHelperArgsForCall = append(fake.getArtifactHelperArgsForCall, struct {
+	}{})
+	stub := fake.GetArtifactHelperStub
+	fakeReturns := fake.getArtifactHelperReturns
+	fake.recordInvocation("GetArtifactHelper", []interface{}{})
+	fake.getArtifactHelperMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AClient) GetArtifactHelperCallCount() int {
+	fake.getArtifactHelperMutex.RLock()
+	defer fake.getArtifactHelperMutex.RUnlock()
+	return len(fake.getArtifactHelperArgsForCall)
+}
+
+func (fake *FakeA2AClient) GetArtifactHelperCalls(stub func() *client.ArtifactHelper) {
+	fake.getArtifactHelperMutex.Lock()
+	defer fake.getArtifactHelperMutex.Unlock()
+	fake.GetArtifactHelperStub = stub
+}
+
+func (fake *FakeA2AClient) GetArtifactHelperReturns(result1 *client.ArtifactHelper) {
+	fake.getArtifactHelperMutex.Lock()
+	defer fake.getArtifactHelperMutex.Unlock()
+	fake.GetArtifactHelperStub = nil
+	fake.getArtifactHelperReturns = struct {
+		result1 *client.ArtifactHelper
+	}{result1}
+}
+
+func (fake *FakeA2AClient) GetArtifactHelperReturnsOnCall(i int, result1 *client.ArtifactHelper) {
+	fake.getArtifactHelperMutex.Lock()
+	defer fake.getArtifactHelperMutex.Unlock()
+	fake.GetArtifactHelperStub = nil
+	if fake.getArtifactHelperReturnsOnCall == nil {
+		fake.getArtifactHelperReturnsOnCall = make(map[int]struct {
+			result1 *client.ArtifactHelper
+		})
+	}
+	fake.getArtifactHelperReturnsOnCall[i] = struct {
+		result1 *client.ArtifactHelper
+	}{result1}
 }
 
 func (fake *FakeA2AClient) GetBaseURL() string {
@@ -807,6 +870,8 @@ func (fake *FakeA2AClient) Invocations() map[string][][]interface{} {
 	defer fake.cancelTaskMutex.RUnlock()
 	fake.getAgentCardMutex.RLock()
 	defer fake.getAgentCardMutex.RUnlock()
+	fake.getArtifactHelperMutex.RLock()
+	defer fake.getArtifactHelperMutex.RUnlock()
 	fake.getBaseURLMutex.RLock()
 	defer fake.getBaseURLMutex.RUnlock()
 	fake.getHealthMutex.RLock()

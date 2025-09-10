@@ -115,14 +115,14 @@ func (h *ArtifactDemoTaskHandler) createArtifactsForTask(task *types.Task, userR
 
 	// 2. Create a JSON data artifact with structured information
 	analysisData := map[string]any{
-		"request":           userRequest,
-		"character_count":   len(userRequest),
-		"word_count":       len(strings.Fields(userRequest)),
-		"timestamp":        time.Now().Format(time.RFC3339),
+		"request":         userRequest,
+		"character_count": len(userRequest),
+		"word_count":      len(strings.Fields(userRequest)),
+		"timestamp":       time.Now().Format(time.RFC3339),
 		"processing_stats": map[string]any{
-			"task_id":     task.ID,
-			"context_id":  task.ContextID,
-			"artifacts":   []string{},
+			"task_id":    task.ID,
+			"context_id": task.ContextID,
+			"artifacts":  []string{},
 		},
 	}
 
@@ -160,7 +160,7 @@ func (h *ArtifactDemoTaskHandler) createArtifactsForTask(task *types.Task, userR
 		types.DataPart{
 			Kind: "data",
 			Data: map[string]any{
-				"summary": "This artifact demonstrates multiple content types",
+				"summary":    "This artifact demonstrates multiple content types",
 				"components": []string{"text", "data"},
 				"created_at": time.Now().Unix(),
 			},
@@ -190,20 +190,20 @@ func (h *ArtifactDemoTaskHandler) createArtifactsForTask(task *types.Task, userR
 // buildResponseText creates a response text that mentions the created artifacts
 func (h *ArtifactDemoTaskHandler) buildResponseText(task *types.Task) string {
 	artifactCount := len(task.Artifacts)
-	
+
 	response := fmt.Sprintf("I've processed your request and created %d artifacts:\n\n", artifactCount)
-	
+
 	for i, artifact := range task.Artifacts {
 		name := "Unnamed Artifact"
 		if artifact.Name != nil {
 			name = *artifact.Name
 		}
-		
+
 		description := "No description"
 		if artifact.Description != nil {
 			description = *artifact.Description
 		}
-		
+
 		partTypes := make([]string, 0)
 		for _, part := range artifact.Parts {
 			switch p := part.(type) {
@@ -215,13 +215,13 @@ func (h *ArtifactDemoTaskHandler) buildResponseText(task *types.Task) string {
 				partTypes = append(partTypes, p.Kind)
 			}
 		}
-		
+
 		response += fmt.Sprintf("%d. %s\n   - %s\n   - Contains: %v\n   - ID: %s\n\n",
 			i+1, name, description, partTypes, artifact.ArtifactID)
 	}
-	
+
 	response += "All artifacts are attached to this task and can be accessed via the A2A protocol using the task ID."
-	
+
 	return response
 }
 
@@ -229,7 +229,6 @@ func (h *ArtifactDemoTaskHandler) buildResponseText(task *types.Task) string {
 func stringPtr(s string) *string {
 	return &s
 }
-
 
 func main() {
 	// Create logger

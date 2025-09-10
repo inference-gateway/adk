@@ -68,7 +68,7 @@ func (ah *ArtifactHelper) GetArtifactByID(task *types.Task, artifactID string) (
 // GetArtifactsByType retrieves all artifacts containing parts of a specific type
 func (ah *ArtifactHelper) GetArtifactsByType(task *types.Task, partKind string) []types.Artifact {
 	var matchingArtifacts []types.Artifact
-	
+
 	for _, artifact := range task.Artifacts {
 		for _, part := range artifact.Parts {
 			if ah.isPartOfKind(part, partKind) {
@@ -77,7 +77,7 @@ func (ah *ArtifactHelper) GetArtifactsByType(task *types.Task, partKind string) 
 			}
 		}
 	}
-	
+
 	return matchingArtifacts
 }
 
@@ -99,7 +99,7 @@ func (ah *ArtifactHelper) GetDataArtifacts(task *types.Task) []types.Artifact {
 // ExtractTextFromArtifact extracts all text content from an artifact
 func (ah *ArtifactHelper) ExtractTextFromArtifact(artifact *types.Artifact) []string {
 	var texts []string
-	
+
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
 		case types.TextPart:
@@ -114,14 +114,14 @@ func (ah *ArtifactHelper) ExtractTextFromArtifact(artifact *types.Artifact) []st
 			}
 		}
 	}
-	
+
 	return texts
 }
 
 // ExtractFileDataFromArtifact extracts file data from an artifact
 func (ah *ArtifactHelper) ExtractFileDataFromArtifact(artifact *types.Artifact) ([]FileData, error) {
 	var files []FileData
-	
+
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
 		case types.FilePart:
@@ -142,14 +142,14 @@ func (ah *ArtifactHelper) ExtractFileDataFromArtifact(artifact *types.Artifact) 
 			}
 		}
 	}
-	
+
 	return files, nil
 }
 
 // ExtractDataFromArtifact extracts structured data from an artifact
 func (ah *ArtifactHelper) ExtractDataFromArtifact(artifact *types.Artifact) []map[string]any {
 	var dataList []map[string]any
-	
+
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
 		case types.DataPart:
@@ -164,7 +164,7 @@ func (ah *ArtifactHelper) ExtractDataFromArtifact(artifact *types.Artifact) []ma
 			}
 		}
 	}
-	
+
 	return dataList
 }
 
@@ -246,28 +246,28 @@ func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData
 // extractFileFromMap extracts file data from a map representation
 func (ah *ArtifactHelper) extractFileFromMap(fileMap map[string]any) (FileData, error) {
 	fileData := FileData{}
-	
+
 	// Extract file content from the "file" field
 	fileContent, exists := fileMap["file"]
 	if !exists {
 		return FileData{}, fmt.Errorf("file map missing 'file' field")
 	}
-	
+
 	fileContentMap, ok := fileContent.(map[string]any)
 	if !ok {
 		return FileData{}, fmt.Errorf("file content is not a map")
 	}
-	
+
 	// Extract name if present
 	if name, exists := fileContentMap["name"].(string); exists {
 		fileData.Name = &name
 	}
-	
+
 	// Extract MIME type if present
 	if mimeType, exists := fileContentMap["mimeType"].(string); exists {
 		fileData.MIMEType = &mimeType
 	}
-	
+
 	// Check if it's a file with bytes
 	if bytes, exists := fileContentMap["bytes"].(string); exists {
 		data, err := base64.StdEncoding.DecodeString(bytes)
@@ -277,13 +277,13 @@ func (ah *ArtifactHelper) extractFileFromMap(fileMap map[string]any) (FileData, 
 		fileData.Data = data
 		return fileData, nil
 	}
-	
+
 	// Check if it's a file with URI
 	if uri, exists := fileContentMap["uri"].(string); exists {
 		fileData.URI = &uri
 		return fileData, nil
 	}
-	
+
 	return FileData{}, fmt.Errorf("file content contains neither 'bytes' nor 'uri'")
 }
 
@@ -299,12 +299,12 @@ func (ah *ArtifactHelper) ExtractArtifactUpdateFromStreamEvent(eventData any) (*
 			if err != nil {
 				return nil, false
 			}
-			
+
 			var artifactEvent types.TaskArtifactUpdateEvent
 			if err := json.Unmarshal(eventBytes, &artifactEvent); err != nil {
 				return nil, false
 			}
-			
+
 			return &artifactEvent, true
 		}
 	}
@@ -327,11 +327,11 @@ func (ah *ArtifactHelper) GetArtifactCount(task *types.Task) int {
 // GetArtifactSummary returns a summary of artifacts by type
 func (ah *ArtifactHelper) GetArtifactSummary(task *types.Task) map[string]int {
 	summary := make(map[string]int)
-	
+
 	if task == nil {
 		return summary
 	}
-	
+
 	for _, artifact := range task.Artifacts {
 		for _, part := range artifact.Parts {
 			switch p := part.(type) {
@@ -348,7 +348,7 @@ func (ah *ArtifactHelper) GetArtifactSummary(task *types.Task) map[string]int {
 			}
 		}
 	}
-	
+
 	return summary
 }
 
@@ -356,12 +356,12 @@ func (ah *ArtifactHelper) GetArtifactSummary(task *types.Task) map[string]int {
 func (ah *ArtifactHelper) FilterArtifactsByName(task *types.Task, namePattern string) []types.Artifact {
 	var matchingArtifacts []types.Artifact
 	pattern := strings.ToLower(namePattern)
-	
+
 	for _, artifact := range task.Artifacts {
 		if artifact.Name != nil && strings.Contains(strings.ToLower(*artifact.Name), pattern) {
 			matchingArtifacts = append(matchingArtifacts, artifact)
 		}
 	}
-	
+
 	return matchingArtifacts
 }

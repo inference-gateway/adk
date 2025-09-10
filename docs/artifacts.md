@@ -135,19 +135,19 @@ type MyTaskHandler struct {
 
 func (h *MyTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
     // Process the task...
-    
+
     // Create artifacts based on processing results
     resultArtifact := h.artifactHelper.CreateTextArtifact(
         "Processing Result",
         "Result of task processing",
         "Task completed with result: success",
     )
-    
+
     h.artifactHelper.AddArtifactToTask(task, resultArtifact)
-    
+
     // Mark task as completed
     task.Status.State = types.TaskStateCompleted
-    
+
     return task, nil
 }
 ```
@@ -160,17 +160,17 @@ For real-time streaming scenarios, you can send artifact updates:
 // In a StreamableTaskHandler
 func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
     eventsChan := make(chan server.StreamEvent, 100)
-    
+
     go func() {
         defer close(eventsChan)
-        
+
         // Create artifact during processing
         artifact := h.artifactHelper.CreateTextArtifact(
             "Streaming Result",
             "Partial result from streaming",
             "Current progress: 50%",
         )
-        
+
         // Send artifact update event
         artifactEvent := h.artifactHelper.CreateTaskArtifactUpdateEvent(
             task.ID,
@@ -179,14 +179,14 @@ func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *type
             boolPtr(false), // append
             boolPtr(false), // lastChunk
         )
-        
+
         eventsChan <- &server.ArtifactUpdateStreamEvent{
             Event: artifactEvent,
         }
-        
+
         // Continue processing...
     }()
-    
+
     return eventsChan, nil
 }
 ```
@@ -242,7 +242,7 @@ for _, artifact := range fileArtifacts {
     if err != nil {
         continue
     }
-    
+
     for _, file := range files {
         if file.IsDataFile() {
             fmt.Printf("File: %s (%d bytes)\n", file.GetFileName(), len(file.Data))
@@ -299,12 +299,12 @@ for event := range eventChan {
     // Check for artifact updates
     if artifactEvent, isArtifact := artifactHelper.ExtractArtifactUpdateFromStreamEvent(event); isArtifact {
         fmt.Printf("Received artifact update: %s\n", artifactEvent.Artifact.ArtifactID)
-        
+
         // Process the artifact
         if artifactEvent.Artifact.Name != nil {
             fmt.Printf("Artifact name: %s\n", *artifactEvent.Artifact.Name)
         }
-        
+
         // Check if this is the last chunk
         if artifactEvent.LastChunk != nil && *artifactEvent.LastChunk {
             fmt.Println("This is the final artifact update")

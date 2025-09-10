@@ -945,7 +945,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			}
 		case "artifact_update":
 			if artifactEvent, ok := event.GetData().(types.TaskArtifactUpdateEvent); ok {
-				h.logger.Debug("received artifact update", 
+				h.logger.Debug("received artifact update",
 					zap.String("artifact_id", artifactEvent.Artifact.ArtifactID),
 					zap.String("task_id", artifactEvent.TaskID))
 
