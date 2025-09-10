@@ -73,6 +73,7 @@
   - [Building Custom Agents with AgentBuilder](#building-custom-agents-with-agentbuilder)
   - [Custom Tools](#custom-tools)
   - [Loading AgentCard from JSON File](#loading-agentcard-from-json-file)
+  - [Working with Artifacts](#working-with-artifacts)
   - [Task Pausing for User Input](#task-pausing-for-user-input)
   - [Custom Task Processing](#custom-task-processing)
   - [Push Notifications](#push-notifications)
@@ -130,6 +131,7 @@ For complete working examples, see the [examples](./examples/) directory:
 - **[Paused Task Example](./examples/client/cmd/pausedtask/)** - Handle input-required task pausing
 - **[Paused Task Streaming Example](./examples/client/cmd/pausedtask-streaming/)** - Streaming with task pausing
 - **[Health Check Example](./examples/client/cmd/healthcheck/)** - Monitor agent health status
+- **[Artifact Examples](./examples/server/cmd/artifacts/)** - Server and client artifact handling
 
 #### Basic Usage (Minimal Server)
 
@@ -610,6 +612,7 @@ func main() {
 - 🔐 **Secure Authentication**: Built-in OIDC/OAuth2 authentication support
 - 📨 **Push Notifications**: Webhook notifications for real-time task state updates
 - ⏸️ **Task Pausing**: Built-in support for input-required state pausing and resumption
+- 📎 **Artifact Support**: Rich content generation with text, files, and structured data
 - 🗄️ **Multiple Storage Backends**: Support for in-memory and Redis storage with horizontal scaling
 
 ### Developer Experience
@@ -1559,6 +1562,170 @@ mcpConfirmTool := server.NewBasicTool(
 ```
 
 This pattern enables agents to seamlessly integrate human-in-the-loop workflows while maintaining tool use standards and MCP compatibility.
+
+### Working with Artifacts
+
+Artifacts enable agents to generate and return rich content beyond simple text responses, including files, structured data, and multi-part content. The ADK provides comprehensive artifact support for both server and client applications.
+
+#### What are Artifacts?
+
+Artifacts represent files, data structures, or other resources generated during task execution:
+
+- **Text content**: Analysis results, reports, documentation
+- **Files**: Generated documents, images, data files  
+- **Structured data**: JSON objects, analysis results, metadata
+- **Multi-part content**: Combinations of the above
+
+#### Server-Side Artifact Creation
+
+```go
+import "github.com/inference-gateway/adk/server"
+
+// Create artifact helper
+artifactHelper := server.NewArtifactHelper()
+
+// Create different types of artifacts
+textArtifact := artifactHelper.CreateTextArtifact(
+    "Analysis Report",                    // name
+    "Detailed analysis of the request",   // description
+    "This is the analysis content...",    // text content
+)
+
+// File artifact from bytes
+data := []byte("Hello, World!")
+mimeType := artifactHelper.GetMimeTypeFromExtension("hello.txt")
+fileArtifact := artifactHelper.CreateFileArtifactFromBytes(
+    "Generated File",
+    "A simple text file", 
+    "hello.txt",
+    data,
+    mimeType,
+)
+
+// Structured data artifact
+analysisData := map[string]any{
+    "summary": "Task completed successfully",
+    "metrics": map[string]any{
+        "processing_time": 1.5,
+        "word_count":     150,
+    },
+    "results": []string{"item1", "item2", "item3"},
+}
+dataArtifact := artifactHelper.CreateDataArtifact(
+    "Analysis Results",
+    "Structured analysis data",
+    analysisData,
+)
+
+// Add artifacts to task
+artifactHelper.AddArtifactToTask(task, textArtifact)
+artifactHelper.AddArtifactToTask(task, fileArtifact)
+artifactHelper.AddArtifactToTask(task, dataArtifact)
+```
+
+#### Client-Side Artifact Extraction
+
+```go
+import "github.com/inference-gateway/adk/client"
+
+// Create client with artifact support
+a2aClient := client.NewClient("http://localhost:8080")
+artifactHelper := a2aClient.GetArtifactHelper()
+
+// Send task and extract artifacts
+response, err := a2aClient.SendTask(ctx, params)
+task, err := artifactHelper.ExtractTaskFromResponse(response)
+
+// Check for artifacts
+if artifactHelper.HasArtifacts(task) {
+    fmt.Printf("Task contains %d artifacts\n", artifactHelper.GetArtifactCount(task))
+    
+    // Get artifacts by type
+    textArtifacts := artifactHelper.GetTextArtifacts(task)
+    fileArtifacts := artifactHelper.GetFileArtifacts(task)
+    dataArtifacts := artifactHelper.GetDataArtifacts(task)
+    
+    // Extract content from artifacts
+    for _, artifact := range textArtifacts {
+        texts := artifactHelper.ExtractTextFromArtifact(&artifact)
+        for _, text := range texts {
+            fmt.Println("Text content:", text)
+        }
+    }
+    
+    // Process file artifacts
+    for _, artifact := range fileArtifacts {
+        files, err := artifactHelper.ExtractFileDataFromArtifact(&artifact)
+        if err != nil {
+            continue
+        }
+        
+        for _, file := range files {
+            if file.IsDataFile() {
+                fmt.Printf("File: %s (%d bytes)\n", file.GetFileName(), len(file.Data))
+            }
+        }
+    }
+}
+```
+
+#### Streaming Artifact Updates
+
+For real-time artifact delivery during streaming responses:
+
+```go
+// Server-side: Send artifact updates during streaming
+func (h *StreamingHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
+    eventsChan := make(chan server.StreamEvent, 100)
+    
+    go func() {
+        defer close(eventsChan)
+        
+        // Create and send artifact update
+        artifact := h.artifactHelper.CreateTextArtifact(
+            "Streaming Result",
+            "Partial result from streaming",
+            "Current progress: 50%",
+        )
+        
+        artifactEvent := h.artifactHelper.CreateTaskArtifactUpdateEvent(
+            task.ID,
+            task.ContextID, 
+            artifact,
+            boolPtr(false), // append
+            boolPtr(false), // lastChunk
+        )
+        
+        eventsChan <- &server.ArtifactUpdateStreamEvent{
+            Event: artifactEvent,
+        }
+    }()
+    
+    return eventsChan, nil
+}
+
+// Client-side: Handle streaming artifact updates
+eventChan := make(chan any, 100)
+err := a2aClient.SendTaskStreaming(ctx, params, eventChan)
+
+for event := range eventChan {
+    if artifactEvent, isArtifact := artifactHelper.ExtractArtifactUpdateFromStreamEvent(event); isArtifact {
+        fmt.Printf("Received artifact update: %s\n", artifactEvent.Artifact.ArtifactID)
+        
+        if artifactEvent.LastChunk != nil && *artifactEvent.LastChunk {
+            fmt.Println("Final artifact update received")
+        }
+    }
+}
+```
+
+#### Complete Examples
+
+For comprehensive examples of artifact usage:
+
+- **[Server Example](./examples/server/cmd/artifacts/)** - Creating and managing artifacts in tasks
+- **[Client Example](./examples/client/cmd/artifacts/)** - Extracting and processing artifacts from responses
+- **[Detailed Documentation](./docs/artifacts.md)** - Complete artifact API reference and best practices
 
 ### Default Task Handlers
 
