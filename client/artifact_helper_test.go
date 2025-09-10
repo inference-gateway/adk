@@ -345,7 +345,6 @@ func TestArtifactHelper_ExtractArtifactUpdateFromStreamEvent(t *testing.T) {
 	assert.Equal(t, "context-456", extractedEvent2.ContextID)
 	assert.Equal(t, "stream-artifact", extractedEvent2.Artifact.ArtifactID)
 
-	// Test with non-artifact event
 	nonArtifactEvent := map[string]any{
 		"kind": "status-update",
 		"data": "some status",
