@@ -95,32 +95,35 @@ func main() {
 	fmt.Printf("🚀 Starting paused task streaming example...\n")
 	fmt.Printf("📝 Initial request: %s\n\n", msgParams.Message.Parts[0].(map[string]any)["text"])
 
-	// Create channel to receive streaming events
-	eventChan := make(chan any, 100)
-
 	// Track streaming progress
-	var wg sync.WaitGroup
 	var eventCount int
 	var streamError error
 	var currentTaskID string
 	var taskPaused bool
 	var pauseMessage string
 
-	// Start goroutine to process streaming events
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	// Start streaming task
+	logger.Info("initiating streaming request")
+	eventChan, err := a2aClient.SendTaskStreaming(ctx, msgParams)
+	if err != nil {
+		streamError = err
+		logger.Error("streaming task failed", zap.Error(err))
+		fmt.Printf("❌ Streaming failed: %v\n", err)
+	} else {
+		logger.Info("streaming task started successfully")
+		fmt.Printf("✅ Initial streaming started successfully\n")
 
 		logger.Info("=== Starting Stream Processing ===")
 		fmt.Printf("📡 Processing streaming events...\n\n")
 
+		// Process streaming events from the returned channel
 		for {
 			select {
 			case event, ok := <-eventChan:
 				if !ok {
 					logger.Info("=== Stream Channel Closed ===")
 					fmt.Printf("\n📡 Stream completed.\n")
-					return
+					goto streamComplete
 				}
 
 				eventCount++
@@ -166,29 +169,13 @@ func main() {
 			case <-ctx.Done():
 				logger.Info("stream processing cancelled due to context timeout")
 				fmt.Printf("\n⏰ Stream processing timed out\n")
-				return
+				goto streamComplete
 			}
 		}
-	}()
 
-	// Start streaming task
-	logger.Info("initiating streaming request")
-	err = a2aClient.SendTaskStreaming(ctx, msgParams, eventChan)
-
-	// Close the event channel to signal completion
-	close(eventChan)
-
-	if err != nil {
-		streamError = err
-		logger.Error("streaming task failed", zap.Error(err))
-		fmt.Printf("❌ Streaming failed: %v\n", err)
-	} else {
+		streamComplete:
 		logger.Info("streaming task completed successfully")
-		fmt.Printf("✅ Initial streaming completed successfully\n")
 	}
-
-	// Wait for event processing to complete
-	wg.Wait()
 
 	// Handle paused task if needed
 	if taskPaused && currentTaskID != "" {
@@ -381,35 +368,33 @@ func resumeTaskWithStreaming(ctx context.Context, a2aClient client.A2AClient, ta
 	resumeCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Create channel for resume streaming events
-	eventChan := make(chan any, 100)
+	// Send resume with streaming
+	eventChan, err := a2aClient.SendTaskStreaming(resumeCtx, resumeParams)
+	if err != nil {
+		return fmt.Errorf("failed to resume with streaming: %w", err)
+	}
 
 	// Process streaming events for resume
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case event, ok := <-eventChan:
-				if !ok {
-					return
-				}
+	for {
+		select {
+		case event, ok := <-eventChan:
+			if !ok {
+				goto resumeComplete
+			}
 
-				switch v := event.(type) {
-				case map[string]any:
-					if eventType, exists := v["kind"]; exists && eventType == "status-update" {
-						if status, exists := v["status"]; exists {
-							if statusMap, ok := status.(map[string]any); ok {
-								if message, exists := statusMap["message"]; exists {
-									if msgMap, ok := message.(map[string]any); ok {
-										if parts, exists := msgMap["parts"]; exists {
-											if partsArray, ok := parts.([]any); ok {
-												for _, part := range partsArray {
-													if partMap, ok := part.(map[string]any); ok {
-														if text, exists := partMap["text"]; exists {
-															fmt.Printf("💬 %v", text)
-														}
+			switch v := event.(type) {
+			case map[string]any:
+				if eventType, exists := v["kind"]; exists && eventType == "status-update" {
+					if status, exists := v["status"]; exists {
+						if statusMap, ok := status.(map[string]any); ok {
+							if message, exists := statusMap["message"]; exists {
+								if msgMap, ok := message.(map[string]any); ok {
+									if parts, exists := msgMap["parts"]; exists {
+										if partsArray, ok := parts.([]any); ok {
+											for _, part := range partsArray {
+												if partMap, ok := part.(map[string]any); ok {
+													if text, exists := partMap["text"]; exists {
+														fmt.Printf("💬 %v", text)
 													}
 												}
 											}
@@ -420,22 +405,14 @@ func resumeTaskWithStreaming(ctx context.Context, a2aClient client.A2AClient, ta
 						}
 					}
 				}
-
-			case <-resumeCtx.Done():
-				return
 			}
+
+		case <-resumeCtx.Done():
+			goto resumeComplete
 		}
-	}()
-
-	// Send resume with streaming
-	err := a2aClient.SendTaskStreaming(resumeCtx, resumeParams, eventChan)
-	close(eventChan)
-	wg.Wait()
-
-	if err != nil {
-		return fmt.Errorf("failed to resume with streaming: %w", err)
 	}
 
+	resumeComplete:
 	fmt.Printf("\n✅ Resume streaming completed\n")
 	return nil
 }

@@ -89,27 +89,28 @@ func main() {
 	logger.Info("starting streaming task",
 		zap.String("message_id", msgParams.Message.MessageID))
 
-	// Create channel to receive streaming events
-	eventChan := make(chan any, 100)
-
 	// Track streaming progress
-	var wg sync.WaitGroup
 	var eventCount int
 	var streamError error
 
-	// Start goroutine to process streaming events
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	// Start streaming task
+	logger.Info("initiating streaming request")
+	eventChan, err := a2aClient.SendTaskStreaming(ctx, msgParams)
+	if err != nil {
+		streamError = err
+		logger.Error("streaming task failed", zap.Error(err))
+	} else {
+		logger.Info("streaming task started successfully")
 
 		logger.Info("=== Starting Stream Processing ===")
 
+		// Process streaming events from the returned channel
 		for {
 			select {
 			case event, ok := <-eventChan:
 				if !ok {
 					logger.Info("=== Stream Channel Closed ===")
-					return
+					goto streamComplete
 				}
 
 				eventCount++
@@ -176,27 +177,13 @@ func main() {
 
 			case <-ctx.Done():
 				logger.Info("stream processing cancelled due to context timeout")
-				return
+				goto streamComplete
 			}
 		}
-	}()
 
-	// Start streaming task
-	logger.Info("initiating streaming request")
-	err = a2aClient.SendTaskStreaming(ctx, msgParams, eventChan)
-
-	// Close the event channel to signal completion
-	close(eventChan)
-
-	if err != nil {
-		streamError = err
-		logger.Error("streaming task failed", zap.Error(err))
-	} else {
+		streamComplete:
 		logger.Info("streaming task completed successfully")
 	}
-
-	// Wait for event processing to complete
-	wg.Wait()
 
 	// Display final results
 	logger.Info("=== Streaming Summary ===")

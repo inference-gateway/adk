@@ -844,8 +844,8 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					},
 				},
 			},
-			expectError:   true,
-			errorContains: "failed to decode event",
+			expectError:    false, // Channel is returned successfully, error occurs in background
+			expectedEvents: 0,     // No valid events will be received
 		},
 		{
 			name: "empty stream response",
@@ -886,17 +886,17 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			eventChan := make(chan any, 10)
-
-			err := c.SendTaskStreaming(ctx, tt.params, eventChan)
+			eventChan, err := c.SendTaskStreaming(ctx, tt.params)
 
 			if tt.expectError {
 				assert.Error(t, err)
 				if tt.errorContains != "" {
 					assert.Contains(t, err.Error(), tt.errorContains)
 				}
+				assert.Nil(t, eventChan)
 			} else {
 				assert.NoError(t, err)
+				assert.NotNil(t, eventChan)
 
 				eventCount := 0
 				timeout := time.After(200 * time.Millisecond)
@@ -904,7 +904,10 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 			eventLoop:
 				for {
 					select {
-					case <-eventChan:
+					case _, ok := <-eventChan:
+						if !ok {
+							break eventLoop
+						}
 						eventCount++
 					case <-timeout:
 						break eventLoop

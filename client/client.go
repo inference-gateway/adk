@@ -23,7 +23,7 @@ type A2AClient interface {
 
 	// Task operations
 	SendTask(ctx context.Context, params types.MessageSendParams) (*types.JSONRPCSuccessResponse, error)
-	SendTaskStreaming(ctx context.Context, params types.MessageSendParams, eventChan chan<- any) error
+	SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan any, error)
 	GetTask(ctx context.Context, params types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error)
 	ListTasks(ctx context.Context, params types.TaskListParams) (*types.JSONRPCSuccessResponse, error)
 	CancelTask(ctx context.Context, params types.TaskIdParams) (*types.JSONRPCSuccessResponse, error)
@@ -159,8 +159,8 @@ func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (
 	return &resp, nil
 }
 
-// SendTaskStreaming sends a task and streams the response (primary interface following official A2A pattern)
-func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSendParams, eventChan chan<- any) error {
+// SendTaskStreaming sends a task and returns a channel for streaming events (primary interface following official A2A pattern)
+func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan any, error) {
 	c.logger.Debug("starting task streaming",
 		zap.String("method", "message/stream"),
 		zap.String("message_id", params.Message.MessageID),
@@ -175,26 +175,26 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 	paramsBytes, err := json.Marshal(params)
 	if err != nil {
 		c.logger.Error("failed to marshal params", zap.Error(err))
-		return fmt.Errorf("failed to marshal params: %w", err)
+		return nil, fmt.Errorf("failed to marshal params: %w", err)
 	}
 
 	var paramsMap map[string]any
 	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
 		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return fmt.Errorf("failed to unmarshal params to map: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
 	}
 	req.Params = paramsMap
 
 	body, err := json.Marshal(req)
 	if err != nil {
 		c.logger.Error("failed to marshal request", zap.Error(err))
-		return fmt.Errorf("failed to marshal request: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.getA2AEndpointURL(), bytes.NewBuffer(body))
 	if err != nil {
 		c.logger.Error("failed to create request", zap.Error(err))
-		return fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	c.setHeaders(httpReq)
@@ -205,69 +205,82 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		c.logger.Error("failed to send request", zap.Error(err))
-		return fmt.Errorf("failed to send request: %w", err)
+		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer func() {
+
+	if httpResp.StatusCode != http.StatusOK {
 		if closeErr := httpResp.Body.Close(); closeErr != nil {
 			c.logger.Warn("failed to close response body", zap.Error(closeErr))
 		}
-	}()
-
-	if httpResp.StatusCode != http.StatusOK {
 		c.logger.Error("unexpected status code", zap.Int("status_code", httpResp.StatusCode))
-		return fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)
+		return nil, fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)
 	}
 
 	c.logger.Debug("streaming response started successfully")
 
-	scanner := bufio.NewScanner(httpResp.Body)
-	eventCount := 0
-	for {
-		select {
-		case <-ctx.Done():
-			c.logger.Debug("streaming context cancelled", zap.Int("events_received", eventCount))
-			return ctx.Err()
-		default:
-			if !scanner.Scan() {
-				if err := scanner.Err(); err != nil {
-					c.logger.Error("failed to scan response", zap.Error(err), zap.Int("events_received", eventCount))
-					return fmt.Errorf("failed to scan response: %w", err)
-				}
-				c.logger.Debug("streaming completed", zap.Int("events_received", eventCount))
-				return nil
+	// Create a buffered channel for events
+	eventChan := make(chan any, 100)
+
+	// Start goroutine to handle streaming
+	go func() {
+		defer func() {
+			if closeErr := httpResp.Body.Close(); closeErr != nil {
+				c.logger.Warn("failed to close response body", zap.Error(closeErr))
 			}
+			close(eventChan)
+		}()
 
-			line := scanner.Text()
-			c.logger.Debug("received line", zap.String("line", line))
-
-			if line == "" || !strings.HasPrefix(line, "data: ") {
-				continue
-			}
-
-			if strings.TrimSpace(line) == "data: [DONE]" {
-				c.logger.Debug("received stream termination signal", zap.Int("events_received", eventCount))
-				return nil
-			}
-
-			jsonData := strings.TrimPrefix(line, "data: ")
-
-			var event types.JSONRPCSuccessResponse
-			if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
-				c.logger.Error("failed to decode event", zap.Error(err), zap.Int("events_received", eventCount), zap.String("json_data", jsonData))
-				return fmt.Errorf("failed to decode event: %w", err)
-			}
-
-			eventCount++
-			c.logger.Debug("received streaming event", zap.Int("event_number", eventCount))
-
+		scanner := bufio.NewScanner(httpResp.Body)
+		eventCount := 0
+		for {
 			select {
-			case eventChan <- event.Result:
 			case <-ctx.Done():
-				c.logger.Debug("streaming context cancelled while sending event", zap.Int("events_received", eventCount))
-				return ctx.Err()
+				c.logger.Debug("streaming context cancelled", zap.Int("events_received", eventCount))
+				return
+			default:
+				if !scanner.Scan() {
+					if err := scanner.Err(); err != nil {
+						c.logger.Error("failed to scan response", zap.Error(err), zap.Int("events_received", eventCount))
+						return
+					}
+					c.logger.Debug("streaming completed", zap.Int("events_received", eventCount))
+					return
+				}
+
+				line := scanner.Text()
+				c.logger.Debug("received line", zap.String("line", line))
+
+				if line == "" || !strings.HasPrefix(line, "data: ") {
+					continue
+				}
+
+				if strings.TrimSpace(line) == "data: [DONE]" {
+					c.logger.Debug("received stream termination signal", zap.Int("events_received", eventCount))
+					return
+				}
+
+				jsonData := strings.TrimPrefix(line, "data: ")
+
+				var event types.JSONRPCSuccessResponse
+				if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
+					c.logger.Error("failed to decode event", zap.Error(err), zap.Int("events_received", eventCount), zap.String("json_data", jsonData))
+					return
+				}
+
+				eventCount++
+				c.logger.Debug("received streaming event", zap.Int("event_number", eventCount))
+
+				select {
+				case eventChan <- event.Result:
+				case <-ctx.Done():
+					c.logger.Debug("streaming context cancelled while sending event", zap.Int("events_received", eventCount))
+					return
+				}
 			}
 		}
-	}
+	}()
+
+	return eventChan, nil
 }
 
 // GetTaskWithContext retrieves the status of a task with context support

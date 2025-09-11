@@ -904,7 +904,7 @@ client := client.NewClientWithConfig(config)
 agentCard, err := client.GetAgentCard(ctx)
 health, err := client.GetHealth(ctx)
 response, err := client.SendTask(ctx, params)
-err = client.SendTaskStreaming(ctx, params, eventChan)
+eventChan, err := client.SendTaskStreaming(ctx, params)
 ```
 
 #### Agent Health Monitoring
@@ -1705,8 +1705,10 @@ func (h *StreamingHandler) HandleStreamingTask(ctx context.Context, task *types.
 }
 
 // Client-side: Handle streaming artifact updates
-eventChan := make(chan any, 100)
-err := a2aClient.SendTaskStreaming(ctx, params, eventChan)
+eventChan, err := a2aClient.SendTaskStreaming(ctx, params)
+if err != nil {
+    log.Fatalf("Failed to start streaming: %v", err)
+}
 
 for event := range eventChan {
     if artifactEvent, isArtifact := artifactHelper.ExtractArtifactUpdateFromStreamEvent(event); isArtifact {
