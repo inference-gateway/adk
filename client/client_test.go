@@ -844,8 +844,8 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					},
 				},
 			},
-			expectError:    false, // Channel is returned successfully, error occurs in background
-			expectedEvents: 0,     // No valid events will be received
+			expectError:    false,
+			expectedEvents: 0,
 		},
 		{
 			name: "empty stream response",
