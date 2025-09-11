@@ -904,7 +904,7 @@ client := client.NewClientWithConfig(config)
 agentCard, err := client.GetAgentCard(ctx)
 health, err := client.GetHealth(ctx)
 response, err := client.SendTask(ctx, params)
-err = client.SendTaskStreaming(ctx, params, eventChan)
+eventChan, err := client.SendTaskStreaming(ctx, params)
 ```
 
 #### Agent Health Monitoring
@@ -1572,7 +1572,7 @@ Artifacts enable agents to generate and return rich content beyond simple text r
 Artifacts represent files, data structures, or other resources generated during task execution:
 
 - **Text content**: Analysis results, reports, documentation
-- **Files**: Generated documents, images, data files  
+- **Files**: Generated documents, images, data files
 - **Structured data**: JSON objects, analysis results, metadata
 - **Multi-part content**: Combinations of the above
 
@@ -1596,7 +1596,7 @@ data := []byte("Hello, World!")
 mimeType := artifactHelper.GetMimeTypeFromExtension("hello.txt")
 fileArtifact := artifactHelper.CreateFileArtifactFromBytes(
     "Generated File",
-    "A simple text file", 
+    "A simple text file",
     "hello.txt",
     data,
     mimeType,
@@ -1639,12 +1639,12 @@ task, err := artifactHelper.ExtractTaskFromResponse(response)
 // Check for artifacts
 if artifactHelper.HasArtifacts(task) {
     fmt.Printf("Task contains %d artifacts\n", artifactHelper.GetArtifactCount(task))
-    
+
     // Get artifacts by type
     textArtifacts := artifactHelper.GetTextArtifacts(task)
     fileArtifacts := artifactHelper.GetFileArtifacts(task)
     dataArtifacts := artifactHelper.GetDataArtifacts(task)
-    
+
     // Extract content from artifacts
     for _, artifact := range textArtifacts {
         texts := artifactHelper.ExtractTextFromArtifact(&artifact)
@@ -1652,14 +1652,14 @@ if artifactHelper.HasArtifacts(task) {
             fmt.Println("Text content:", text)
         }
     }
-    
+
     // Process file artifacts
     for _, artifact := range fileArtifacts {
         files, err := artifactHelper.ExtractFileDataFromArtifact(&artifact)
         if err != nil {
             continue
         }
-        
+
         for _, file := range files {
             if file.IsDataFile() {
                 fmt.Printf("File: %s (%d bytes)\n", file.GetFileName(), len(file.Data))
@@ -1677,41 +1677,43 @@ For real-time artifact delivery during streaming responses:
 // Server-side: Send artifact updates during streaming
 func (h *StreamingHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
     eventsChan := make(chan server.StreamEvent, 100)
-    
+
     go func() {
         defer close(eventsChan)
-        
+
         // Create and send artifact update
         artifact := h.artifactHelper.CreateTextArtifact(
             "Streaming Result",
             "Partial result from streaming",
             "Current progress: 50%",
         )
-        
+
         artifactEvent := h.artifactHelper.CreateTaskArtifactUpdateEvent(
             task.ID,
-            task.ContextID, 
+            task.ContextID,
             artifact,
             boolPtr(false), // append
             boolPtr(false), // lastChunk
         )
-        
+
         eventsChan <- &server.ArtifactUpdateStreamEvent{
             Event: artifactEvent,
         }
     }()
-    
+
     return eventsChan, nil
 }
 
 // Client-side: Handle streaming artifact updates
-eventChan := make(chan any, 100)
-err := a2aClient.SendTaskStreaming(ctx, params, eventChan)
+eventChan, err := a2aClient.SendTaskStreaming(ctx, params)
+if err != nil {
+    log.Fatalf("Failed to start streaming: %v", err)
+}
 
 for event := range eventChan {
     if artifactEvent, isArtifact := artifactHelper.ExtractArtifactUpdateFromStreamEvent(event); isArtifact {
         fmt.Printf("Received artifact update: %s\n", artifactEvent.Artifact.ArtifactID)
-        
+
         if artifactEvent.LastChunk != nil && *artifactEvent.LastChunk {
             fmt.Println("Final artifact update received")
         }

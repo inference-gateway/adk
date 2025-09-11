@@ -136,9 +136,13 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 	ctx := context.Background()
 	storage, err := CreateStorage(ctx, cfg.QueueConfig, logger)
 	if err != nil {
-		logger.Warn("failed to create configured storage, falling back to in-memory",
-			zap.String("provider", cfg.QueueConfig.Provider),
-			zap.Error(err))
+		if cfg.QueueConfig.Provider == "" {
+			logger.Info("no storage provider configured, using in-memory storage")
+		} else {
+			logger.Warn("failed to create configured storage, falling back to in-memory",
+				zap.String("provider", cfg.QueueConfig.Provider),
+				zap.Error(err))
+		}
 
 		maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
 		storage = NewInMemoryStorage(logger, maxConversationHistory)
@@ -630,6 +634,12 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 // startTaskCleanup starts the background task cleanup process
 func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
 	cleanupInterval := s.cfg.QueueConfig.CleanupInterval
+
+	if cleanupInterval <= 0 {
+		s.logger.Info("task cleanup disabled", zap.Duration("cleanup_interval", cleanupInterval))
+		<-ctx.Done()
+		return
+	}
 
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()

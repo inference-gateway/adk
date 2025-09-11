@@ -249,6 +249,10 @@ func main() {
 			WriteTimeout: 30 * time.Second,
 			IdleTimeout:  60 * time.Second,
 		},
+		QueueConfig: config.QueueConfig{
+			MaxSize:         100,
+			CleanupInterval: 5 * time.Minute,
+		},
 	}
 
 	// Create the A2A server

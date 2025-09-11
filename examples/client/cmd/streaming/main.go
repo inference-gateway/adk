@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/inference-gateway/adk/client"
@@ -19,33 +18,166 @@ type Config struct {
 	StreamingTimeout time.Duration `env:"STREAMING_TIMEOUT,default=60s"`
 }
 
+// handleMessageEvent processes message events with early returns for validation
+func handleMessageEvent(eventMap map[string]any) {
+	parts, ok := eventMap["parts"].([]any)
+	if !ok {
+		return
+	}
+
+	for _, part := range parts {
+		partMap, ok := part.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		text, exists := partMap["text"]
+		if !exists {
+			continue
+		}
+
+		fmt.Printf("💬 %v", text)
+	}
+}
+
+// handleStatusUpdateEvent processes status update events with guard clauses
+func handleStatusUpdateEvent(eventMap map[string]any) {
+	taskId, hasTaskId := eventMap["taskId"]
+	if !hasTaskId {
+		return
+	}
+
+	status, hasStatus := eventMap["status"]
+	if !hasStatus {
+		return
+	}
+
+	fmt.Printf("📊 Status Update - Task: %v, Status: %v\n", taskId, status)
+}
+
 func main() {
-	// Load configuration from environment variables
 	ctx := context.Background()
+
+	// Setup phase with early returns for failures
+	config, logger := setupApplication(ctx)
+	defer logger.Sync()
+
+	a2aClient := client.NewClientWithLogger(config.ServerURL, logger)
+
+	// Validation phase - verify agent capabilities
+	if err := validateAgentCapabilities(ctx, a2aClient, logger); err != nil {
+		logger.Fatal("agent validation failed", zap.Error(err))
+	}
+
+	// Create timeout context for streaming
+	streamCtx, cancel := context.WithTimeout(ctx, config.StreamingTimeout)
+	defer cancel()
+
+	// Prepare message parameters
+	msgParams := createMessageParams()
+	logger.Info("starting streaming task", zap.String("message_id", msgParams.Message.MessageID))
+
+	// Execute streaming request with early return on error
+	logger.Info("initiating streaming request")
+	eventChan, err := a2aClient.SendTaskStreaming(streamCtx, msgParams)
+	if err != nil {
+		logger.Fatal("streaming task failed", zap.Error(err))
+	}
+
+	logger.Info("streaming task started successfully")
+	logger.Info("=== Starting Stream Processing ===")
+
+	var eventCount int
+	streamingComplete := false
+
+	// Process streaming events from the returned channel
+	for !streamingComplete {
+		select {
+		case event, ok := <-eventChan:
+			if !ok {
+				logger.Info("=== Stream Channel Closed ===")
+				streamingComplete = true
+				break
+			}
+
+			eventCount++
+
+			// The event.Result contains the actual streaming data
+			if event.Result == nil {
+				continue
+			}
+
+			// Process based on the result type
+			eventData, ok := event.Result.(map[string]any)
+			if !ok {
+				logger.Info("received non-map event",
+					zap.Int("event_number", eventCount),
+					zap.Any("result", event.Result))
+				fmt.Printf("[Event %d] Data: %v\n", eventCount, event.Result)
+				continue
+			}
+
+			// Handle the event based on its kind
+			eventType, exists := eventData["kind"]
+			if !exists {
+				logger.Info("received object event without kind",
+					zap.Int("event_number", eventCount),
+					zap.Any("event", eventData))
+				fmt.Printf("[Event %d] Object: %v\n", eventCount, eventData)
+				continue
+			}
+
+			switch eventType {
+			case "message":
+				handleMessageEvent(eventData)
+			case "status-update":
+				handleStatusUpdateEvent(eventData)
+			default:
+				logger.Info("received unknown event type",
+					zap.Int("event_number", eventCount),
+					zap.String("type", fmt.Sprintf("%v", eventType)),
+					zap.Any("event", eventData))
+				fmt.Printf("[Event %d] Unknown Event Type: %v\n", eventCount, eventData)
+			}
+
+		case <-streamCtx.Done():
+			logger.Info("stream processing cancelled due to context timeout")
+			streamingComplete = true
+		}
+	}
+
+	logger.Info("streaming task completed successfully")
+
+	// Results phase - display summary
+	displayResults(eventCount, logger)
+}
+
+// setupApplication initializes configuration and logging with protective checks
+func setupApplication(ctx context.Context) (Config, *zap.Logger) {
 	var config Config
 	if err := envconfig.Process(ctx, &config); err != nil {
 		log.Fatal("failed to process configuration", zap.Error(err))
 	}
 
-	// Initialize logger
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}
-	defer logger.Sync()
 
 	logger.Info("starting a2a streaming example",
 		zap.String("server_url", config.ServerURL),
 		zap.Duration("streaming_timeout", config.StreamingTimeout))
 
-	// Create A2A client
-	a2aClient := client.NewClientWithLogger(config.ServerURL, logger)
+	return config, logger
+}
 
-	// Check agent capabilities first
+// validateAgentCapabilities checks agent streaming support with early returns
+func validateAgentCapabilities(ctx context.Context, client client.A2AClient, logger *zap.Logger) error {
 	logger.Info("checking agent capabilities")
-	agentCard, err := a2aClient.GetAgentCard(ctx)
+
+	agentCard, err := client.GetAgentCard(ctx)
 	if err != nil {
-		logger.Fatal("failed to get agent card", zap.Error(err))
+		return fmt.Errorf("failed to get agent card: %w", err)
 	}
 
 	logger.Info("agent card retrieved",
@@ -53,22 +185,20 @@ func main() {
 		zap.String("agent_version", agentCard.Version),
 		zap.String("agent_description", agentCard.Description))
 
-	// Verify streaming capability
+	// Guard clause: check streaming capability
 	if agentCard.Capabilities.Streaming == nil || !*agentCard.Capabilities.Streaming {
-		logger.Fatal("agent does not support streaming capabilities",
-			zap.String("agent_name", agentCard.Name),
-			zap.Bool("streaming_supported", agentCard.Capabilities.Streaming != nil && *agentCard.Capabilities.Streaming))
+		return fmt.Errorf("agent does not support streaming capabilities")
 	}
 
 	logger.Info("agent streaming capability verified",
 		zap.Bool("streaming_supported", *agentCard.Capabilities.Streaming))
 
-	// Create context with timeout for streaming
-	ctx, cancel := context.WithTimeout(context.Background(), config.StreamingTimeout)
-	defer cancel()
+	return nil
+}
 
-	// Prepare message parameters for streaming
-	msgParams := adk.MessageSendParams{
+// createMessageParams builds the message parameters for streaming
+func createMessageParams() adk.MessageSendParams {
+	return adk.MessageSendParams{
 		Message: adk.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("streaming-msg-%d", time.Now().Unix()),
@@ -85,144 +215,31 @@ func main() {
 			AcceptedOutputModes: []string{"text"},
 		},
 	}
+}
 
-	logger.Info("starting streaming task",
-		zap.String("message_id", msgParams.Message.MessageID))
-
-	// Create channel to receive streaming events
-	eventChan := make(chan any, 100)
-
-	// Track streaming progress
-	var wg sync.WaitGroup
-	var eventCount int
-	var streamError error
-
-	// Start goroutine to process streaming events
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		logger.Info("=== Starting Stream Processing ===")
-
-		for {
-			select {
-			case event, ok := <-eventChan:
-				if !ok {
-					logger.Info("=== Stream Channel Closed ===")
-					return
-				}
-
-				eventCount++
-
-				// Handle different types of streaming events
-				switch v := event.(type) {
-				case string:
-					// Simple string events
-					logger.Info("received streaming text",
-						zap.Int("event_number", eventCount),
-						zap.String("content", v))
-					fmt.Printf("[Event %d] Text: %s\n", eventCount, v)
-
-				case map[string]any:
-					// Complex event objects (e.g., task updates, messages)
-					if eventType, exists := v["kind"]; exists {
-						switch eventType {
-						case "message":
-							if parts, ok := v["parts"].([]any); ok {
-								for _, part := range parts {
-									if partMap, ok := part.(map[string]any); ok {
-										if text, exists := partMap["text"]; exists {
-											logger.Info("received streaming message part",
-												zap.Int("event_number", eventCount),
-												zap.String("text", fmt.Sprintf("%v", text)))
-											fmt.Printf("[Event %d] Message: %v\n", eventCount, text)
-										}
-									}
-								}
-							}
-
-						case "status-update":
-							if taskId, exists := v["taskId"]; exists {
-								if status, exists := v["status"]; exists {
-									logger.Info("received task status update",
-										zap.Int("event_number", eventCount),
-										zap.String("task_id", fmt.Sprintf("%v", taskId)),
-										zap.Any("status", status))
-									fmt.Printf("[Event %d] Status Update - Task: %v, Status: %v\n", eventCount, taskId, status)
-								}
-							}
-
-						default:
-							logger.Info("received unknown event type",
-								zap.Int("event_number", eventCount),
-								zap.String("type", fmt.Sprintf("%v", eventType)),
-								zap.Any("event", v))
-							fmt.Printf("[Event %d] Unknown Event Type: %v\n", eventCount, v)
-						}
-					} else {
-						logger.Info("received untyped object event",
-							zap.Int("event_number", eventCount),
-							zap.Any("event", v))
-						fmt.Printf("[Event %d] Object: %v\n", eventCount, v)
-					}
-
-				default:
-					// Handle any other type of event
-					logger.Info("received generic event",
-						zap.Int("event_number", eventCount),
-						zap.Any("event", v))
-					fmt.Printf("[Event %d] Generic: %v\n", eventCount, v)
-				}
-
-			case <-ctx.Done():
-				logger.Info("stream processing cancelled due to context timeout")
-				return
-			}
-		}
-	}()
-
-	// Start streaming task
-	logger.Info("initiating streaming request")
-	err = a2aClient.SendTaskStreaming(ctx, msgParams, eventChan)
-
-	// Close the event channel to signal completion
-	close(eventChan)
-
-	if err != nil {
-		streamError = err
-		logger.Error("streaming task failed", zap.Error(err))
-	} else {
-		logger.Info("streaming task completed successfully")
-	}
-
-	// Wait for event processing to complete
-	wg.Wait()
-
-	// Display final results
-	logger.Info("=== Streaming Summary ===")
-
-	if streamError != nil {
-		logger.Fatal("streaming failed",
-			zap.Error(streamError),
-			zap.Int("events_received", eventCount))
-	}
-
-	logger.Info("streaming completed successfully",
-		zap.Int("total_events", eventCount),
-		zap.Duration("total_time", time.Since(time.Now().Add(-config.StreamingTimeout))))
+// displayResults shows the final streaming summary
+func displayResults(eventCount int, logger *zap.Logger) {
+	logger.Info("=== Streaming Summary ===",
+		zap.Int("total_events", eventCount))
 
 	fmt.Printf("\n=== Final Summary ===\n")
 	fmt.Printf("Total events received: %d\n", eventCount)
 
 	if eventCount == 0 {
-		fmt.Println("No streaming events received. This could indicate:")
-		fmt.Println("- The server doesn't support streaming")
-		fmt.Println("- The server is not configured for streaming responses")
-		fmt.Println("- Network or connection issues")
-		logger.Warn("no streaming events received - check server streaming capabilities")
-	} else {
-		fmt.Printf("Streaming session completed successfully!\n")
+		displayNoEventsWarning(logger)
+		return
 	}
+
+	fmt.Printf("Streaming session completed successfully!\n")
+}
+
+// displayNoEventsWarning shows helpful information when no events are received
+func displayNoEventsWarning(logger *zap.Logger) {
+	fmt.Println("No streaming events received. This could indicate:")
+	fmt.Println("- The server doesn't support streaming")
+	fmt.Println("- The server is not configured for streaming responses")
+	fmt.Println("- Network or connection issues")
+	logger.Warn("no streaming events received - check server streaming capabilities")
 }
 
 // boolPtr returns a pointer to a boolean value

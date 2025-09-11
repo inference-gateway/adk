@@ -26,7 +26,7 @@ func main() {
 	ctx := context.Background()
 
 	// Test 1: Send a task and retrieve artifacts
-	fmt.Println("=== Artifact Demo: Client-Side Artifact Extraction ===\n")
+	fmt.Println("=== Artifact Demo: Client-Side Artifact Extraction ===")
 
 	// Send a message to create artifacts
 	message := types.Message{
@@ -215,7 +215,7 @@ func demonstrateArtifactExtraction(helper *client.ArtifactHelper, task *types.Ta
 		firstArtifactID := artifacts[0].ArtifactID
 		foundArtifact, exists := helper.GetArtifactByID(task, firstArtifactID)
 		if exists {
-			fmt.Printf("✅ Successfully retrieved artifact by ID: %s\n", foundArtifactID)
+			fmt.Printf("✅ Successfully retrieved artifact by ID: %s\n", firstArtifactID)
 			if foundArtifact.Name != nil {
 				fmt.Printf("   Name: %s\n", *foundArtifact.Name)
 			}

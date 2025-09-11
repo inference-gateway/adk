@@ -8,18 +8,25 @@ import (
 	"log"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/inference-gateway/adk/client"
+	client "github.com/inference-gateway/adk/client"
 	adk "github.com/inference-gateway/adk/types"
-	"github.com/sethvargo/go-envconfig"
-	"go.uber.org/zap"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
 )
 
 type Config struct {
 	ServerURL        string        `env:"A2A_SERVER_URL,default=http://localhost:8080"`
 	StreamingTimeout time.Duration `env:"STREAMING_TIMEOUT,default=2m"`
+}
+
+type StreamState struct {
+	EventCount    int
+	CurrentTaskID string
+	TaskPaused    bool
+	PauseMessage  string
+	StreamError   error
 }
 
 func main() {
@@ -95,112 +102,39 @@ func main() {
 	fmt.Printf("🚀 Starting paused task streaming example...\n")
 	fmt.Printf("📝 Initial request: %s\n\n", msgParams.Message.Parts[0].(map[string]any)["text"])
 
-	// Create channel to receive streaming events
-	eventChan := make(chan any, 100)
-
 	// Track streaming progress
-	var wg sync.WaitGroup
-	var eventCount int
-	var streamError error
-	var currentTaskID string
-	var taskPaused bool
-	var pauseMessage string
+	state := &StreamState{}
 
-	// Start goroutine to process streaming events
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	// Start streaming task
+	logger.Info("initiating streaming request")
+	eventChan, err := a2aClient.SendTaskStreaming(ctx, msgParams)
+	if err != nil {
+		state.StreamError = err
+		logger.Error("streaming task failed", zap.Error(err))
+		fmt.Printf("❌ Streaming failed: %v\n", err)
+	} else {
+		logger.Info("streaming task started successfully")
+		fmt.Printf("✅ Initial streaming started successfully\n")
 
 		logger.Info("=== Starting Stream Processing ===")
 		fmt.Printf("📡 Processing streaming events...\n\n")
 
-		for {
-			select {
-			case event, ok := <-eventChan:
-				if !ok {
-					logger.Info("=== Stream Channel Closed ===")
-					fmt.Printf("\n📡 Stream completed.\n")
-					return
-				}
-
-				eventCount++
-
-				// Handle different types of streaming events
-				switch v := event.(type) {
-				case string:
-					// Simple string events (rare in A2A)
-					logger.Info("received streaming text",
-						zap.Int("event_number", eventCount),
-						zap.String("content", v))
-					fmt.Printf("💬 Text: %s\n", v)
-
-				case map[string]any:
-					// Complex event objects (task updates, messages)
-					if eventType, exists := v["kind"]; exists {
-						switch eventType {
-						case "status-update":
-							handleStatusUpdate(v, &currentTaskID, &taskPaused, &pauseMessage, eventCount, logger)
-
-						default:
-							logger.Info("received unknown event type",
-								zap.Int("event_number", eventCount),
-								zap.String("type", fmt.Sprintf("%v", eventType)),
-								zap.Any("event", v))
-							fmt.Printf("❓ Unknown Event: %v\n", v)
-						}
-					} else {
-						logger.Info("received untyped object event",
-							zap.Int("event_number", eventCount),
-							zap.Any("event", v))
-						fmt.Printf("📦 Object: %v\n", v)
-					}
-
-				default:
-					// Handle any other type of event
-					logger.Info("received generic event",
-						zap.Int("event_number", eventCount),
-						zap.Any("event", v))
-					fmt.Printf("🔗 Generic: %v\n", v)
-				}
-
-			case <-ctx.Done():
-				logger.Info("stream processing cancelled due to context timeout")
-				fmt.Printf("\n⏰ Stream processing timed out\n")
-				return
-			}
-		}
-	}()
-
-	// Start streaming task
-	logger.Info("initiating streaming request")
-	err = a2aClient.SendTaskStreaming(ctx, msgParams, eventChan)
-
-	// Close the event channel to signal completion
-	close(eventChan)
-
-	if err != nil {
-		streamError = err
-		logger.Error("streaming task failed", zap.Error(err))
-		fmt.Printf("❌ Streaming failed: %v\n", err)
-	} else {
+		// Process streaming events
+		processStreamEvents(ctx, eventChan, state, logger)
 		logger.Info("streaming task completed successfully")
-		fmt.Printf("✅ Initial streaming completed successfully\n")
 	}
 
-	// Wait for event processing to complete
-	wg.Wait()
-
 	// Handle paused task if needed
-	if taskPaused && currentTaskID != "" {
+	if state.TaskPaused && state.CurrentTaskID != "" {
 		fmt.Printf("\n⏸️  Task paused for input!\n")
-		fmt.Printf("📋 Task ID: %s\n", currentTaskID)
+		fmt.Printf("📋 Task ID: %s\n", state.CurrentTaskID)
 
-		if pauseMessage != "" {
-			fmt.Printf("💭 Agent says: %s\n", pauseMessage)
+		if state.PauseMessage != "" {
+			fmt.Printf("💭 Agent says: %s\n", state.PauseMessage)
 		}
 
 		// Show conversation history
-		showConversationHistory(ctx, a2aClient, currentTaskID, logger)
+		showConversationHistory(ctx, a2aClient, state.CurrentTaskID, logger)
 
 		// Get user input and resume
 		for {
@@ -216,7 +150,7 @@ func main() {
 			}
 
 			// Resume with streaming
-			err = resumeTaskWithStreaming(ctx, a2aClient, currentTaskID, userInput, config.StreamingTimeout, logger)
+			err = resumeTaskWithStreaming(ctx, a2aClient, state.CurrentTaskID, userInput, config.StreamingTimeout, logger)
 			if err != nil {
 				logger.Error("failed to resume task with streaming", zap.Error(err))
 				fmt.Printf("❌ Failed to resume task: %v\n", err)
@@ -224,7 +158,7 @@ func main() {
 			}
 
 			// Check if task is still paused
-			taskResp, err := a2aClient.GetTask(ctx, adk.TaskQueryParams{ID: currentTaskID})
+			taskResp, err := a2aClient.GetTask(ctx, adk.TaskQueryParams{ID: state.CurrentTaskID})
 			if err != nil {
 				logger.Error("failed to get task status", zap.Error(err))
 				break
@@ -261,25 +195,25 @@ func main() {
 	// Display final results
 	logger.Info("=== Final Summary ===")
 	fmt.Printf("\n📊 Final Summary:\n")
-	fmt.Printf("   Total events: %d\n", eventCount)
+	fmt.Printf("   Total events: %d\n", state.EventCount)
 
-	if streamError != nil {
+	if state.StreamError != nil {
 		logger.Fatal("streaming failed",
-			zap.Error(streamError),
-			zap.Int("events_received", eventCount))
+			zap.Error(state.StreamError),
+			zap.Int("events_received", state.EventCount))
 		fmt.Printf("   Status: ❌ Failed\n")
-		fmt.Printf("   Error: %v\n", streamError)
+		fmt.Printf("   Error: %v\n", state.StreamError)
 	} else {
 		fmt.Printf("   Status: ✅ Success\n")
 		fmt.Printf("   Task handling: %s\n", func() string {
-			if taskPaused {
+			if state.TaskPaused {
 				return "⏸️  Paused and handled"
 			}
 			return "🏃 Completed without pause"
 		}())
 	}
 
-	if eventCount == 0 {
+	if state.EventCount == 0 {
 		fmt.Printf("\n⚠️  No streaming events received. This could indicate:\n")
 		fmt.Printf("   - The server doesn't support streaming\n")
 		fmt.Printf("   - The server is not configured for streaming responses\n")
@@ -290,63 +224,159 @@ func main() {
 	fmt.Printf("\n🎉 Paused task streaming example completed!\n")
 }
 
-func handleStatusUpdate(event map[string]any, currentTaskID *string, taskPaused *bool, pauseMessage *string, eventCount int, logger *zap.Logger) {
-	if taskId, exists := event["taskId"]; exists {
-		*currentTaskID = fmt.Sprintf("%v", taskId)
-
-		if status, exists := event["status"]; exists {
-			if statusMap, ok := status.(map[string]any); ok {
-				if state, exists := statusMap["state"]; exists {
-					stateStr := fmt.Sprintf("%v", state)
-
-					logger.Info("received task status update",
-						zap.Int("event_number", eventCount),
-						zap.String("task_id", *currentTaskID),
-						zap.String("state", stateStr))
-
-					switch stateStr {
-					case "input-required":
-						*taskPaused = true
-						fmt.Printf("⏸️  [Event %d] Task paused - input required (Task: %s)\n", eventCount, *currentTaskID)
-
-						// Extract pause message if available
-						if message, exists := statusMap["message"]; exists {
-							if msgMap, ok := message.(map[string]any); ok {
-								*pauseMessage = extractTextFromMessageMap(msgMap)
-							}
-						}
-
-					case "working":
-						fmt.Printf("⚡ [Event %d] Task working (Task: %s)\n", eventCount, *currentTaskID)
-
-						// Show streaming content
-						if message, exists := statusMap["message"]; exists {
-							if msgMap, ok := message.(map[string]any); ok {
-								if parts, exists := msgMap["parts"]; exists {
-									if partsArray, ok := parts.([]any); ok {
-										for _, part := range partsArray {
-											if partMap, ok := part.(map[string]any); ok {
-												if text, exists := partMap["text"]; exists {
-													fmt.Printf("💬 %v", text)
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-
-					case "completed":
-						fmt.Printf("✅ [Event %d] Task completed (Task: %s)\n", eventCount, *currentTaskID)
-
-					case "failed":
-						fmt.Printf("❌ [Event %d] Task failed (Task: %s)\n", eventCount, *currentTaskID)
-
-					default:
-						fmt.Printf("🔄 [Event %d] Task state: %s (Task: %s)\n", eventCount, stateStr, *currentTaskID)
-					}
-				}
+func processStreamEvents(ctx context.Context, eventChan <-chan adk.JSONRPCSuccessResponse, state *StreamState, logger *zap.Logger) {
+	for {
+		select {
+		case event, ok := <-eventChan:
+			if !ok {
+				logger.Info("=== Stream Channel Closed ===")
+				fmt.Printf("\n📡 Stream completed.\n")
+				return
 			}
+
+			state.EventCount++
+			processSingleEvent(event, state, logger)
+
+		case <-ctx.Done():
+			logger.Info("stream processing cancelled due to context timeout")
+			fmt.Printf("\n⏰ Stream processing timed out\n")
+			return
+		}
+	}
+}
+
+func processSingleEvent(event adk.JSONRPCSuccessResponse, state *StreamState, logger *zap.Logger) {
+	// A2A streaming responses come as JSONRPCSuccessResponse with Result field
+	if event.Result == nil {
+		logger.Info("received empty result in streaming response",
+			zap.Int("event_number", state.EventCount))
+		return
+	}
+
+	// Handle the result based on its type
+	switch v := event.Result.(type) {
+	case string:
+		logger.Info("received streaming text",
+			zap.Int("event_number", state.EventCount),
+			zap.String("content", v))
+		fmt.Printf("💬 Text: %s\n", v)
+
+	case map[string]any:
+		processObjectEvent(v, state, logger)
+
+	default:
+		logger.Info("received generic event",
+			zap.Int("event_number", state.EventCount),
+			zap.Any("event", v))
+		fmt.Printf("🔗 Generic: %v\n", v)
+	}
+}
+
+func processObjectEvent(event map[string]any, state *StreamState, logger *zap.Logger) {
+	eventType, hasType := event["kind"]
+	if !hasType {
+		logger.Info("received untyped object event",
+			zap.Int("event_number", state.EventCount),
+			zap.Any("event", event))
+		fmt.Printf("📦 Object: %v\n", event)
+		return
+	}
+
+	if eventType != "status-update" {
+		logger.Info("received unknown event type",
+			zap.Int("event_number", state.EventCount),
+			zap.String("type", fmt.Sprintf("%v", eventType)),
+			zap.Any("event", event))
+		fmt.Printf("❓ Unknown Event: %v\n", event)
+		return
+	}
+
+	handleStatusUpdate(event, state, logger)
+}
+
+func handleStatusUpdate(event map[string]any, state *StreamState, logger *zap.Logger) {
+	taskId, hasTaskId := event["taskId"]
+	if !hasTaskId {
+		return
+	}
+
+	state.CurrentTaskID = fmt.Sprintf("%v", taskId)
+
+	status, hasStatus := event["status"]
+	if !hasStatus {
+		return
+	}
+
+	statusMap, ok := status.(map[string]any)
+	if !ok {
+		return
+	}
+
+	taskState, hasState := statusMap["state"]
+	if !hasState {
+		return
+	}
+
+	stateStr := fmt.Sprintf("%v", taskState)
+	logger.Info("received task status update",
+		zap.Int("event_number", state.EventCount),
+		zap.String("task_id", state.CurrentTaskID),
+		zap.String("state", stateStr))
+
+	switch stateStr {
+	case "input-required":
+		state.TaskPaused = true
+		fmt.Printf("⏸️  [Event %d] Task paused - input required (Task: %s)\n", state.EventCount, state.CurrentTaskID)
+
+		if message, exists := statusMap["message"]; exists {
+			if msgMap, ok := message.(map[string]any); ok {
+				state.PauseMessage = extractTextFromMessageMap(msgMap)
+			}
+		}
+
+	case "working":
+		fmt.Printf("⚡ [Event %d] Task working (Task: %s)\n", state.EventCount, state.CurrentTaskID)
+		printStreamingContent(statusMap)
+
+	case "completed":
+		fmt.Printf("✅ [Event %d] Task completed (Task: %s)\n", state.EventCount, state.CurrentTaskID)
+
+	case "failed":
+		fmt.Printf("❌ [Event %d] Task failed (Task: %s)\n", state.EventCount, state.CurrentTaskID)
+
+	default:
+		fmt.Printf("🔄 [Event %d] Task state: %s (Task: %s)\n", state.EventCount, stateStr, state.CurrentTaskID)
+	}
+}
+
+func printStreamingContent(statusMap map[string]any) {
+	message, hasMessage := statusMap["message"]
+	if !hasMessage {
+		return
+	}
+
+	msgMap, ok := message.(map[string]any)
+	if !ok {
+		return
+	}
+
+	parts, hasParts := msgMap["parts"]
+	if !hasParts {
+		return
+	}
+
+	partsArray, ok := parts.([]any)
+	if !ok {
+		return
+	}
+
+	for _, part := range partsArray {
+		partMap, ok := part.(map[string]any)
+		if !ok {
+			continue
+		}
+		if text, hasText := partMap["text"]; hasText {
+			fmt.Printf("💬 %v", text)
 		}
 	}
 }
@@ -381,63 +411,59 @@ func resumeTaskWithStreaming(ctx context.Context, a2aClient client.A2AClient, ta
 	resumeCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Create channel for resume streaming events
-	eventChan := make(chan any, 100)
-
-	// Process streaming events for resume
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case event, ok := <-eventChan:
-				if !ok {
-					return
-				}
-
-				switch v := event.(type) {
-				case map[string]any:
-					if eventType, exists := v["kind"]; exists && eventType == "status-update" {
-						if status, exists := v["status"]; exists {
-							if statusMap, ok := status.(map[string]any); ok {
-								if message, exists := statusMap["message"]; exists {
-									if msgMap, ok := message.(map[string]any); ok {
-										if parts, exists := msgMap["parts"]; exists {
-											if partsArray, ok := parts.([]any); ok {
-												for _, part := range partsArray {
-													if partMap, ok := part.(map[string]any); ok {
-														if text, exists := partMap["text"]; exists {
-															fmt.Printf("💬 %v", text)
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-
-			case <-resumeCtx.Done():
-				return
-			}
-		}
-	}()
-
 	// Send resume with streaming
-	err := a2aClient.SendTaskStreaming(resumeCtx, resumeParams, eventChan)
-	close(eventChan)
-	wg.Wait()
-
+	eventChan, err := a2aClient.SendTaskStreaming(resumeCtx, resumeParams)
 	if err != nil {
 		return fmt.Errorf("failed to resume with streaming: %w", err)
 	}
 
+	// Process streaming events for resume
+	processResumeEvents(resumeCtx, eventChan)
 	fmt.Printf("\n✅ Resume streaming completed\n")
 	return nil
+}
+
+func processResumeEvents(ctx context.Context, eventChan <-chan adk.JSONRPCSuccessResponse) {
+	for {
+		select {
+		case event, ok := <-eventChan:
+			if !ok {
+				return
+			}
+			processResumeEvent(event)
+
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func processResumeEvent(event adk.JSONRPCSuccessResponse) {
+	if event.Result == nil {
+		return
+	}
+
+	v, ok := event.Result.(map[string]any)
+	if !ok {
+		return
+	}
+
+	eventType, hasType := v["kind"]
+	if !hasType || eventType != "status-update" {
+		return
+	}
+
+	status, hasStatus := v["status"]
+	if !hasStatus {
+		return
+	}
+
+	statusMap, ok := status.(map[string]any)
+	if !ok {
+		return
+	}
+
+	printStreamingContent(statusMap)
 }
 
 func showConversationHistory(ctx context.Context, a2aClient client.A2AClient, taskID string, logger *zap.Logger) {
