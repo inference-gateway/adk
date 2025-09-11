@@ -54,7 +54,6 @@ func processEvent(event any, eventCount int, logger *zap.Logger) {
 	}
 }
 
-
 // handleMapEvent processes complex event objects
 func handleMapEvent(eventMap map[string]any, eventCount int, logger *zap.Logger) {
 	eventType, exists := eventMap["kind"]

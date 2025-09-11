@@ -23,7 +23,7 @@ type A2AClient interface {
 
 	// Task operations
 	SendTask(ctx context.Context, params types.MessageSendParams) (*types.JSONRPCSuccessResponse, error)
-	SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan any, error)
+	SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error)
 	GetTask(ctx context.Context, params types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error)
 	ListTasks(ctx context.Context, params types.TaskListParams) (*types.JSONRPCSuccessResponse, error)
 	CancelTask(ctx context.Context, params types.TaskIdParams) (*types.JSONRPCSuccessResponse, error)
@@ -159,8 +159,8 @@ func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (
 	return &resp, nil
 }
 
-// SendTaskStreaming sends a task and returns a channel for streaming events (primary interface following official A2A pattern)
-func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan any, error) {
+// SendTaskStreaming sends a task and returns a channel for streaming events
+func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("starting task streaming",
 		zap.String("method", "message/stream"),
 		zap.String("message_id", params.Message.MessageID),
@@ -218,7 +218,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 
 	c.logger.Debug("streaming response started successfully")
 
-	eventChan := make(chan any, 100)
+	eventChan := make(chan types.JSONRPCSuccessResponse, 100)
 
 	go func() {
 		defer func() {
@@ -269,7 +269,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 				c.logger.Debug("received streaming event", zap.Int("event_number", eventCount))
 
 				select {
-				case eventChan <- event.Result:
+				case eventChan <- event:
 				case <-ctx.Done():
 					c.logger.Debug("streaming context cancelled while sending event", zap.Int("events_received", eventCount))
 					return

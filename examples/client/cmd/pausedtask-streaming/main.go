@@ -173,7 +173,7 @@ func main() {
 			}
 		}
 
-		streamComplete:
+	streamComplete:
 		logger.Info("streaming task completed successfully")
 	}
 
@@ -412,7 +412,7 @@ func resumeTaskWithStreaming(ctx context.Context, a2aClient client.A2AClient, ta
 		}
 	}
 
-	resumeComplete:
+resumeComplete:
 	fmt.Printf("\n✅ Resume streaming completed\n")
 	return nil
 }

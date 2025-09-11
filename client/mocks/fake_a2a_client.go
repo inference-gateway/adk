@@ -125,18 +125,18 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
-	SendTaskStreamingStub        func(context.Context, types.MessageSendParams) (<-chan any, error)
+	SendTaskStreamingStub        func(context.Context, types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error)
 	sendTaskStreamingMutex       sync.RWMutex
 	sendTaskStreamingArgsForCall []struct {
 		arg1 context.Context
 		arg2 types.MessageSendParams
 	}
 	sendTaskStreamingReturns struct {
-		result1 <-chan any
+		result1 <-chan types.JSONRPCSuccessResponse
 		result2 error
 	}
 	sendTaskStreamingReturnsOnCall map[int]struct {
-		result1 <-chan any
+		result1 <-chan types.JSONRPCSuccessResponse
 		result2 error
 	}
 	SetHTTPClientStub        func(*http.Client)
@@ -705,7 +705,7 @@ func (fake *FakeA2AClient) SendTaskReturnsOnCall(i int, result1 *types.JSONRPCSu
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) SendTaskStreaming(arg1 context.Context, arg2 types.MessageSendParams) (<-chan any, error) {
+func (fake *FakeA2AClient) SendTaskStreaming(arg1 context.Context, arg2 types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error) {
 	fake.sendTaskStreamingMutex.Lock()
 	ret, specificReturn := fake.sendTaskStreamingReturnsOnCall[len(fake.sendTaskStreamingArgsForCall)]
 	fake.sendTaskStreamingArgsForCall = append(fake.sendTaskStreamingArgsForCall, struct {
@@ -731,7 +731,7 @@ func (fake *FakeA2AClient) SendTaskStreamingCallCount() int {
 	return len(fake.sendTaskStreamingArgsForCall)
 }
 
-func (fake *FakeA2AClient) SendTaskStreamingCalls(stub func(context.Context, types.MessageSendParams) (<-chan any, error)) {
+func (fake *FakeA2AClient) SendTaskStreamingCalls(stub func(context.Context, types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error)) {
 	fake.sendTaskStreamingMutex.Lock()
 	defer fake.sendTaskStreamingMutex.Unlock()
 	fake.SendTaskStreamingStub = stub
@@ -744,28 +744,28 @@ func (fake *FakeA2AClient) SendTaskStreamingArgsForCall(i int) (context.Context,
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeA2AClient) SendTaskStreamingReturns(result1 <-chan any, result2 error) {
+func (fake *FakeA2AClient) SendTaskStreamingReturns(result1 <-chan types.JSONRPCSuccessResponse, result2 error) {
 	fake.sendTaskStreamingMutex.Lock()
 	defer fake.sendTaskStreamingMutex.Unlock()
 	fake.SendTaskStreamingStub = nil
 	fake.sendTaskStreamingReturns = struct {
-		result1 <-chan any
+		result1 <-chan types.JSONRPCSuccessResponse
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) SendTaskStreamingReturnsOnCall(i int, result1 <-chan any, result2 error) {
+func (fake *FakeA2AClient) SendTaskStreamingReturnsOnCall(i int, result1 <-chan types.JSONRPCSuccessResponse, result2 error) {
 	fake.sendTaskStreamingMutex.Lock()
 	defer fake.sendTaskStreamingMutex.Unlock()
 	fake.SendTaskStreamingStub = nil
 	if fake.sendTaskStreamingReturnsOnCall == nil {
 		fake.sendTaskStreamingReturnsOnCall = make(map[int]struct {
-			result1 <-chan any
+			result1 <-chan types.JSONRPCSuccessResponse
 			result2 error
 		})
 	}
 	fake.sendTaskStreamingReturnsOnCall[i] = struct {
-		result1 <-chan any
+		result1 <-chan types.JSONRPCSuccessResponse
 		result2 error
 	}{result1, result2}
 }
