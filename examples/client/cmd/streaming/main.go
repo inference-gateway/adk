@@ -19,6 +19,90 @@ type Config struct {
 	StreamingTimeout time.Duration `env:"STREAMING_TIMEOUT,default=60s"`
 }
 
+// processStreamingEvents handles the streaming event loop and returns the total event count
+func processStreamingEvents(ctx context.Context, eventChan <-chan any, logger *zap.Logger) int {
+	logger.Info("=== Starting Stream Processing ===")
+
+	var eventCount int
+
+	// Process streaming events from the returned channel
+	for {
+		select {
+		case event, ok := <-eventChan:
+			if !ok {
+				logger.Info("=== Stream Channel Closed ===")
+				return eventCount
+			}
+
+			eventCount++
+
+			// Handle different types of streaming events
+			switch v := event.(type) {
+			case string:
+				// Simple string events
+				logger.Info("received streaming text",
+					zap.Int("event_number", eventCount),
+					zap.String("content", v))
+				fmt.Printf("[Event %d] Text: %s\n", eventCount, v)
+
+			case map[string]any:
+				// Complex event objects (e.g., task updates, messages)
+				if eventType, exists := v["kind"]; exists {
+					switch eventType {
+					case "message":
+						if parts, ok := v["parts"].([]any); ok {
+							for _, part := range parts {
+								if partMap, ok := part.(map[string]any); ok {
+									if text, exists := partMap["text"]; exists {
+										logger.Info("received streaming message part",
+											zap.Int("event_number", eventCount),
+											zap.String("text", fmt.Sprintf("%v", text)))
+										fmt.Printf("[Event %d] Message: %v\n", eventCount, text)
+									}
+								}
+							}
+						}
+
+					case "status-update":
+						if taskId, exists := v["taskId"]; exists {
+							if status, exists := v["status"]; exists {
+								logger.Info("received task status update",
+									zap.Int("event_number", eventCount),
+									zap.String("task_id", fmt.Sprintf("%v", taskId)),
+									zap.Any("status", status))
+								fmt.Printf("[Event %d] Status Update - Task: %v, Status: %v\n", eventCount, taskId, status)
+							}
+						}
+
+					default:
+						logger.Info("received unknown event type",
+							zap.Int("event_number", eventCount),
+							zap.String("type", fmt.Sprintf("%v", eventType)),
+							zap.Any("event", v))
+						fmt.Printf("[Event %d] Unknown Event Type: %v\n", eventCount, v)
+					}
+				} else {
+					logger.Info("received untyped object event",
+						zap.Int("event_number", eventCount),
+						zap.Any("event", v))
+					fmt.Printf("[Event %d] Object: %v\n", eventCount, v)
+				}
+
+			default:
+				// Handle any other type of event
+				logger.Info("received generic event",
+					zap.Int("event_number", eventCount),
+					zap.Any("event", v))
+				fmt.Printf("[Event %d] Generic: %v\n", eventCount, v)
+			}
+
+		case <-ctx.Done():
+			logger.Info("stream processing cancelled due to context timeout")
+			return eventCount
+		}
+	}
+}
+
 func main() {
 	// Load configuration from environment variables
 	ctx := context.Background()
@@ -101,87 +185,7 @@ func main() {
 		logger.Error("streaming task failed", zap.Error(err))
 	} else {
 		logger.Info("streaming task started successfully")
-
-		logger.Info("=== Starting Stream Processing ===")
-
-		// Process streaming events from the returned channel
-		for {
-			select {
-			case event, ok := <-eventChan:
-				if !ok {
-					logger.Info("=== Stream Channel Closed ===")
-					goto streamComplete
-				}
-
-				eventCount++
-
-				// Handle different types of streaming events
-				switch v := event.(type) {
-				case string:
-					// Simple string events
-					logger.Info("received streaming text",
-						zap.Int("event_number", eventCount),
-						zap.String("content", v))
-					fmt.Printf("[Event %d] Text: %s\n", eventCount, v)
-
-				case map[string]any:
-					// Complex event objects (e.g., task updates, messages)
-					if eventType, exists := v["kind"]; exists {
-						switch eventType {
-						case "message":
-							if parts, ok := v["parts"].([]any); ok {
-								for _, part := range parts {
-									if partMap, ok := part.(map[string]any); ok {
-										if text, exists := partMap["text"]; exists {
-											logger.Info("received streaming message part",
-												zap.Int("event_number", eventCount),
-												zap.String("text", fmt.Sprintf("%v", text)))
-											fmt.Printf("[Event %d] Message: %v\n", eventCount, text)
-										}
-									}
-								}
-							}
-
-						case "status-update":
-							if taskId, exists := v["taskId"]; exists {
-								if status, exists := v["status"]; exists {
-									logger.Info("received task status update",
-										zap.Int("event_number", eventCount),
-										zap.String("task_id", fmt.Sprintf("%v", taskId)),
-										zap.Any("status", status))
-									fmt.Printf("[Event %d] Status Update - Task: %v, Status: %v\n", eventCount, taskId, status)
-								}
-							}
-
-						default:
-							logger.Info("received unknown event type",
-								zap.Int("event_number", eventCount),
-								zap.String("type", fmt.Sprintf("%v", eventType)),
-								zap.Any("event", v))
-							fmt.Printf("[Event %d] Unknown Event Type: %v\n", eventCount, v)
-						}
-					} else {
-						logger.Info("received untyped object event",
-							zap.Int("event_number", eventCount),
-							zap.Any("event", v))
-						fmt.Printf("[Event %d] Object: %v\n", eventCount, v)
-					}
-
-				default:
-					// Handle any other type of event
-					logger.Info("received generic event",
-						zap.Int("event_number", eventCount),
-						zap.Any("event", v))
-					fmt.Printf("[Event %d] Generic: %v\n", eventCount, v)
-				}
-
-			case <-ctx.Done():
-				logger.Info("stream processing cancelled due to context timeout")
-				goto streamComplete
-			}
-		}
-
-		streamComplete:
+		eventCount = processStreamingEvents(ctx, eventChan, logger)
 		logger.Info("streaming task completed successfully")
 	}
 
