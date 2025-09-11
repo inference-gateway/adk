@@ -47,8 +47,6 @@ func processStreamingEvents(ctx context.Context, eventChan <-chan any, logger *z
 // processEvent handles individual streaming events with reduced nesting
 func processEvent(event any, eventCount int, logger *zap.Logger) {
 	switch v := event.(type) {
-	case string:
-		handleStringEvent(v, eventCount, logger)
 	case map[string]any:
 		handleMapEvent(v, eventCount, logger)
 	default:
@@ -56,13 +54,6 @@ func processEvent(event any, eventCount int, logger *zap.Logger) {
 	}
 }
 
-// handleStringEvent processes simple string events
-func handleStringEvent(text string, eventCount int, logger *zap.Logger) {
-	logger.Info("received streaming text",
-		zap.Int("event_number", eventCount),
-		zap.String("content", text))
-	fmt.Printf("[Event %d] Text: %s\n", eventCount, text)
-}
 
 // handleMapEvent processes complex event objects
 func handleMapEvent(eventMap map[string]any, eventCount int, logger *zap.Logger) {
