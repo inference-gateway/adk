@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/inference-gateway/adk/client"
@@ -19,61 +18,8 @@ type Config struct {
 	StreamingTimeout time.Duration `env:"STREAMING_TIMEOUT,default=60s"`
 }
 
-// processStreamingEvents handles the streaming event loop and returns the total event count
-func processStreamingEvents(ctx context.Context, eventChan <-chan any, logger *zap.Logger) int {
-	logger.Info("=== Starting Stream Processing ===")
-
-	var eventCount int
-
-	// Process streaming events from the returned channel
-	for {
-		select {
-		case event, ok := <-eventChan:
-			if !ok {
-				logger.Info("=== Stream Channel Closed ===")
-				return eventCount
-			}
-
-			eventCount++
-			processEvent(event, eventCount, logger)
-
-		case <-ctx.Done():
-			logger.Info("stream processing cancelled due to context timeout")
-			return eventCount
-		}
-	}
-}
-
-// processEvent handles individual streaming events with reduced nesting
-func processEvent(event any, eventCount int, logger *zap.Logger) {
-	switch v := event.(type) {
-	case map[string]any:
-		handleMapEvent(v, eventCount, logger)
-	default:
-		handleGenericEvent(v, eventCount, logger)
-	}
-}
-
-// handleMapEvent processes complex event objects
-func handleMapEvent(eventMap map[string]any, eventCount int, logger *zap.Logger) {
-	eventType, exists := eventMap["kind"]
-	if !exists {
-		handleUntypedObjectEvent(eventMap, eventCount, logger)
-		return
-	}
-
-	switch eventType {
-	case "message":
-		handleMessageEvent(eventMap, eventCount, logger)
-	case "status-update":
-		handleStatusUpdateEvent(eventMap, eventCount, logger)
-	default:
-		handleUnknownEventType(eventMap, eventType, eventCount, logger)
-	}
-}
-
 // handleMessageEvent processes message events with early returns for validation
-func handleMessageEvent(eventMap map[string]any, eventCount int, logger *zap.Logger) {
+func handleMessageEvent(eventMap map[string]any) {
 	parts, ok := eventMap["parts"].([]any)
 	if !ok {
 		return
@@ -90,15 +36,12 @@ func handleMessageEvent(eventMap map[string]any, eventCount int, logger *zap.Log
 			continue
 		}
 
-		logger.Info("received streaming message part",
-			zap.Int("event_number", eventCount),
-			zap.String("text", fmt.Sprintf("%v", text)))
-		fmt.Printf("[Event %d] Message: %v\n", eventCount, text)
+		fmt.Printf("💬 %v", text)
 	}
 }
 
 // handleStatusUpdateEvent processes status update events with guard clauses
-func handleStatusUpdateEvent(eventMap map[string]any, eventCount int, logger *zap.Logger) {
+func handleStatusUpdateEvent(eventMap map[string]any) {
 	taskId, hasTaskId := eventMap["taskId"]
 	if !hasTaskId {
 		return
@@ -109,36 +52,7 @@ func handleStatusUpdateEvent(eventMap map[string]any, eventCount int, logger *za
 		return
 	}
 
-	logger.Info("received task status update",
-		zap.Int("event_number", eventCount),
-		zap.String("task_id", fmt.Sprintf("%v", taskId)),
-		zap.Any("status", status))
-	fmt.Printf("[Event %d] Status Update - Task: %v, Status: %v\n", eventCount, taskId, status)
-}
-
-// handleUnknownEventType processes unknown event types
-func handleUnknownEventType(eventMap map[string]any, eventType any, eventCount int, logger *zap.Logger) {
-	logger.Info("received unknown event type",
-		zap.Int("event_number", eventCount),
-		zap.String("type", fmt.Sprintf("%v", eventType)),
-		zap.Any("event", eventMap))
-	fmt.Printf("[Event %d] Unknown Event Type: %v\n", eventCount, eventMap)
-}
-
-// handleUntypedObjectEvent processes object events without a kind field
-func handleUntypedObjectEvent(eventMap map[string]any, eventCount int, logger *zap.Logger) {
-	logger.Info("received untyped object event",
-		zap.Int("event_number", eventCount),
-		zap.Any("event", eventMap))
-	fmt.Printf("[Event %d] Object: %v\n", eventCount, eventMap)
-}
-
-// handleGenericEvent processes any other type of event
-func handleGenericEvent(event any, eventCount int, logger *zap.Logger) {
-	logger.Info("received generic event",
-		zap.Int("event_number", eventCount),
-		zap.Any("event", event))
-	fmt.Printf("[Event %d] Generic: %v\n", eventCount, event)
+	fmt.Printf("📊 Status Update - Task: %v, Status: %v\n", taskId, status)
 }
 
 func main() {
@@ -155,8 +69,84 @@ func main() {
 		logger.Fatal("agent validation failed", zap.Error(err))
 	}
 
-	// Execution phase - run streaming task
-	eventCount := executeStreamingTask(ctx, a2aClient, config, logger)
+	// Create timeout context for streaming
+	streamCtx, cancel := context.WithTimeout(ctx, config.StreamingTimeout)
+	defer cancel()
+
+	// Prepare message parameters
+	msgParams := createMessageParams()
+	logger.Info("starting streaming task", zap.String("message_id", msgParams.Message.MessageID))
+
+	// Execute streaming request with early return on error
+	logger.Info("initiating streaming request")
+	eventChan, err := a2aClient.SendTaskStreaming(streamCtx, msgParams)
+	if err != nil {
+		logger.Fatal("streaming task failed", zap.Error(err))
+	}
+
+	logger.Info("streaming task started successfully")
+	logger.Info("=== Starting Stream Processing ===")
+
+	var eventCount int
+	streamingComplete := false
+
+	// Process streaming events from the returned channel
+	for !streamingComplete {
+		select {
+		case event, ok := <-eventChan:
+			if !ok {
+				logger.Info("=== Stream Channel Closed ===")
+				streamingComplete = true
+				break
+			}
+
+			eventCount++
+
+			// The event.Result contains the actual streaming data
+			if event.Result == nil {
+				continue
+			}
+
+			// Process based on the result type
+			eventData, ok := event.Result.(map[string]any)
+			if !ok {
+				logger.Info("received non-map event",
+					zap.Int("event_number", eventCount),
+					zap.Any("result", event.Result))
+				fmt.Printf("[Event %d] Data: %v\n", eventCount, event.Result)
+				continue
+			}
+
+			// Handle the event based on its kind
+			eventType, exists := eventData["kind"]
+			if !exists {
+				logger.Info("received object event without kind",
+					zap.Int("event_number", eventCount),
+					zap.Any("event", eventData))
+				fmt.Printf("[Event %d] Object: %v\n", eventCount, eventData)
+				continue
+			}
+
+			switch eventType {
+			case "message":
+				handleMessageEvent(eventData)
+			case "status-update":
+				handleStatusUpdateEvent(eventData)
+			default:
+				logger.Info("received unknown event type",
+					zap.Int("event_number", eventCount),
+					zap.String("type", fmt.Sprintf("%v", eventType)),
+					zap.Any("event", eventData))
+				fmt.Printf("[Event %d] Unknown Event Type: %v\n", eventCount, eventData)
+			}
+
+		case <-streamCtx.Done():
+			logger.Info("stream processing cancelled due to context timeout")
+			streamingComplete = true
+		}
+	}
+
+	logger.Info("streaming task completed successfully")
 
 	// Results phase - display summary
 	displayResults(eventCount, logger)
@@ -182,7 +172,7 @@ func setupApplication(ctx context.Context) (Config, *zap.Logger) {
 }
 
 // validateAgentCapabilities checks agent streaming support with early returns
-func validateAgentCapabilities(ctx context.Context, client *client.A2AClient, logger *zap.Logger) error {
+func validateAgentCapabilities(ctx context.Context, client client.A2AClient, logger *zap.Logger) error {
 	logger.Info("checking agent capabilities")
 
 	agentCard, err := client.GetAgentCard(ctx)
@@ -204,30 +194,6 @@ func validateAgentCapabilities(ctx context.Context, client *client.A2AClient, lo
 		zap.Bool("streaming_supported", *agentCard.Capabilities.Streaming))
 
 	return nil
-}
-
-// executeStreamingTask runs the streaming operation and returns event count
-func executeStreamingTask(ctx context.Context, a2aClient *client.A2AClient, config Config, logger *zap.Logger) int {
-	// Create timeout context for streaming
-	streamCtx, cancel := context.WithTimeout(ctx, config.StreamingTimeout)
-	defer cancel()
-
-	// Prepare message parameters
-	msgParams := createMessageParams()
-	logger.Info("starting streaming task", zap.String("message_id", msgParams.Message.MessageID))
-
-	// Execute streaming request with early return on error
-	logger.Info("initiating streaming request")
-	eventChan, err := a2aClient.SendTaskStreaming(streamCtx, msgParams)
-	if err != nil {
-		logger.Fatal("streaming task failed", zap.Error(err))
-	}
-
-	logger.Info("streaming task started successfully")
-	eventCount := processStreamingEvents(streamCtx, eventChan, logger)
-	logger.Info("streaming task completed successfully")
-
-	return eventCount
 }
 
 // createMessageParams builds the message parameters for streaming
