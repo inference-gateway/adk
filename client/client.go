@@ -218,10 +218,8 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 
 	c.logger.Debug("streaming response started successfully")
 
-	// Create a buffered channel for events
 	eventChan := make(chan any, 100)
 
-	// Start goroutine to handle streaming
 	go func() {
 		defer func() {
 			if closeErr := httpResp.Body.Close(); closeErr != nil {
