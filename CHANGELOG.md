@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0](https://github.com/inference-gateway/adk/compare/v0.9.6...v0.10.0) (2025-09-11)
+
+### ✨ Features
+
+* **a2a:** Add artifact support for both server and client ([#60](https://github.com/inference-gateway/adk/issues/60)) ([efe7b2a](https://github.com/inference-gateway/adk/commit/efe7b2a545f882a88cbfb0c47aadd4f3fa81b440)), closes [#59](https://github.com/inference-gateway/adk/issues/59)
+
+### ♻️ Improvements
+
+* **client:** Refactor SendTaskStreaming to be non-blocking ([#62](https://github.com/inference-gateway/adk/issues/62)) ([1f65d2a](https://github.com/inference-gateway/adk/commit/1f65d2a7c5af583b20f97ee67d4875d5266f70c7)), closes [#61](https://github.com/inference-gateway/adk/issues/61)
+
 ## [0.9.6](https://github.com/inference-gateway/adk/compare/v0.9.5...v0.9.6) (2025-09-08)
 
 ### 🐛 Bug Fixes
