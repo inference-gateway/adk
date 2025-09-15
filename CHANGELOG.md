@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.1](https://github.com/inference-gateway/adk/compare/v0.10.0...v0.10.1) (2025-09-15)
+
+### 🐛 Bug Fixes
+
+* **agent:** Fix NewAgentBuilder.WithConfig to preserve user configuration values ([#64](https://github.com/inference-gateway/adk/issues/64)) ([5b0a077](https://github.com/inference-gateway/adk/commit/5b0a0775c1a1b22cfd4c986ef4ea38eb19b37165)), closes [#63](https://github.com/inference-gateway/adk/issues/63)
+
 ## [0.10.0](https://github.com/inference-gateway/adk/compare/v0.9.6...v0.10.0) (2025-09-11)
 
 ### ✨ Features
