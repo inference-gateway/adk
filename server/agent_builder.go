@@ -94,8 +94,6 @@ func NewAgentBuilder(logger *zap.Logger) AgentBuilder {
 // WithConfig sets the agent configuration
 func (b *AgentBuilderImpl) WithConfig(userConfig *config.AgentConfig) AgentBuilder {
 	if userConfig != nil {
-		// Directly use the user's config without processing through defaults
-		// since the user has already provided their desired configuration values
 		b.config = userConfig
 	}
 	return b

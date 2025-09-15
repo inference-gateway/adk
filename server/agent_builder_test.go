@@ -569,7 +569,6 @@ func TestAgentBuilder_GetConfig(t *testing.T) {
 	}
 }
 
-// TestAgentBuilder_WithConfigPreservesUserValues tests the fix for issue #63
 func TestAgentBuilder_WithConfigPreservesUserValues(t *testing.T) {
 	tests := []struct {
 		name                        string
@@ -578,18 +577,18 @@ func TestAgentBuilder_WithConfigPreservesUserValues(t *testing.T) {
 	}{
 		{
 			name:                        "non_zero_values",
-			maxChatCompletionIterations: 20, // User wants 20, default is 10
+			maxChatCompletionIterations: 20,
 			systemPrompt:                "Custom prompt",
 		},
 		{
 			name:                        "zero_value_for_max_iterations",
-			maxChatCompletionIterations: 0, // User explicitly wants 0, should not be overridden
+			maxChatCompletionIterations: 0,
 			systemPrompt:                "Zero iterations prompt",
 		},
 		{
 			name:                        "empty_system_prompt",
 			maxChatCompletionIterations: 5,
-			systemPrompt:                "", // User explicitly wants empty prompt
+			systemPrompt:                "",
 		},
 	}
 
