@@ -94,14 +94,7 @@ func NewAgentBuilder(logger *zap.Logger) AgentBuilder {
 // WithConfig sets the agent configuration
 func (b *AgentBuilderImpl) WithConfig(userConfig *config.AgentConfig) AgentBuilder {
 	if userConfig != nil {
-		tempConfig := &config.Config{AgentConfig: *userConfig}
-
-		mergedConfig, err := config.NewWithDefaults(context.Background(), tempConfig)
-		if err == nil && mergedConfig != nil {
-			b.config = &mergedConfig.AgentConfig
-		} else {
-			b.config = userConfig
-		}
+		b.config = userConfig
 	}
 	return b
 }

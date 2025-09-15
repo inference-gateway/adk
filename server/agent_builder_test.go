@@ -568,3 +568,46 @@ func TestAgentBuilder_GetConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestAgentBuilder_WithConfigPreservesUserValues(t *testing.T) {
+	tests := []struct {
+		name                        string
+		maxChatCompletionIterations int
+		systemPrompt                string
+	}{
+		{
+			name:                        "non_zero_values",
+			maxChatCompletionIterations: 20,
+			systemPrompt:                "Custom prompt",
+		},
+		{
+			name:                        "zero_value_for_max_iterations",
+			maxChatCompletionIterations: 0,
+			systemPrompt:                "Zero iterations prompt",
+		},
+		{
+			name:                        "empty_system_prompt",
+			maxChatCompletionIterations: 5,
+			systemPrompt:                "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := zap.NewNop()
+			
+			userConfig := &config.AgentConfig{
+				MaxChatCompletionIterations: tt.maxChatCompletionIterations,
+				SystemPrompt:                tt.systemPrompt,
+			}
+			
+			builder := server.NewAgentBuilder(logger).WithConfig(userConfig)
+			resultConfig := builder.GetConfig()
+			
+			assert.Equal(t, tt.maxChatCompletionIterations, resultConfig.MaxChatCompletionIterations, 
+				"WithConfig should preserve user's MaxChatCompletionIterations value")
+			assert.Equal(t, tt.systemPrompt, resultConfig.SystemPrompt,
+				"WithConfig should preserve user's SystemPrompt value")
+		})
+	}
+}
