@@ -327,7 +327,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			name:                        "nil context ID should generate new ID and use CreateTask",
 			contextID:                   nil,
 			existingHistory:             []types.Message{},
-			expectGetHistoryCall:        true,
+			expectGetHistoryCall:        false, // With optimization, no history call needed for nil context ID
 			expectCreateTaskCall:        true,
 			expectCreateTaskWithHistoryCall: false,
 			expectedHistoryCount:        0,
@@ -403,6 +403,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			// This approach focuses on testing the core business logic rather than HTTP handling
 
 			// Simulate the core logic that createTaskFromMessage would execute
+			originalContextID := tt.contextID  // Store original to determine if history lookup is needed
 			contextIDValue := ""
 			if tt.contextID != nil {
 				contextIDValue = *tt.contextID
@@ -410,11 +411,17 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 				contextIDValue = "generated-context-id"
 			}
 
-			// Simulate the history check and task creation logic
-			history := mockTaskManager.GetConversationHistory(contextIDValue)
-			if len(history) > 0 {
-				mockTaskManager.CreateTaskWithHistory(contextIDValue, types.TaskStateSubmitted, &testMessage, history)
+			// Simulate the optimized history check and task creation logic
+			if originalContextID != nil {
+				// Only check for conversation history if context was explicitly provided
+				history := mockTaskManager.GetConversationHistory(contextIDValue)
+				if len(history) > 0 {
+					mockTaskManager.CreateTaskWithHistory(contextIDValue, types.TaskStateSubmitted, &testMessage, history)
+				} else {
+					mockTaskManager.CreateTask(contextIDValue, types.TaskStateSubmitted, &testMessage)
+				}
 			} else {
+				// Use regular CreateTask for new conversations (newly generated context ID)
 				mockTaskManager.CreateTask(contextIDValue, types.TaskStateSubmitted, &testMessage)
 			}
 
@@ -422,6 +429,9 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			if tt.expectGetHistoryCall {
 				assert.GreaterOrEqual(t, mockTaskManager.GetConversationHistoryCallCount(), 1,
 					"GetConversationHistory should be called to check for existing history")
+			} else {
+				assert.Equal(t, 0, mockTaskManager.GetConversationHistoryCallCount(),
+					"GetConversationHistory should not be called when context ID is nil (optimization)")
 			}
 
 			if tt.expectCreateTaskCall {
