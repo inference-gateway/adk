@@ -44,6 +44,9 @@ type TaskManager interface {
 	// PollTaskStatus periodically checks the status of a task until it is completed or failed
 	PollTaskStatus(taskID string, interval time.Duration, timeout time.Duration) (*types.Task, error)
 
+	// HasConversationHistory checks if conversation history exists for a context ID
+	HasConversationHistory(contextID string) bool
+
 	// GetConversationHistory retrieves conversation history for a context ID
 	GetConversationHistory(contextID string) []types.Message
 
@@ -529,6 +532,35 @@ func (tm *DefaultTaskManager) PollTaskStatus(taskID string, interval time.Durati
 			return nil, fmt.Errorf("polling timed out for task %s", taskID)
 		}
 	}
+}
+
+// HasConversationHistory checks if conversation history exists for a context ID
+func (tm *DefaultTaskManager) HasConversationHistory(contextID string) bool {
+	tm.logger.Debug("checking for conversation history in task-based storage",
+		zap.String("context_id", contextID))
+
+	filter := TaskFilter{
+		ContextID: &contextID,
+		Limit:     1, // Only need to check if any tasks exist
+	}
+
+	// Check both active and completed tasks
+	existingTasks, err := tm.storage.ListTasksByContext(contextID, filter)
+	if err == nil && len(existingTasks) > 0 {
+		return len(existingTasks[0].History) > 0
+	}
+
+	// Fallback to checking all tasks
+	allTasks, err := tm.storage.ListTasks(filter)
+	if err == nil {
+		for _, task := range allTasks {
+			if task.ContextID == contextID && len(task.History) > 0 {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // GetConversationHistory retrieves conversation history for a context ID

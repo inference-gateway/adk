@@ -1082,3 +1082,97 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	assert.Equal(t, "pause-msg", retrievedTask.History[1].MessageID)
 	assert.Equal(t, "resume-msg", retrievedTask.History[2].MessageID)
 }
+
+func TestDefaultTaskManager_HasConversationHistory(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger)
+
+	t.Run("returns false for non-existent context", func(t *testing.T) {
+		hasHistory := taskManager.HasConversationHistory("non-existent-context")
+		assert.False(t, hasHistory)
+	})
+
+	t.Run("returns false for context with empty history", func(t *testing.T) {
+		contextID := "empty-context"
+		task := taskManager.CreateTask(contextID, types.TaskStateSubmitted, nil)
+		
+		// Clear the history to simulate empty history
+		task.History = []types.Message{}
+		err := taskManager.UpdateTask(task)
+		assert.NoError(t, err)
+
+		hasHistory := taskManager.HasConversationHistory(contextID)
+		assert.False(t, hasHistory)
+	})
+
+	t.Run("returns true for context with conversation history", func(t *testing.T) {
+		contextID := "history-context"
+		message := &types.Message{
+			Kind:      "message",
+			MessageID: "msg-1",
+			Role:      "user",
+			Parts: []types.Part{
+				map[string]any{
+					"kind": "text",
+					"text": "Test message",
+				},
+			},
+		}
+
+		task := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message)
+		assert.NotNil(t, task)
+		assert.Len(t, task.History, 1)
+
+		hasHistory := taskManager.HasConversationHistory(contextID)
+		assert.True(t, hasHistory)
+	})
+
+	t.Run("returns true for context with multiple messages in history", func(t *testing.T) {
+		contextID := "multi-history-context"
+		
+		// Create existing history
+		existingHistory := []types.Message{
+			{
+				Kind:      "message",
+				MessageID: "prev-msg-1",
+				Role:      "user",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Previous message 1",
+					},
+				},
+			},
+			{
+				Kind:      "message",
+				MessageID: "prev-msg-2",
+				Role:      "assistant",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Previous response 1",
+					},
+				},
+			},
+		}
+
+		newMessage := &types.Message{
+			Kind:      "message",
+			MessageID: "new-msg",
+			Role:      "user",
+			Parts: []types.Part{
+				map[string]any{
+					"kind": "text",
+					"text": "New message",
+				},
+			},
+		}
+
+		task := taskManager.CreateTaskWithHistory(contextID, types.TaskStateSubmitted, newMessage, existingHistory)
+		assert.NotNil(t, task)
+		assert.Len(t, task.History, 3) // 2 existing + 1 new
+
+		hasHistory := taskManager.HasConversationHistory(contextID)
+		assert.True(t, hasHistory)
+	})
+}

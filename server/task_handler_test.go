@@ -282,3 +282,122 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	mockAgent.RunWithStreamReturns(streamChan, nil)
 	return mockAgent
 }
+
+func TestDefaultA2AProtocolHandler_CreateTaskFromMessage_WithConversationHistory(t *testing.T) {
+	logger := zap.NewNop()
+	taskManager := server.NewDefaultTaskManager(logger)
+
+	t.Run("creates task with existing conversation history", func(t *testing.T) {
+		contextID := "test-context-with-history"
+		
+		// First, create a task to establish conversation history
+		firstMessage := &types.Message{
+			Kind:      "message",
+			MessageID: "msg-1",
+			Role:      "user",
+			Parts: []types.Part{
+				map[string]any{
+					"kind": "text",
+					"text": "Hello, this is the first message",
+				},
+			},
+		}
+		
+		firstTask := taskManager.CreateTask(contextID, types.TaskStateCompleted, firstMessage)
+		assert.NotNil(t, firstTask)
+		
+		// Add a response to the history
+		responseMessage := &types.Message{
+			Kind:      "message",
+			MessageID: "response-1",
+			Role:      "assistant",
+			Parts: []types.Part{
+				map[string]any{
+					"kind": "text",
+					"text": "Hello! How can I help you?",
+				},
+			},
+		}
+		
+		firstTask.History = append(firstTask.History, *responseMessage)
+		err := taskManager.UpdateTask(firstTask)
+		assert.NoError(t, err)
+		
+		// Verify conversation history exists
+		assert.True(t, taskManager.HasConversationHistory(contextID))
+		history := taskManager.GetConversationHistory(contextID)
+		assert.Len(t, history, 2)
+		
+		// Now create a new task with the same context ID
+		secondMessage := &types.Message{
+			Kind:      "message", 
+			MessageID: "msg-2",
+			Role:      "user",
+			ContextID: &contextID,
+			Parts: []types.Part{
+				map[string]any{
+					"kind": "text",
+					"text": "This is a follow-up message",
+				},
+			},
+		}
+		
+		// Simulate creating task from message - this should include conversation history
+		secondTask := taskManager.CreateTask(contextID, types.TaskStateSubmitted, secondMessage)
+		if taskManager.HasConversationHistory(contextID) {
+			existingHistory := taskManager.GetConversationHistory(contextID)
+			secondTask = taskManager.CreateTaskWithHistory(contextID, types.TaskStateSubmitted, secondMessage, existingHistory)
+		}
+		
+		// Verify the new task includes the conversation history
+		assert.NotNil(t, secondTask)
+		assert.Equal(t, contextID, secondTask.ContextID)
+		
+		// The task history should include:
+		// - Previous conversation history (2 messages)
+		// - Current message (1 message)
+		// Total: 3 messages
+		assert.Len(t, secondTask.History, 3)
+		
+		// Verify the messages are in the correct order
+		assert.Equal(t, "msg-1", secondTask.History[0].MessageID)
+		assert.Equal(t, "response-1", secondTask.History[1].MessageID)
+		assert.Equal(t, "msg-2", secondTask.History[2].MessageID)
+		
+		// Verify roles are preserved
+		assert.Equal(t, "user", secondTask.History[0].Role)
+		assert.Equal(t, "assistant", secondTask.History[1].Role)
+		assert.Equal(t, "user", secondTask.History[2].Role)
+	})
+	
+	t.Run("creates task without history for new context", func(t *testing.T) {
+		contextID := "new-context-no-history"
+		
+		// Verify no conversation history exists
+		assert.False(t, taskManager.HasConversationHistory(contextID))
+		
+		message := &types.Message{
+			Kind:      "message",
+			MessageID: "first-msg",
+			Role:      "user",
+			ContextID: &contextID,
+			Parts: []types.Part{
+				map[string]any{
+					"kind": "text",
+					"text": "This is the first message in a new context",
+				},
+			},
+		}
+		
+		// Create task - should not include any existing history
+		task := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message)
+		
+		assert.NotNil(t, task)
+		assert.Equal(t, contextID, task.ContextID)
+		
+		// The task history should only include the current message
+		assert.Len(t, task.History, 1)
+		assert.Equal(t, "first-msg", task.History[0].MessageID)
+		assert.Equal(t, "user", task.History[0].Role)
+	})
+}

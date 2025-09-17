@@ -43,6 +43,21 @@ type A2AProtocolHandler interface {
 	HandleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest)
 }
 
+// TaskContext provides comprehensive context for task processing including conversation history
+type TaskContext struct {
+	// CurrentTask is the task being processed
+	CurrentTask *types.Task
+	
+	// ConversationHistory contains the full conversation history for the context
+	ConversationHistory []types.Message
+	
+	// ContextID is the unique identifier for the conversation context
+	ContextID string
+	
+	// CurrentMessage is the message that triggered this task processing
+	CurrentMessage *types.Message
+}
+
 // TaskHandler defines how to handle task processing
 // This interface should be implemented by domain-specific task handlers
 type TaskHandler interface {
@@ -57,12 +72,40 @@ type TaskHandler interface {
 	GetAgent() OpenAICompatibleAgent
 }
 
+// TaskHandlerV2 defines enhanced task processing with conversation context
+// This interface provides conversation history to task handlers for informed decision-making
+type TaskHandlerV2 interface {
+	// HandleTaskWithContext processes a task with full conversation context
+	// This enables handlers to make informed decisions based on conversation history
+	HandleTaskWithContext(ctx context.Context, taskContext *TaskContext) (*types.Task, error)
+
+	// SetAgent sets the OpenAI-compatible agent for the task handler
+	SetAgent(agent OpenAICompatibleAgent)
+
+	// GetAgent returns the configured OpenAI-compatible agent
+	GetAgent() OpenAICompatibleAgent
+}
+
 // StreamableTaskHandler defines how to handle streaming task processing
 // This interface should be implemented by streaming task handlers that need to return real-time data
 type StreamableTaskHandler interface {
 	// HandleStreamingTask processes a task and returns a channel of streaming events
 	// The channel should be closed when streaming is complete
 	HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan StreamEvent, error)
+
+	// SetAgent sets the OpenAI-compatible agent for the task handler
+	SetAgent(agent OpenAICompatibleAgent)
+
+	// GetAgent returns the configured OpenAI-compatible agent
+	GetAgent() OpenAICompatibleAgent
+}
+
+// StreamableTaskHandlerV2 defines enhanced streaming task processing with conversation context
+// This interface provides conversation history to streaming task handlers for informed decision-making
+type StreamableTaskHandlerV2 interface {
+	// HandleStreamingTaskWithContext processes a task with full conversation context and returns streaming events
+	// This enables handlers to make informed decisions based on conversation history
+	HandleStreamingTaskWithContext(ctx context.Context, taskContext *TaskContext) (<-chan StreamEvent, error)
 
 	// SetAgent sets the OpenAI-compatible agent for the task handler
 	SetAgent(agent OpenAICompatibleAgent)
@@ -714,7 +757,19 @@ func (h *DefaultA2AProtocolHandler) createTaskFromMessage(ctx context.Context, p
 		contextID = &newContextID
 	}
 
-	task := h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+	// Check for existing conversation history and create task with history if it exists
+	var task *types.Task
+	if h.taskManager.HasConversationHistory(*contextID) {
+		existingHistory := h.taskManager.GetConversationHistory(*contextID)
+		h.logger.Info("creating task with existing conversation history",
+			zap.String("context_id", *contextID),
+			zap.Int("history_count", len(existingHistory)))
+		task = h.taskManager.CreateTaskWithHistory(*contextID, types.TaskStateSubmitted, &params.Message, existingHistory)
+	} else {
+		h.logger.Info("creating task without existing history",
+			zap.String("context_id", *contextID))
+		task = h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+	}
 
 	if task != nil {
 		h.logger.Info("task created for processing",

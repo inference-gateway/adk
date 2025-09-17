@@ -101,6 +101,17 @@ type FakeTaskManager struct {
 		result1 *types.TaskPushNotificationConfig
 		result2 error
 	}
+	HasConversationHistoryStub        func(string) bool
+	hasConversationHistoryMutex       sync.RWMutex
+	hasConversationHistoryArgsForCall []struct {
+		arg1 string
+	}
+	hasConversationHistoryReturns struct {
+		result1 bool
+	}
+	hasConversationHistoryReturnsOnCall map[int]struct {
+		result1 bool
+	}
 	IsTaskPausedStub        func(string) (bool, error)
 	isTaskPausedMutex       sync.RWMutex
 	isTaskPausedArgsForCall []struct {
@@ -711,6 +722,67 @@ func (fake *FakeTaskManager) GetTaskPushNotificationConfigReturnsOnCall(i int, r
 		result1 *types.TaskPushNotificationConfig
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *FakeTaskManager) HasConversationHistory(arg1 string) bool {
+	fake.hasConversationHistoryMutex.Lock()
+	ret, specificReturn := fake.hasConversationHistoryReturnsOnCall[len(fake.hasConversationHistoryArgsForCall)]
+	fake.hasConversationHistoryArgsForCall = append(fake.hasConversationHistoryArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.HasConversationHistoryStub
+	fakeReturns := fake.hasConversationHistoryReturns
+	fake.recordInvocation("HasConversationHistory", []interface{}{arg1})
+	fake.hasConversationHistoryMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeTaskManager) HasConversationHistoryCallCount() int {
+	fake.hasConversationHistoryMutex.RLock()
+	defer fake.hasConversationHistoryMutex.RUnlock()
+	return len(fake.hasConversationHistoryArgsForCall)
+}
+
+func (fake *FakeTaskManager) HasConversationHistoryCalls(stub func(string) bool) {
+	fake.hasConversationHistoryMutex.Lock()
+	defer fake.hasConversationHistoryMutex.Unlock()
+	fake.HasConversationHistoryStub = stub
+}
+
+func (fake *FakeTaskManager) HasConversationHistoryArgsForCall(i int) string {
+	fake.hasConversationHistoryMutex.RLock()
+	defer fake.hasConversationHistoryMutex.RUnlock()
+	argsForCall := fake.hasConversationHistoryArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeTaskManager) HasConversationHistoryReturns(result1 bool) {
+	fake.hasConversationHistoryMutex.Lock()
+	defer fake.hasConversationHistoryMutex.Unlock()
+	fake.HasConversationHistoryStub = nil
+	fake.hasConversationHistoryReturns = struct {
+		result1 bool
+	}{result1}
+}
+
+func (fake *FakeTaskManager) HasConversationHistoryReturnsOnCall(i int, result1 bool) {
+	fake.hasConversationHistoryMutex.Lock()
+	defer fake.hasConversationHistoryMutex.Unlock()
+	fake.HasConversationHistoryStub = nil
+	if fake.hasConversationHistoryReturnsOnCall == nil {
+		fake.hasConversationHistoryReturnsOnCall = make(map[int]struct {
+			result1 bool
+		})
+	}
+	fake.hasConversationHistoryReturnsOnCall[i] = struct {
+		result1 bool
+	}{result1}
 }
 
 func (fake *FakeTaskManager) IsTaskPaused(arg1 string) (bool, error) {
@@ -1457,6 +1529,8 @@ func (fake *FakeTaskManager) Invocations() map[string][][]interface{} {
 	defer fake.getTaskMutex.RUnlock()
 	fake.getTaskPushNotificationConfigMutex.RLock()
 	defer fake.getTaskPushNotificationConfigMutex.RUnlock()
+	fake.hasConversationHistoryMutex.RLock()
+	defer fake.hasConversationHistoryMutex.RUnlock()
 	fake.isTaskPausedMutex.RLock()
 	defer fake.isTaskPausedMutex.RUnlock()
 	fake.listTaskPushNotificationConfigsMutex.RLock()
