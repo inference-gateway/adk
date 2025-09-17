@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0](https://github.com/inference-gateway/adk/compare/v0.10.1...v0.11.0) (2025-09-17)
+
+### ✨ Features
+
+* **a2a:** Implement proper Context ID history handling ([#70](https://github.com/inference-gateway/adk/issues/70)) ([36490dc](https://github.com/inference-gateway/adk/commit/36490dc26403a183ee669115aebfc67333f9b18a)), closes [#69](https://github.com/inference-gateway/adk/issues/69)
+
+### 🔧 Miscellaneous
+
+* Delete claude Rreview workflow ([a4d38fb](https://github.com/inference-gateway/adk/commit/a4d38fb40a9bcaa650164c58cef5bef041d949a5))
+
 ## [0.10.1](https://github.com/inference-gateway/adk/compare/v0.10.0...v0.10.1) (2025-09-15)
 
 ### 🐛 Bug Fixes
