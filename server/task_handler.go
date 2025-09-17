@@ -708,13 +708,33 @@ func (h *DefaultA2AProtocolHandler) createTaskFromMessage(ctx context.Context, p
 		return task, nil
 	}
 
+	originalContextID := params.Message.ContextID
+	
 	contextID := params.Message.ContextID
 	if contextID == nil {
 		newContextID := uuid.New().String()
 		contextID = &newContextID
 	}
 
-	task := h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+	var task *types.Task
+	if originalContextID != nil {
+		conversationHistory := h.taskManager.GetConversationHistory(*contextID)
+		
+		if len(conversationHistory) > 0 {
+			h.logger.Info("creating task with existing conversation history",
+				zap.String("context_id", *contextID),
+				zap.Int("history_count", len(conversationHistory)))
+			task = h.taskManager.CreateTaskWithHistory(*contextID, types.TaskStateSubmitted, &params.Message, conversationHistory)
+		} else {
+			h.logger.Info("creating new task without history for existing context",
+				zap.String("context_id", *contextID))
+			task = h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+		}
+	} else {
+		h.logger.Info("creating new task without history for new context",
+			zap.String("context_id", *contextID))
+		task = h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+	}
 
 	if task != nil {
 		h.logger.Info("task created for processing",

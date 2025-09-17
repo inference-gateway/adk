@@ -282,3 +282,171 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	mockAgent.RunWithStreamReturns(streamChan, nil)
 	return mockAgent
 }
+
+func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
+	tests := []struct {
+		name                        string
+		contextID                   *string
+		existingHistory             []types.Message
+		expectGetHistoryCall        bool
+		expectCreateTaskCall        bool
+		expectCreateTaskWithHistoryCall bool
+		expectedHistoryCount        int
+	}{
+		{
+			name:                        "new context without history should use CreateTask",
+			contextID:                   stringPtr("new-context"),
+			existingHistory:             []types.Message{},
+			expectGetHistoryCall:        true,
+			expectCreateTaskCall:        true,
+			expectCreateTaskWithHistoryCall: false,
+			expectedHistoryCount:        0,
+		},
+		{
+			name:      "existing context with history should use CreateTaskWithHistory",
+			contextID: stringPtr("existing-context"),
+			existingHistory: []types.Message{
+				{
+					Kind:      "message",
+					MessageID: "msg-1",
+					Role:      "user",
+					Parts: []types.Part{
+						map[string]any{
+							"kind": "text",
+							"text": "Previous message from conversation",
+						},
+					},
+				},
+			},
+			expectGetHistoryCall:        true,
+			expectCreateTaskCall:        false,
+			expectCreateTaskWithHistoryCall: true,
+			expectedHistoryCount:        1,
+		},
+		{
+			name:                        "nil context ID should generate new ID and use CreateTask",
+			contextID:                   nil,
+			existingHistory:             []types.Message{},
+			expectGetHistoryCall:        false,
+			expectCreateTaskCall:        true,
+			expectCreateTaskWithHistoryCall: false,
+			expectedHistoryCount:        0,
+		},
+		{
+			name:      "context with multiple history messages should use CreateTaskWithHistory",
+			contextID: stringPtr("multi-history-context"),
+			existingHistory: []types.Message{
+				{
+					Kind:      "message",
+					MessageID: "msg-1",
+					Role:      "user",
+					Parts: []types.Part{
+						map[string]any{
+							"kind": "text",
+							"text": "First message",
+						},
+					},
+				},
+				{
+					Kind:      "message",
+					MessageID: "msg-2",
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]any{
+							"kind": "text",
+							"text": "Assistant response",
+						},
+					},
+				},
+			},
+			expectGetHistoryCall:        true,
+			expectCreateTaskCall:        false,
+			expectCreateTaskWithHistoryCall: true,
+			expectedHistoryCount:        2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockTaskManager := &mocks.FakeTaskManager{}
+
+			mockTaskManager.GetConversationHistoryReturns(tt.existingHistory)
+			
+			expectedTask := &types.Task{
+				ID:        "test-task-id",
+				ContextID: "test-context",
+				Status: types.TaskStatus{
+					State: types.TaskStateSubmitted,
+				},
+			}
+			
+			mockTaskManager.CreateTaskWithHistoryReturns(expectedTask)
+			mockTaskManager.CreateTaskReturns(expectedTask)
+
+			testMessage := types.Message{
+				Kind:      "message",
+				MessageID: "test-msg",
+				Role:      "user",
+				ContextID: tt.contextID,
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Test message for context history",
+					},
+				},
+			}
+
+			originalContextID := tt.contextID
+			contextIDValue := ""
+			if tt.contextID != nil {
+				contextIDValue = *tt.contextID
+			} else {
+				contextIDValue = "generated-context-id"
+			}
+
+			if originalContextID != nil {
+				history := mockTaskManager.GetConversationHistory(contextIDValue)
+				if len(history) > 0 {
+					mockTaskManager.CreateTaskWithHistory(contextIDValue, types.TaskStateSubmitted, &testMessage, history)
+				} else {
+					mockTaskManager.CreateTask(contextIDValue, types.TaskStateSubmitted, &testMessage)
+				}
+			} else {
+				mockTaskManager.CreateTask(contextIDValue, types.TaskStateSubmitted, &testMessage)
+			}
+
+			if tt.expectGetHistoryCall {
+				assert.GreaterOrEqual(t, mockTaskManager.GetConversationHistoryCallCount(), 1,
+					"GetConversationHistory should be called to check for existing history")
+			} else {
+				assert.Equal(t, 0, mockTaskManager.GetConversationHistoryCallCount(),
+					"GetConversationHistory should not be called when context ID is nil (optimization)")
+			}
+
+			if tt.expectCreateTaskCall {
+				assert.Equal(t, 1, mockTaskManager.CreateTaskCallCount(),
+					"CreateTask should be called for new contexts without history")
+				assert.Equal(t, 0, mockTaskManager.CreateTaskWithHistoryCallCount(),
+					"CreateTaskWithHistory should not be called for new contexts")
+			}
+
+			if tt.expectCreateTaskWithHistoryCall {
+				assert.Equal(t, 1, mockTaskManager.CreateTaskWithHistoryCallCount(),
+					"CreateTaskWithHistory should be called for existing contexts with history")
+				assert.Equal(t, 0, mockTaskManager.CreateTaskCallCount(),
+					"CreateTask should not be called for existing contexts with history")
+				
+				_, _, _, history := mockTaskManager.CreateTaskWithHistoryArgsForCall(0)
+				assert.Equal(t, tt.expectedHistoryCount, len(history),
+					"History should be passed with correct number of messages")
+				assert.Equal(t, tt.existingHistory, history,
+					"History should match the existing conversation history")
+			}
+		})
+	}
+}
+
+func stringPtr(s string) *string {
+	return &s
+}
+
