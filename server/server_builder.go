@@ -62,6 +62,10 @@ type A2AServerBuilder interface {
 	// This allows using a logger configured with appropriate level based on the Debug config.
 	WithLogger(logger *zap.Logger) A2AServerBuilder
 
+	// WithArtifactsServer enables and configures the artifacts server with the provided builder.
+	// This allows A2A clients to download artifacts via HTTP endpoints.
+	WithArtifactsServer(artifactsServerBuilder ArtifactsServerBuilder) A2AServerBuilder
+
 	// Build creates and returns the configured A2A server.
 	// This method applies configuration defaults and initializes all components.
 	Build() (A2AServer, error)
@@ -73,13 +77,14 @@ var _ A2AServerBuilder = (*A2AServerBuilderImpl)(nil)
 // It provides a fluent interface for building A2A servers with custom configurations.
 // This struct holds the configuration and optional components that will be used to create the server.
 type A2AServerBuilderImpl struct {
-	cfg                  config.Config         // Base configuration for the server
-	logger               *zap.Logger           // Logger instance for the server
-	pollingTaskHandler   TaskHandler           // Optional custom task handler for polling scenarios
-	streamingTaskHandler StreamableTaskHandler // Optional custom task handler for streaming scenarios
-	taskResultProcessor  TaskResultProcessor   // Optional custom task result processor
-	agent                OpenAICompatibleAgent // Optional pre-configured agent
-	agentCard            *types.AgentCard      // Optional custom agent card
+	cfg                    config.Config          // Base configuration for the server
+	logger                 *zap.Logger            // Logger instance for the server
+	pollingTaskHandler     TaskHandler            // Optional custom task handler for polling scenarios
+	streamingTaskHandler   StreamableTaskHandler  // Optional custom task handler for streaming scenarios
+	taskResultProcessor    TaskResultProcessor    // Optional custom task result processor
+	agent                  OpenAICompatibleAgent  // Optional pre-configured agent
+	agentCard              *types.AgentCard       // Optional custom agent card
+	artifactsServerBuilder ArtifactsServerBuilder // Optional artifacts server builder
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies.
@@ -245,6 +250,12 @@ func (b *A2AServerBuilderImpl) WithAgentCardFromFile(filePath string, overrides 
 // WithLogger sets a custom logger for the builder
 func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 	b.logger = logger
+	return b
+}
+
+// WithArtifactsServer enables and configures the artifacts server
+func (b *A2AServerBuilderImpl) WithArtifactsServer(artifactsServerBuilder ArtifactsServerBuilder) A2AServerBuilder {
+	b.artifactsServerBuilder = artifactsServerBuilder
 	return b
 }
 

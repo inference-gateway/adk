@@ -25,6 +25,7 @@ type Config struct {
 	TaskRetentionConfig           TaskRetentionConfig `env:",prefix=TASK_RETENTION_"`
 	ServerConfig                  ServerConfig        `env:",prefix=SERVER_"`
 	TelemetryConfig               TelemetryConfig     `env:",prefix=TELEMETRY_"`
+	ArtifactsConfig               ArtifactsConfig     `env:",prefix=ARTIFACTS_"`
 }
 
 // AgentConfig holds agent-specific configuration
@@ -119,6 +120,36 @@ type MetricsConfig struct {
 type TelemetryConfig struct {
 	Enable        bool          `env:"ENABLE,default=false" description:"Enable telemetry collection"`
 	MetricsConfig MetricsConfig `env:",prefix=METRICS_"`
+}
+
+// ArtifactsConfig holds artifacts server configuration
+type ArtifactsConfig struct {
+	Enable        bool                   `env:"ENABLE,default=false" description:"Enable artifacts server"`
+	ServerConfig  ArtifactsServerConfig  `env:",prefix=SERVER_" description:"HTTP server configuration for artifacts server"`
+	StorageConfig ArtifactsStorageConfig `env:",prefix=STORAGE_" description:"Storage configuration for artifacts"`
+}
+
+// ArtifactsServerConfig holds artifacts HTTP server configuration
+type ArtifactsServerConfig struct {
+	Port         string        `env:"PORT,default=8081" description:"Artifacts server port"`
+	Host         string        `env:"HOST,default=" description:"Artifacts server host (empty for all interfaces)"`
+	ReadTimeout  time.Duration `env:"READ_TIMEOUT,default=30s" description:"Artifacts server read timeout"`
+	WriteTimeout time.Duration `env:"WRITE_TIMEOUT,default=30s" description:"Artifacts server write timeout"`
+	IdleTimeout  time.Duration `env:"IDLE_TIMEOUT,default=60s" description:"Artifacts server idle timeout"`
+	TLSConfig    TLSConfig     `env:",prefix=TLS_" description:"TLS configuration for artifacts server"`
+}
+
+// ArtifactsStorageConfig holds storage configuration for artifacts
+type ArtifactsStorageConfig struct {
+	Provider    string            `env:"PROVIDER,default=filesystem" description:"Storage provider (filesystem, minio, s3, gcs)"`
+	BasePath    string            `env:"BASE_PATH,default=./artifacts" description:"Base path for filesystem storage"`
+	Endpoint    string            `env:"ENDPOINT" description:"Storage endpoint URL (for MinIO, S3, etc.)"`
+	AccessKey   string            `env:"ACCESS_KEY" description:"Storage access key"`
+	SecretKey   string            `env:"SECRET_KEY" description:"Storage secret key"`
+	BucketName  string            `env:"BUCKET_NAME,default=artifacts" description:"Storage bucket name"`
+	Region      string            `env:"REGION,default=us-east-1" description:"Storage region"`
+	UseSSL      bool              `env:"USE_SSL,default=true" description:"Use SSL for storage connections"`
+	Credentials map[string]string `env:"CREDENTIALS" description:"Additional provider-specific credentials"`
 }
 
 // Load loads configuration from environment variables, merging with the provided base config.

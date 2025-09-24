@@ -1721,12 +1721,86 @@ for event := range eventChan {
 }
 ```
 
+#### Artifacts Server (Optional)
+
+For scenarios where artifacts need to be downloaded directly via HTTP, the ADK provides an optional artifacts server that serves files through REST endpoints:
+
+```go
+import (
+    "github.com/inference-gateway/adk/server"
+    "github.com/inference-gateway/adk/server/config"
+)
+
+// Create artifacts server configuration
+cfg := &config.ArtifactsConfig{
+    Enable: true,
+    ServerConfig: config.ArtifactsServerConfig{
+        Port: "8081",
+        Host: "",
+    },
+    StorageConfig: config.ArtifactsStorageConfig{
+        Provider: "filesystem",  // or "minio", "s3", "gcs"
+        BasePath: "./artifacts",
+    },
+}
+
+// Create artifacts server with filesystem storage
+artifactsServer, err := server.NewArtifactsServerBuilder(cfg, logger).
+    WithFilesystemStorage("./artifacts", "http://localhost:8081").
+    Build()
+
+// Or with MinIO storage
+artifactsServer, err := server.NewArtifactsServerBuilder(cfg, logger).
+    WithMinIOStorage("localhost:9000", "accesskey", "secretkey", "artifacts", "http://localhost:8081", false).
+    Build()
+
+// Start the artifacts server (usually in a goroutine)
+go func() {
+    if err := artifactsServer.Start(ctx); err != nil {
+        logger.Error("Artifacts server failed", zap.Error(err))
+    }
+}()
+```
+
+**Key Features:**
+- **Multiple Storage Providers**: Filesystem, MinIO, S3, Google Cloud Storage
+- **RESTful Download API**: `GET /artifacts/{artifactId}/{filename}`
+- **Security**: Path traversal protection and input sanitization
+- **Integration**: Works seamlessly with A2A protocol artifacts via URI references
+
+**Storage Providers:**
+- `filesystem`: Local disk storage (default)
+- `minio`: MinIO object storage
+- `s3`: Amazon S3 (planned)
+- `gcs`: Google Cloud Storage (planned)
+
+**Integration with A2A Protocol:**
+
+```go
+// In your task handler, store files and reference them via URIs
+url, err := artifactsServer.GetStorage().Store(ctx, artifactID, "report.pdf", pdfData)
+if err != nil {
+    return err
+}
+
+// Create artifact with downloadable URI
+artifact := artifactHelper.CreateFileArtifactFromURI(
+    "Analysis Report",
+    "Downloadable PDF report",
+    "report.pdf",
+    url, // Points to artifacts server endpoint
+    stringPtr("application/pdf"),
+)
+```
+
 #### Complete Examples
 
 For comprehensive examples of artifact usage:
 
 - **[Server Example](./examples/server/cmd/artifacts/)** - Creating and managing artifacts in tasks
 - **[Client Example](./examples/client/cmd/artifacts/)** - Extracting and processing artifacts from responses
+- **[Artifacts Server](./examples/server/cmd/artifacts-server/)** - Standalone artifacts server for HTTP downloads
+- **[Integrated Example](./examples/server/cmd/integrated-artifacts/)** - A2A server with integrated artifacts server
 - **[Detailed Documentation](./docs/artifacts.md)** - Complete artifact API reference and best practices
 
 ### Default Task Handlers
