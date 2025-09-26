@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.1](https://github.com/inference-gateway/adk/compare/v0.11.0...v0.11.1) (2025-09-26)
+
+### ♻️ Improvements
+
+* Change the agent card location to align with latest version (0.3.0) of a2a protocol spec ([#74](https://github.com/inference-gateway/adk/issues/74)) ([bf53fbc](https://github.com/inference-gateway/adk/commit/bf53fbcfad5e2440779a26c71b3ff514fdda3f58))
+
 ## [0.11.0](https://github.com/inference-gateway/adk/compare/v0.10.1...v0.11.0) (2025-09-17)
 
 ### ✨ Features
