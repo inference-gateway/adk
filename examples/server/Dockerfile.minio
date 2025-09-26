@@ -1,0 +1,30 @@
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+COPY examples/server/go.mod examples/server/go.sum ./examples/server/
+
+# Download dependencies
+RUN go mod download
+RUN cd examples/server && go mod download
+
+# Copy source code
+COPY . .
+
+# Build the MinIO artifacts example
+RUN cd examples/server && go build -o /app/minio-artifacts cmd/minio-artifacts/main.go
+
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+
+# Copy the binary
+COPY --from=builder /app/minio-artifacts .
+
+# Expose ports
+EXPOSE 8080 8081
+
+CMD ["./minio-artifacts"]
