@@ -83,7 +83,7 @@ The server implements these A2A JSON-RPC methods:
 HTTP endpoints:
 
 - `POST /a2a` - Main A2A protocol endpoint
-- `GET /.well-known/agent.json` - Agent capabilities discovery
+- `GET /.well-known/agent-card.json` - Agent capabilities discovery
 - `GET /health` - Health check
 
 ### Task Handler Architecture

@@ -35,7 +35,7 @@ This minimal example:
 
 - ✅ Handles A2A protocol messages correctly (`message/send`, `tasks/get`, `tasks/cancel`)
 - ✅ Provides conversational responses (greetings, status, help, time)
-- ✅ Agent metadata via `/.well-known/agent.json`
+- ✅ Agent metadata via `/.well-known/agent-card.json`
 - ✅ Health check endpoint at `/health`
 - ✅ Echo functionality for any text input
 - ✅ **Works immediately** - no configuration required
@@ -127,7 +127,7 @@ Both servers support the standard A2A protocol. Here's how to test them:
 
 ```bash
 # Get agent information
-curl http://localhost:8080/.well-known/agent.json | jq .
+curl http://localhost:8080/.well-known/agent-card.json | jq .
 
 # Send a message (proper A2A format)
 curl -X POST http://localhost:8080/a2a \
@@ -175,7 +175,7 @@ go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=my-
 
 The agent metadata appears in:
 
-- `/.well-known/agent.json` endpoint
+- `/.well-known/agent-card.json` endpoint
 - Server startup logs
 - A2A protocol responses
 
@@ -309,7 +309,7 @@ go build -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=We
 2025-07-20T09:14:26.290Z  INFO  🌐 server running {"port": "8080"}
 
 🎯 Test the server:
-📋 Agent info: http://localhost:8080/.well-known/agent.json
+📋 Agent info: http://localhost:8080/.well-known/agent-card.json
 💚 Health check: http://localhost:8080/health
 📡 A2A endpoint: http://localhost:8080/a2a
 ```
@@ -317,7 +317,7 @@ go build -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=We
 The agent metadata is also available via the agent info endpoint:
 
 ```bash
-curl http://localhost:8080/.well-known/agent.json | jq
+curl http://localhost:8080/.well-known/agent-card.json | jq
 {
   "name": "Weather Assistant",
   "description": "AI-powered weather and time assistant",

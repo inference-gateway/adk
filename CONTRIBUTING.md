@@ -179,7 +179,7 @@ func TestAgentServer(t *testing.T) {
         },
         {
             name:           "agent info returns metadata",
-            endpoint:       "/.well-known/agent.json",
+            endpoint:       "/.well-known/agent-card.json",
             method:         "GET",
             body:           "",
             expectedStatus: http.StatusOK,
