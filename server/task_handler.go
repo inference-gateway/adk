@@ -677,16 +677,25 @@ func NewDefaultA2AProtocolHandler(
 	}
 }
 
-// createTaskFromMessage creates a task directly from message parameters
-func (h *DefaultA2AProtocolHandler) createTaskFromMessage(ctx context.Context, params types.MessageSendParams) (*types.Task, error) {
+// CreateTaskFromMessage creates a task directly from message parameters
+func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, params types.MessageSendParams) (*types.Task, error) {
 	if len(params.Message.Parts) == 0 {
 		return nil, fmt.Errorf("empty message parts not allowed")
+	}
+
+	// Enrich the message with Kind and MessageID if not set
+	enrichedMessage := params.Message
+	if enrichedMessage.Kind == "" {
+		enrichedMessage.Kind = "message"
+	}
+	if enrichedMessage.MessageID == "" {
+		enrichedMessage.MessageID = uuid.New().String()
 	}
 
 	if params.Message.TaskID != nil {
 		taskID := *params.Message.TaskID
 
-		err := h.taskManager.ResumeTaskWithInput(taskID, &params.Message)
+		err := h.taskManager.ResumeTaskWithInput(taskID, &enrichedMessage)
 		if err != nil {
 			h.logger.Error("failed to resume task with input",
 				zap.String("task_id", taskID),
@@ -724,16 +733,16 @@ func (h *DefaultA2AProtocolHandler) createTaskFromMessage(ctx context.Context, p
 			h.logger.Info("creating task with existing conversation history",
 				zap.String("context_id", *contextID),
 				zap.Int("history_count", len(conversationHistory)))
-			task = h.taskManager.CreateTaskWithHistory(*contextID, types.TaskStateSubmitted, &params.Message, conversationHistory)
+			task = h.taskManager.CreateTaskWithHistory(*contextID, types.TaskStateSubmitted, &enrichedMessage, conversationHistory)
 		} else {
 			h.logger.Info("creating new task without history for existing context",
 				zap.String("context_id", *contextID))
-			task = h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+			task = h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &enrichedMessage)
 		}
 	} else {
 		h.logger.Info("creating new task without history for new context",
 			zap.String("context_id", *contextID))
-		task = h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &params.Message)
+		task = h.taskManager.CreateTask(*contextID, types.TaskStateSubmitted, &enrichedMessage)
 	}
 
 	if task != nil {
@@ -763,7 +772,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 		return
 	}
 
-	task, err := h.createTaskFromMessage(c.Request.Context(), params)
+	task, err := h.CreateTaskFromMessage(c.Request.Context(), params)
 	if err != nil {
 		h.logger.Error("failed to create task", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
@@ -867,7 +876,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 
 	ctx := c.Request.Context()
 
-	task, err := h.createTaskFromMessage(ctx, params)
+	task, err := h.CreateTaskFromMessage(ctx, params)
 	if err != nil {
 		h.logger.Error("failed to create streaming task", zap.Error(err))
 		errorResponse := types.JSONRPCErrorResponse{
