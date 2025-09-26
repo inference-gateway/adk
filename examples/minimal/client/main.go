@@ -8,16 +8,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/inference-gateway/adk/client"
-	"github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
+	zap "go.uber.org/zap"
+
+	client "github.com/inference-gateway/adk/client"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func main() {
 	// Get server URL from environment or use default
 	serverURL := os.Getenv("SERVER_URL")
 	if serverURL == "" {
-		serverURL = "http://localhost:8080/a2a"
+		serverURL = "http://localhost:8080"
 	}
 
 	// Initialize logger
@@ -66,12 +67,68 @@ func main() {
 		log.Fatal("No result in response")
 	}
 
-	// Pretty print the entire response
-	responseJSON, err := json.MarshalIndent(response.Result, "", "  ")
+	// Parse the task from the result
+	taskBytes, err := json.Marshal(response.Result)
 	if err != nil {
-		log.Fatalf("Failed to marshal response: %v", err)
+		log.Fatalf("Failed to marshal task: %v", err)
 	}
 
-	fmt.Println("\nReceived response:")
-	fmt.Println(string(responseJSON))
+	var task types.Task
+	if err := json.Unmarshal(taskBytes, &task); err != nil {
+		log.Fatalf("Failed to unmarshal task: %v", err)
+	}
+
+	fmt.Printf("Task created with ID: %s, initial state: %s\n", task.ID, task.Status.State)
+
+	// Poll for task completion
+	fmt.Println("Polling for task completion...")
+	for range 10 {
+		time.Sleep(500 * time.Millisecond)
+
+		getParams := types.TaskQueryParams{
+			ID: task.ID,
+		}
+
+		getResponse, err := a2aClient.GetTask(ctx, getParams)
+		if err != nil {
+			log.Printf("Failed to get task status: %v", err)
+			continue
+		}
+
+		if getResponse.Result == nil {
+			continue
+		}
+
+		// Parse the updated task
+		updatedTaskBytes, err := json.Marshal(getResponse.Result)
+		if err != nil {
+			continue
+		}
+
+		var updatedTask types.Task
+		if err := json.Unmarshal(updatedTaskBytes, &updatedTask); err != nil {
+			continue
+		}
+
+		fmt.Printf("Task state: %s\n", updatedTask.Status.State)
+
+		if updatedTask.Status.State == types.TaskStateCompleted {
+			// Pretty print the completed task
+			responseJSON, err := json.MarshalIndent(updatedTask, "", "  ")
+			if err != nil {
+				log.Fatalf("Failed to marshal response: %v", err)
+			}
+
+			fmt.Println("\nCompleted task:")
+			fmt.Println(string(responseJSON))
+			return
+		}
+
+		if updatedTask.Status.State == types.TaskStateFailed {
+			fmt.Println("Task failed!")
+			return
+		}
+	}
+
+	fmt.Println("Task did not complete within timeout")
 }

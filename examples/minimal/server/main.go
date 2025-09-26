@@ -9,10 +9,15 @@ import (
 	"syscall"
 	"time"
 
-	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
-	types "github.com/inference-gateway/adk/types"
+	uuid "github.com/google/uuid"
+	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
+
+	server "github.com/inference-gateway/adk/server"
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
+
+	config "github.com/inference-gateway/adk/examples/minimal/server/config"
 )
 
 // SimpleTaskHandler implements a basic task handler without LLM
@@ -45,9 +50,9 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 		responseText = "Hello! Send me a message and I'll echo it back."
 	}
 
-	task.History = append(task.History, types.Message{
+	responseMessage := types.Message{
 		Kind:      "message",
-		MessageID: fmt.Sprintf("response-%s", task.ID),
+		MessageID: uuid.New().String(),
 		Role:      "assistant",
 		Parts: []types.Part{
 			map[string]any{
@@ -55,10 +60,11 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 				"text": responseText,
 			},
 		},
-	})
+	}
 
+	task.History = append(task.History, responseMessage)
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = &task.History[len(task.History)-1]
+	task.Status.Message = &responseMessage
 
 	return task, nil
 }
@@ -78,6 +84,12 @@ func (h *SimpleTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 // This example demonstrates a simple A2A server that echoes user messages
 // without requiring any AI/LLM integration.
 //
+// Configuration can be provided via environment variables:
+//   - ENVIRONMENT: Runtime environment (default: development)
+//   - A2A_AGENT_NAME: Agent name (default: minimal-agent)
+//   - A2A_SERVER_PORT: Server port (default: 8080)
+//   - A2A_DEBUG: Enable debug logging (default: false)
+//
 // To run: go run main.go
 func main() {
 	fmt.Println("🤖 Starting Minimal A2A Server...")
@@ -93,42 +105,58 @@ func main() {
 		}
 	}()
 
-	// Get port from environment or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Create configuration with defaults
+	cfg := &config.Config{
+		Environment: "development",
+		A2A: serverConfig.Config{
+			AgentName:        "minimal-agent",
+			AgentDescription: "A minimal A2A server that echoes messages",
+			AgentVersion:     "1.0.0",
+			Debug:            false,
+			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
+				Streaming:              false,
+				PushNotifications:      false,
+				StateTransitionHistory: false,
+			},
+			QueueConfig: serverConfig.QueueConfig{
+				CleanupInterval: 5 * time.Minute,
+			},
+			ServerConfig: serverConfig.ServerConfig{
+				Port: "8080",
+			},
+		},
 	}
 
-	// Configuration
-	cfg := config.Config{
-		AgentName:        "minimal-agent",
-		AgentDescription: "A minimal A2A server that echoes messages",
-		AgentVersion:     "1.0.0",
-		Debug:            true,
-		QueueConfig: config.QueueConfig{
-			CleanupInterval: 5 * time.Minute,
-		},
-		ServerConfig: config.ServerConfig{
-			Port: port,
-		},
+	// Load configuration from environment variables
+	ctx := context.Background()
+	if err := envconfig.Process(ctx, cfg); err != nil {
+		logger.Fatal("failed to load configuration", zap.Error(err))
 	}
+
+	// Log configuration info
+	logger.Info("configuration loaded",
+		zap.String("environment", cfg.Environment),
+		zap.String("agent_name", cfg.A2A.AgentName),
+		zap.String("port", cfg.A2A.ServerConfig.Port),
+		zap.Bool("debug", cfg.A2A.Debug),
+	)
 
 	// Create task handler
 	taskHandler := NewSimpleTaskHandler(logger)
 
 	// Build and start server
-	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithBackgroundTaskHandler(taskHandler).
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.AgentName,
-			Description:     cfg.AgentDescription,
-			Version:         cfg.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", port),
+			Name:            cfg.A2A.AgentName,
+			Description:     cfg.A2A.AgentDescription,
+			Version:         cfg.A2A.AgentVersion,
+			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
 			ProtocolVersion: "1.0.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &[]bool{false}[0],
-				PushNotifications:      &[]bool{false}[0],
-				StateTransitionHistory: &[]bool{false}[0],
+				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
+				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
@@ -151,7 +179,7 @@ func main() {
 		}
 	}()
 
-	logger.Info("🌐 server running on port " + port)
+	logger.Info("🌐 server running on port " + cfg.A2A.ServerConfig.Port)
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)

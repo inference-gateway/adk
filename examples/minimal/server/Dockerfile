@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 
 # Build the server
-RUN go build -o server examples/minimal/server/main.go
+RUN go build -o server .
 
 FROM alpine:latest
 
