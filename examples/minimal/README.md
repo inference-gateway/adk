@@ -1,6 +1,6 @@
 # Minimal A2A Example
 
-This example demonstrates the most basic A2A server and client setup without any AI integration. The server follows the same configuration pattern used in production agents.
+This example demonstrates the most basic A2A server and client setup without any AI integration.
 
 ## What This Example Shows
 
