@@ -27,9 +27,7 @@ func main() {
 		log.Fatalf("Failed to create logger: %v", err)
 	}
 	defer func() {
-		if err := logger.Sync(); err != nil {
-			log.Printf("Failed to sync logger: %v", err)
-		}
+		_ = logger.Sync()
 	}()
 
 	// Create client
