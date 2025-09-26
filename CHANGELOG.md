@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.2](https://github.com/inference-gateway/adk/compare/v0.11.1...v0.11.2) (2025-09-26)
+
+### 🐛 Bug Fixes
+
+* **server:** Enrich user messages with Kind and MessageID fields when creating tasks ([#77](https://github.com/inference-gateway/adk/issues/77)) ([9ffb2d9](https://github.com/inference-gateway/adk/commit/9ffb2d9fc3ef80ed069278b9d6b1f67df7d065e8)), closes [#76](https://github.com/inference-gateway/adk/issues/76)
+
+### 🎨 Miscellaneous
+
+* Clean up whitespace in agent and task handler tests for better readability ([b42e020](https://github.com/inference-gateway/adk/commit/b42e020835633e3b043c9b9f793e7ff12887f909))
+
 ## [0.11.1](https://github.com/inference-gateway/adk/compare/v0.11.0...v0.11.1) (2025-09-26)
 
 ### ♻️ Improvements
