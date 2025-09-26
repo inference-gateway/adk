@@ -595,16 +595,16 @@ func TestAgentBuilder_WithConfigPreservesUserValues(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
-			
+
 			userConfig := &config.AgentConfig{
 				MaxChatCompletionIterations: tt.maxChatCompletionIterations,
 				SystemPrompt:                tt.systemPrompt,
 			}
-			
+
 			builder := server.NewAgentBuilder(logger).WithConfig(userConfig)
 			resultConfig := builder.GetConfig()
-			
-			assert.Equal(t, tt.maxChatCompletionIterations, resultConfig.MaxChatCompletionIterations, 
+
+			assert.Equal(t, tt.maxChatCompletionIterations, resultConfig.MaxChatCompletionIterations,
 				"WithConfig should preserve user's MaxChatCompletionIterations value")
 			assert.Equal(t, tt.systemPrompt, resultConfig.SystemPrompt,
 				"WithConfig should preserve user's SystemPrompt value")
