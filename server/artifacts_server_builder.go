@@ -141,12 +141,7 @@ func (b *ArtifactsServerBuilderImpl) autoConfigureStorage() error {
 
 	switch storageConfig.Provider {
 	case "filesystem":
-		baseURL := fmt.Sprintf("http://%s:%s",
-			b.config.ServerConfig.Host,
-			b.config.ServerConfig.Port)
-		if b.config.ServerConfig.Host == "" {
-			baseURL = fmt.Sprintf("http://localhost:%s", b.config.ServerConfig.Port)
-		}
+		baseURL := fmt.Sprintf("http://0.0.0.0:%s", b.config.ServerConfig.Port)
 
 		storage, err := NewFilesystemArtifactStorage(storageConfig.BasePath, baseURL)
 		if err != nil {
@@ -162,12 +157,7 @@ func (b *ArtifactsServerBuilderImpl) autoConfigureStorage() error {
 			return fmt.Errorf("MinIO storage requires endpoint, access key, and secret key")
 		}
 
-		baseURL := fmt.Sprintf("http://%s:%s",
-			b.config.ServerConfig.Host,
-			b.config.ServerConfig.Port)
-		if b.config.ServerConfig.Host == "" {
-			baseURL = fmt.Sprintf("http://localhost:%s", b.config.ServerConfig.Port)
-		}
+		baseURL := fmt.Sprintf("http://0.0.0.0:%s", b.config.ServerConfig.Port)
 
 		storage, err := NewMinIOArtifactStorage(
 			storageConfig.Endpoint,

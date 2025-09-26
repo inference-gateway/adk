@@ -113,7 +113,6 @@ func TestArtifactsServerBuilder_Build_Success(t *testing.T) {
 				Enable: true,
 				ServerConfig: config.ArtifactsServerConfig{
 					Port: "8081",
-					Host: "localhost",
 				},
 				StorageConfig: config.ArtifactsStorageConfig{
 					Provider: "filesystem",
@@ -211,7 +210,6 @@ func TestArtifactsServerBuilder_AutoConfigureStorage(t *testing.T) {
 				BasePath: "./test-artifacts",
 			},
 			serverConfig: config.ArtifactsServerConfig{
-				Host: "localhost",
 				Port: "8081",
 			},
 			expectError: false,

@@ -54,7 +54,7 @@ func (s *ArtifactsServerImpl) Start(ctx context.Context) error {
 	s.setupRouter()
 
 	// Create HTTP server
-	addr := fmt.Sprintf("%s:%s", s.config.ServerConfig.Host, s.config.ServerConfig.Port)
+	addr := fmt.Sprintf("0.0.0.0:%s", s.config.ServerConfig.Port)
 	s.server = &http.Server{
 		Addr:           addr,
 		Handler:        s.router,
