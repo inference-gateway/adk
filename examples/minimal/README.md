@@ -80,7 +80,7 @@ This example follows the same configuration pattern as production agents like th
 ```go
 type Config struct {
     Environment string              `env:"ENVIRONMENT,default=development"`
-    A2A        serverConfig.Config `env:",prefix=A2A_"`
+    A2A         serverConfig.Config `env:",prefix=A2A_"`
 }
 ```
 
@@ -112,7 +112,7 @@ The configuration module follows production patterns for consistency:
 ```go
 type Config struct {
     Environment string              `env:"ENVIRONMENT,default=development"`
-    A2A        serverConfig.Config `env:",prefix=A2A_"`
+    A2A         serverConfig.Config `env:",prefix=A2A_"`
 }
 ```
 
@@ -122,10 +122,10 @@ The client demonstrates basic message sending:
 
 ```go
 // Create client
-a2aClient := client.NewA2AClient(serverURL)
+a2aClient := client.NewClient(serverURL)
 
-// Send message
-response, err := a2aClient.SendMessage(ctx, message)
+// Send task
+response, err := a2aClient.SendTask(ctx, message)
 ```
 
 ## Next Steps
