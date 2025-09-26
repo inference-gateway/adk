@@ -56,10 +56,10 @@ type FakeA2AServerBuilder struct {
 	withAgentCardFromFileReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
-	WithArtifactsServerStub        func(server.ArtifactsServerBuilder) server.A2AServerBuilder
+	WithArtifactsServerStub        func(server.ArtifactsServer) server.A2AServerBuilder
 	withArtifactsServerMutex       sync.RWMutex
 	withArtifactsServerArgsForCall []struct {
-		arg1 server.ArtifactsServerBuilder
+		arg1 server.ArtifactsServer
 	}
 	withArtifactsServerReturns struct {
 		result1 server.A2AServerBuilder
@@ -385,11 +385,11 @@ func (fake *FakeA2AServerBuilder) WithAgentCardFromFileReturnsOnCall(i int, resu
 	}{result1}
 }
 
-func (fake *FakeA2AServerBuilder) WithArtifactsServer(arg1 server.ArtifactsServerBuilder) server.A2AServerBuilder {
+func (fake *FakeA2AServerBuilder) WithArtifactsServer(arg1 server.ArtifactsServer) server.A2AServerBuilder {
 	fake.withArtifactsServerMutex.Lock()
 	ret, specificReturn := fake.withArtifactsServerReturnsOnCall[len(fake.withArtifactsServerArgsForCall)]
 	fake.withArtifactsServerArgsForCall = append(fake.withArtifactsServerArgsForCall, struct {
-		arg1 server.ArtifactsServerBuilder
+		arg1 server.ArtifactsServer
 	}{arg1})
 	stub := fake.WithArtifactsServerStub
 	fakeReturns := fake.withArtifactsServerReturns
@@ -410,13 +410,13 @@ func (fake *FakeA2AServerBuilder) WithArtifactsServerCallCount() int {
 	return len(fake.withArtifactsServerArgsForCall)
 }
 
-func (fake *FakeA2AServerBuilder) WithArtifactsServerCalls(stub func(server.ArtifactsServerBuilder) server.A2AServerBuilder) {
+func (fake *FakeA2AServerBuilder) WithArtifactsServerCalls(stub func(server.ArtifactsServer) server.A2AServerBuilder) {
 	fake.withArtifactsServerMutex.Lock()
 	defer fake.withArtifactsServerMutex.Unlock()
 	fake.WithArtifactsServerStub = stub
 }
 
-func (fake *FakeA2AServerBuilder) WithArtifactsServerArgsForCall(i int) server.ArtifactsServerBuilder {
+func (fake *FakeA2AServerBuilder) WithArtifactsServerArgsForCall(i int) server.ArtifactsServer {
 	fake.withArtifactsServerMutex.RLock()
 	defer fake.withArtifactsServerMutex.RUnlock()
 	argsForCall := fake.withArtifactsServerArgsForCall[i]

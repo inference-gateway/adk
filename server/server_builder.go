@@ -62,9 +62,9 @@ type A2AServerBuilder interface {
 	// This allows using a logger configured with appropriate level based on the Debug config.
 	WithLogger(logger *zap.Logger) A2AServerBuilder
 
-	// WithArtifactsServer enables and configures the artifacts server with the provided builder.
+	// WithArtifactsServer enables and configures the artifacts server.
 	// This allows A2A clients to download artifacts via HTTP endpoints.
-	WithArtifactsServer(artifactsServerBuilder ArtifactsServerBuilder) A2AServerBuilder
+	WithArtifactsServer(artifactsServer ArtifactsServer) A2AServerBuilder
 
 	// Build creates and returns the configured A2A server.
 	// This method applies configuration defaults and initializes all components.
@@ -84,7 +84,7 @@ type A2AServerBuilderImpl struct {
 	taskResultProcessor    TaskResultProcessor    // Optional custom task result processor
 	agent                  OpenAICompatibleAgent  // Optional pre-configured agent
 	agentCard              *types.AgentCard       // Optional custom agent card
-	artifactsServerBuilder ArtifactsServerBuilder // Optional artifacts server builder
+	artifactsServer ArtifactsServer // Optional artifacts server
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies.
@@ -254,8 +254,8 @@ func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 }
 
 // WithArtifactsServer enables and configures the artifacts server
-func (b *A2AServerBuilderImpl) WithArtifactsServer(artifactsServerBuilder ArtifactsServerBuilder) A2AServerBuilder {
-	b.artifactsServerBuilder = artifactsServerBuilder
+func (b *A2AServerBuilderImpl) WithArtifactsServer(artifactsServer ArtifactsServer) A2AServerBuilder {
+	b.artifactsServer = artifactsServer
 	return b
 }
 
