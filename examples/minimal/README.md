@@ -33,6 +33,7 @@ docker-compose up --build
 ```
 
 This will:
+
 1. Start the A2A server on port 8080
 2. Wait 5 seconds for the server to be ready
 3. Run the client which sends a test message

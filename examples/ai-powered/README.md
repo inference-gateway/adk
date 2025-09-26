@@ -31,11 +31,13 @@ ai-powered/
 ### Using Docker Compose (Recommended)
 
 1. Copy environment variables:
+
 ```bash
 cp .env.example .env
 ```
 
 2. Edit `.env` and add your API key for at least one provider:
+
 ```bash
 # Choose one or more providers
 OPENAI_API_KEY=your_openai_api_key_here
@@ -49,11 +51,13 @@ A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
 ```
 
 3. Run the example:
+
 ```bash
 docker-compose up --build
 ```
 
 This will:
+
 1. Start the Inference Gateway with your configured providers
 2. Start the AI-powered A2A server with weather and time tools
 3. Run the client to test AI responses with tool usage
@@ -82,23 +86,24 @@ go run main.go
 
 The server uses environment variables with the `A2A_` prefix for consistency with production agents:
 
-| Environment Variable | Description | Default |
-|---------------------|-------------|---------|
-| `ENVIRONMENT` | Runtime environment | `development` |
-| `A2A_AGENT_NAME` | Agent name (set via build-time LD flags) | `ai-powered-agent` |
-| `A2A_AGENT_DESCRIPTION` | Agent description (build-time) | AI-powered server with tools |
-| `A2A_AGENT_VERSION` | Agent version (build-time) | `0.1.0` |
-| `A2A_SERVER_PORT` | Server port | `8080` |
-| `A2A_DEBUG` | Enable debug logging | `false` |
-| `A2A_CAPABILITIES_STREAMING` | Enable streaming support | `true` |
-| `A2A_AGENT_CLIENT_BASE_URL` | LLM API endpoint | Via Inference Gateway |
-| `A2A_AGENT_CLIENT_PROVIDER` | LLM provider (openai, anthropic, etc.) | Required |
-| `A2A_AGENT_CLIENT_MODEL` | Model name | Required |
-| `A2A_AGENT_CLIENT_API_KEY` | API key (dummy when using gateway) | Required |
+| Environment Variable         | Description                              | Default                      |
+| ---------------------------- | ---------------------------------------- | ---------------------------- |
+| `ENVIRONMENT`                | Runtime environment                      | `development`                |
+| `A2A_AGENT_NAME`             | Agent name (set via build-time LD flags) | `ai-powered-agent`           |
+| `A2A_AGENT_DESCRIPTION`      | Agent description (build-time)           | AI-powered server with tools |
+| `A2A_AGENT_VERSION`          | Agent version (build-time)               | `0.1.0`                      |
+| `A2A_SERVER_PORT`            | Server port                              | `8080`                       |
+| `A2A_DEBUG`                  | Enable debug logging                     | `false`                      |
+| `A2A_CAPABILITIES_STREAMING` | Enable streaming support                 | `true`                       |
+| `A2A_AGENT_CLIENT_BASE_URL`  | LLM API endpoint                         | Via Inference Gateway        |
+| `A2A_AGENT_CLIENT_PROVIDER`  | LLM provider (openai, anthropic, etc.)   | Required                     |
+| `A2A_AGENT_CLIENT_MODEL`     | Model name                               | Required                     |
+| `A2A_AGENT_CLIENT_API_KEY`   | API key (dummy when using gateway)       | Required                     |
 
 ## Supported Providers
 
 Via the included Inference Gateway:
+
 - OpenAI (GPT models)
 - Anthropic (Claude models)
 - DeepSeek
@@ -115,6 +120,7 @@ The server includes two sample tools:
 - **Time**: Get current date and time
 
 Example AI interaction:
+
 ```
 User: "What's the weather in Tokyo and what time is it?"
 AI: Uses both tools to provide current weather and time information

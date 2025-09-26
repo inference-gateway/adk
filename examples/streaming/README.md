@@ -28,12 +28,14 @@ streaming/
 ### Using Docker Compose (Recommended)
 
 With AI (requires API key):
+
 ```bash
 export AGENT_CLIENT_API_KEY="your-api-key"
 docker-compose up --build
 ```
 
 Without AI (mock streaming):
+
 ```bash
 docker-compose up --build
 ```

@@ -5,6 +5,7 @@ This directory contains scenario-based examples demonstrating different capabili
 ## 📁 New Structure
 
 Each example is a self-contained scenario with:
+
 - **Server**: A2A server implementation
 - **Client**: Matching client that interacts with the server
 - **Docker Compose**: Ready-to-run containerized setup
@@ -23,16 +24,19 @@ examples/
 ### Running Any Example
 
 1. Navigate to the example directory:
+
 ```bash
 cd examples/minimal
 ```
 
 2. Run with Docker Compose:
+
 ```bash
 docker-compose up --build
 ```
 
 3. Or run locally:
+
 ```bash
 # Terminal 1 - Server
 cd server && go run main.go
@@ -46,19 +50,25 @@ cd client && go run main.go
 ### Basic Examples
 
 #### `minimal/`
+
 Basic A2A server and client without AI integration. Perfect for understanding the core protocol.
+
 - Mock task handler
 - Simple request/response
 - No external dependencies
 
 #### `ai-powered/`
+
 A2A server integrated with AI language models (OpenAI, Anthropic, etc.).
+
 - LLM integration
 - Multiple provider support
 - Environment-based configuration
 
 #### `streaming/`
+
 Real-time streaming responses for chat-like experiences.
+
 - Character-by-character streaming
 - Event-based communication
 - Mock and AI modes
@@ -83,6 +93,7 @@ Most examples use environment variables for configuration:
 ## 🐳 Docker Support
 
 All examples include:
+
 - Multi-stage Dockerfiles for small images
 - Docker Compose for easy orchestration
 - Network isolation between services
