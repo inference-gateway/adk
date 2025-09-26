@@ -683,7 +683,6 @@ func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, p
 		return nil, fmt.Errorf("empty message parts not allowed")
 	}
 
-	// Enrich the message with Kind and MessageID if not set
 	enrichedMessage := params.Message
 	if enrichedMessage.Kind == "" {
 		enrichedMessage.Kind = "message"
