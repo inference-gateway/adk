@@ -380,11 +380,11 @@ func (c *Client) ListTasks(ctx context.Context, params types.TaskListParams) (*t
 	return &resp, nil
 }
 
-// GetAgentCard retrieves the agent card information via HTTP GET to .well-known/agent.json
+// GetAgentCard retrieves the agent card information via HTTP GET to .well-known/agent-card.json
 func (c *Client) GetAgentCard(ctx context.Context) (*types.AgentCard, error) {
-	c.logger.Debug("retrieving agent card", zap.String("endpoint", "/.well-known/agent.json"))
+	c.logger.Debug("retrieving agent card", zap.String("endpoint", "/.well-known/agent-card.json"))
 
-	agentCardURL := c.config.BaseURL + "/.well-known/agent.json"
+	agentCardURL := c.config.BaseURL + "/.well-known/agent-card.json"
 
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", agentCardURL, nil)
 	if err != nil {

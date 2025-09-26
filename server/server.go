@@ -401,7 +401,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": types.HealthStatusHealthy})
 	})
 
-	r.GET("/.well-known/agent.json", s.handleAgentInfo)
+	r.GET("/.well-known/agent-card.json", s.handleAgentInfo)
 
 	var telemetryMiddleware gin.HandlerFunc
 	if s.cfg.TelemetryConfig.Enable && s.otel != nil {

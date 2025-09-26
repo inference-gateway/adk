@@ -173,7 +173,7 @@ curl -X POST http://localhost:8080/a2a \
 ### Agent Information
 
 ```bash
-curl http://localhost:8080/.well-known/agent.json | jq .
+curl http://localhost:8080/.well-known/agent-card.json | jq .
 ```
 
 ## Related Examples
