@@ -1,0 +1,30 @@
+services:
+  server:
+    build:
+      context: ../..
+      dockerfile: examples/minimal/server/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - AGENT_NAME=minimal-agent
+      - CAPABILITIES_STREAMING=false
+      - LOG_LEVEL=debug
+    networks:
+      - a2a-network
+
+  client:
+    build:
+      context: ../..
+      dockerfile: examples/minimal/client/Dockerfile
+    depends_on:
+      - server
+    environment:
+      - SERVER_URL=http://server:8080
+    networks:
+      - a2a-network
+    command: sh -c "sleep 5 && /app/client"
+
+networks:
+  a2a-network:
+    driver: bridge

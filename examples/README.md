@@ -1,44 +1,98 @@
-# A2A Examples
+# A2A ADK Examples
 
-This directory contains examples demonstrating how to use the A2A (Agent-to-Agent) framework.
+This directory contains scenario-based examples demonstrating different capabilities of the A2A Agent Development Kit (ADK).
 
-## Available Examples
+## 📁 New Structure
 
-### Server Example
+Each example is a self-contained scenario with:
+- **Server**: A2A server implementation
+- **Client**: Matching client that interacts with the server
+- **Docker Compose**: Ready-to-run containerized setup
+- **README**: Detailed documentation for the scenario
 
-The server example shows how to create a basic A2A server that can receive and process messages and tasks.
-
-**Location**: `examples/server/`
-
-**Features**:
-
-- Basic A2A server setup
-- Message and task handlers
-- Health check endpoint
-- Agent capabilities endpoint
-- OpenTelemetry telemetry support
-
-**Quick Start**:
-
-```bash
-cd examples/server
-go run main.go
+```
+examples/
+├── minimal/           # Basic server/client without AI
+├── ai-powered/        # Server with LLM integration
+├── streaming/         # Real-time streaming responses
+└── ...
 ```
 
-The server will start on `http://localhost:8080`
+## 🚀 Quick Start
 
-### Client Example
+### Running Any Example
 
-The client example demonstrates how to create an A2A client to communicate with A2A servers.
+1. Navigate to the example directory:
+```bash
+cd examples/minimal
+```
 
-**Location**: `examples/client/` (Coming Soon)
+2. Run with Docker Compose:
+```bash
+docker-compose up --build
+```
 
-## Getting Started
+3. Or run locally:
+```bash
+# Terminal 1 - Server
+cd server && go run main.go
 
-1. Choose the example that fits your use case
-2. Navigate to the example directory
-3. Follow the README instructions in each example
-4. Run the example code
+# Terminal 2 - Client
+cd client && go run main.go
+```
+
+## 📚 Available Examples
+
+### Basic Examples
+
+#### `minimal/`
+Basic A2A server and client without AI integration. Perfect for understanding the core protocol.
+- Mock task handler
+- Simple request/response
+- No external dependencies
+
+#### `ai-powered/`
+A2A server integrated with AI language models (OpenAI, Anthropic, etc.).
+- LLM integration
+- Multiple provider support
+- Environment-based configuration
+
+#### `streaming/`
+Real-time streaming responses for chat-like experiences.
+- Character-by-character streaming
+- Event-based communication
+- Mock and AI modes
+
+## 🔧 Configuration
+
+Most examples use environment variables for configuration:
+
+### Common Variables
+
+- `PORT`: Server port (default: 8080)
+- `AGENT_NAME`: Agent identifier
+- `LOG_LEVEL`: Logging verbosity
+
+### AI Configuration
+
+- `AGENT_CLIENT_API_KEY`: Your LLM API key
+- `AGENT_CLIENT_PROVIDER`: Provider (openai, anthropic)
+- `AGENT_CLIENT_MODEL`: Model to use
+- `INFERENCE_GATEWAY_URL`: Custom gateway URL
+
+## 🐳 Docker Support
+
+All examples include:
+- Multi-stage Dockerfiles for small images
+- Docker Compose for easy orchestration
+- Network isolation between services
+- Golang 1.25 base images
+
+## 📖 Learning Path
+
+1. Start with `minimal/` to understand basics
+2. Move to `ai-powered/` for LLM integration
+3. Try `streaming/` for real-time features
 
 ## Documentation
 

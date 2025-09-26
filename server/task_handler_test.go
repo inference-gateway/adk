@@ -285,22 +285,22 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 
 func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 	tests := []struct {
-		name                        string
-		contextID                   *string
-		existingHistory             []types.Message
-		expectGetHistoryCall        bool
-		expectCreateTaskCall        bool
+		name                            string
+		contextID                       *string
+		existingHistory                 []types.Message
+		expectGetHistoryCall            bool
+		expectCreateTaskCall            bool
 		expectCreateTaskWithHistoryCall bool
-		expectedHistoryCount        int
+		expectedHistoryCount            int
 	}{
 		{
-			name:                        "new context without history should use CreateTask",
-			contextID:                   stringPtr("new-context"),
-			existingHistory:             []types.Message{},
-			expectGetHistoryCall:        true,
-			expectCreateTaskCall:        true,
+			name:                            "new context without history should use CreateTask",
+			contextID:                       stringPtr("new-context"),
+			existingHistory:                 []types.Message{},
+			expectGetHistoryCall:            true,
+			expectCreateTaskCall:            true,
 			expectCreateTaskWithHistoryCall: false,
-			expectedHistoryCount:        0,
+			expectedHistoryCount:            0,
 		},
 		{
 			name:      "existing context with history should use CreateTaskWithHistory",
@@ -318,19 +318,19 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 					},
 				},
 			},
-			expectGetHistoryCall:        true,
-			expectCreateTaskCall:        false,
+			expectGetHistoryCall:            true,
+			expectCreateTaskCall:            false,
 			expectCreateTaskWithHistoryCall: true,
-			expectedHistoryCount:        1,
+			expectedHistoryCount:            1,
 		},
 		{
-			name:                        "nil context ID should generate new ID and use CreateTask",
-			contextID:                   nil,
-			existingHistory:             []types.Message{},
-			expectGetHistoryCall:        false,
-			expectCreateTaskCall:        true,
+			name:                            "nil context ID should generate new ID and use CreateTask",
+			contextID:                       nil,
+			existingHistory:                 []types.Message{},
+			expectGetHistoryCall:            false,
+			expectCreateTaskCall:            true,
 			expectCreateTaskWithHistoryCall: false,
-			expectedHistoryCount:        0,
+			expectedHistoryCount:            0,
 		},
 		{
 			name:      "context with multiple history messages should use CreateTaskWithHistory",
@@ -359,10 +359,10 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 					},
 				},
 			},
-			expectGetHistoryCall:        true,
-			expectCreateTaskCall:        false,
+			expectGetHistoryCall:            true,
+			expectCreateTaskCall:            false,
 			expectCreateTaskWithHistoryCall: true,
-			expectedHistoryCount:        2,
+			expectedHistoryCount:            2,
 		},
 	}
 
@@ -371,7 +371,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			mockTaskManager := &mocks.FakeTaskManager{}
 
 			mockTaskManager.GetConversationHistoryReturns(tt.existingHistory)
-			
+
 			expectedTask := &types.Task{
 				ID:        "test-task-id",
 				ContextID: "test-context",
@@ -379,7 +379,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 					State: types.TaskStateSubmitted,
 				},
 			}
-			
+
 			mockTaskManager.CreateTaskWithHistoryReturns(expectedTask)
 			mockTaskManager.CreateTaskReturns(expectedTask)
 
@@ -435,7 +435,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 					"CreateTaskWithHistory should be called for existing contexts with history")
 				assert.Equal(t, 0, mockTaskManager.CreateTaskCallCount(),
 					"CreateTask should not be called for existing contexts with history")
-				
+
 				_, _, _, history := mockTaskManager.CreateTaskWithHistoryArgsForCall(0)
 				assert.Equal(t, tt.expectedHistoryCount, len(history),
 					"History should be passed with correct number of messages")
@@ -449,4 +449,3 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 func stringPtr(s string) *string {
 	return &s
 }
-

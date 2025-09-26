@@ -709,7 +709,7 @@ func (h *DefaultA2AProtocolHandler) createTaskFromMessage(ctx context.Context, p
 	}
 
 	originalContextID := params.Message.ContextID
-	
+
 	contextID := params.Message.ContextID
 	if contextID == nil {
 		newContextID := uuid.New().String()
@@ -719,7 +719,7 @@ func (h *DefaultA2AProtocolHandler) createTaskFromMessage(ctx context.Context, p
 	var task *types.Task
 	if originalContextID != nil {
 		conversationHistory := h.taskManager.GetConversationHistory(*contextID)
-		
+
 		if len(conversationHistory) > 0 {
 			h.logger.Info("creating task with existing conversation history",
 				zap.String("context_id", *contextID),
