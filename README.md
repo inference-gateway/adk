@@ -743,7 +743,7 @@ Build A2A servers with custom configurations using a fluent interface:
 a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithAgent(agent).
     WithDefaultTaskHandlers().
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
@@ -753,7 +753,7 @@ if err != nil {
 a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithBackgroundTaskHandler(customTaskHandler).
     WithTaskResultProcessor(customProcessor).
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
@@ -762,7 +762,7 @@ if err != nil {
 // Server with default background task handler only (streaming disabled)
 a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithDefaultBackgroundTaskHandler().
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
@@ -771,7 +771,7 @@ if err != nil {
 // Server with default streaming task handler only
 a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithDefaultStreamingTaskHandler().
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
@@ -782,7 +782,7 @@ a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithLogger(customLogger).
     WithAgent(agent).
     WithDefaultTaskHandlers().
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
@@ -874,7 +874,7 @@ if err != nil {
 // Use with A2A server builder
 a2aServer, err := server.NewA2AServerBuilder(config, logger).
     WithAgent(agent).
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
@@ -1136,7 +1136,7 @@ func main() {
 
     // Use the embedded A2A config
     a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
-        WithAgentCardFromFile(".well-known/agent.json").
+        WithAgentCardFromFile(".well-known/agent-card.json").
         Build()
     if err != nil {
         log.Fatal("Failed to create server:", err)
@@ -1188,7 +1188,7 @@ cfg.CapabilitiesConfig.Streaming = true
 
 // Use the modified config
 a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 ```
 
@@ -1214,7 +1214,7 @@ agent, err = server.NewAgentBuilder(logger).
     WithSystemPrompt("You are a helpful AI assistant specialized in customer support.").
     WithMaxChatCompletion(15).
     WithMaxConversationHistory(30).
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 ```
 
@@ -1279,7 +1279,7 @@ if err != nil {
 // Use the agent in your server
 a2aServer, err := server.NewA2AServerBuilder(serverCfg, logger).
     WithAgent(agent).
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
@@ -1348,7 +1348,7 @@ Configure the JSON file path using:
 
 ```bash
 # Set the path to your JSON AgentCard file
-export AGENT_CARD_FILE_PATH="/path/to/your/.well-known/agent.json"
+export AGENT_CARD_FILE_PATH="/path/to/your/.well-known/agent-card.json"
 ```
 
 #### JSON AgentCard Structure
@@ -1416,14 +1416,14 @@ if err != nil {
 // Or explicitly specify the file path
 a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
     WithAgent(agent).
-    WithAgentCardFromFile("./.well-known/agent.json").
+    WithAgentCardFromFile("./.well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
 }
 
 // Or load after server creation
-if err := a2aServer.LoadAgentCardFromFile("./.well-known/agent.json"); err != nil {
+if err := a2aServer.LoadAgentCardFromFile("./.well-known/agent-card.json"); err != nil {
     log.Printf("Failed to load agent card: %v", err)
 }
 ```
@@ -1442,7 +1442,7 @@ AGENT_CARD_FILE_PATH="./my-custom-card.json" go run main.go
 
 # Run with AI capabilities
 export INFERENCE_GATEWAY_URL="http://localhost:3000/v1"
-export AGENT_CARD_FILE_PATH="./.well-known/agent.json"
+export AGENT_CARD_FILE_PATH="./.well-known/agent-card.json"
 go run main.go
 ```
 
@@ -1815,7 +1815,7 @@ Optimized for polling scenarios with automatic input-required pausing:
 // Create a server with default polling task handler
 a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
     WithDefaultPollingTaskHandler().
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 ```
 
@@ -1827,7 +1827,7 @@ Optimized for streaming scenarios with automatic input-required pausing:
 // Create a server with default streaming task handler
 a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
     WithDefaultStreamingTaskHandler().
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 ```
 
@@ -1870,7 +1870,7 @@ func (ctp *CustomTaskProcessor) ProcessToolResult(toolCallResult string) *adk.Me
 // Set the processor when building your server
 a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
     WithTaskResultProcessor(&CustomTaskProcessor{}).
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     // handle error
@@ -2019,7 +2019,7 @@ cfg := config.Config{
 // The server uses build-time metadata as defaults (server.BuildAgentName, etc.)
 // but you can override them at runtime if needed
 a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
-    WithAgentCardFromFile(".well-known/agent.json").
+    WithAgentCardFromFile(".well-known/agent-card.json").
     Build()
 if err != nil {
     log.Fatal("Failed to create server:", err)
@@ -2043,7 +2043,7 @@ PORT="8080"
 
 # Agent metadata configuration (via LD flags only - see Build-Time Agent Metadata section)
 # AGENT_NAME, AGENT_DESCRIPTION, AGENT_VERSION are set at build time via LD flags
-AGENT_CARD_FILE_PATH="./.well-known/agent.json"    # Path to JSON AgentCard file (optional)
+AGENT_CARD_FILE_PATH="./.well-known/agent-card.json"    # Path to JSON AgentCard file (optional)
 
 # LLM client configuration
 AGENT_CLIENT_PROVIDER="openai"              # openai, anthropic, deepseek, ollama
@@ -2161,7 +2161,7 @@ func TestA2AServerEndpoints(t *testing.T) {
         },
         {
             name:           "agent info",
-            endpoint:       "/.well-known/agent.json",
+            endpoint:       "/.well-known/agent-card.json",
             method:         "GET",
             expectedStatus: http.StatusOK,
         },

@@ -1475,7 +1475,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					assert.Equal(t, "GET", r.Method)
-					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+					assert.Equal(t, "/.well-known/agent-card.json", r.URL.Path)
 					assert.Equal(t, "application/json", r.Header.Get("Accept"))
 					assert.Equal(t, "A2A-Go-Client/1.0", r.Header.Get("User-Agent"))
 
@@ -1530,7 +1530,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					assert.Equal(t, "GET", r.Method)
-					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+					assert.Equal(t, "/.well-known/agent-card.json", r.URL.Path)
 
 					w.WriteHeader(http.StatusNotFound)
 					_, _ = w.Write([]byte("Agent card not found"))
@@ -1543,7 +1543,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					assert.Equal(t, "GET", r.Method)
-					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+					assert.Equal(t, "/.well-known/agent-card.json", r.URL.Path)
 
 					w.WriteHeader(http.StatusInternalServerError)
 					_, _ = w.Write([]byte("Internal server error"))
@@ -1556,7 +1556,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					assert.Equal(t, "GET", r.Method)
-					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+					assert.Equal(t, "/.well-known/agent-card.json", r.URL.Path)
 
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
@@ -1570,7 +1570,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					assert.Equal(t, "GET", r.Method)
-					assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+					assert.Equal(t, "/.well-known/agent-card.json", r.URL.Path)
 
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusOK)
@@ -1679,7 +1679,7 @@ func TestClient_GetAgentCard_ContextCancellation(t *testing.T) {
 func TestClient_GetAgentCard_WithCustomHeaders(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+		assert.Equal(t, "/.well-known/agent-card.json", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Accept"))
 		assert.Equal(t, "A2A-Go-Client/1.0", r.Header.Get("User-Agent"))
 
@@ -1716,7 +1716,7 @@ func TestClient_GetAgentCard_WithCustomHeaders(t *testing.T) {
 func TestClient_GetAgentCard_WithCustomUserAgent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
-		assert.Equal(t, "/.well-known/agent.json", r.URL.Path)
+		assert.Equal(t, "/.well-known/agent-card.json", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Accept"))
 		assert.Equal(t, "CustomAgent/2.0", r.Header.Get("User-Agent"))
 
