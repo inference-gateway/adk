@@ -575,14 +575,11 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, task)
 
-			// Verify that CreateTask was called with the enriched message
 			assert.Equal(t, 1, mockTaskManager.CreateTaskCallCount())
 			_, _, enrichedMessage := mockTaskManager.CreateTaskArgsForCall(0)
 
-			// Check that Kind was enriched correctly
 			assert.Equal(t, tt.expectedKind, enrichedMessage.Kind)
 
-			// Check MessageID enrichment
 			if tt.shouldGenerateID {
 				assert.NotEmpty(t, enrichedMessage.MessageID, "MessageID should be generated when missing")
 				assert.NotEqual(t, "", enrichedMessage.MessageID, "MessageID should not be empty")
@@ -590,7 +587,6 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 				assert.Equal(t, tt.expectedMessageID, enrichedMessage.MessageID)
 			}
 
-			// Verify other fields are preserved
 			assert.Equal(t, tt.inputMessage.Role, enrichedMessage.Role)
 			assert.Equal(t, tt.inputMessage.Parts, enrichedMessage.Parts)
 		})
