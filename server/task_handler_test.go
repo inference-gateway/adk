@@ -446,6 +446,153 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 	}
 }
 
+func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
+	tests := []struct {
+		name              string
+		inputMessage      types.Message
+		expectedKind      string
+		expectedMessageID string
+		shouldGenerateID  bool
+	}{
+		{
+			name: "message without Kind and MessageID should be enriched",
+			inputMessage: types.Message{
+				Role: "user",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Hello without kind and messageId",
+					},
+				},
+			},
+			expectedKind:     "message",
+			shouldGenerateID: true,
+		},
+		{
+			name: "message with empty Kind and MessageID should be enriched",
+			inputMessage: types.Message{
+				Kind:      "",
+				MessageID: "",
+				Role:      "user",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Hello with empty kind and messageId",
+					},
+				},
+			},
+			expectedKind:     "message",
+			shouldGenerateID: true,
+		},
+		{
+			name: "message with existing Kind and MessageID should be preserved",
+			inputMessage: types.Message{
+				Kind:      "existing_kind",
+				MessageID: "existing_message_id",
+				Role:      "user",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Hello with existing kind and messageId",
+					},
+				},
+			},
+			expectedKind:      "existing_kind",
+			expectedMessageID: "existing_message_id",
+			shouldGenerateID:  false,
+		},
+		{
+			name: "message with only Kind should generate MessageID",
+			inputMessage: types.Message{
+				Kind: "custom_kind",
+				Role: "user",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Hello with custom kind but no messageId",
+					},
+				},
+			},
+			expectedKind:     "custom_kind",
+			shouldGenerateID: true,
+		},
+		{
+			name: "message with only MessageID should get default Kind",
+			inputMessage: types.Message{
+				MessageID: "custom_message_id",
+				Role:      "user",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Hello with custom messageId but no kind",
+					},
+				},
+			},
+			expectedKind:      "message",
+			expectedMessageID: "custom_message_id",
+			shouldGenerateID:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockTaskManager := &mocks.FakeTaskManager{}
+			mockStorage := &mocks.FakeStorage{}
+			mockResponseSender := &mocks.FakeResponseSender{}
+			mockTaskHandler := &mocks.FakeTaskHandler{}
+			mockStreamingTaskHandler := &mocks.FakeStreamableTaskHandler{}
+
+			mockTaskManager.GetConversationHistoryReturns([]types.Message{})
+
+			expectedTask := &types.Task{
+				ID:        "test-task-id",
+				ContextID: "test-context",
+				Status: types.TaskStatus{
+					State: types.TaskStateSubmitted,
+				},
+			}
+			mockTaskManager.CreateTaskReturns(expectedTask)
+
+			logger := zap.NewNop()
+			handler := server.NewDefaultA2AProtocolHandler(
+				logger,
+				mockStorage,
+				mockTaskManager,
+				mockResponseSender,
+				mockTaskHandler,
+				mockStreamingTaskHandler,
+			)
+
+			contextID := "test-context"
+			params := types.MessageSendParams{
+				Message: tt.inputMessage,
+			}
+			params.Message.ContextID = &contextID
+
+			ctx := context.Background()
+			task, err := handler.CreateTaskFromMessage(ctx, params)
+
+			assert.NoError(t, err)
+			assert.NotNil(t, task)
+
+			assert.Equal(t, 1, mockTaskManager.CreateTaskCallCount())
+			_, _, enrichedMessage := mockTaskManager.CreateTaskArgsForCall(0)
+
+			assert.Equal(t, tt.expectedKind, enrichedMessage.Kind)
+
+			if tt.shouldGenerateID {
+				assert.NotEmpty(t, enrichedMessage.MessageID, "MessageID should be generated when missing")
+				assert.NotEqual(t, "", enrichedMessage.MessageID, "MessageID should not be empty")
+			} else {
+				assert.Equal(t, tt.expectedMessageID, enrichedMessage.MessageID)
+			}
+
+			assert.Equal(t, tt.inputMessage.Role, enrichedMessage.Role)
+			assert.Equal(t, tt.inputMessage.Parts, enrichedMessage.Parts)
+		})
+	}
+}
+
 func stringPtr(s string) *string {
 	return &s
 }
