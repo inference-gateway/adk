@@ -10,7 +10,11 @@ RUN go mod download
 COPY . .
 
 # Build the server
-RUN go build -o server examples/ai-powered/server/main.go
+ARG AGENT_NAME="ai-powered-agent"
+ARG AGENT_DESCRIPTION="An AI-powered A2A server with weather and time tools"
+ARG AGENT_VERSION="0.1.0"
+
+RUN go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME} -X github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION} -X github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}" -o server .
 
 FROM alpine:latest
 

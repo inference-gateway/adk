@@ -1,26 +1,46 @@
 services:
+  inference-gateway:
+    image: ghcr.io/inference-gateway/inference-gateway:latest
+    pull_policy: always
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      CLOUDFLARE_API_KEY: ${CLOUDFLARE_API_KEY}
+      COHERE_API_KEY: ${COHERE_API_KEY}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      LOG_LEVEL: info
+    networks:
+      - a2a-network
+
   server:
     build:
-      context: ../..
-      dockerfile: examples/ai-powered/server/Dockerfile
+      context: ./server
+      args:
+        AGENT_NAME: ai-powered-agent
+        AGENT_DESCRIPTION: An AI-powered A2A server with weather and time tools
+        AGENT_VERSION: 0.1.0
     ports:
       - "8080:8080"
+    depends_on:
+      - inference-gateway
     environment:
-      - PORT=8080
-      - AGENT_NAME=ai-powered-agent
-      - AGENT_CLIENT_BASE_URL=${INFERENCE_GATEWAY_URL:-https://api.openai.com}
-      - AGENT_CLIENT_PROVIDER=${AGENT_CLIENT_PROVIDER:-openai}
-      - AGENT_CLIENT_MODEL=${AGENT_CLIENT_MODEL:-gpt-4o-mini}
-      - AGENT_CLIENT_API_KEY=${AGENT_CLIENT_API_KEY}
-      - CAPABILITIES_STREAMING=false
-      - LOG_LEVEL=debug
+      ENVIRONMENT: development
+      A2A_SERVER_PORT: 8080
+      A2A_DEBUG: true
+      A2A_CAPABILITIES_STREAMING: true
+      A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
+      A2A_AGENT_CLIENT_BASE_URL: http://inference-gateway:8000
+      A2A_AGENT_CLIENT_PROVIDER: ${A2A_AGENT_CLIENT_PROVIDER}
+      A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL}
+      A2A_AGENT_CLIENT_API_KEY: ${A2A_AGENT_CLIENT_API_KEY}
     networks:
       - a2a-network
 
   client:
     build:
-      context: ../..
-      dockerfile: examples/ai-powered/client/Dockerfile
+      context: ./client
     depends_on:
       - server
     environment:

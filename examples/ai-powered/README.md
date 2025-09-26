@@ -1,48 +1,51 @@
 # AI-Powered A2A Example
 
-This example demonstrates an A2A server integrated with an AI language model (OpenAI, Anthropic, etc.).
+This example demonstrates an A2A server with AI/LLM integration and built-in tools for weather and time queries.
 
 ## What This Example Shows
 
-- A2A server with AI agent integration
-- Client sending various prompts to test AI responses
-- Configuration for different LLM providers
-- Docker Compose setup with environment variables
+- A2A server with AI agent integration using multiple LLM providers
+- Built-in tools: weather lookup and current time
+- Local Inference Gateway for provider abstraction
+- Environment-based configuration following production patterns
 
 ## Directory Structure
 
 ```
 ai-powered/
 ├── client/
-│   ├── main.go       # Client sending AI prompts
-│   └── Dockerfile
+│   ├── main.go       # A2A client sending AI prompts
+│   └── Dockerfile    # Client container
 ├── server/
-│   ├── main.go       # AI-powered A2A server
-│   └── Dockerfile
-├── docker-compose.yaml
+│   ├── main.go       # AI-powered A2A server with tools
+│   ├── config/
+│   │   └── config.go # Configuration
+│   └── Dockerfile    # Server container with build-time metadata
+├── docker-compose.yaml # Includes Inference Gateway
+├── .env.example      # All provider API keys
 └── README.md
 ```
-
-## Prerequisites
-
-You need an API key from one of the supported providers:
-- OpenAI
-- Anthropic
-- Or use an Inference Gateway URL
 
 ## Running the Example
 
 ### Using Docker Compose (Recommended)
 
-1. Set your API key:
+1. Copy environment variables:
 ```bash
-export AGENT_CLIENT_API_KEY="your-api-key-here"
+cp .env.example .env
 ```
 
-2. (Optional) Configure provider and model:
+2. Edit `.env` and add your API key for at least one provider:
 ```bash
-export AGENT_CLIENT_PROVIDER="openai"  # or "anthropic"
-export AGENT_CLIENT_MODEL="gpt-4o-mini"  # or "claude-3-haiku"
+# Choose one or more providers
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
+# ... other providers
+
+# Configure agent
+A2A_AGENT_CLIENT_PROVIDER=openai
+A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
 ```
 
 3. Run the example:
@@ -50,15 +53,21 @@ export AGENT_CLIENT_MODEL="gpt-4o-mini"  # or "claude-3-haiku"
 docker-compose up --build
 ```
 
+This will:
+1. Start the Inference Gateway with your configured providers
+2. Start the AI-powered A2A server with weather and time tools
+3. Run the client to test AI responses with tool usage
+
 ### Running Locally
 
 #### Start the Server
 
 ```bash
 cd server
-export AGENT_CLIENT_API_KEY="your-api-key-here"
-export AGENT_CLIENT_PROVIDER="openai"
-export AGENT_CLIENT_MODEL="gpt-4o-mini"
+export A2A_AGENT_CLIENT_PROVIDER=openai
+export A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
+export A2A_AGENT_CLIENT_BASE_URL=https://api.openai.com
+export A2A_AGENT_CLIENT_API_KEY=your_api_key_here
 go run main.go
 ```
 
@@ -69,84 +78,89 @@ cd client
 go run main.go
 ```
 
-## Configuration
+## Server Configuration
 
-### Server Environment Variables
+The server uses environment variables with the `A2A_` prefix for consistency with production agents:
 
-- `PORT`: Server port (default: 8080)
-- `AGENT_NAME`: Agent identifier (default: ai-powered-agent)
-- `AGENT_CLIENT_BASE_URL`: LLM API endpoint (default: https://api.openai.com)
-- `AGENT_CLIENT_PROVIDER`: LLM provider (openai, anthropic, etc.)
-- `AGENT_CLIENT_MODEL`: Model to use (gpt-4o-mini, claude-3-haiku, etc.)
-- `AGENT_CLIENT_API_KEY`: Your API key (required)
-- `LOG_LEVEL`: Logging verbosity (default: debug)
+| Environment Variable | Description | Default |
+|---------------------|-------------|---------|
+| `ENVIRONMENT` | Runtime environment | `development` |
+| `A2A_AGENT_NAME` | Agent name (set via build-time LD flags) | `ai-powered-agent` |
+| `A2A_AGENT_DESCRIPTION` | Agent description (build-time) | AI-powered server with tools |
+| `A2A_AGENT_VERSION` | Agent version (build-time) | `0.1.0` |
+| `A2A_SERVER_PORT` | Server port | `8080` |
+| `A2A_DEBUG` | Enable debug logging | `false` |
+| `A2A_CAPABILITIES_STREAMING` | Enable streaming support | `true` |
+| `A2A_AGENT_CLIENT_BASE_URL` | LLM API endpoint | Via Inference Gateway |
+| `A2A_AGENT_CLIENT_PROVIDER` | LLM provider (openai, anthropic, etc.) | Required |
+| `A2A_AGENT_CLIENT_MODEL` | Model name | Required |
+| `A2A_AGENT_CLIENT_API_KEY` | API key (dummy when using gateway) | Required |
 
-### Using Inference Gateway
+## Supported Providers
 
-If you have an Inference Gateway deployed:
+Via the included Inference Gateway:
+- OpenAI (GPT models)
+- Anthropic (Claude models)
+- DeepSeek
+- Google (Gemini)
+- Cloudflare Workers AI
+- Cohere
+- Mistral
 
-```bash
-export INFERENCE_GATEWAY_URL="https://your-gateway.com"
-export AGENT_CLIENT_API_KEY="your-gateway-key"
+## Built-in Tools
+
+The server includes two sample tools:
+
+- **Weather**: Get current weather for any location
+- **Time**: Get current date and time
+
+Example AI interaction:
 ```
-
-## Example Output
-
-The client sends three different prompts and displays AI responses:
-
-```
---- Request 1 ---
-Sending: What is the capital of France?
-Response: The capital of France is Paris.
-
---- Request 2 ---
-Sending: Write a haiku about programming
-Response: Code flows like water,
-Bugs surface, then disappear—
-Logic finds its way.
-
---- Request 3 ---
-Sending: Explain quantum computing in simple terms
-Response: Quantum computing uses quantum bits (qubits) that can be both 0 and 1
-simultaneously, unlike classical bits. This allows quantum computers to
-process many calculations at once...
+User: "What's the weather in Tokyo and what time is it?"
+AI: Uses both tools to provide current weather and time information
 ```
 
 ## Understanding the Code
 
 ### Server (`server/main.go`)
 
-The server creates an AI agent and processes messages:
+Creates an AI agent with tools and processes messages:
 
 ```go
-// Build AI agent
-agent := server.NewAgentBuilder().
-    WithProvider(provider).
-    WithModel(model).
-    WithBaseURL(baseURL).
-    WithAPIKey(apiKey).
+// Create AI agent with LLM client and tools
+agent, err := server.NewAgentBuilder(logger).
+    WithConfig(&cfg.A2A.AgentConfig).
+    WithLLMClient(llmClient).
+    WithSystemPrompt("You are a helpful AI assistant with access to weather and time tools.").
+    WithToolBox(toolBox).
     Build()
 
-// Build server with AI handler
-a2aServer := server.NewA2AServerBuilder().
-    WithAgent(agent).
-    Build()
+// Custom task handler for AI processing
+taskHandler := NewAITaskHandler(logger)
+taskHandler.SetAgent(agent)
 ```
 
-### Client (`client/main.go`)
+### Configuration (`server/config/config.go`)
 
-The client sends various prompts to test the AI:
+Follows the same pattern as production agents:
 
 ```go
-messages := []types.Message{
-    {Role: "user", Content: "What is the capital of France?"},
-    {Role: "user", Content: "Write a haiku about programming"},
-    // ...
+type Config struct {
+    Environment string              `env:"ENVIRONMENT,default=development"`
+    A2A         serverConfig.Config `env:",prefix=A2A_"`
 }
+```
+
+### Build-Time Metadata
+
+Agent metadata is injected via LD flags at build time instead of being hardcoded:
+
+```dockerfile
+RUN go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}" -o server .
 ```
 
 ## Next Steps
 
-- Try the `streaming` example for real-time AI responses
-- Check `travel-planner` for a complex AI agent scenario
-- Explore `artifacts` for handling file generation with AI
+- Try the `minimal` example for basic A2A concepts
+- Check the `streaming` example for real-time AI responses
+- Explore other examples for different AI agent patterns
