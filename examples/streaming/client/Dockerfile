@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 
 # Build the client
-RUN go build -o client examples/streaming/client/main.go
+RUN go build -o client .
 
 FROM alpine:latest
 

@@ -10,7 +10,11 @@ RUN go mod download
 COPY . .
 
 # Build the server
-RUN go build -o server examples/streaming/server/main.go
+ARG AGENT_NAME="streaming-agent"
+ARG AGENT_DESCRIPTION="An A2A server agent that streams responses in real-time"
+ARG AGENT_VERSION="0.1.0"
+
+RUN go build -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" -o server .
 
 FROM alpine:latest
 

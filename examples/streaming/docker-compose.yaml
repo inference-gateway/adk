@@ -1,33 +1,33 @@
+---
 services:
   server:
     build:
-      context: ../..
-      dockerfile: examples/streaming/server/Dockerfile
+      context: ./server
+      args:
+        AGENT_NAME: streaming-agent
+        AGENT_DESCRIPTION: An agent that streams responses in real-time
+        AGENT_VERSION: 0.1.0
     ports:
       - "8080:8080"
     environment:
-      - PORT=8080
-      - AGENT_NAME=streaming-agent
-      - AGENT_CLIENT_BASE_URL=${INFERENCE_GATEWAY_URL:-https://api.openai.com}
-      - AGENT_CLIENT_PROVIDER=${AGENT_CLIENT_PROVIDER:-openai}
-      - AGENT_CLIENT_MODEL=${AGENT_CLIENT_MODEL:-gpt-4o-mini}
-      - AGENT_CLIENT_API_KEY=${AGENT_CLIENT_API_KEY}
-      - CAPABILITIES_STREAMING=true
-      - LOG_LEVEL=debug
+      ENVIRONMENT: development
+      A2A_SERVER_PORT: 8080
+      A2A_DEBUG: true
+      A2A_CAPABILITIES_STREAMING: true
+      A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
     networks:
       - a2a-network
 
   client:
     build:
-      context: ../..
-      dockerfile: examples/streaming/client/Dockerfile
+      context: ./client
     depends_on:
       - server
     environment:
-      - SERVER_URL=http://server:8080
+      SERVER_URL: http://server:8080
+    command: sh -c "sleep 5 && /app/client"
     networks:
       - a2a-network
-    command: sh -c "sleep 5 && /app/client"
 
 networks:
   a2a-network:

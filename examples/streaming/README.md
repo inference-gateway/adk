@@ -1,10 +1,10 @@
 # Streaming A2A Example
 
-This example demonstrates real-time streaming responses from an A2A server, perfect for chat applications and interactive AI experiences.
+This example demonstrates real-time streaming responses from an A2A server, perfect for chat applications and interactive experiences.
 
 ## What This Example Shows
 
-- Real-time streaming of AI responses
+- Real-time streaming of responses
 - Character-by-character output for better UX
 - Mock streaming when no AI is configured
 - Proper event stream handling
@@ -27,15 +27,6 @@ streaming/
 
 ### Using Docker Compose (Recommended)
 
-With AI (requires API key):
-
-```bash
-export AGENT_CLIENT_API_KEY="your-api-key"
-docker-compose up --build
-```
-
-Without AI (mock streaming):
-
 ```bash
 docker-compose up --build
 ```
@@ -46,10 +37,6 @@ docker-compose up --build
 
 ```bash
 cd server
-# For AI streaming:
-export AGENT_CLIENT_API_KEY="your-api-key"
-export AGENT_CLIENT_PROVIDER="openai"
-export AGENT_CLIENT_MODEL="gpt-4o-mini"
 go run main.go
 ```
 
@@ -74,18 +61,14 @@ The server sends different event types during streaming:
 ### Client Stream Handling
 
 ```go
-stream, err := a2aClient.StreamMessage(ctx, message)
+stream, err := a2aClient.SendTaskStreaming(ctx, params)
+if err != nil {
+    log.Fatalf("Failed to start streaming: %v", err)
+}
 
 for event := range stream {
-    switch event.Type {
-    case "delta":
-        // Print character without newline
-        fmt.Print(event.Data)
-    case "task_complete":
-        // Task finished successfully
-    case "error":
-        // Handle error
-    }
+    // Process each streaming event
+    fmt.Printf("Received event: %+v\n", event)
 }
 ```
 
@@ -105,9 +88,6 @@ T-h-i-s- -i-s- -a- -s-t-r-e-a-m-i-n-g- -r-e-s-p-o-n-s-e-.- -E-a-c-h- -c-h-a-r-a-
 ### Server
 
 - `CAPABILITIES_STREAMING`: Must be `true`
-- `AGENT_CLIENT_API_KEY`: For AI streaming
-- `AGENT_CLIENT_PROVIDER`: LLM provider
-- `AGENT_CLIENT_MODEL`: Model to use
 
 ### Client
 
@@ -120,9 +100,3 @@ T-h-i-s- -i-s- -a- -s-t-r-e-a-m-i-n-g- -r-e-s-p-o-n-s-e-.- -E-a-c-h- -c-h-a-r-a-
 - **Code Generation**: Show code as it's generated
 - **Content Creation**: Display writing in progress
 - **Progress Updates**: Stream processing steps
-
-## Next Steps
-
-- Try `paused-task` for interactive workflows
-- Check `artifacts` for streaming with file generation
-- See `travel-planner` for complex streaming scenarios
