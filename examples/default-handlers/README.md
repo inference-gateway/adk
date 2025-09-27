@@ -89,12 +89,10 @@ To enable AI-powered responses through the default handlers:
    # For OpenAI
    A2A_AGENT_CLIENT_PROVIDER=openai
    A2A_AGENT_CLIENT_MODEL=gpt-3.5-turbo
-   A2A_AGENT_CLIENT_API_KEY=your-openai-api-key
 
    # For Anthropic
    A2A_AGENT_CLIENT_PROVIDER=anthropic
    A2A_AGENT_CLIENT_MODEL=claude-3-haiku-20240307
-   A2A_AGENT_CLIENT_API_KEY=your-anthropic-api-key
    ```
 
 3. Restart the server

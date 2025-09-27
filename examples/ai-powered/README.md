@@ -71,7 +71,6 @@ cd server
 export A2A_AGENT_CLIENT_PROVIDER=openai
 export A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
 export A2A_AGENT_CLIENT_BASE_URL=https://api.openai.com
-export A2A_AGENT_CLIENT_API_KEY=your_api_key_here
 go run main.go
 ```
 
@@ -98,7 +97,6 @@ The server uses environment variables with the `A2A_` prefix for consistency wit
 | `A2A_AGENT_CLIENT_BASE_URL`  | LLM API endpoint                         | Via Inference Gateway        |
 | `A2A_AGENT_CLIENT_PROVIDER`  | LLM provider (openai, anthropic, etc.)   | Required                     |
 | `A2A_AGENT_CLIENT_MODEL`     | Model name                               | Required                     |
-| `A2A_AGENT_CLIENT_API_KEY`   | API key (dummy when using gateway)       | Required                     |
 
 ## Supported Providers
 
