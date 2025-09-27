@@ -16,87 +16,26 @@ import (
 	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 
-	config "github.com/inference-gateway/adk/examples/ai-powered/server/config"
+	config "github.com/inference-gateway/adk/examples/default-handlers/server/config"
 )
 
-// AITaskHandler implements a task handler with LLM integration
-type AITaskHandler struct {
-	logger *zap.Logger
-	agent  server.OpenAICompatibleAgent
-}
-
-// NewAITaskHandler creates a new AI task handler
-func NewAITaskHandler(logger *zap.Logger) *AITaskHandler {
-	return &AITaskHandler{logger: logger}
-}
-
-// HandleTask processes tasks using the configured AI agent
-func (h *AITaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	if h.agent == nil {
-		return nil, fmt.Errorf("no AI agent configured")
-	}
-
-	userInput := ""
-	if message != nil {
-		for _, part := range message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					userInput = text
-					break
-				}
-			}
-		}
-	}
-
-	if userInput == "" {
-		userInput = "Hello! How can I help you?"
-	}
-
-	// Use the agent to process the message
-	response, err := h.agent.Run(ctx, []types.Message{*message})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get AI response: %w", err)
-	}
-
-	// Add all messages from the agent response to history
-	task.History = append(task.History, response.AdditionalMessages...)
-
-	responseMessage := *response.Response
-
-	task.History = append(task.History, responseMessage)
-	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = &responseMessage
-
-	return task, nil
-}
-
-// SetAgent sets the OpenAI-compatible agent
-func (h *AITaskHandler) SetAgent(agent server.OpenAICompatibleAgent) {
-	h.agent = agent
-}
-
-// GetAgent returns the configured OpenAI-compatible agent
-func (h *AITaskHandler) GetAgent() server.OpenAICompatibleAgent {
-	return h.agent
-}
-
-// AI-Powered A2A Server Example
+// Default Handlers A2A Server Example
 //
-// This example demonstrates an A2A server with AI/LLM integration and tools.
-// The server can process natural language requests and use tools like weather
-// and time queries.
+// This example demonstrates an A2A server using the default handlers.
+// The server uses WithDefaultHandlers() which provides built-in task
+// processing capabilities without requiring custom handler implementations.
 //
 // Configuration can be provided via environment variables:
 //   - ENVIRONMENT: Runtime environment (default: development)
-//   - A2A_AGENT_NAME: Agent name (default: ai-agent)
+//   - A2A_AGENT_NAME: Agent name (default: default-handlers-agent)
 //   - A2A_SERVER_PORT: Server port (default: 8080)
 //   - A2A_DEBUG: Enable debug logging (default: false)
-//   - A2A_AGENT_CLIENT_PROVIDER: LLM provider (required)
-//   - A2A_AGENT_CLIENT_MODEL: LLM model (required)
+//   - A2A_AGENT_CLIENT_PROVIDER: LLM provider (optional)
+//   - A2A_AGENT_CLIENT_MODEL: LLM model (optional)
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🤖 Starting AI-Powered A2A Server...")
+	fmt.Println("🔧 Starting Default Handlers A2A Server...")
 
 	// Initialize logger
 	logger, err := zap.NewDevelopment()
@@ -204,19 +143,20 @@ func main() {
 			logger.Fatal("failed to create AI agent", zap.Error(err))
 		}
 	} else {
-		logger.Warn("no LLM provider configured - agent will return errors for AI tasks")
+		logger.Info("no LLM provider configured - using default handlers with mock responses")
 	}
 
-	// Create task handler
-	taskHandler := NewAITaskHandler(logger)
+	// Build server with default handlers
+	serverBuilder := server.NewA2AServerBuilder(cfg.A2A, logger).
+		WithDefaultTaskHandlers()
+
+	// Set agent if available
 	if agent != nil {
-		taskHandler.SetAgent(agent)
+		serverBuilder = serverBuilder.WithAgent(agent)
 	}
 
 	// Build and start server
-	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
-		WithBackgroundTaskHandler(taskHandler).
-		WithDefaultStreamingTaskHandler().
+	a2aServer, err := serverBuilder.
 		WithAgentCard(types.AgentCard{
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,

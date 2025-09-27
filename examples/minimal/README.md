@@ -68,7 +68,7 @@ The server uses environment variables for configuration, following the productio
 | `ENVIRONMENT` | Runtime environment (development/production) | `development` |
 | `A2A_AGENT_NAME` | Name of the agent | `minimal-agent` |
 | `A2A_AGENT_DESCRIPTION` | Agent description | `A minimal A2A server that echoes messages` |
-| `A2A_AGENT_VERSION` | Agent version | `1.0.0` |
+| `A2A_AGENT_VERSION` | Agent version | `0.3.0` |
 | `A2A_SERVER_PORT` | Server port | `8080` |
 | `A2A_DEBUG` | Enable debug logging | `false` |
 | `A2A_CAPABILITIES_STREAMING` | Enable streaming support | `false` |

@@ -109,7 +109,7 @@ func main() {
 		A2A: serverConfig.Config{
 			AgentName:        "minimal-agent",
 			AgentDescription: "A minimal A2A server that echoes messages",
-			AgentVersion:     "1.0.0",
+			AgentVersion:     "0.3.0",
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
 				Streaming:              false,
@@ -150,7 +150,7 @@ func main() {
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
 			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
-			ProtocolVersion: "1.0.0",
+			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
 				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
