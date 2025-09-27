@@ -251,6 +251,14 @@ func main() {
 		zap.String("model", cfg.A2A.AgentConfig.Model),
 	)
 
+	// Validate required configuration for AI agent
+	if cfg.A2A.AgentConfig.Provider == "" {
+		logger.Fatal("A2A_AGENT_CLIENT_PROVIDER is required for AI agent functionality. Set to 'openai', 'anthropic', etc.")
+	}
+	if cfg.A2A.AgentConfig.Model == "" {
+		logger.Fatal("A2A_AGENT_CLIENT_MODEL is required for AI agent functionality. Set to a valid model name.")
+	}
+
 	// Create toolbox with sample tools for AI capabilities
 	toolBox := server.NewDefaultToolBox()
 
@@ -320,6 +328,7 @@ func main() {
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithBackgroundTaskHandler(taskHandler).
 		WithStreamingTaskHandler(taskHandler).
+		WithAgent(agent).
 		WithAgentCard(types.AgentCard{
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription + " with real-time AI streaming",

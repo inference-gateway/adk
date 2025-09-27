@@ -9,7 +9,6 @@ This example demonstrates the **combination of AI/LLM integration with real-time
 - **Real-time AI Interaction**: Stream AI responses as they're generated for immediate user feedback
 - **Tool Integration**: AI agent has access to tools (weather, time) for improved capabilities
 - **Dual Processing**: Supports both streaming and background task processing
-- **Production Ready**: Environment-based configuration with proper error handling
 
 This example is ideal for building conversational AI agents, chatbots, or any application requiring real-time AI responses.
 
@@ -17,7 +16,7 @@ This example is ideal for building conversational AI agents, chatbots, or any ap
 
 The ai-powered-streaming example shows:
 
-- **AI Streaming Handler**: Custom `StreamableTaskHandler` implementation with AI integration
+- **AI Streaming Handler**: Custom `AIStreamingTaskHandler` implementation with AI integration
 - **Real-time Processing**: Character-by-character streaming of AI responses
 - **Tool Integration**: Weather and time tools available to the AI agent
 - **LLM Provider Support**: Compatible with OpenAI, Anthropic, and other providers
@@ -27,7 +26,7 @@ The ai-powered-streaming example shows:
 
 ### AI Streaming Architecture
 
-The server implements both `TaskHandler` and `StreamableTaskHandler` interfaces:
+The server implements both `TaskHandler` and `StreamableTaskHandler` interfaces using the `AIStreamingTaskHandler` type:
 
 ```go
 type AIStreamingTaskHandler struct {
@@ -87,6 +86,8 @@ Configure via environment variables:
 
 ### Example Configuration
 
+**IMPORTANT**: You must set both `A2A_AGENT_CLIENT_PROVIDER` and `A2A_AGENT_CLIENT_MODEL` environment variables for the AI agent to function. The server will fail to start if these are not configured.
+
 For OpenAI:
 
 ```bash
@@ -99,6 +100,14 @@ For Anthropic:
 ```bash
 export A2A_AGENT_CLIENT_PROVIDER=anthropic
 export A2A_AGENT_CLIENT_MODEL=claude-3-haiku-20240307
+```
+
+For Docker Compose usage, create a `.env` file in the example directory:
+
+```bash
+# .env file for docker-compose
+A2A_AGENT_CLIENT_PROVIDER=openai
+A2A_AGENT_CLIENT_MODEL=gpt-4
 ```
 
 ## Running the Example
@@ -120,7 +129,7 @@ export A2A_DEBUG=true
 ### 2. Start the Server
 
 ```bash
-cd examples/ai-powered-streaming/server
+cd server
 go run main.go
 ```
 
@@ -139,7 +148,7 @@ Expected output:
 In another terminal:
 
 ```bash
-cd examples/ai-powered-streaming/client
+cd client
 go run main.go
 ```
 
