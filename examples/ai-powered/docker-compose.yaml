@@ -1,3 +1,4 @@
+---
 services:
   inference-gateway:
     image: ghcr.io/inference-gateway/inference-gateway:latest
