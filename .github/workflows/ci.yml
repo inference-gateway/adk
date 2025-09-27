@@ -29,7 +29,7 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.1.6
 
       - name: Install Mockgen
-        run: go install go.uber.org/mock/mockgen@v0.5.0
+        run: go install go.uber.org/mock/mockgen@v0.6.0
 
       - name: Install generator tool
         run: go install github.com/inference-gateway/tools/cmd/generator@v0.1.2
