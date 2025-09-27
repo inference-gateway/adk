@@ -17,7 +17,7 @@ func main() {
 	// Get server URL from environment or use default
 	serverURL := os.Getenv("SERVER_URL")
 	if serverURL == "" {
-		serverURL = "http://localhost:8080/a2a"
+		serverURL = "http://localhost:8080"
 	}
 
 	// Initialize logger
@@ -25,11 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create logger: %v", err)
 	}
-	defer func() {
-		if err := logger.Sync(); err != nil {
-			log.Printf("Failed to sync logger: %v", err)
-		}
-	}()
+	defer logger.Sync()
 
 	// Create client
 	a2aClient := client.NewClientWithLogger(serverURL, logger)

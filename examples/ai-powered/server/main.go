@@ -216,6 +216,7 @@ func main() {
 	// Build and start server
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithBackgroundTaskHandler(taskHandler).
+		WithDefaultStreamingTaskHandler().
 		WithAgentCard(types.AgentCard{
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,

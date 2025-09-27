@@ -26,9 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create logger: %v", err)
 	}
-	defer func() {
-		_ = logger.Sync()
-	}()
+	defer logger.Sync()
 
 	// Create client
 	a2aClient := client.NewClientWithLogger(serverURL, logger)

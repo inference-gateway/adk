@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/go:1-1.24-bookworm
+FROM mcr.microsoft.com/devcontainers/go:2-1.25-bookworm
 
 ENV TASK_VERSION=v3.43.3 \
     GOLANG_CI_LINT_VERSION=v2.1.6 \

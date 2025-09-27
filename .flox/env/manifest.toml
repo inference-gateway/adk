@@ -2,7 +2,7 @@ version = 1
 
 [install]
 go.pkg-path = "go"
-go.version = "^1.24"
+go.version = "^1.25"
 
 golangci-lint.pkg-path = "golangci-lint"
 golangci-lint.version = "^2.4.0"
