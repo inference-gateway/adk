@@ -282,7 +282,7 @@ func main() {
     cfg := config.Config{
         AgentName:        "minimal-agent",
         AgentDescription: "A minimal A2A server that echoes messages",
-        AgentVersion:     "1.0.0",
+        AgentVersion:     "0.1.0",
         Debug:            true,
         QueueConfig: config.QueueConfig{
             CleanupInterval: 5 * time.Minute,
@@ -303,7 +303,7 @@ func main() {
             Description:     cfg.AgentDescription,
             Version:         cfg.AgentVersion,
             URL:             fmt.Sprintf("http://localhost:%s", port),
-            ProtocolVersion: "1.0.0",
+            ProtocolVersion: "0.3.0",
             Capabilities: types.AgentCapabilities{
                 Streaming:              &[]bool{false}[0],
                 PushNotifications:      &[]bool{false}[0],
@@ -684,11 +684,11 @@ go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName='My
 
 ```dockerfile
 # Build with custom metadata in Docker
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 ARG AGENT_NAME="Production Agent"
 ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"
-ARG AGENT_VERSION="1.0.0"
+ARG AGENT_VERSION="0.1.0"
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -1163,7 +1163,6 @@ export ENVIRONMENT="production"
 export A2A_PORT="8080"
 export A2A_AGENT_CLIENT_PROVIDER="openai"
 export A2A_AGENT_CLIENT_MODEL="openai/gpt-4"
-export A2A_AGENT_CLIENT_API_KEY="your-api-key"
 export A2A_CAPABILITIES_STREAMING="true"
 export A2A_CAPABILITIES_PUSH_NOTIFICATIONS="true"
 ```
@@ -1763,12 +1762,14 @@ go func() {
 ```
 
 **Key Features:**
+
 - **Multiple Storage Providers**: Filesystem, MinIO, S3, Google Cloud Storage
 - **RESTful Download API**: `GET /artifacts/{artifactId}/{filename}`
 - **Security**: Path traversal protection and input sanitization
 - **Integration**: Works seamlessly with A2A protocol artifacts via URI references
 
 **Storage Providers:**
+
 - `filesystem`: Local disk storage (default)
 - `minio`: MinIO object storage
 - `s3`: Amazon S3 (planned)
@@ -2095,7 +2096,7 @@ This ADK is part of the broader Inference Gateway ecosystem:
 
 ## 📋 Requirements
 
-- **Go**: 1.24 or later
+- **Go**: 1.25 or later
 - **Dependencies**: See [go.mod](./go.mod) for full dependency list
 
 ## 🐳 Docker Support
@@ -2103,12 +2104,12 @@ This ADK is part of the broader Inference Gateway ecosystem:
 Build and run your A2A agent application in a container. Here's an example Dockerfile for an application using the ADK:
 
 ```dockerfile
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Build arguments for agent metadata
 ARG AGENT_NAME="My A2A Agent"
 ARG AGENT_DESCRIPTION="A custom A2A agent built with the ADK"
-ARG AGENT_VERSION="1.0.0"
+ARG AGENT_VERSION="0.1.0"
 
 WORKDIR /app
 COPY go.mod go.sum ./

@@ -1485,7 +1485,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 					agentCard := types.AgentCard{
 						Name:        "test-agent",
 						Description: "A test agent for demonstration",
-						Version:     "1.0.0",
+						Version:     "0.1.0",
 						URL:         "https://example.com",
 						Capabilities: types.AgentCapabilities{
 							Streaming:              &[]bool{true}[0],
@@ -1508,7 +1508,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 			expectedCard: &types.AgentCard{
 				Name:        "test-agent",
 				Description: "A test agent for demonstration",
-				Version:     "1.0.0",
+				Version:     "0.1.0",
 				URL:         "https://example.com",
 				Capabilities: types.AgentCapabilities{
 					Streaming:              &[]bool{true}[0],
@@ -1658,7 +1658,7 @@ func TestClient_GetAgentCard_ContextCancellation(t *testing.T) {
 
 		agentCard := types.AgentCard{
 			Name:    "slow-agent",
-			Version: "1.0.0",
+			Version: "0.1.0",
 		}
 		_ = json.NewEncoder(w).Encode(agentCard)
 	}))
@@ -1691,7 +1691,7 @@ func TestClient_GetAgentCard_WithCustomHeaders(t *testing.T) {
 
 		agentCard := types.AgentCard{
 			Name:    "test-agent",
-			Version: "1.0.0",
+			Version: "0.1.0",
 		}
 		_ = json.NewEncoder(w).Encode(agentCard)
 	}))
@@ -1710,7 +1710,7 @@ func TestClient_GetAgentCard_WithCustomHeaders(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, card)
 	assert.Equal(t, "test-agent", card.Name)
-	assert.Equal(t, "1.0.0", card.Version)
+	assert.Equal(t, "0.1.0", card.Version)
 }
 
 func TestClient_GetAgentCard_WithCustomUserAgent(t *testing.T) {
@@ -1725,7 +1725,7 @@ func TestClient_GetAgentCard_WithCustomUserAgent(t *testing.T) {
 
 		agentCard := types.AgentCard{
 			Name:    "test-agent",
-			Version: "1.0.0",
+			Version: "0.1.0",
 		}
 		_ = json.NewEncoder(w).Encode(agentCard)
 	}))
@@ -1741,7 +1741,7 @@ func TestClient_GetAgentCard_WithCustomUserAgent(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, card)
 	assert.Equal(t, "test-agent", card.Name)
-	assert.Equal(t, "1.0.0", card.Version)
+	assert.Equal(t, "0.1.0", card.Version)
 }
 
 func TestClient_ListTasks(t *testing.T) {

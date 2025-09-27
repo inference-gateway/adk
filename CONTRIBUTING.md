@@ -8,7 +8,7 @@ We welcome contributions to the Application Development Kit for A2A-compatible A
 
 Before contributing, ensure you have the following installed:
 
-- **Go 1.24.3 or later**
+- **Go 1.25 or later**
 - **[Task](https://taskfile.dev/)** for build automation
 - **[golangci-lint](https://golangci-lint.run/)** for linting
 - **Git** for version control
@@ -318,7 +318,7 @@ func setupTestAgent(t *testing.T) server.A2AServer {
         Port: "0", // Use random port for tests
         AgentName: "test-agent",
         AgentDescription: "Test agent",
-        AgentVersion: "1.0.0",
+        AgentVersion: "0.1.0",
     }
 
     // Use mocks for dependencies

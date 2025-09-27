@@ -302,7 +302,7 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 func TestA2AServerBuilder_WithDefaultBackgroundTaskHandler(t *testing.T) {
 	cfg := config.Config{
 		AgentName:    "test-agent",
-		AgentVersion: "1.0.0",
+		AgentVersion: "0.1.0",
 	}
 	logger := zap.NewNop()
 
@@ -316,7 +316,7 @@ func TestA2AServerBuilder_WithDefaultBackgroundTaskHandler(t *testing.T) {
 func TestA2AServerBuilder_WithDefaultStreamingTaskHandler(t *testing.T) {
 	cfg := config.Config{
 		AgentName:    "test-agent",
-		AgentVersion: "1.0.0",
+		AgentVersion: "0.1.0",
 	}
 	logger := zap.NewNop()
 
@@ -413,7 +413,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			Name:        "test-agent",
 			Description: "A test agent",
 			URL:         "http://test-agent:8080",
-			Version:     "1.0.0",
+			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              boolPtr(false), // Streaming disabled, but still need background handler
 				PushNotifications:      boolPtr(false),
@@ -436,7 +436,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			Name:        "test-agent",
 			Description: "A test agent",
 			URL:         "http://test-agent:8080",
-			Version:     "1.0.0",
+			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              boolPtr(true), // Streaming enabled
 				PushNotifications:      boolPtr(false),
@@ -460,7 +460,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			Name:        "test-agent",
 			Description: "A test agent",
 			URL:         "http://test-agent:8080",
-			Version:     "1.0.0",
+			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              boolPtr(false), // Streaming disabled
 				PushNotifications:      boolPtr(false),
@@ -484,7 +484,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			Name:        "test-agent",
 			Description: "A test agent",
 			URL:         "http://test-agent:8080",
-			Version:     "1.0.0",
+			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              boolPtr(true), // Streaming enabled
 				PushNotifications:      boolPtr(false),

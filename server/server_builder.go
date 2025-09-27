@@ -77,14 +77,14 @@ var _ A2AServerBuilder = (*A2AServerBuilderImpl)(nil)
 // It provides a fluent interface for building A2A servers with custom configurations.
 // This struct holds the configuration and optional components that will be used to create the server.
 type A2AServerBuilderImpl struct {
-	cfg                    config.Config          // Base configuration for the server
-	logger                 *zap.Logger            // Logger instance for the server
-	pollingTaskHandler     TaskHandler            // Optional custom task handler for polling scenarios
-	streamingTaskHandler   StreamableTaskHandler  // Optional custom task handler for streaming scenarios
-	taskResultProcessor    TaskResultProcessor    // Optional custom task result processor
-	agent                  OpenAICompatibleAgent  // Optional pre-configured agent
-	agentCard              *types.AgentCard       // Optional custom agent card
-	artifactsServer ArtifactsServer // Optional artifacts server
+	cfg                  config.Config         // Base configuration for the server
+	logger               *zap.Logger           // Logger instance for the server
+	pollingTaskHandler   TaskHandler           // Optional custom task handler for polling scenarios
+	streamingTaskHandler StreamableTaskHandler // Optional custom task handler for streaming scenarios
+	taskResultProcessor  TaskResultProcessor   // Optional custom task result processor
+	agent                OpenAICompatibleAgent // Optional pre-configured agent
+	agentCard            *types.AgentCard      // Optional custom agent card
+	artifactsServer      ArtifactsServer       // Optional artifacts server
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies.

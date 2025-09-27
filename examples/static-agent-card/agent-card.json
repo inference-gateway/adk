@@ -1,0 +1,24 @@
+{
+  "name": "static-card-agent",
+  "description": "A demonstration agent that loads its configuration from a static JSON file",
+  "version": "0.3.0",
+  "url": "http://localhost:8080",
+  "protocol_version": "0.3.0",
+  "capabilities": {
+    "streaming": false,
+    "push_notifications": false,
+    "state_transition_history": false
+  },
+  "default_input_modes": ["text/plain"],
+  "default_output_modes": ["text/plain"],
+  "skills": [
+    {
+      "name": "echo",
+      "description": "Echo back user messages with a friendly response"
+    },
+    {
+      "name": "greet",
+      "description": "Provide friendly greetings and introductions"
+    }
+  ]
+}

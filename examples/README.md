@@ -1,44 +1,157 @@
-# ADK Examples
+# A2A ADK Examples
 
-This directory contains comprehensive examples demonstrating how to use the A2A Agent Development Kit (ADK) with different configurations and storage providers.
+This directory contains scenario-based examples demonstrating different capabilities of the A2A Agent Development Kit (ADK).
 
-## Quick Start with Docker Compose
+## 📁 Structure
 
-The easiest way to try the examples is using Docker Compose, which provides pre-configured setups for different storage scenarios.
+Each example is a self-contained scenario with:
 
-### Filesystem Storage (Simple Local Development)
+- **Server**: A2A server implementation with task handlers
+- **Client**: Go client that demonstrates sending tasks and receiving responses
+- **Configuration**: Environment-based config following production patterns
+- **README**: Detailed documentation and usage instructions
 
-```bash
-# Start A2A server with local filesystem storage
-docker-compose --profile filesystem up -d
-
-# Access the services
-# - A2A Server: http://localhost:8080
-# - Artifacts Server: http://localhost:8081
-# - Artifacts stored in: ./artifacts directory
+```
+examples/
+├── minimal/              # Basic server/client without AI (echo responses)
+├── default-handlers/     # Using built-in default task handlers
+├── static-agent-card/    # Loading agent config from JSON file
+├── ai-powered/           # Server with LLM integration
+├── ai-powered-streaming/ # AI with real-time streaming
+└── streaming/            # Real-time streaming responses
 ```
 
-### MinIO Storage (Production-Ready Cloud Storage)
+## 🚀 Quick Start
+
+### Running Any Example
+
+1. Navigate to the example directory:
 
 ```bash
-# Start A2A server with MinIO S3-compatible storage
-docker-compose --profile minio up -d
-
-# Access the services
-# - A2A Server: http://localhost:8080
-# - Artifacts Server: http://localhost:8081  
-# - MinIO API: http://localhost:9000
-# - MinIO Console: http://localhost:9001 (admin/password123)
+cd examples/minimal
 ```
 
-### MinIO Only (External Storage)
+2. Run with Docker Compose:
 
 ```bash
-# Start only MinIO for use with external A2A servers
-docker-compose up minio minio-init -d
-
-# MinIO will be available for external servers to connect to
+docker-compose up --build
 ```
+
+3. Or run locally:
+
+```bash
+# Terminal 1 - Server
+cd server && go run main.go
+
+# Terminal 2 - Client
+cd client && go run main.go
+```
+
+## 📚 Available Examples
+
+### Learning Path
+
+**Start Here:**
+
+#### `minimal/`
+
+The simplest A2A server and client setup with custom echo task handler.
+
+- Custom `TaskHandler` implementation
+- Basic request/response pattern
+- No external dependencies
+- Production-style configuration with `A2A_` environment variables
+
+#### `default-handlers/`
+
+Server using built-in default task handlers - no need to implement custom handlers.
+
+- `WithDefaultTaskHandlers()` for quick setup
+- Automatic mock responses (no LLM required)
+- Optional AI integration when LLM is configured
+- Built-in error handling and response formatting
+
+#### `static-agent-card/`
+
+Demonstrates loading agent configuration from JSON files using `WithAgentCardFromFile()`.
+
+- Agent metadata defined in `agent-card.json`
+- Runtime field overrides (URLs, ports)
+- Environment-specific configurations
+- Version-controlled agent definitions
+
+**Advanced Examples:**
+
+#### `ai-powered/`
+
+Custom AI task handler with LLM integration (OpenAI, Anthropic, etc.).
+
+- Custom `AITaskHandler` implementation
+- Multiple provider support
+- Environment-based LLM configuration
+- Background task processing
+
+#### `streaming/`
+
+Real-time streaming responses for chat-like experiences.
+
+- Custom `StreamableTaskHandler` implementation
+- Character-by-character streaming
+- Event-based communication (`DeltaStreamEvent`, `StatusStreamEvent`)
+- Mock and AI modes
+
+#### `ai-powered-streaming/`
+
+AI-powered streaming with LLM integration.
+
+- Real-time AI responses
+- Streaming LLM integration
+- Event-driven architecture
+
+## 🔧 Configuration
+
+All examples follow a consistent environment variable pattern with the `A2A_` prefix:
+
+### Common A2A Variables
+
+- `ENVIRONMENT`: Runtime environment (default: `development`)
+- `A2A_SERVER_PORT`: Server port (default: `8080`)
+- `A2A_DEBUG`: Enable debug logging (default: `false`)
+- `A2A_AGENT_NAME`: Agent identifier
+- `A2A_AGENT_DESCRIPTION`: Agent description
+- `A2A_AGENT_VERSION`: Agent version
+- `A2A_CAPABILITIES_STREAMING`: Enable streaming support
+- `A2A_CAPABILITIES_PUSH_NOTIFICATIONS`: Enable push notifications
+
+### AI/LLM Configuration
+
+For examples with AI integration:
+
+- `A2A_AGENT_CLIENT_PROVIDER`: LLM provider (`openai`, `anthropic`)
+- `A2A_AGENT_CLIENT_MODEL`: Model to use (`gpt-4`, `claude-3-haiku-20240307`)
+- `A2A_AGENT_CLIENT_BASE_URL`: Custom gateway URL (optional)
+
+### Example-Specific Variables
+
+- `A2A_AGENT_CARD_FILE`: Path to agent card JSON file (`static-agent-card` example)
+
+## 🐳 Docker Support
+
+Most examples include:
+
+- Multi-stage Docker files for optimized images
+- Docker Compose for easy orchestration
+- Network isolation between services
+- Go 1.25+ base images
+
+## 📖 Learning Path
+
+1. **`minimal/`** - Understand basic A2A protocol and custom task handlers
+2. **`default-handlers/`** - Learn built-in handlers for rapid development
+3. **`static-agent-card/`** - Externalize agent configuration to JSON files
+4. **`ai-powered/`** - Add LLM integration for intelligent responses
+5. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
+6. **`streaming/`** - Implement real-time streaming capabilities
 
 ## Artifacts Server Storage Options
 
@@ -47,7 +160,8 @@ The ADK provides two storage providers for artifacts:
 ### 1. Filesystem Storage
 
 **Use Case**: Local development, testing, simple deployments
-**Benefits**: 
+**Benefits**:
+
 - Simple setup and configuration
 - No external dependencies
 - Direct file system access
@@ -65,6 +179,7 @@ artifactsServer := server.NewArtifactsServerBuilder(cfg, logger).
 
 **Use Case**: Production deployments, scalable applications, cloud-native environments
 **Benefits**:
+
 - S3-compatible API
 - Horizontal scalability
 - Built-in data protection (erasure coding)
@@ -166,17 +281,17 @@ go run cmd/minio-artifacts/main.go
 
 ## Storage Provider Comparison
 
-| Feature | Filesystem | MinIO |
-|---------|------------|-------|
-| **Setup Complexity** | Simple | Moderate |
-| **Scalability** | Single server | Horizontal |
-| **Data Protection** | File system dependent | Erasure coding |
-| **Cloud Native** | No | Yes |
-| **S3 Compatible** | No | Yes |
-| **Multi-Server** | Shared storage needed | Built-in clustering |
-| **Versioning** | Manual | Built-in |
-| **Access Control** | File permissions | IAM policies |
-| **Best For** | Development, Testing | Production, Scale |
+| Feature              | Filesystem            | MinIO               |
+| -------------------- | --------------------- | ------------------- |
+| **Setup Complexity** | Simple                | Moderate            |
+| **Scalability**      | Single server         | Horizontal          |
+| **Data Protection**  | File system dependent | Erasure coding      |
+| **Cloud Native**     | No                    | Yes                 |
+| **S3 Compatible**    | No                    | Yes                 |
+| **Multi-Server**     | Shared storage needed | Built-in clustering |
+| **Versioning**       | Manual                | Built-in            |
+| **Access Control**   | File permissions      | IAM policies        |
+| **Best For**         | Development, Testing  | Production, Scale   |
 
 ## Configuration
 
@@ -185,6 +300,7 @@ go run cmd/minio-artifacts/main.go
 Both storage providers support environment-based configuration:
 
 #### Filesystem Storage
+
 ```bash
 ARTIFACTS_ENABLE=true
 ARTIFACTS_STORAGE_PROVIDER=filesystem
@@ -193,6 +309,7 @@ ARTIFACTS_SERVER_PORT=8081
 ```
 
 #### MinIO Storage
+
 ```bash
 ARTIFACTS_ENABLE=true
 ARTIFACTS_STORAGE_PROVIDER=minio
@@ -294,7 +411,7 @@ Check service health:
 # A2A Server
 curl http://localhost:8080/health
 
-# Artifacts Server  
+# Artifacts Server
 curl http://localhost:8081/health
 
 # MinIO

@@ -1,0 +1,33 @@
+---
+services:
+  server:
+    build:
+      context: ./server
+    ports:
+      - "8080:8080"
+    environment:
+      ENVIRONMENT: development
+      A2A_AGENT_NAME: minimal-agent
+      A2A_AGENT_DESCRIPTION: A minimal A2A server that echoes messages
+      A2A_AGENT_VERSION: 0.1.0
+      A2A_SERVER_PORT: 8080
+      A2A_DEBUG: true
+      A2A_CAPABILITIES_STREAMING: false
+      A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
+    networks:
+      - a2a-network
+
+  client:
+    build:
+      context: ./client
+    depends_on:
+      - server
+    environment:
+      SERVER_URL: http://server:8080
+    command: sh -c "sleep 5 && /app/client"
+    networks:
+      - a2a-network
+
+networks:
+  a2a-network:
+    driver: bridge
