@@ -318,7 +318,7 @@ func setupTestAgent(t *testing.T) server.A2AServer {
         Port: "0", // Use random port for tests
         AgentName: "test-agent",
         AgentDescription: "Test agent",
-        AgentVersion: "1.0.0",
+        AgentVersion: "0.1.0",
     }
 
     // Use mocks for dependencies

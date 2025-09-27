@@ -24,7 +24,7 @@ func createTestAgentCard() types.AgentCard {
 		Name:        "test-agent",
 		Description: "A test agent",
 		URL:         "http://test-agent:8080",
-		Version:     "1.0.0",
+		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
 			Streaming:              boolPtr(true),
 			PushNotifications:      boolPtr(true),
@@ -263,7 +263,7 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 		AgentName:        "test-agent",
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
-		AgentVersion:     "1.0.0",
+		AgentVersion:     "0.1.0",
 		ServerConfig:     config.ServerConfig{Port: "8080"},
 		CapabilitiesConfig: config.CapabilitiesConfig{
 			Streaming:              false,
@@ -278,7 +278,7 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 		Name:        "test-agent",
 		Description: "A test agent",
 		URL:         "http://test-agent:8080",
-		Version:     "1.0.0",
+		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
 			Streaming:              &cfg.CapabilitiesConfig.Streaming,
 			PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
@@ -314,7 +314,7 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 		AgentName:        "test-agent",
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
-		AgentVersion:     "1.0.0",
+		AgentVersion:     "0.1.0",
 		ServerConfig:     config.ServerConfig{Port: "8080"},
 	}
 
@@ -324,7 +324,7 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 		Name:        "test-agent",
 		Description: "A test agent",
 		URL:         "http://test-agent:8080",
-		Version:     "1.0.0",
+		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
 			Streaming:              &[]bool{true}[0],
 			PushNotifications:      &[]bool{true}[0],
@@ -348,7 +348,7 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 	assert.Equal(t, "test-agent", agentCard.Name)
 	assert.Equal(t, "A test agent", agentCard.Description)
 	assert.Equal(t, "http://test-agent:8080", agentCard.URL)
-	assert.Equal(t, "1.0.0", agentCard.Version)
+	assert.Equal(t, "0.1.0", agentCard.Version)
 
 	assert.NotNil(t, agentCard.Capabilities.Streaming)
 	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
@@ -385,7 +385,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		AgentName:        "test-agent",
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
-		AgentVersion:     "1.0.0",
+		AgentVersion:     "0.1.0",
 		ServerConfig:     config.ServerConfig{Port: "8080"},
 		Debug:            false,
 		QueueConfig: config.QueueConfig{
@@ -472,7 +472,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		AgentName:        "weather-agent",
 		AgentDescription: "A weather agent",
 		AgentURL:         "http://weather-agent:8080",
-		AgentVersion:     "1.0.0",
+		AgentVersion:     "0.1.0",
 		ServerConfig:     config.ServerConfig{Port: "8080"},
 		Debug:            false,
 		QueueConfig: config.QueueConfig{

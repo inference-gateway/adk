@@ -282,7 +282,7 @@ func main() {
     cfg := config.Config{
         AgentName:        "minimal-agent",
         AgentDescription: "A minimal A2A server that echoes messages",
-        AgentVersion:     "1.0.0",
+        AgentVersion:     "0.1.0",
         Debug:            true,
         QueueConfig: config.QueueConfig{
             CleanupInterval: 5 * time.Minute,
@@ -303,7 +303,7 @@ func main() {
             Description:     cfg.AgentDescription,
             Version:         cfg.AgentVersion,
             URL:             fmt.Sprintf("http://localhost:%s", port),
-            ProtocolVersion: "1.0.0",
+            ProtocolVersion: "0.3.0",
             Capabilities: types.AgentCapabilities{
                 Streaming:              &[]bool{false}[0],
                 PushNotifications:      &[]bool{false}[0],
@@ -688,7 +688,7 @@ FROM golang:1.25-alpine AS builder
 
 ARG AGENT_NAME="Production Agent"
 ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"
-ARG AGENT_VERSION="1.0.0"
+ARG AGENT_VERSION="0.1.0"
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -2033,7 +2033,7 @@ FROM golang:1.25-alpine AS builder
 # Build arguments for agent metadata
 ARG AGENT_NAME="My A2A Agent"
 ARG AGENT_DESCRIPTION="A custom A2A agent built with the ADK"
-ARG AGENT_VERSION="1.0.0"
+ARG AGENT_VERSION="0.1.0"
 
 WORKDIR /app
 COPY go.mod go.sum ./
