@@ -684,7 +684,7 @@ go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName='My
 
 ```dockerfile
 # Build with custom metadata in Docker
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 ARG AGENT_NAME="Production Agent"
 ARG AGENT_DESCRIPTION="Production deployment agent with enhanced capabilities"
@@ -2021,7 +2021,7 @@ This ADK is part of the broader Inference Gateway ecosystem:
 
 ## 📋 Requirements
 
-- **Go**: 1.24 or later
+- **Go**: 1.25 or later
 - **Dependencies**: See [go.mod](./go.mod) for full dependency list
 
 ## 🐳 Docker Support
@@ -2029,7 +2029,7 @@ This ADK is part of the broader Inference Gateway ecosystem:
 Build and run your A2A agent application in a container. Here's an example Dockerfile for an application using the ADK:
 
 ```dockerfile
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Build arguments for agent metadata
 ARG AGENT_NAME="My A2A Agent"

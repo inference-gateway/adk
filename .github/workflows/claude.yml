@@ -31,17 +31,17 @@ jobs:
       actions: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
       - name: Install golangci-lint
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.1.6
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.4.0
 
       - name: Install task
         run: |
-          curl -s https://taskfile.dev/install.sh | sh -s -- -b /usr/local/bin v3.43.3
+          curl -s https://taskfile.dev/install.sh | sh -s -- -b /usr/local/bin v3.45.4
 
       - name: Run Claude Code
         id: claude
