@@ -1163,7 +1163,6 @@ export ENVIRONMENT="production"
 export A2A_PORT="8080"
 export A2A_AGENT_CLIENT_PROVIDER="openai"
 export A2A_AGENT_CLIENT_MODEL="openai/gpt-4"
-export A2A_AGENT_CLIENT_API_KEY="your-api-key"
 export A2A_CAPABILITIES_STREAMING="true"
 export A2A_CAPABILITIES_PUSH_NOTIFICATIONS="true"
 ```
