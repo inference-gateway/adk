@@ -8,7 +8,7 @@ We welcome contributions to the Application Development Kit for A2A-compatible A
 
 Before contributing, ensure you have the following installed:
 
-- **Go 1.25.0 or later**
+- **Go 1.25 or later**
 - **[Task](https://taskfile.dev/)** for build automation
 - **[golangci-lint](https://golangci-lint.run/)** for linting
 - **Git** for version control
