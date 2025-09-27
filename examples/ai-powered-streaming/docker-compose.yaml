@@ -12,9 +12,9 @@ services:
       COHERE_API_KEY: ${COHERE_API_KEY}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
       LOG_LEVEL: info
-      SERVER_READ_TIMEOUT: 130s
-      SERVER_WRITE_TIMEOUT: 130s
-      CLIENT_TIMEOUT: 130s
+      SERVER_READ_TIMEOUT: 230s
+      SERVER_WRITE_TIMEOUT: 230s
+      CLIENT_TIMEOUT: 230s
     networks:
       - a2a-network
 
@@ -36,6 +36,7 @@ services:
       A2A_AGENT_CLIENT_BASE_URL: http://inference-gateway:8080/v1
       A2A_AGENT_CLIENT_PROVIDER: ${A2A_AGENT_CLIENT_PROVIDER}
       A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL}
+      A2A_AGENT_CLIENT_TIMEOUT: 230s
     networks:
       - a2a-network
 
@@ -46,6 +47,7 @@ services:
       - server
     environment:
       SERVER_URL: http://server:8080
+      CLIENT_TIMEOUT: 230s
     command: sh -c "sleep 5 && /app/client"
     networks:
       - a2a-network
