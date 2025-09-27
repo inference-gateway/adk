@@ -131,6 +131,13 @@ func main() {
 						fmt.Printf("Final Response:\n%s\n", string(messageJSON))
 					}
 					completed = true
+				case types.TaskStateInputRequired:
+					fmt.Printf("Task requires input - ending polling\n")
+					if task.Status.Message != nil {
+						messageJSON, _ := json.MarshalIndent(task.Status.Message, "", "  ")
+						fmt.Printf("Partial Response:\n%s\n", string(messageJSON))
+					}
+					completed = true
 				case types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
 					fmt.Printf("Task ended with state: %s\n", task.Status.State)
 					if task.Status.Message != nil {
