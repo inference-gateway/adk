@@ -23,10 +23,10 @@ services:
     depends_on:
       - server
     environment:
-      - SERVER_URL=http://server:8080
+      SERVER_URL: http://server:8080
+    command: sh -c "sleep 5 && /app/client"
     networks:
       - a2a-network
-    command: sh -c "sleep 5 && /app/client"
 
 networks:
   a2a-network:
