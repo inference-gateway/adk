@@ -25,14 +25,6 @@ import (
 // The server uses WithDefaultHandlers() which provides built-in task
 // processing capabilities without requiring custom handler implementations.
 //
-// Configuration can be provided via environment variables:
-//   - ENVIRONMENT: Runtime environment (default: development)
-//   - A2A_AGENT_NAME: Agent name (default: default-handlers-agent)
-//   - A2A_SERVER_PORT: Server port (default: 8080)
-//   - A2A_DEBUG: Enable debug logging (default: false)
-//   - A2A_AGENT_CLIENT_PROVIDER: LLM provider (optional)
-//   - A2A_AGENT_CLIENT_MODEL: LLM model (optional)
-//
 // To run: go run main.go
 func main() {
 	fmt.Println("🔧 Starting Default Handlers A2A Server...")
@@ -124,36 +116,27 @@ func main() {
 	)
 	toolBox.AddTool(timeTool)
 
-	// Create AI agent with LLM client (if provider is configured)
-	var agent server.OpenAICompatibleAgent
-	if cfg.A2A.AgentConfig.Provider != "" && cfg.A2A.AgentConfig.Model != "" {
-		llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
-		if err != nil {
-			logger.Fatal("failed to create LLM client", zap.Error(err))
-		}
+	// Create AI agent with LLM client
+	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
+	if err != nil {
+		logger.Fatal("failed to create LLM client", zap.Error(err))
+	}
 
-		agent, err = server.NewAgentBuilder(logger).
-			WithConfig(&cfg.A2A.AgentConfig).
-			WithLLMClient(llmClient).
-			WithSystemPrompt("You are a helpful AI assistant with access to weather and time tools. Be concise and friendly in your responses.").
-			WithMaxChatCompletion(10).
-			WithToolBox(toolBox).
-			Build()
-		if err != nil {
-			logger.Fatal("failed to create AI agent", zap.Error(err))
-		}
-	} else {
-		logger.Info("no LLM provider configured - using default handlers with mock responses")
+	agent, err := server.NewAgentBuilder(logger).
+		WithConfig(&cfg.A2A.AgentConfig).
+		WithLLMClient(llmClient).
+		WithSystemPrompt("You are a helpful AI assistant with access to weather and time tools. Be concise and friendly in your responses.").
+		WithMaxChatCompletion(10).
+		WithToolBox(toolBox).
+		Build()
+	if err != nil {
+		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
 	// Build server with default handlers
 	serverBuilder := server.NewA2AServerBuilder(cfg.A2A, logger).
+		WithAgent(agent).
 		WithDefaultTaskHandlers()
-
-	// Set agent if available
-	if agent != nil {
-		serverBuilder = serverBuilder.WithAgent(agent)
-	}
 
 	// Build and start server
 	a2aServer, err := serverBuilder.
