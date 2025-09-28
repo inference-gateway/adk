@@ -2,6 +2,51 @@
 
 We welcome contributions to the Application Development Kit for A2A-compatible Agents! This document provides guidelines for contributing to the project.
 
+## Table of Contents
+
+- [🚀 Getting Started](#-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Setting Up Your Development Environment](#setting-up-your-development-environment)
+    - [Option 1: Using Flox (Recommended)](#option-1-using-flox-recommended)
+    - [Option 2: Using Dev Container](#option-2-using-dev-container)
+    - [Option 3: Manual Setup](#option-3-manual-setup)
+- [📋 Development Workflow](#-development-workflow)
+  - [1. Download Latest A2A Schema](#1-download-latest-a2a-schema)
+  - [2. Generate Types](#2-generate-types)
+  - [3. Generate Mocks](#3-generate-mocks)
+  - [4. Development Cycle](#4-development-cycle)
+  - [5. Pre-commit Hooks (Recommended)](#5-pre-commit-hooks-recommended)
+  - [6. Before Committing](#6-before-committing)
+- [🎯 Coding Guidelines](#-coding-guidelines)
+  - [Code Style](#code-style)
+  - [Logging](#logging)
+  - [Testing](#testing)
+- [🛠️ Making Changes](#️-making-changes)
+  - [Creating a Feature Branch](#creating-a-feature-branch)
+  - [Branch Naming Convention](#branch-naming-convention)
+  - [Commit Message Format](#commit-message-format)
+- [🧪 Testing Guidelines](#-testing-guidelines)
+  - [Test Structure](#test-structure)
+  - [Test Organization](#test-organization)
+  - [Mock Guidelines](#mock-guidelines)
+  - [Test Utilities](#test-utilities)
+- [📚 Documentation](#-documentation)
+  - [Code Documentation](#code-documentation)
+  - [Documentation Updates](#documentation-updates)
+- [🔄 Pull Request Process](#-pull-request-process)
+  - [Before Submitting](#before-submitting)
+  - [Pull Request Template](#pull-request-template)
+  - [Review Process](#review-process)
+- [🐛 Reporting Issues](#-reporting-issues)
+  - [Bug Reports](#bug-reports)
+  - [Feature Requests](#feature-requests)
+- [📞 Getting Help](#-getting-help)
+  - [Community Resources](#community-resources)
+  - [Development Questions](#development-questions)
+- [🎉 Recognition](#-recognition)
+- [📋 Checklist](#-checklist)
+- [🔗 Additional Resources](#-additional-resources)
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -14,6 +59,72 @@ Before contributing, ensure you have the following installed:
 - **Git** for version control
 
 ### Setting Up Your Development Environment
+
+#### Option 1: Using Flox (Recommended)
+
+This project uses [Flox](https://flox.dev/) for consistent development environments:
+
+1. **Install Flox** (if not already installed):
+   ```bash
+   curl -L https://install.flox.dev | bash
+   ```
+2. **Fork the repository** on GitHub
+3. **Clone your fork**:
+   ```bash
+   git clone https://github.com/your-username/adk.git
+   cd adk
+   ```
+4. **Activate the Flox environment**:
+
+   ```bash
+   flox activate
+   ```
+
+   This automatically installs all required dependencies (Go, golangci-lint, prettier, etc.)
+
+   **VS Code Integration**: For better VS Code integration, install the [Flox VS Code extension](https://marketplace.visualstudio.com/items?itemName=flox.flox) which automatically activates the Flox environment when opening the project.
+
+5. **Add the upstream remote**:
+   ```bash
+   git remote add upstream https://github.com/inference-gateway/adk.git
+   ```
+6. **Verify your setup**:
+   ```bash
+   task lint
+   task test
+   ```
+
+#### Option 2: Using Dev Container
+
+For a containerized development environment with all tools pre-installed:
+
+1. **Prerequisites**: Install [Docker](https://www.docker.com/) and [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. **Fork the repository** on GitHub
+3. **Clone your fork**:
+   ```bash
+   git clone https://github.com/your-username/adk.git
+   cd adk
+   ```
+4. **Open in VS Code**:
+   ```bash
+   code .
+   ```
+5. **Reopen in Container**: When prompted, click "Reopen in Container" or use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and select "Dev Containers: Reopen in Container"
+6. **Add the upstream remote**:
+   ```bash
+   git remote add upstream https://github.com/inference-gateway/adk.git
+   ```
+7. **Verify your setup**:
+   ```bash
+   task lint
+   task test
+   ```
+
+The dev container includes all required tools: Go 1.25, Task, golangci-lint, GitHub CLI, Node.js, prettier, and more.
+
+#### Option 3: Manual Setup
+
+If you prefer not to use Flox or containers:
 
 1. **Fork the repository** on GitHub
 2. **Clone your fork**:
@@ -308,40 +419,81 @@ import (
     "github.com/inference-gateway/adk/server"
     "github.com/inference-gateway/adk/server/config"
     "github.com/inference-gateway/adk/server/mocks"
+    "github.com/inference-gateway/adk/types"
     "github.com/stretchr/testify/require"
     "go.uber.org/zap"
 )
 
-func setupTestAgent(t *testing.T) server.A2AServer {
+// createTestAgentCard creates a test agent card for use in tests
+func createTestAgentCard() types.AgentCard {
+    return types.AgentCard{
+        Name:        "test-agent",
+        Description: "A test agent",
+        URL:         "http://test-agent:8080",
+        Version:     "0.1.0",
+        Capabilities: types.AgentCapabilities{
+            Streaming:              boolPtr(true),
+            PushNotifications:      boolPtr(true),
+            StateTransitionHistory: boolPtr(true),
+        },
+        DefaultInputModes:  []string{"text/plain"},
+        DefaultOutputModes: []string{"text/plain"},
+    }
+}
+
+// boolPtr returns a pointer to a boolean value
+func boolPtr(b bool) *bool {
+    return &b
+}
+
+// setupTestServer creates a test A2A server with mocked dependencies
+func setupTestServer(t *testing.T) server.A2AServer {
     logger := zap.NewNop()
-    cfg := &config.Config{
-        Port: "0", // Use random port for tests
-        AgentName: "test-agent",
-        AgentDescription: "Test agent",
-        AgentVersion: "0.1.0",
+    cfg := config.Config{
+        AgentName:        "test-agent",
+        AgentDescription: "Test agent description",
+        AgentVersion:     "0.1.0",
+        ServerConfig:     config.ServerConfig{Port: "0"}, // Use random port for tests
     }
 
-    // Use mocks for dependencies
+    // Create mocked dependencies
     mockTaskHandler := &mocks.FakeTaskHandler{}
+    mockStreamingTaskHandler := &mocks.FakeStreamableTaskHandler{}
     mockTaskResultProcessor := &mocks.FakeTaskResultProcessor{}
 
-    builder := &mocks.FakeA2AServerBuilder{}
-    builder.WithConfigReturns(builder)
-    builder.WithLoggerReturns(builder)
-    builder.WithTaskHandlerReturns(builder)
-    builder.WithTaskResultProcessorReturns(builder)
-
-    mockServer := &mocks.FakeA2AServer{}
-    builder.BuildReturns(mockServer)
-
-    server := builder.
-        WithConfig(cfg).
-        WithLogger(logger).
-        WithTaskHandler(mockTaskHandler).
+    // Build server using real builder with mocked dependencies
+    serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
+        WithAgentCard(createTestAgentCard()).
+        WithBackgroundTaskHandler(mockTaskHandler).
+        WithStreamingTaskHandler(mockStreamingTaskHandler).
         WithTaskResultProcessor(mockTaskResultProcessor).
         Build()
 
-    return server
+    require.NoError(t, err)
+    require.NotNil(t, serverInstance)
+
+    return serverInstance
+}
+
+// setupTestServerWithDefaults creates a test server with default handlers
+func setupTestServerWithDefaults(t *testing.T) server.A2AServer {
+    logger := zap.NewNop()
+    cfg := config.Config{
+        AgentName:        "test-agent",
+        AgentDescription: "Test agent description",
+        AgentVersion:     "0.1.0",
+        ServerConfig:     config.ServerConfig{Port: "0"}, // Use random port for tests
+    }
+
+    serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
+        WithAgentCard(createTestAgentCard()).
+        WithDefaultTaskHandlers().
+        Build()
+
+    require.NoError(t, err)
+    require.NotNil(t, serverInstance)
+
+    return serverInstance
 }
 ```
 
@@ -407,39 +559,23 @@ When creating a pull request, include:
 
 ### Bug Reports
 
-When reporting bugs, include:
+For bug reports, use the provided templates and include:
 
-- **Go version** and operating system
-- **Steps to reproduce** the issue
+- **Steps to reproduce**
 - **Expected behavior**
 - **Actual behavior**
-- **Error messages** and stack traces
-- **Minimal reproducible example**
+- **Environment details** (OS, Go version, etc.)
+- **Relevant logs or screenshots**
 
 ### Feature Requests
 
-For feature requests:
-
-- **Use case description**
-- **Proposed solution**
-- **Alternative solutions considered**
-- **Additional context**
-
-## 🛡️ Security
-
-### Reporting Security Vulnerabilities
-
-- **Do not** create public issues for security vulnerabilities
-- Email security concerns to: security@inference-gateway.com
-- Include detailed information about the vulnerability
-- Allow time for the team to address the issue before disclosure
+For feature requests, use the provided templates and include shortly what the feature is about and what are the Acceptance Criteria for this feature to be considered done.
 
 ## 📞 Getting Help
 
 ### Community Resources
 
 - **GitHub Discussions**: [Project Discussions](https://github.com/inference-gateway/adk/discussions)
-- **Discord**: [Inference Gateway Discord](https://discord.gg/inference-gateway)
 - **Documentation**: [Official Docs](https://docs.inference-gateway.com)
 
 ### Development Questions
@@ -452,7 +588,6 @@ For feature requests:
 
 Contributors are recognized in:
 
-- **CONTRIBUTORS.md** file
 - **Release notes** for significant contributions
 - **Project documentation** for documentation improvements
 
