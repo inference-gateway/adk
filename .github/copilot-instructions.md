@@ -1,58 +1,178 @@
 # Custom Instructions for Copilot
 
-Today is June 15, 2025.
+This file provides guidance to Copilot when working with code in this repository.
 
-- Always use context7 to check for the latest updates, features, or best practices of a library relevant to the task at hand.
-- Always prefer Table-Driven Testing: When writing tests.
-- Always use Early Returns: Favor early returns to simplify logic and avoid deep nesting with if-else structures.
-- Always prefer switch statements over if-else chains: Use switch statements for cleaner and more readable code when checking multiple conditions.
-- Always run `task lint` before committing code to ensure it adheres to the project's linting rules.
-- Always download the latest schema: `a2a:download-schema`.
-- Always generate the types after downloading the schema: `a2a:generate-types`.
-- Always run `task test` before committing code to ensure all tests pass.
-- Always search for the simplest solution first before considering more complex alternatives.
-- Always prefer type safety over dynamic typing: Use strong typing and interfaces to ensure type safety and reduce runtime errors.
-- Always use lowercase log messages for consistency and readability.
-- When possible code to an interface so it's easier to mock in tests.
-- When writing tests, each test case should have it's own isolated mock server mock dependencies so it's easier to understand and maintain.
+## Development Commands
 
-## Development Workflow
+### Essential Development Tasks
 
-1. Run `task a2a:download-schema` to download the latest A2A schema - when working on A2A.
-2. Run `task a2a:generate-types` If added new Schemas to openapi.yaml, update internal/openapi/schemas.go to include the new schemas.
-3. Run `task generate:mocks` to generate testing mocks, when interfaces are adjusted.
-4. Run `task lint` to ensure code quality.
-5. Run `task test` to ensure all tests pass.
+Use Taskfile.yml for all project operations:
 
-## Available Tools and MCPs
+```bash
+# Core development workflow
+task lint                    # Run golangci-lint for code quality checks
+task test                    # Run all tests with coverage
+task tidy                    # Tidy all Go modules
+task format                  # Format Go files and markdown
 
-- context7 - Helps by finding the latest updates, features, or best practices of a library relevant to the task at hand.
+# A2A schema management (required when working on A2A protocol)
+task a2a:download-schema     # Download latest A2A schema from upstream
+task a2a:generate-types      # Generate Go types from A2A schema
 
-## Related Repositories
+# Mock generation for testing
+task generate:mocks          # Generate all mocks using counterfeiter
+task generate:mocks:clean    # Clean and regenerate all mocks
 
-### Core Inference Gateway
+# Pre-commit setup
+task precommit:install       # Install Git pre-commit hook (recommended)
+```
 
-- **[Main Repository](https://github.com/inference-gateway)** - The main inference gateway org.
-- **[Documentation](https://docs.inference-gateway.com)** - Official documentation and guides
-- **[UI](https://github.com/inference-gateway/ui)** - Web interface for the inference gateway
-- **[Schemas](https://github.com/inference-gateway/schemas)** - Shared schemas and type definitions
+### Individual Test Execution
 
-### SDKs & Client Libraries
+```bash
+# Run specific test files
+go test -v ./server/...
+go test -v ./client/...
 
-- **[Go SDK](https://github.com/inference-gateway/go-sdk)** - Go client library
-- **[Rust SDK](https://github.com/inference-gateway/rust-sdk)** - Rust client library
-- **[TypeScript SDK](https://github.com/inference-gateway/typescript-sdk)** - TypeScript/JavaScript client library
-- **[Python SDK](https://github.com/inference-gateway/python-sdk)** - Python client library
+# Run specific test functions
+go test -run TestAgentBuilder ./server/
+go test -run TestTaskHandler ./server/
+```
 
-### A2A (Agent-to-Agent) Ecosystem
+## Architecture Overview
 
-- **[Awesome A2A](https://github.com/inference-gateway/awesome-a2a)** - Curated list of A2A-compatible agents
-- **[Google Calendar Agent](https://github.com/inference-gateway/google-calendar-agent)** - Agent for Google Calendar integration
+### Core Components
 
-### Internal Tools
+**A2A Server (`server/server.go`)**
 
-- **[Internal Tools](https://github.com/inference-gateway/tools)** - Collection of internal tools and utilities
+- Main server implementing Agent-to-Agent protocol
+- Handles HTTP endpoints for task submission and streaming
+- Manages task lifecycle and state transitions
+- Provides health monitoring and agent card endpoints
 
-## A2A Official Documentation
+**A2A Server Builder (`server/server_builder.go`)**
 
-- **[A2A Official Docs](https://google-a2a.github.io/A2A/latest/)** - Official documentation for A2A agents and integrations
+- Fluent interface for server construction
+- Configures task handlers, agents, storage backends
+- Supports both default and custom implementations
+- Enables modular server composition
+
+**Task Management System**
+
+- `TaskManager` (`server/task_manager.go`) - Core task orchestration
+- `TaskHandler` - Interface for background/polling task processing
+- `StreamableTaskHandler` - Interface for real-time streaming tasks
+- `Storage` - Pluggable storage backends (memory/Redis)
+
+**Agent System**
+
+- `OpenAICompatibleAgent` (`server/agent.go`) - LLM integration layer
+- `AgentBuilder` (`server/agent_builder.go`) - Agent configuration
+- `ToolBox` (`server/agent_toolbox.go`) - Tool management for agents
+- Support for custom tools and system prompts
+
+**Client Interface (`client/`)**
+
+- A2A client for communicating with other agents
+- Task submission and streaming capabilities
+- Health monitoring and agent discovery
+
+### Key Architectural Patterns
+
+**Builder Pattern**
+
+- Used throughout for flexible component configuration
+- `A2AServerBuilder`, `AgentBuilder` provide fluent interfaces
+- Enables optional component composition
+
+**Interface-Driven Design**
+
+- All major components implement interfaces for testability
+- Extensive mock generation using counterfeiter
+- Enables dependency injection and testing isolation
+
+**Dual Task Processing Models**
+
+- Background/polling for asynchronous workflows
+- Streaming for real-time interactive scenarios
+- Both support input-required pausing and state management
+
+**Storage Abstraction**
+
+- Memory storage for development (default)
+- Redis storage for production with horizontal scaling
+- Configurable via `QUEUE_PROVIDER` environment variable
+
+### Configuration System
+
+Environment-based configuration with sensible defaults:
+
+- Server settings (port, TLS, timeouts)
+- Agent/LLM configuration (provider, model, API keys)
+- Task management (retention, cleanup intervals)
+- Storage backends (memory vs Redis)
+- Telemetry and authentication (optional)
+
+See `server/config/config.go` for complete configuration structure.
+
+## Testing Strategy
+
+### Testing Approach
+
+- Table-driven tests throughout codebase
+- Comprehensive mock generation for all interfaces
+- Isolated test dependencies with dedicated mock servers
+- Coverage requirements for new functionality
+
+### Mock Management
+
+Mocks are generated using counterfeiter and stored in `server/mocks/`:
+
+- Run `task generate:mocks` after interface changes
+- Each test case uses isolated mock instances
+- Mock implementations support fluent test setup
+
+### Test Organization
+
+```
+server/
+├── *_test.go           # Unit tests alongside implementation
+├── mocks/              # Generated mocks via counterfeiter
+└── serverfakes/        # Legacy fakes (being migrated)
+```
+
+## Code Conventions
+
+### Go Standards
+
+- Use early returns to avoid deep nesting
+- Prefer switch statements over if-else chains
+- Implement interfaces for mockability
+- Use lowercase log messages for consistency
+- Strong typing with interface-based design
+
+### A2A Protocol Integration
+
+- Always download latest schema: `task a2a:download-schema`
+- Regenerate types after schema updates: `task a2a:generate-types`
+- Types are generated in `types/generated_types.go`
+- Manual types in `types/types.go` for extensions
+
+### Commit Workflow
+
+1. Run `task lint` before committing
+2. Run `task test` to ensure all tests pass
+3. Install pre-commit hook: `task precommit:install`
+4. Schema updates require regenerating types
+
+## Examples and Documentation
+
+The `examples/` directory contains complete working implementations:
+
+- `minimal/` - Basic A2A server without AI capabilities
+- `ai-powered/` - Full A2A server with LLM integration
+- `streaming/` - Real-time streaming response handling
+- `static-agent-card/` - JSON-based agent metadata management
+- `default-handlers/` - Built-in task processing patterns
+
+Each example includes setup instructions and demonstrates specific ADK features.
