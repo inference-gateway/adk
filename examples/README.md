@@ -18,7 +18,8 @@ examples/
 ├── static-agent-card/    # Loading agent config from JSON file
 ├── ai-powered/           # Server with LLM integration
 ├── ai-powered-streaming/ # AI with real-time streaming
-└── streaming/            # Real-time streaming responses
+├── streaming/            # Real-time streaming responses
+└── tls-example/          # TLS-enabled server with HTTPS communication
 ```
 
 ## 🚀 Quick Start
@@ -108,6 +109,15 @@ AI-powered streaming with LLM integration.
 - Streaming LLM integration
 - Event-driven architecture
 
+#### `tls-example/`
+
+TLS-enabled A2A server demonstrating secure HTTPS communication.
+
+- Self-signed certificate generation
+- TLS/SSL encryption for client-server communication
+- Docker Compose orchestration with TLS setup
+- Secure task submission and response handling
+
 ## 🔧 Configuration
 
 All examples follow a consistent environment variable pattern with the `A2A_` prefix:
@@ -149,9 +159,10 @@ Most examples include:
 1. **`minimal/`** - Understand basic A2A protocol and custom task handlers
 2. **`default-handlers/`** - Learn built-in handlers for rapid development
 3. **`static-agent-card/`** - Externalize agent configuration to JSON files
-4. **`ai-powered/`** - Add LLM integration for intelligent responses
-5. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
-6. **`streaming/`** - Implement real-time streaming capabilities
+4. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
+5. **`ai-powered/`** - Add LLM integration for intelligent responses
+6. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
+7. **`streaming/`** - Implement real-time streaming capabilities
 
 ## Documentation
 
