@@ -2,7 +2,7 @@
 services:
   server:
     build:
-      context: ../../..
+      context: ../..
       dockerfile: examples/artifacts-filesystem/server/Dockerfile
       args:
         AGENT_NAME: artifacts-filesystem-agent
@@ -31,7 +31,7 @@ services:
 
   client:
     build:
-      context: ../../..
+      context: ../..
       dockerfile: examples/artifacts-filesystem/client/Dockerfile
     depends_on:
       - server
