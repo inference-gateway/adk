@@ -1,0 +1,72 @@
+---
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis-queue-example
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    networks:
+      - redis-queue-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      args:
+        AGENT_NAME: redis-queue-example
+        AGENT_DESCRIPTION: A2A server demonstrating Redis queue storage
+        AGENT_VERSION: 0.1.0
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: development
+      A2A_SERVER_PORT: 8080
+      A2A_DEBUG: true
+      # Redis Queue Configuration
+      A2A_QUEUE_PROVIDER: redis
+      A2A_QUEUE_URL: redis://redis:6379
+      A2A_QUEUE_OPTIONS_DB: ${REDIS_DATABASE:-0}
+      A2A_QUEUE_OPTIONS_MAX_RETRIES: 3
+      A2A_QUEUE_OPTIONS_TIMEOUT: 5s
+      # Redis credentials (if password is set)
+      A2A_QUEUE_CREDENTIALS_PASSWORD: ${REDIS_PASSWORD:-}
+      # Task Retention
+      A2A_TASK_RETENTION_MAX_COMPLETED_TASKS: 100
+      A2A_TASK_RETENTION_MAX_FAILED_TASKS: 50
+      A2A_TASK_RETENTION_CLEANUP_INTERVAL: 5m
+      # Capabilities
+      A2A_CAPABILITIES_STREAMING: true
+      A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
+    networks:
+      - redis-queue-network
+
+  client:
+    build:
+      context: ./client
+    depends_on:
+      - server
+    environment:
+      SERVER_URL: http://server:8080
+    command: sh -c "sleep 8 && /app/client"
+    networks:
+      - redis-queue-network
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  redis-queue-network:
+    driver: bridge
