@@ -4,180 +4,175 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-This is a Go project that uses Task for build automation. Common commands:
+### Essential Development Tasks
 
-- `task test` - Run all tests with coverage (`go test -v -cover ./...`)
-- `task lint` - Run Go static analysis and linting (`golangci-lint run`)
-- `task tidy` - Tidy all Go modules
-- `task format` - Format all Go and Markdown files
-- `task clean` - Remove build artifacts
+Use Taskfile.yml for all project operations:
 
-### A2A Schema Management
+```bash
+# Core development workflow
+task lint                    # Run golangci-lint for code quality checks
+task test                    # Run all tests with coverage
+task tidy                    # Tidy all Go modules
+task format                  # Format Go files and markdown
 
-- `task a2a:download-schema` - Download latest A2A schema from GitHub
-- `task a2a:generate-types` - Generate Go types from A2A schema (creates `types/generated_types.go`)
+# A2A schema management (required when working on A2A protocol)
+task a2a:download-schema     # Download latest A2A schema from upstream
+task a2a:generate-types      # Generate Go types from A2A schema
 
-### Mock Generation
+# Mock generation for testing
+task generate:mocks          # Generate all mocks using counterfeiter
+task generate:mocks:clean    # Clean and regenerate all mocks
 
-- `task generate:mocks` - Generate all mocks using counterfeiter
-- `task clean:mocks` - Clean up generated mocks
+# Pre-commit setup
+task precommit:install       # Install Git pre-commit hook (recommended)
+```
 
-### Pre-commit Hooks
+### Individual Test Execution
 
-- `task precommit:install` - Install Git pre-commit hook
-- `task precommit:uninstall` - Uninstall Git pre-commit hook
+```bash
+# Run specific test files
+go test -v ./server/...
+go test -v ./client/...
 
-The pre-commit hook automatically runs on `git commit` with smart checks:
-
-- **Go files**: Full workflow (formatting, tidying, linting, tests)
-- **Markdown files only**: Just formatting
-- **Mixed files**: Full workflow
-
-The hook will **fail** if:
-
-- Tests fail
-- Linting fails
-- Files need formatting (you'll need to stage the formatted files and commit again)
-
-Use `git commit --no-verify` to skip the pre-commit hook if needed.
+# Run specific test functions
+go test -run TestAgentBuilder ./server/
+go test -run TestTaskHandler ./server/
+```
 
 ## Architecture Overview
 
-This is the **A2A ADK (Agent Development Kit)** - a Go library for building Agent-to-Agent (A2A) protocol compatible agents. The A2A protocol enables AI agents to communicate, delegate tasks, and share capabilities.
-
 ### Core Components
 
-**Server Architecture (`adk/server/`):**
+**A2A Server (`server/server.go`)**
 
-- `server.go` - Main A2AServer interface and implementation with HTTP endpoints
-- `server_builder.go` - Builder pattern for creating configured servers
-- `agent_builder.go` - Builder pattern for creating OpenAI-compatible agents
-- `task_manager.go` - Task lifecycle management, queuing, and persistence
-- `message_handler.go` - A2A protocol message processing
-- `config/config.go` - Environment-based configuration management
+- Main server implementing Agent-to-Agent protocol
+- Handles HTTP endpoints for task submission and streaming
+- Manages task lifecycle and state transitions
+- Provides health monitoring and agent card endpoints
 
-**Client Architecture (`adk/client/`):**
+**A2A Server Builder (`server/server_builder.go`)**
 
-- `client.go` - A2A protocol client with retry logic and streaming support
+- Fluent interface for server construction
+- Configures task handlers, agents, storage backends
+- Supports both default and custom implementations
+- Enables modular server composition
 
-**Key Interfaces:**
+**Task Management System**
 
-- `A2AServer` - Main server interface with Start/Stop, task processing
-- `A2AClient` - Client interface for communicating with A2A servers
-- `TaskHandler` - Background/polling task processing (returns completed tasks)
-- `StreamableTaskHandler` - Real-time streaming task processing (returns channels of events)
-- `TaskManager` - Task lifecycle and state management
-- `OpenAICompatibleAgent` - LLM integration interface
+- `TaskManager` (`server/task_manager.go`) - Core task orchestration
+- `TaskHandler` - Interface for background/polling task processing
+- `StreamableTaskHandler` - Interface for real-time streaming tasks
+- `Storage` - Pluggable storage backends (memory/Redis)
 
-### A2A Protocol Implementation
+**Agent System**
 
-The server implements these A2A JSON-RPC methods:
+- `OpenAICompatibleAgent` (`server/agent.go`) - LLM integration layer
+- `AgentBuilder` (`server/agent_builder.go`) - Agent configuration
+- `ToolBox` (`server/agent_toolbox.go`) - Tool management for agents
+- Support for custom tools and system prompts
 
-- `message/send` - Send tasks to agents
-- `message/stream` - Stream responses in real-time
-- `tasks/get` - Retrieve task status
-- `tasks/list` - List tasks with filtering
-- `tasks/cancel` - Cancel running tasks
-- `tasks/pushNotificationConfig/*` - Webhook notifications
+**Client Interface (`client/`)**
 
-HTTP endpoints:
+- A2A client for communicating with other agents
+- Task submission and streaming capabilities
+- Health monitoring and agent discovery
 
-- `POST /a2a` - Main A2A protocol endpoint
-- `GET /.well-known/agent-card.json` - Agent capabilities discovery
-- `GET /health` - Health check
+### Key Architectural Patterns
 
-### Task Handler Architecture
+**Builder Pattern**
 
-The ADK uses two distinct interfaces for handling tasks:
+- Used throughout for flexible component configuration
+- `A2AServerBuilder`, `AgentBuilder` provide fluent interfaces
+- Enables optional component composition
 
-**TaskHandler** - For background/polling scenarios (`message/send`):
+**Interface-Driven Design**
 
-- `HandleTask(ctx, task, message) (*Task, error)` - Returns completed task synchronously
-- Used for traditional request-response patterns
-- Can work with or without agents
+- All major components implement interfaces for testability
+- Extensive mock generation using counterfeiter
+- Enables dependency injection and testing isolation
 
-**StreamableTaskHandler** - For real-time streaming scenarios (`message/stream`):
+**Dual Task Processing Models**
 
-- `HandleStreamingTask(ctx, task, message) (<-chan StreamEvent, error)` - Returns channel of events
-- Used for real-time streaming responses
-- **Requires** an agent to be configured (sends error events if no agent is set)
-- Events include: `DeltaStreamEvent`, `StatusStreamEvent`, `ErrorStreamEvent`, `TaskCompleteStreamEvent`
+- Background/polling for asynchronous workflows
+- Streaming for real-time interactive scenarios
+- Both support input-required pausing and state management
 
-**Key Architectural Decision:** Streaming and background task processing are fundamentally different:
+**Storage Abstraction**
 
-- Background handlers return completed results
-- Streaming handlers return channels for real-time event flow
-- This separation ensures type safety and clear separation of concerns
+- Memory storage for development (default)
+- Redis storage for production with horizontal scaling
+- Configurable via `QUEUE_PROVIDER` environment variable
 
 ### Configuration System
 
-Uses `github.com/sethvargo/go-envconfig` for environment-based configuration:
+Environment-based configuration with sensible defaults:
 
-**Key Environment Variables:**
+- Server settings (port, TLS, timeouts)
+- Agent/LLM configuration (provider, model, API keys)
+- Task management (retention, cleanup intervals)
+- Storage backends (memory vs Redis)
+- Telemetry and authentication (optional)
 
-- `AGENT_NAME` - Agent identifier
-- `INFERENCE_GATEWAY_URL` - Inference Gateway URL (configures AGENT_CLIENT_BASE_URL)
-- `AGENT_CLIENT_PROVIDER` - LLM provider (openai, anthropic, etc.)
-- `AGENT_CLIENT_MODEL` - Model name
-- `CAPABILITIES_STREAMING` - Enable streaming support
-- `AUTH_ENABLE` - Enable OIDC authentication
-- `TELEMETRY_ENABLE` - Enable OpenTelemetry metrics
+See `server/config/config.go` for complete configuration structure.
+
+## Testing Strategy
 
 ### Testing Approach
 
-Uses table-driven tests with generated mocks:
+- Table-driven tests throughout codebase
+- Comprehensive mock generation for all interfaces
+- Isolated test dependencies with dedicated mock servers
+- Coverage requirements for new functionality
 
-- Test files: `*_test.go`
-- Mocks: `adk/server/mocks/` (generated via counterfeiter)
-- Comprehensive coverage for HTTP endpoints, task processing, and client operations
+### Mock Management
 
-### Dependencies
+Mocks are generated using counterfeiter and stored in `server/mocks/`:
 
-**Key Dependencies:**
+- Run `task generate:mocks` after interface changes
+- Each test case uses isolated mock instances
+- Mock implementations support fluent test setup
 
-- `github.com/gin-gonic/gin` - HTTP server framework
-- `github.com/inference-gateway/sdk` - LLM provider integration
-- `go.uber.org/zap` - Structured logging
-- `github.com/sethvargo/go-envconfig` - Configuration management
-- `go.opentelemetry.io/otel` - Observability and metrics
-- `github.com/stretchr/testify` - Testing framework
+### Test Organization
 
-### Development Patterns
+```
+server/
+├── *_test.go           # Unit tests alongside implementation
+├── mocks/              # Generated mocks via counterfeiter
+└── serverfakes/        # Legacy fakes (being migrated)
+```
 
-**Builder Pattern Usage:**
+## Code Conventions
 
-- `NewA2AServerBuilder()` - Fluent server configuration
-- `NewAgentBuilder()` - Fluent agent configuration with LLM clients
+### Go Standards
 
-**Error Handling:**
-
-- Structured error responses following JSON-RPC specification
-- Comprehensive logging with context
+- Use early returns to avoid deep nesting
+- Prefer switch statements over if-else chains
+- Implement interfaces for mockability
 - Use lowercase log messages for consistency
+- Strong typing with interface-based design
 
-**Code Style Preferences:**
+### A2A Protocol Integration
 
-- Table-driven testing for all tests
-- Early returns to avoid deep nesting
-- Switch statements over if-else chains for multiple conditions
-- Interface-based design for easier mocking in tests
-- Strong typing over dynamic typing
-- Each test case should have isolated mock dependencies
+- Always download latest schema: `task a2a:download-schema`
+- Regenerate types after schema updates: `task a2a:generate-types`
+- Types are generated in `types/generated_types.go`
+- Manual types in `types/types.go` for extensions
 
-**Concurrency:**
+### Commit Workflow
 
-- Background task processing with goroutines
-- Context-aware request handling
-- Graceful shutdown support
+1. Run `task lint` before committing
+2. Run `task test` to ensure all tests pass
+3. Install pre-commit hook: `task precommit:install`
+4. Schema updates require regenerating types
 
-## Important Notes
+## Examples and Documentation
 
-- ALWAYS run `task precommit:install` before starting any development task - This ensures code quality checks are enforced
-- Always run `task a2a:generate-types` after schema updates
-- When working with A2A protocol changes: `task a2a:download-schema` → `task a2a:generate-types`
-- Run `task generate:mocks` when interfaces are modified to update test mocks
-- The project follows Go module structure with `go.mod` at root
-- Generated types are in `types/generated_types.go` (do not edit manually)
-- Configuration supports both defaults and environment overrides
-- Server supports both mock mode (no LLM) and AI-powered mode
-- Always ensure on each given task that you push the changes to a branch and open a PR for review
+The `examples/` directory contains complete working implementations:
+
+- `minimal/` - Basic A2A server without AI capabilities
+- `ai-powered/` - Full A2A server with LLM integration
+- `streaming/` - Real-time streaming response handling
+- `static-agent-card/` - JSON-based agent metadata management
+- `default-handlers/` - Built-in task processing patterns
+
+Each example includes setup instructions and demonstrates specific ADK features.
