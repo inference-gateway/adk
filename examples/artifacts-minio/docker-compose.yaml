@@ -1,6 +1,5 @@
 ---
 services:
-  # MinIO object storage
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -20,7 +19,6 @@ services:
       timeout: 20s
       retries: 3
 
-  # MinIO client for bucket creation
   createbucket:
     image: minio/mc:latest
     depends_on:
@@ -37,7 +35,6 @@ services:
     networks:
       - a2a-network
 
-  # A2A Server with MinIO storage
   server:
     build:
       context: ../..
@@ -75,7 +72,6 @@ services:
     networks:
       - a2a-network
 
-  # A2A Client
   client:
     build:
       context: ../..
