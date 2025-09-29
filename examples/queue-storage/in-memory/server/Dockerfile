@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 ARG AGENT_NAME="in-memory-queue-example"
 ARG AGENT_DESCRIPTION="A2A server demonstrating in-memory queue storage"
