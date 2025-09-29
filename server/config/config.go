@@ -132,6 +132,7 @@ type ArtifactsConfig struct {
 // ArtifactsServerConfig holds artifacts HTTP server configuration
 type ArtifactsServerConfig struct {
 	Port         string        `env:"PORT,default=8081" description:"Artifacts server port"`
+	Host         string        `env:"HOST,default=localhost" description:"Artifacts server host"`
 	ReadTimeout  time.Duration `env:"READ_TIMEOUT,default=30s" description:"Artifacts server read timeout"`
 	WriteTimeout time.Duration `env:"WRITE_TIMEOUT,default=30s" description:"Artifacts server write timeout"`
 	IdleTimeout  time.Duration `env:"IDLE_TIMEOUT,default=60s" description:"Artifacts server idle timeout"`

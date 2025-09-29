@@ -22,6 +22,7 @@ import (
 type Config struct {
 	ServerURL    string `env:"SERVER_URL,default=http://localhost:8080" description:"A2A server URL"`
 	ArtifactsURL string `env:"ARTIFACTS_URL,default=http://localhost:8081" description:"Artifacts server URL"`
+	DownloadsDir string `env:"DOWNLOADS_DIR,default=downloads" description:"Directory to save downloaded artifacts"`
 }
 
 func main() {
@@ -178,10 +179,10 @@ func main() {
 							fmt.Printf("   🔗 URI: %s\n", uri)
 
 							// Download the artifact
-							if err := downloadArtifact(uri, filename); err != nil {
+							if err := downloadArtifact(uri, filename, cfg.DownloadsDir); err != nil {
 								fmt.Printf("   ❌ Failed to download: %v\n", err)
 							} else {
-								fmt.Printf("   ✅ Downloaded successfully to: %s\n", filename)
+								fmt.Printf("   ✅ Downloaded successfully to: %s\n", filepath.Join(cfg.DownloadsDir, filename))
 							}
 						}
 					}
@@ -196,7 +197,7 @@ func main() {
 }
 
 // downloadArtifact downloads an artifact from the given URI and saves it to the specified filename
-func downloadArtifact(uri, filename string) error {
+func downloadArtifact(uri, filename, downloadsDir string) error {
 	// Create HTTP client with timeout
 	httpClient := &http.Client{
 		Timeout: 30 * time.Second,
@@ -214,7 +215,6 @@ func downloadArtifact(uri, filename string) error {
 	}
 
 	// Create the downloads directory if it doesn't exist
-	downloadsDir := "downloads"
 	if err := os.MkdirAll(downloadsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create downloads directory: %w", err)
 	}

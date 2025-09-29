@@ -24,8 +24,9 @@ services:
       A2A_ARTIFACTS_STORAGE_PROVIDER: filesystem
       A2A_ARTIFACTS_STORAGE_BASE_PATH: ./artifacts
       A2A_ARTIFACTS_SERVER_PORT: 8081
+      A2A_ARTIFACTS_SERVER_HOST: server
     volumes:
-      - ./artifacts:/app/artifacts
+      - ./server/artifacts:/app/artifacts
     networks:
       - a2a-network
 
@@ -38,6 +39,9 @@ services:
     environment:
       SERVER_URL: http://server:8080
       ARTIFACTS_URL: http://server:8081
+      DOWNLOADS_DIR: /app/downloads
+    volumes:
+      - ./client/downloads:/app/downloads
     command: sh -c "sleep 5 && /app/client"
     networks:
       - a2a-network
