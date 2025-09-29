@@ -27,6 +27,9 @@ WORKDIR /app
 # Copy the binary from builder
 COPY --from=builder /build/examples/artifacts-filesystem/client/client .
 
+# Copy the uploads directory with dummy data
+COPY --from=builder /build/examples/artifacts-filesystem/client/uploads ./uploads
+
 # Create downloads directory
 RUN mkdir -p /app/downloads
 

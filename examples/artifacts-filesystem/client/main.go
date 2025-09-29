@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -48,19 +50,11 @@ func main() {
 	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
 	// Create a task that will generate an artifact
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	// Create the message requesting an analysis report
-	message := types.Message{
-		Role: "user",
-		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations.",
-			},
-		},
-	}
+	// Create message with file upload (demonstrating client artifact upload)
+	message := createMessageWithFileUpload()
 
 	fmt.Println("📝 Sending message to create analysis report...")
 
@@ -234,4 +228,60 @@ func downloadArtifact(uri, filename, downloadsDir string) error {
 	}
 
 	return nil
+}
+
+// createMessageWithFileUpload creates a message that includes the dummy data file upload
+func createMessageWithFileUpload() types.Message {
+	// Path to the dummy data file
+	filePath := "uploads/data.txt"
+
+	fmt.Printf("📤 Uploading data file: %s\n", filePath)
+
+	// Read the dummy file content
+	fileContent, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Printf("❌ Failed to read data file: %v\n", err)
+		fmt.Println("Using default text message instead...")
+		return types.Message{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{
+					"kind": "text",
+					"text": "Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations.",
+				},
+			},
+		}
+	}
+
+	// Get filename and MIME type
+	filename := filepath.Base(filePath)
+	mimeType := mime.TypeByExtension(filepath.Ext(filePath))
+	if mimeType == "" {
+		mimeType = "text/plain"
+	}
+
+	// Encode file as base64
+	encodedContent := base64.StdEncoding.EncodeToString(fileContent)
+
+	fmt.Printf("   📊 File size: %d bytes\n", len(fileContent))
+	fmt.Printf("   🏷️  MIME type: %s\n", mimeType)
+
+	// Create message with both text and file parts
+	return types.Message{
+		Role: "user",
+		Parts: []types.Part{
+			map[string]any{
+				"kind": "text",
+				"text": "Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics.",
+			},
+			map[string]any{
+				"kind": "file",
+				"file": map[string]any{
+					"bytes":    encodedContent,
+					"mimeType": mimeType,
+				},
+				"filename": filename,
+			},
+		},
+	}
 }
