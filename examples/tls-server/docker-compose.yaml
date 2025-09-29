@@ -1,0 +1,78 @@
+---
+services:
+  cert-generator:
+    image: alpine:latest
+    working_dir: /certs
+    volumes:
+      - ./certs:/certs
+    command: |
+      sh -c "
+        apk add --no-cache openssl bash &&
+        chmod +x /certs/generate-certs.sh &&
+        if [ ! -f /certs/server.crt ] || [ ! -f /certs/server.key ]; then
+          echo '🔒 Generating TLS certificates...' &&
+          /certs/generate-certs.sh
+        else
+          echo '✅ TLS certificates already exist'
+        fi
+      "
+    networks:
+      - tls-network
+
+  tls-server:
+    build:
+      context: ../..
+      dockerfile: examples/tls-server/server/Dockerfile
+      args:
+        AGENT_NAME: "tls-server"
+        AGENT_DESCRIPTION: "TLS-enabled A2A server demonstrating secure communication"
+        AGENT_VERSION: "0.1.0"
+    ports:
+      - "8443:8443"
+    environment:
+      ENVIRONMENT: development
+      A2A_SERVER_PORT: "8443"
+      A2A_DEBUG: "true"
+      A2A_SERVER_TLS_ENABLE: "true"
+      A2A_SERVER_TLS_CERT_PATH: "/certs/server.crt"
+      A2A_SERVER_TLS_KEY_PATH: "/certs/server.key"
+      A2A_CAPABILITIES_STREAMING: "true"
+      A2A_CAPABILITIES_PUSH_NOTIFICATIONS: "false"
+      A2A_CAPABILITIES_STATE_TRANSITION_HISTORY: "false"
+    volumes:
+      - ./certs:/certs:ro
+    depends_on:
+      - cert-generator
+    networks:
+      - tls-network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --no-check-certificate -q --spider https://localhost:8443/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  tls-client:
+    build:
+      context: ../..
+      dockerfile: examples/tls-server/client/Dockerfile
+    environment:
+      ENVIRONMENT: development
+      A2A_SERVER_URL: "https://tls-server:8443"
+      A2A_TIMEOUT: "30s"
+      A2A_SKIP_TLS_VERIFY: "true"
+    depends_on:
+      tls-server:
+        condition: service_healthy
+    networks:
+      - tls-network
+    restart: "no"
+
+networks:
+  tls-network:
+    driver: bridge
+    name: a2a-tls-network
+
+volumes:
+  certs:
+    driver: local

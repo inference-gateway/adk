@@ -29,6 +29,7 @@ examples/
 ├── streaming/            # Real-time streaming responses
 ├── artifacts-filesystem/ # Artifact storage using local filesystem
 └── artifacts-minio/      # Artifact storage using MinIO (S3-compatible)
+└── tls-example/          # TLS-enabled server with HTTPS communication
 ```
 
 ## 🚀 Quick Start
@@ -109,8 +110,6 @@ AI-powered streaming with LLM integration.
 - Streaming LLM integration
 - Event-driven architecture
 
-### Artifact Examples
-
 #### `artifacts-filesystem/`
 
 Demonstrates artifact creation and download using local filesystem storage.
@@ -126,6 +125,15 @@ Demonstrates artifact creation and download using MinIO (S3-compatible) storage.
 - MinIO storage provider
 - S3-compatible API
 - Production-ready cloud storage
+
+#### `tls-example/`
+
+TLS-enabled A2A server demonstrating secure HTTPS communication.
+
+- Self-signed certificate generation
+- TLS/SSL encryption for client-server communication
+- Docker Compose orchestration with TLS setup
+- Secure task submission and response handling
 
 ## 🔧 Configuration
 
@@ -161,6 +169,7 @@ See each example's README for specific configuration details.
 6. **`streaming/`** - Implement real-time streaming capabilities
 7. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
 8. **`artifacts-minio/`** - Production-ready artifact storage with MinIO
+9. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 
 ---
 
