@@ -42,7 +42,7 @@ docker-compose up --build
 # 1. Send a request for an analysis report
 # 2. Wait for the server to process it
 # 3. Download the generated artifact
-# 4. Save it to the downloads/ directory
+# 4. Save it to the client/downloads/ directory
 ```
 
 ### Option 2: Local Development
@@ -68,16 +68,18 @@ The server can be configured via environment variables:
 | `A2A_AGENT_VERSION`               | `0.1.0`                      | Agent version            |
 | `A2A_SERVER_PORT`                 | `8080`                       | A2A server port          |
 | `A2A_ARTIFACTS_ENABLE`            | `true`                       | Enable artifacts support |
+| `A2A_ARTIFACTS_SERVER_HOST`       | `localhost`                  | Artifacts server host    |
 | `A2A_ARTIFACTS_SERVER_PORT`       | `8081`                       | Artifacts server port    |
 | `A2A_ARTIFACTS_STORAGE_PROVIDER`  | `filesystem`                 | Storage provider         |
 | `A2A_ARTIFACTS_STORAGE_BASE_PATH` | `./artifacts`                | Base path for artifacts  |
 
 Client configuration:
 
-| Variable        | Default                 | Description          |
-| --------------- | ----------------------- | -------------------- |
-| `SERVER_URL`    | `http://localhost:8080` | A2A server URL       |
-| `ARTIFACTS_URL` | `http://localhost:8081` | Artifacts server URL |
+| Variable        | Default                 | Description                            |
+| --------------- | ----------------------- | -------------------------------------- |
+| `SERVER_URL`    | `http://localhost:8080` | A2A server URL                         |
+| `ARTIFACTS_URL` | `http://localhost:8081` | Artifacts server URL                   |
+| `DOWNLOADS_DIR` | `downloads`             | Directory to save downloaded artifacts |
 
 ## What Happens
 
@@ -86,7 +88,7 @@ Client configuration:
 3. **Artifact Storage**: The report is stored using the filesystem storage provider
 4. **Response**: The server responds with the task containing artifact metadata
 5. **Artifact Download**: The client downloads the artifact using the provided URI
-6. **Local Storage**: The downloaded file is saved to the `downloads/` directory
+6. **Local Storage**: The downloaded file is saved to the `client/downloads/` directory
 
 ## Generated Artifacts
 
@@ -100,8 +102,8 @@ The server generates markdown reports that include:
 Example output structure:
 
 ```
-downloads/
-└── analysis_report.md  # Downloaded artifact
+client/downloads/
+          └── analysis_report.md  # Downloaded artifact
 ```
 
 ## API Endpoints
@@ -144,8 +146,8 @@ curl -X POST http://localhost:8080/a2a \
     }
   }'
 
-# Download the artifact (replace TASK_ID with actual task ID)
-curl -O http://localhost:8081/artifacts/TASK_ID/analysis_report.md
+# Download the artifact (replace ARTIFACT_ID with actual artifact ID)
+curl -O http://localhost:8081/artifacts/ARTIFACT_ID/analysis_report.md
 ```
 
 ## Troubleshooting

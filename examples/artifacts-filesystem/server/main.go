@@ -171,6 +171,7 @@ func stringPtr(s string) *string {
 //   - A2A_AGENT_NAME: Agent name (default: artifacts-filesystem-agent)
 //   - A2A_SERVER_PORT: A2A server port (default: 8080)
 //   - A2A_ARTIFACTS_ENABLE: Enable artifacts support (default: true)
+//   - A2A_ARTIFACTS_SERVER_HOST: Artifacts server host (default: localhost)
 //   - A2A_ARTIFACTS_SERVER_PORT: Artifacts server port (default: 8081)
 //   - A2A_ARTIFACTS_STORAGE_PROVIDER: Storage provider (default: filesystem)
 //   - A2A_ARTIFACTS_STORAGE_BASE_PATH: Base path for artifacts (default: ./artifacts)
