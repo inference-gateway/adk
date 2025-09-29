@@ -77,13 +77,13 @@ go run main.go
 
 The server uses in-memory storage by default. Key environment variables:
 
-| Environment Variable           | Description                        | Default    |
-| ------------------------------ | ---------------------------------- | ---------- |
-| `A2A_QUEUE_PROVIDER`          | Storage provider                   | `memory`   |
-| `A2A_QUEUE_MAX_SIZE`           | Maximum queue size                 | `100`      |
-| `A2A_QUEUE_CLEANUP_INTERVAL`   | Task cleanup interval              | `30s`      |
-| `A2A_SERVER_PORT`              | Server port                        | `8080`     |
-| `A2A_DEBUG`                    | Enable debug logging               | `false`    |
+| Environment Variable         | Description           | Default  |
+| ---------------------------- | --------------------- | -------- |
+| `A2A_QUEUE_PROVIDER`         | Storage provider      | `memory` |
+| `A2A_QUEUE_MAX_SIZE`         | Maximum queue size    | `100`    |
+| `A2A_QUEUE_CLEANUP_INTERVAL` | Task cleanup interval | `30s`    |
+| `A2A_SERVER_PORT`            | Server port           | `8080`   |
+| `A2A_DEBUG`                  | Enable debug logging  | `false`  |
 
 ## Understanding In-Memory Storage
 

@@ -20,6 +20,7 @@ The ADK uses a pluggable storage system that supports different queue backends:
 - **Redis**: Redis-based queue for production with clustering support
 
 Queue storage is configured via environment variables:
+
 - `A2A_QUEUE_PROVIDER`: Storage provider (`memory` or `redis`)
 - `A2A_QUEUE_URL`: Connection URL (for Redis)
 - `A2A_QUEUE_*`: Additional provider-specific options
@@ -27,6 +28,7 @@ Queue storage is configured via environment variables:
 ## Running Examples
 
 Each example includes:
+
 - Complete server and client implementations
 - Docker Compose setup for easy deployment
 - Comprehensive README with setup instructions

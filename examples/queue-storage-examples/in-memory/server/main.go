@@ -41,21 +41,21 @@ func (h *DemoTaskHandler) HandleTask(ctx context.Context, task *types.Task) erro
 	// - File operations
 	// - External API calls
 	// - Batch operations
-	
+
 	// Add a response message
 	response := fmt.Sprintf("Task processed successfully using in-memory queue storage. Original input: %s", task.Input.Content)
-	
+
 	responseMessage := &types.Message{
 		Role:    "assistant",
 		Content: response,
 	}
-	
+
 	task.History = append(task.History, responseMessage)
-	
+
 	h.logger.Info("Task processing completed",
 		zap.String("task_id", task.ID),
 		zap.String("response", response))
-	
+
 	return nil
 }
 

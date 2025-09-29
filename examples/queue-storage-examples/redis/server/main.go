@@ -40,21 +40,21 @@ func (h *RedisTaskHandler) HandleTask(ctx context.Context, task *types.Task) err
 	// - Shared queue for multiple server instances
 	// - Reliable task processing with durability
 	// - Task history and auditing capabilities
-	
+
 	// Add a response message demonstrating Redis benefits
 	response := fmt.Sprintf("Task processed successfully using Redis queue storage. Benefits: persistent storage, horizontal scaling, and reliable processing. Original input: %s", task.Input.Content)
-	
+
 	responseMessage := &types.Message{
 		Role:    "assistant",
 		Content: response,
 	}
-	
+
 	task.History = append(task.History, responseMessage)
-	
+
 	h.logger.Info("Task processing completed with Redis storage",
 		zap.String("task_id", task.ID),
 		zap.String("response_preview", response[:min(100, len(response))]))
-	
+
 	return nil
 }
 
@@ -145,7 +145,7 @@ func maskCredentials(credentials map[string]string) map[string]string {
 	if credentials == nil {
 		return nil
 	}
-	
+
 	masked := make(map[string]string)
 	for k, v := range credentials {
 		if v == "" {

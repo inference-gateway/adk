@@ -48,7 +48,7 @@ func main() {
 		serverURL = "http://localhost:8080"
 	}
 
-	logger.Info("Starting A2A client for in-memory queue storage demo", 
+	logger.Info("Starting A2A client for in-memory queue storage demo",
 		zap.String("server_url", serverURL))
 
 	// Create A2A client
@@ -78,14 +78,14 @@ func main() {
 
 	for i, taskContent := range tasks {
 		contextID := fmt.Sprintf("demo-context-%d", i+1)
-		
+
 		logger.Info("Submitting task to in-memory queue",
 			zap.String("context_id", contextID),
 			zap.String("content", taskContent))
 
 		taskID, err := a2aClient.SubmitTask(ctx, contextID, taskContent)
 		if err != nil {
-			logger.Error("Failed to submit task", 
+			logger.Error("Failed to submit task",
 				zap.Error(err),
 				zap.String("content", taskContent))
 			continue

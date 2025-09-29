@@ -48,7 +48,7 @@ func main() {
 		serverURL = "http://localhost:8080"
 	}
 
-	logger.Info("Starting A2A client for Redis queue storage demo", 
+	logger.Info("Starting A2A client for Redis queue storage demo",
 		zap.String("server_url", serverURL))
 
 	// Create A2A client
@@ -64,7 +64,7 @@ func main() {
 		if err == nil {
 			break
 		}
-		logger.Info("Waiting for server and Redis to be ready...", 
+		logger.Info("Waiting for server and Redis to be ready...",
 			zap.Int("attempt", i+1),
 			zap.Error(err))
 		time.Sleep(5 * time.Second)
@@ -94,14 +94,14 @@ func main() {
 
 	for i, taskContent := range tasks {
 		contextID := fmt.Sprintf("redis-context-%d", i+1)
-		
+
 		logger.Info("Submitting task to Redis queue",
 			zap.String("context_id", contextID),
 			zap.String("content", taskContent))
 
 		taskID, err := a2aClient.SubmitTask(ctx, contextID, taskContent)
 		if err != nil {
-			logger.Error("Failed to submit task", 
+			logger.Error("Failed to submit task",
 				zap.Error(err),
 				zap.String("content", taskContent))
 			continue
@@ -123,7 +123,7 @@ func main() {
 
 	// Check status of submitted tasks
 	logger.Info("Checking task status in Redis storage...")
-	
+
 	for _, taskID := range submittedTasks {
 		task, err := a2aClient.GetTask(ctx, taskID)
 		if err != nil {
