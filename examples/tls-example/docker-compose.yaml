@@ -1,7 +1,5 @@
-version: '3.8'
-
+---
 services:
-  # Certificate generation service (runs once to create certificates)
   cert-generator:
     image: alpine:latest
     working_dir: /certs
@@ -21,7 +19,6 @@ services:
     networks:
       - tls-network
 
-  # TLS-enabled A2A Server
   tls-server:
     build:
       context: ./server
@@ -33,20 +30,15 @@ services:
     ports:
       - "8443:8443"
     environment:
-      # Server configuration
       ENVIRONMENT: development
       A2A_AGENT_NAME: tls-server
       A2A_AGENT_DESCRIPTION: "TLS-enabled A2A server demonstrating secure communication"
       A2A_AGENT_VERSION: "1.0.0"
       A2A_SERVER_PORT: "8443"
       A2A_DEBUG: "true"
-      
-      # TLS configuration
       A2A_SERVER_TLS_ENABLE: "true"
       A2A_SERVER_TLS_CERT_PATH: "/certs/server.crt"
       A2A_SERVER_TLS_KEY_PATH: "/certs/server.key"
-      
-      # Capabilities
       A2A_CAPABILITIES_STREAMING: "true"
       A2A_CAPABILITIES_PUSH_NOTIFICATIONS: "false"
       A2A_CAPABILITIES_STATE_TRANSITION_HISTORY: "false"
@@ -63,23 +55,20 @@ services:
       retries: 3
       start_period: 15s
 
-  # A2A Client for testing TLS communication
   tls-client:
     build:
       context: ./client
       dockerfile: Dockerfile
     environment:
-      # Client configuration
       ENVIRONMENT: development
       A2A_SERVER_URL: "https://tls-server:8443"
       A2A_TIMEOUT: "30s"
-      A2A_SKIP_TLS_VERIFY: "true"  # Skip verification for self-signed certs
+      A2A_SKIP_TLS_VERIFY: "true"
     depends_on:
       tls-server:
         condition: service_healthy
     networks:
       - tls-network
-    # Run the client and then exit (not a long-running service)
     restart: "no"
 
 networks:
