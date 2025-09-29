@@ -1,0 +1,51 @@
+---
+services:
+  server:
+    build:
+      context: ../..
+      dockerfile: examples/artifacts-filesystem/server/Dockerfile
+      args:
+        AGENT_NAME: artifacts-filesystem-agent
+        AGENT_DESCRIPTION: An agent that creates and serves artifacts using filesystem storage
+        AGENT_VERSION: 0.1.0
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      ENVIRONMENT: development
+      A2A_AGENT_NAME: artifacts-filesystem-agent
+      A2A_AGENT_DESCRIPTION: An agent that creates and serves artifacts using filesystem storage
+      A2A_AGENT_VERSION: 0.1.0
+      A2A_SERVER_PORT: 8080
+      A2A_DEBUG: true
+      A2A_CAPABILITIES_STREAMING: false
+      A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
+      A2A_ARTIFACTS_ENABLE: true
+      A2A_ARTIFACTS_STORAGE_PROVIDER: filesystem
+      A2A_ARTIFACTS_STORAGE_BASE_PATH: ./artifacts
+      A2A_ARTIFACTS_SERVER_PORT: 8081
+      A2A_ARTIFACTS_SERVER_HOST: server
+    volumes:
+      - ./server/artifacts:/app/artifacts
+    networks:
+      - a2a-network
+
+  client:
+    build:
+      context: ../..
+      dockerfile: examples/artifacts-filesystem/client/Dockerfile
+    depends_on:
+      - server
+    environment:
+      SERVER_URL: http://server:8080
+      ARTIFACTS_URL: http://server:8081
+      DOWNLOADS_DIR: /app/downloads
+    volumes:
+      - ./client/downloads:/app/downloads
+    command: sh -c "sleep 5 && /app/client"
+    networks:
+      - a2a-network
+
+networks:
+  a2a-network:
+    driver: bridge
