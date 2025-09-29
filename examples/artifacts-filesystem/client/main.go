@@ -11,22 +11,26 @@ import (
 	"path/filepath"
 	"time"
 
+	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
 	client "github.com/inference-gateway/adk/client"
 	types "github.com/inference-gateway/adk/types"
 )
 
-func main() {
-	// Get server URLs from environment or use defaults
-	serverURL := os.Getenv("SERVER_URL")
-	if serverURL == "" {
-		serverURL = "http://localhost:8080"
-	}
+// Config holds client configuration
+type Config struct {
+	ServerURL    string `env:"SERVER_URL,default=http://localhost:8080" description:"A2A server URL"`
+	ArtifactsURL string `env:"ARTIFACTS_URL,default=http://localhost:8081" description:"Artifacts server URL"`
+}
 
-	artifactsURL := os.Getenv("ARTIFACTS_URL")
-	if artifactsURL == "" {
-		artifactsURL = "http://localhost:8081"
+func main() {
+	// Load configuration using go-envconfig
+	ctx := context.Background()
+	var cfg Config
+
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
 	// Initialize logger
@@ -36,11 +40,11 @@ func main() {
 	}
 	defer logger.Sync()
 
-	fmt.Printf("🔗 Connecting to A2A server: %s\n", serverURL)
-	fmt.Printf("📁 Artifacts server: %s\n", artifactsURL)
+	fmt.Printf("🔗 Connecting to A2A server: %s\n", cfg.ServerURL)
+	fmt.Printf("📁 Artifacts server: %s\n", cfg.ArtifactsURL)
 
 	// Create client
-	a2aClient := client.NewClientWithLogger(serverURL, logger)
+	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
 	// Create a task that will generate an artifact
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
