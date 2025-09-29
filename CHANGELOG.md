@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0](https://github.com/inference-gateway/adk/compare/v0.11.2...v0.12.0) (2025-09-29)
+
+### ✨ Features
+
+* Implement artifacts server builder with pluggable storage providers ([#73](https://github.com/inference-gateway/adk/issues/73)) ([5253219](https://github.com/inference-gateway/adk/commit/52532192a49b961a8c6eb021bca113307afc0763))
+
+### ♻️ Improvements
+
+* **examples:** Make the examples scenario / feature based ([#75](https://github.com/inference-gateway/adk/issues/75)) ([b52c8fd](https://github.com/inference-gateway/adk/commit/b52c8fd758e9695e13100779a36982bb0855ae42))
+
+### 🐛 Bug Fixes
+
+* **ci:** Bump mockgen version from v0.5.0 to v0.6.0  ([#79](https://github.com/inference-gateway/adk/issues/79)) ([432145a](https://github.com/inference-gateway/adk/commit/432145a5d89b7256e0b7a4dccb6aad10f4e2cc13))
+
+### 📚 Documentation
+
+* Refactor README.md to ensure it's reconciled with the actual recent code changes and reduce noise ([#83](https://github.com/inference-gateway/adk/issues/83)) ([bf9a22b](https://github.com/inference-gateway/adk/commit/bf9a22ba9a59941e1ebfc341e157ac076b32dcdf))
+* Update CONTRIBUTING.md to improve clarity and organization of setup instructions and guidelines ([4ccd47d](https://github.com/inference-gateway/adk/commit/4ccd47d84c7b8274e25c056d6659825647f7668f))
+
+### 🔧 Miscellaneous
+
+* Revise CLAUDE.md to improve clarity and organization of development commands and architecture overview ([5ad6eac](https://github.com/inference-gateway/adk/commit/5ad6eaca023a03f8f530d8b139a48eeb49522fab))
+* Update agent version from 1.0.0 to 0.1.0 across multiple files ([3c69c77](https://github.com/inference-gateway/adk/commit/3c69c77b46424ec9c5ba54db09f2ee94a26a4703))
+* Use the same instructions used by Claude in Copilot ([9a80452](https://github.com/inference-gateway/adk/commit/9a80452bdaafad27d7d293b8636b80cbbc1e6977))
+
 ## [0.11.2](https://github.com/inference-gateway/adk/compare/v0.11.1...v0.11.2) (2025-09-26)
 
 ### 🐛 Bug Fixes
