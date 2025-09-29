@@ -56,6 +56,17 @@ type FakeA2AServerBuilder struct {
 	withAgentCardFromFileReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
+	WithArtifactsServerStub        func(server.ArtifactsServer) server.A2AServerBuilder
+	withArtifactsServerMutex       sync.RWMutex
+	withArtifactsServerArgsForCall []struct {
+		arg1 server.ArtifactsServer
+	}
+	withArtifactsServerReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withArtifactsServerReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
 	WithBackgroundTaskHandlerStub        func(server.TaskHandler) server.A2AServerBuilder
 	withBackgroundTaskHandlerMutex       sync.RWMutex
 	withBackgroundTaskHandlerArgsForCall []struct {
@@ -370,6 +381,67 @@ func (fake *FakeA2AServerBuilder) WithAgentCardFromFileReturnsOnCall(i int, resu
 		})
 	}
 	fake.withAgentCardFromFileReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactsServer(arg1 server.ArtifactsServer) server.A2AServerBuilder {
+	fake.withArtifactsServerMutex.Lock()
+	ret, specificReturn := fake.withArtifactsServerReturnsOnCall[len(fake.withArtifactsServerArgsForCall)]
+	fake.withArtifactsServerArgsForCall = append(fake.withArtifactsServerArgsForCall, struct {
+		arg1 server.ArtifactsServer
+	}{arg1})
+	stub := fake.WithArtifactsServerStub
+	fakeReturns := fake.withArtifactsServerReturns
+	fake.recordInvocation("WithArtifactsServer", []interface{}{arg1})
+	fake.withArtifactsServerMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactsServerCallCount() int {
+	fake.withArtifactsServerMutex.RLock()
+	defer fake.withArtifactsServerMutex.RUnlock()
+	return len(fake.withArtifactsServerArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactsServerCalls(stub func(server.ArtifactsServer) server.A2AServerBuilder) {
+	fake.withArtifactsServerMutex.Lock()
+	defer fake.withArtifactsServerMutex.Unlock()
+	fake.WithArtifactsServerStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactsServerArgsForCall(i int) server.ArtifactsServer {
+	fake.withArtifactsServerMutex.RLock()
+	defer fake.withArtifactsServerMutex.RUnlock()
+	argsForCall := fake.withArtifactsServerArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactsServerReturns(result1 server.A2AServerBuilder) {
+	fake.withArtifactsServerMutex.Lock()
+	defer fake.withArtifactsServerMutex.Unlock()
+	fake.WithArtifactsServerStub = nil
+	fake.withArtifactsServerReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactsServerReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withArtifactsServerMutex.Lock()
+	defer fake.withArtifactsServerMutex.Unlock()
+	fake.WithArtifactsServerStub = nil
+	if fake.withArtifactsServerReturnsOnCall == nil {
+		fake.withArtifactsServerReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withArtifactsServerReturnsOnCall[i] = struct {
 		result1 server.A2AServerBuilder
 	}{result1}
 }
@@ -788,6 +860,8 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.withAgentCardMutex.RUnlock()
 	fake.withAgentCardFromFileMutex.RLock()
 	defer fake.withAgentCardFromFileMutex.RUnlock()
+	fake.withArtifactsServerMutex.RLock()
+	defer fake.withArtifactsServerMutex.RUnlock()
 	fake.withBackgroundTaskHandlerMutex.RLock()
 	defer fake.withBackgroundTaskHandlerMutex.RUnlock()
 	fake.withDefaultBackgroundTaskHandlerMutex.RLock()
