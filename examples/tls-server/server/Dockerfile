@@ -15,10 +15,9 @@ RUN go mod download
 COPY . .
 
 # Build the application with build-time metadata
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME} \
-              -X github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION} \
-              -X github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}" \
+RUN cd examples/tls-server/server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" \
     -o server .
 
 FROM alpine:latest
@@ -29,7 +28,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the binary from builder stage
-COPY --from=builder /app/server .
+COPY --from=builder /app/examples/tls-server/server/server .
 
 # Create directory for certificates
 RUN mkdir -p /certs

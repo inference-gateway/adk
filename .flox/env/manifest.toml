@@ -5,13 +5,13 @@ go.pkg-path = "go"
 go.version = "^1.25"
 
 golangci-lint.pkg-path = "golangci-lint"
-golangci-lint.version = "^2.4.0"
+golangci-lint.version = "^2.5.0"
 
 prettier.pkg-path = "prettier"
 prettier.version = "^3.6.2"
 
 claude-code.pkg-path = "claude-code"
-claude-code.version = "^1.0.96"
+claude-code.version = "^1.0.123"
 
 [hook]
 on-activate = """
