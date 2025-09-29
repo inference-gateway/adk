@@ -23,8 +23,6 @@ type AgentResponse struct {
 	AdditionalMessages []types.Message
 }
 
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 . OpenAICompatibleAgent
-
 // OpenAICompatibleAgent represents an agent that can interact with OpenAI-compatible LLM APIs and execute tools
 // The agent is stateless and does not maintain conversation history
 // Tools are configured during agent creation via the toolbox

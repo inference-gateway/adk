@@ -66,7 +66,7 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = &responseMessage
 
-	h.logger.Info("processed task over TLS", 
+	h.logger.Info("processed task over TLS",
 		zap.String("input", userInput),
 		zap.String("task_id", task.ID),
 	)

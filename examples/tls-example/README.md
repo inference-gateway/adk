@@ -49,12 +49,13 @@ docker-compose up --build
 ```
 
 This will:
+
 1. **Generate self-signed certificates** (if they don't exist)
 2. **Start the TLS-enabled A2A server** on port 8443 (HTTPS)
 3. **Run the client** to test secure communication
 4. **Demonstrate encrypted message exchange**
 
-3. **View the logs to see TLS communication:**
+5. **View the logs to see TLS communication:**
 
 ```bash
 # In another terminal
@@ -107,22 +108,22 @@ go run main.go
 
 The server supports the following TLS-related environment variables:
 
-| Environment Variable        | Description                    | Default              |
-| --------------------------- | ------------------------------ | -------------------- |
-| `A2A_SERVER_TLS_ENABLE`     | Enable TLS/HTTPS              | `true`               |
-| `A2A_SERVER_TLS_CERT_PATH`  | Path to TLS certificate file  | `/certs/server.crt`  |
-| `A2A_SERVER_TLS_KEY_PATH`   | Path to TLS private key file  | `/certs/server.key`  |
-| `A2A_SERVER_PORT`           | HTTPS server port              | `8443`               |
+| Environment Variable       | Description                  | Default             |
+| -------------------------- | ---------------------------- | ------------------- |
+| `A2A_SERVER_TLS_ENABLE`    | Enable TLS/HTTPS             | `true`              |
+| `A2A_SERVER_TLS_CERT_PATH` | Path to TLS certificate file | `/certs/server.crt` |
+| `A2A_SERVER_TLS_KEY_PATH`  | Path to TLS private key file | `/certs/server.key` |
+| `A2A_SERVER_PORT`          | HTTPS server port            | `8443`              |
 
 ### Client TLS Settings
 
 The client supports these TLS-related environment variables:
 
-| Environment Variable        | Description                         | Default                    |
-| --------------------------- | ----------------------------------- | -------------------------- |
-| `A2A_SERVER_URL`            | HTTPS server URL                    | `https://localhost:8443`   |
-| `A2A_SKIP_TLS_VERIFY`       | Skip TLS certificate verification  | `true` (for self-signed)   |
-| `A2A_TIMEOUT`               | Request timeout                     | `30s`                      |
+| Environment Variable  | Description                       | Default                  |
+| --------------------- | --------------------------------- | ------------------------ |
+| `A2A_SERVER_URL`      | HTTPS server URL                  | `https://localhost:8443` |
+| `A2A_SKIP_TLS_VERIFY` | Skip TLS certificate verification | `true` (for self-signed) |
+| `A2A_TIMEOUT`         | Request timeout                   | `30s`                    |
 
 ## Certificate Details
 
@@ -131,7 +132,7 @@ The client supports these TLS-related environment variables:
 The `generate-certs.sh` script creates:
 
 - **`ca.crt`** - Root Certificate Authority certificate
-- **`ca.key`** - Root CA private key  
+- **`ca.key`** - Root CA private key
 - **`server.crt`** - Server certificate (signed by CA)
 - **`server.key`** - Server private key
 
@@ -142,7 +143,7 @@ The `generate-certs.sh` script creates:
 - **Hash Algorithm**: SHA-256
 - **Subject Alternative Names**:
   - `localhost`
-  - `*.localhost` 
+  - `*.localhost`
   - `server`
   - `tls-server`
   - `127.0.0.1`
@@ -173,6 +174,7 @@ ServerConfig: serverConfig.ServerConfig{
 ```
 
 Key features:
+
 - **Certificate validation** before startup
 - **HTTPS endpoint** on port 8443
 - **TLS-aware health checks**
@@ -194,6 +196,7 @@ httpClient := &http.Client{
 ```
 
 Key features:
+
 - **HTTPS communication** with the server
 - **Configurable TLS verification** (skip for self-signed certs)
 - **Timeout handling** for secure requests
@@ -226,7 +229,7 @@ curl -k -X POST https://localhost:8443/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "message": {
-      "role": "user", 
+      "role": "user",
       "parts": [{"type": "text", "text": "Hello secure server!"}]
     }
   }'
@@ -313,6 +316,6 @@ docker-compose up --build
 ## Related Examples
 
 - **`minimal/`** - Basic A2A server/client setup
-- **`ai-powered/`** - AI integration patterns  
+- **`ai-powered/`** - AI integration patterns
 - **`streaming/`** - Real-time communication
 - **`default-handlers/`** - Built-in task handlers

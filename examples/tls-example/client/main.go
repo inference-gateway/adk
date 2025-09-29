@@ -17,10 +17,10 @@ import (
 
 // Config represents the client configuration
 type Config struct {
-	Environment string        `env:"ENVIRONMENT,default=development"`
-	ServerURL   string        `env:"A2A_SERVER_URL,default=https://localhost:8443"`
-	Timeout     time.Duration `env:"A2A_TIMEOUT,default=30s"`
-	SkipTLSVerify bool        `env:"A2A_SKIP_TLS_VERIFY,default=true"`
+	Environment   string        `env:"ENVIRONMENT,default=development"`
+	ServerURL     string        `env:"A2A_SERVER_URL,default=https://localhost:8443"`
+	Timeout       time.Duration `env:"A2A_TIMEOUT,default=30s"`
+	SkipTLSVerify bool          `env:"A2A_SKIP_TLS_VERIFY,default=true"`
 }
 
 // TLS-Enabled A2A Client Example
@@ -83,10 +83,10 @@ func main() {
 
 	// Test server health over TLS
 	logger.Info("🔍 checking server health over TLS...")
-	
+
 	healthCtx, healthCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer healthCancel()
-	
+
 	health, err := a2aClient.GetHealth(healthCtx)
 	if err != nil {
 		logger.Fatal("failed to check server health", zap.Error(err))
@@ -98,10 +98,10 @@ func main() {
 
 	// Get agent card over TLS
 	logger.Info("🔍 fetching agent card over TLS...")
-	
+
 	cardCtx, cardCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cardCancel()
-	
+
 	agentCard, err := a2aClient.GetAgentCard(cardCtx)
 	if err != nil {
 		logger.Fatal("failed to get agent card", zap.Error(err))
@@ -123,7 +123,7 @@ func main() {
 	}
 
 	for i, message := range testMessages {
-		logger.Info("📤 sending secure message", 
+		logger.Info("📤 sending secure message",
 			zap.Int("message_number", i+1),
 			zap.String("content", message),
 		)
@@ -141,7 +141,7 @@ func main() {
 
 		// Submit task over TLS
 		taskCtx, taskCancel := context.WithTimeout(ctx, cfg.Timeout)
-		
+
 		response, err := a2aClient.SendTask(taskCtx, types.MessageSendParams{
 			Message: taskMessage,
 		})
