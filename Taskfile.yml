@@ -72,6 +72,7 @@ tasks:
       - task: generate:mock:opentelemetry
       - task: generate:mock:llm-client
       - task: generate:mock:toolbox
+      - task: generate:mock:artifact-storage-provider
 
   generate:mocks:clean:
     desc: 'Clean and regenerate all mocks'
@@ -240,6 +241,15 @@ tasks:
       - server/mocks/fake_tool_box.go
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_tool_box.go server ToolBox
+
+  generate:mock:artifact-storage-provider:
+    desc: 'Generate mock for ArtifactStorageProvider interface'
+    sources:
+      - server/artifacts_storage.go
+    generates:
+      - server/mocks/fake_artifact_storage_provider.go
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_artifact_storage_provider.go server ArtifactStorageProvider
 
   precommit:install:
     desc: 'Install the pre-commit hook'

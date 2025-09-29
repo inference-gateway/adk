@@ -53,7 +53,6 @@ func (s *ArtifactsServerImpl) Start(ctx context.Context) error {
 
 	s.setupRouter()
 
-	// Create HTTP server
 	addr := fmt.Sprintf("0.0.0.0:%s", s.config.ServerConfig.Port)
 	s.server = &http.Server{
 		Addr:           addr,
@@ -66,7 +65,6 @@ func (s *ArtifactsServerImpl) Start(ctx context.Context) error {
 
 	s.logger.Info("starting artifacts server", zap.String("address", addr))
 
-	// Start server in a goroutine
 	errChan := make(chan error, 1)
 	go func() {
 		if s.config.ServerConfig.TLSConfig.Enable {
@@ -79,7 +77,6 @@ func (s *ArtifactsServerImpl) Start(ctx context.Context) error {
 		}
 	}()
 
-	// Wait for context cancellation or server error
 	select {
 	case <-ctx.Done():
 		s.logger.Info("artifacts server context cancelled, shutting down")
@@ -100,7 +97,6 @@ func (s *ArtifactsServerImpl) Stop(ctx context.Context) error {
 
 	s.logger.Info("stopping artifacts server")
 
-	// Create a context with timeout for graceful shutdown
 	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -110,7 +106,6 @@ func (s *ArtifactsServerImpl) Stop(ctx context.Context) error {
 		return err
 	}
 
-	// Close storage provider
 	if s.storage != nil {
 		if err := s.storage.Close(); err != nil {
 			s.logger.Error("failed to close storage provider", zap.Error(err))
@@ -141,10 +136,8 @@ func (s *ArtifactsServerImpl) setupRouter() {
 	s.router.Use(gin.Recovery())
 	s.router.Use(s.loggingMiddleware())
 
-	// Health check endpoint
 	s.router.GET("/health", s.handleHealth)
 
-	// Artifact download endpoint
 	s.router.GET("/artifacts/:artifactId/:filename", s.handleArtifactDownload)
 }
 
@@ -182,7 +175,6 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 		return
 	}
 
-	// Check if artifact exists
 	ctx := c.Request.Context()
 	exists, err := s.storage.Exists(ctx, artifactID, filename)
 	if err != nil {
@@ -203,7 +195,6 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 		return
 	}
 
-	// Retrieve the artifact
 	reader, err := s.storage.Retrieve(ctx, artifactID, filename)
 	if err != nil {
 		s.logger.Error("failed to retrieve artifact",
@@ -221,16 +212,13 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 		}
 	}()
 
-	// Set appropriate content type
 	contentType := mime.TypeByExtension(filepath.Ext(filename))
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
 
-	// Set headers
 	c.Header("Content-Type", contentType)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 
-	// Stream the file content
 	c.DataFromReader(http.StatusOK, -1, contentType, reader, nil)
 }

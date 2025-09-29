@@ -19,7 +19,6 @@ type MinIOArtifactStorage struct {
 
 // NewMinIOArtifactStorage creates a new MinIO-based artifact storage provider
 func NewMinIOArtifactStorage(endpoint, accessKey, secretKey, bucketName, baseURL string, useSSL bool) (*MinIOArtifactStorage, error) {
-	// Initialize MinIO client
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
@@ -34,7 +33,6 @@ func NewMinIOArtifactStorage(endpoint, accessKey, secretKey, bucketName, baseURL
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
 	}
 
-	// Ensure bucket exists
 	ctx := context.Background()
 	exists, err := client.BucketExists(ctx, bucketName)
 	if err != nil {
@@ -53,7 +51,6 @@ func NewMinIOArtifactStorage(endpoint, accessKey, secretKey, bucketName, baseURL
 
 // Store stores an artifact to MinIO
 func (m *MinIOArtifactStorage) Store(ctx context.Context, artifactID string, filename string, data io.Reader) (string, error) {
-	// Sanitize inputs
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
@@ -63,20 +60,17 @@ func (m *MinIOArtifactStorage) Store(ctx context.Context, artifactID string, fil
 
 	objectName := fmt.Sprintf("%s/%s", artifactID, filename)
 
-	// Upload the artifact
 	_, err := m.client.PutObject(ctx, m.bucketName, objectName, data, -1, minio.PutObjectOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to store artifact in MinIO: %w", err)
 	}
 
-	// Return the URL for accessing this artifact
 	url := m.GetURL(artifactID, filename)
 	return url, nil
 }
 
 // Retrieve retrieves an artifact from MinIO
 func (m *MinIOArtifactStorage) Retrieve(ctx context.Context, artifactID string, filename string) (io.ReadCloser, error) {
-	// Sanitize inputs
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
@@ -96,7 +90,6 @@ func (m *MinIOArtifactStorage) Retrieve(ctx context.Context, artifactID string, 
 
 // Delete removes an artifact from MinIO
 func (m *MinIOArtifactStorage) Delete(ctx context.Context, artifactID string, filename string) error {
-	// Sanitize inputs
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
@@ -116,7 +109,6 @@ func (m *MinIOArtifactStorage) Delete(ctx context.Context, artifactID string, fi
 
 // Exists checks if an artifact exists in MinIO
 func (m *MinIOArtifactStorage) Exists(ctx context.Context, artifactID string, filename string) (bool, error) {
-	// Sanitize inputs
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
@@ -139,7 +131,6 @@ func (m *MinIOArtifactStorage) Exists(ctx context.Context, artifactID string, fi
 
 // GetURL returns the public URL for accessing an artifact
 func (m *MinIOArtifactStorage) GetURL(artifactID string, filename string) string {
-	// Sanitize inputs
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 	return fmt.Sprintf("%s/artifacts/%s/%s", m.baseURL, artifactID, filename)
@@ -147,6 +138,5 @@ func (m *MinIOArtifactStorage) GetURL(artifactID string, filename string) string
 
 // Close closes the MinIO connection
 func (m *MinIOArtifactStorage) Close() error {
-	// MinIO client doesn't need explicit cleanup
 	return nil
 }

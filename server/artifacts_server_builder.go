@@ -123,7 +123,6 @@ func (b *ArtifactsServerBuilderImpl) Build() (ArtifactsServer, error) {
 	}
 
 	if b.storage == nil {
-		// Try to auto-configure storage based on config
 		if err := b.autoConfigureStorage(); err != nil {
 			return nil, fmt.Errorf("no storage provider configured and failed to auto-configure: %w", err)
 		}
