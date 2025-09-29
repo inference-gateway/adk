@@ -89,16 +89,19 @@ go run main.go
 
 The server uses Redis storage with the following key environment variables:
 
-| Environment Variable             | Description                  | Default              |
-| -------------------------------- | ---------------------------- | -------------------- |
-| `A2A_QUEUE_PROVIDER`             | Storage provider             | `redis`              |
-| `A2A_QUEUE_URL`                  | Redis connection URL         | `redis://redis:6379` |
-| `A2A_QUEUE_OPTIONS_DB`           | Redis database number        | `0`                  |
-| `A2A_QUEUE_OPTIONS_MAX_RETRIES`  | Maximum connection retries   | `3`                  |
-| `A2A_QUEUE_OPTIONS_TIMEOUT`      | Connection timeout           | `5s`                 |
-| `A2A_QUEUE_CREDENTIALS_PASSWORD` | Redis password (if required) | (empty)              |
-| `A2A_SERVER_PORT`                | Server port                  | `8080`               |
-| `A2A_DEBUG`                      | Enable debug logging         | `false`              |
+| Environment Variable                        | Description                     | Default              |
+| ------------------------------------------- | ------------------------------- | -------------------- |
+| `A2A_QUEUE_PROVIDER`                        | Storage provider                | `redis`              |
+| `A2A_QUEUE_URL`                             | Redis connection URL            | `redis://redis:6379` |
+| `A2A_QUEUE_OPTIONS_DB`                      | Redis database number           | `0`                  |
+| `A2A_QUEUE_OPTIONS_MAX_RETRIES`             | Maximum connection retries      | `3`                  |
+| `A2A_QUEUE_OPTIONS_TIMEOUT`                 | Connection timeout              | `5s`                 |
+| `A2A_QUEUE_CREDENTIALS_PASSWORD`            | Redis password (if required)    | (empty)              |
+| `A2A_SERVER_PORT`                           | Server port                     | `8080`               |
+| `A2A_DEBUG`                                 | Enable debug logging            | `false`              |
+| `A2A_CAPABILITIES_STREAMING`                | Enable streaming                | `true`               |
+| `A2A_CAPABILITIES_PUSH_NOTIFICATIONS`       | Enable push notifications       | `false`              |
+| `A2A_CAPABILITIES_STATE_TRANSITION_HISTORY` | Enable state transition history | `true`               |
 
 ### Redis URL Format
 
@@ -216,9 +219,6 @@ INFO keyspace
 For production deployments, consider:
 
 ```bash
-# Redis persistence
-A2A_QUEUE_OPTIONS_MAXMEMORY_POLICY=allkeys-lru
-
 # Connection pooling
 A2A_QUEUE_OPTIONS_MAX_RETRIES=5
 A2A_QUEUE_OPTIONS_TIMEOUT=10s

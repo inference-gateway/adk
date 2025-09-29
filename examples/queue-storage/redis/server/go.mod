@@ -1,4 +1,4 @@
-module github.com/inference-gateway/adk/examples/queue-storage-examples/redis/server
+module github.com/inference-gateway/adk/examples/queue-storage/redis/server
 
 go 1.25
 

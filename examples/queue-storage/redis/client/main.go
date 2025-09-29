@@ -2,45 +2,27 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/inference-gateway/adk/client"
-	"github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	zap "go.uber.org/zap"
+
+	client "github.com/inference-gateway/adk/client"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func main() {
 	// Setup logger
-	logConfig := zap.Config{
-		Level:       zap.NewAtomicLevelAt(zapcore.InfoLevel),
-		Development: true,
-		Encoding:    "console",
-		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:        "timestamp",
-			LevelKey:       "level",
-			NameKey:        "logger",
-			CallerKey:      "caller",
-			MessageKey:     "message",
-			StacktraceKey:  "stacktrace",
-			LineEnding:     zapcore.DefaultLineEnding,
-			EncodeLevel:    zapcore.CapitalColorLevelEncoder,
-			EncodeTime:     zapcore.ISO8601TimeEncoder,
-			EncodeDuration: zapcore.StringDurationEncoder,
-			EncodeCaller:   zapcore.ShortCallerEncoder,
-		},
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
-
-	logger, err := logConfig.Build()
+	logger, err := zap.NewDevelopment()
 	if err != nil {
-		log.Fatal("Failed to build logger:", err)
+		log.Fatal("Failed to create logger:", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	// Get server URL from environment or use default
 	serverURL := os.Getenv("SERVER_URL")
@@ -52,13 +34,13 @@ func main() {
 		zap.String("server_url", serverURL))
 
 	// Create A2A client
-	a2aClient := client.NewA2AClient(serverURL, logger)
+	a2aClient := client.NewClientWithLogger(serverURL, logger)
 
 	// Test server health with retry for Redis connection
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	var health *types.HealthResponse
+	var health *client.HealthResponse
 	for i := 0; i < 6; i++ {
 		health, err = a2aClient.GetHealth(ctx)
 		if err == nil {
@@ -99,7 +81,22 @@ func main() {
 			zap.String("context_id", contextID),
 			zap.String("content", taskContent))
 
-		taskID, err := a2aClient.SubmitTask(ctx, contextID, taskContent)
+		message := types.Message{
+			ContextID: &contextID,
+			Kind:      "request",
+			MessageID: fmt.Sprintf("msg-%d", i+1),
+			Role:      "user",
+			Parts: []types.Part{
+				types.TextPart{
+					Kind: "text",
+					Text: taskContent,
+				},
+			},
+		}
+		params := types.MessageSendParams{
+			Message: message,
+		}
+		resp, err := a2aClient.SendTask(ctx, params)
 		if err != nil {
 			logger.Error("Failed to submit task",
 				zap.Error(err),
@@ -107,10 +104,25 @@ func main() {
 			continue
 		}
 
-		submittedTasks = append(submittedTasks, taskID)
+		// Parse the response to extract task
+		var task types.Task
+		resultBytes, ok := resp.Result.(json.RawMessage)
+		if !ok {
+			logger.Error("Failed to cast response to json.RawMessage",
+				zap.String("content", taskContent))
+			continue
+		}
+		if err := json.Unmarshal(resultBytes, &task); err != nil {
+			logger.Error("Failed to parse task response",
+				zap.Error(err),
+				zap.String("content", taskContent))
+			continue
+		}
+
+		submittedTasks = append(submittedTasks, task.ID)
 
 		logger.Info("Task submitted to Redis queue successfully",
-			zap.String("task_id", taskID),
+			zap.String("task_id", task.ID),
 			zap.String("context_id", contextID))
 
 		// Small delay between submissions to see queue behavior
@@ -125,7 +137,13 @@ func main() {
 	logger.Info("Checking task status in Redis storage...")
 
 	for _, taskID := range submittedTasks {
-		task, err := a2aClient.GetTask(ctx, taskID)
+		// Create fresh context for each GetTask call
+		taskCtx, taskCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		params := types.TaskQueryParams{
+			ID: taskID,
+		}
+		resp, err := a2aClient.GetTask(taskCtx, params)
+		taskCancel()
 		if err != nil {
 			logger.Error("Failed to get task status from Redis",
 				zap.Error(err),
@@ -133,19 +151,48 @@ func main() {
 			continue
 		}
 
+		// Parse the response directly as Task struct
+		var task types.Task
+		resultBytes, ok := resp.Result.(json.RawMessage)
+		if !ok {
+			logger.Error("Failed to cast response to json.RawMessage",
+				zap.String("task_id", taskID))
+			continue
+		}
+		if err := json.Unmarshal(resultBytes, &task); err != nil {
+			logger.Error("Failed to parse task response",
+				zap.Error(err),
+				zap.String("task_id", taskID))
+			continue
+		}
+		status := task.Status
+		history := task.History
+
 		logger.Info("Task status from Redis storage",
 			zap.String("task_id", task.ID),
 			zap.String("context_id", task.ContextID),
-			zap.String("state", string(task.Status.State)),
-			zap.Int("history_length", len(task.History)))
+			zap.String("state", string(status.State)),
+			zap.Int("history_length", len(history)))
 
-		// Print the response if available
-		if len(task.History) > 0 {
-			lastMessage := task.History[len(task.History)-1]
+		// Print the last message if available
+		if len(history) > 0 {
+			lastMessage := history[len(history)-1]
+			// Extract text from the last message parts
+			var content string
+			for _, part := range lastMessage.Parts {
+				if textPart, ok := part.(types.TextPart); ok {
+					content = textPart.Text
+					break
+				}
+			}
+			contentPreview := content
+			if len(content) > 100 {
+				contentPreview = content[:100] + "..."
+			}
 			logger.Info("Task response from Redis queue",
 				zap.String("task_id", task.ID),
 				zap.String("role", lastMessage.Role),
-				zap.String("preview", lastMessage.Content[:min(120, len(lastMessage.Content))]))
+				zap.String("content", contentPreview))
 		}
 	}
 
@@ -166,11 +213,4 @@ func main() {
 	logger.Info("• Scale to multiple server instances sharing the same Redis")
 	logger.Info("• Monitor Redis performance with redis-cli or RedisInsight")
 	logger.Info("• Configure Redis clustering for production deployments")
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

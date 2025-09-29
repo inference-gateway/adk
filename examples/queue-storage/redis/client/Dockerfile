@@ -10,13 +10,14 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN go build -o client .
+RUN cd examples/queue-storage/redis/client && \
+    go build -o client .
 
 FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
-COPY --from=builder /app/client .
+COPY --from=builder /app/examples/queue-storage/redis/client/client .
 
 CMD ["./client"]

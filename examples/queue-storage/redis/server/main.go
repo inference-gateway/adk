@@ -8,17 +8,19 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/inference-gateway/adk/examples/queue-storage-examples/redis/server/config"
-	"github.com/inference-gateway/adk/server"
-	"github.com/inference-gateway/adk/types"
-	"github.com/sethvargo/go-envconfig"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
+
+	config "github.com/inference-gateway/adk/examples/queue-storage/redis/server/config"
+	server "github.com/inference-gateway/adk/server"
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // RedisTaskHandler implements a task handler demonstrating Redis queue storage
 type RedisTaskHandler struct {
 	logger *zap.Logger
+	agent  server.OpenAICompatibleAgent
 }
 
 // NewRedisTaskHandler creates a new Redis task handler
@@ -28,12 +30,33 @@ func NewRedisTaskHandler(logger *zap.Logger) *RedisTaskHandler {
 	}
 }
 
+// SetAgent sets the OpenAI-compatible agent for the task handler
+func (h *RedisTaskHandler) SetAgent(agent server.OpenAICompatibleAgent) {
+	h.agent = agent
+}
+
+// GetAgent returns the configured OpenAI-compatible agent
+func (h *RedisTaskHandler) GetAgent() server.OpenAICompatibleAgent {
+	return h.agent
+}
+
 // HandleTask processes tasks using Redis queue storage backend
-func (h *RedisTaskHandler) HandleTask(ctx context.Context, task *types.Task) error {
+func (h *RedisTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	var inputContent string
+	// Extract input from the current message being processed
+	if message != nil {
+		for _, part := range message.Parts {
+			if textPart, ok := part.(types.TextPart); ok {
+				inputContent = textPart.Text
+				break
+			}
+		}
+	}
+
 	h.logger.Info("Processing task with Redis queue storage",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID),
-		zap.String("input", task.Input.Content))
+		zap.String("input", inputContent))
 
 	// Simulate processing work that benefits from Redis storage:
 	// - Task persistence across server restarts
@@ -42,20 +65,27 @@ func (h *RedisTaskHandler) HandleTask(ctx context.Context, task *types.Task) err
 	// - Task history and auditing capabilities
 
 	// Add a response message demonstrating Redis benefits
-	response := fmt.Sprintf("Task processed successfully using Redis queue storage. Benefits: persistent storage, horizontal scaling, and reliable processing. Original input: %s", task.Input.Content)
+	response := fmt.Sprintf("Task processed successfully using Redis queue storage. Benefits: persistent storage, horizontal scaling, and reliable processing. Original input: %s", inputContent)
 
-	responseMessage := &types.Message{
-		Role:    "assistant",
-		Content: response,
+	responseMessage := types.Message{
+		Kind:      "response",
+		MessageID: fmt.Sprintf("response-%s", task.ID),
+		Role:      "assistant",
+		Parts: []types.Part{
+			types.TextPart{
+				Kind: "text",
+				Text: response,
+			},
+		},
 	}
 
 	task.History = append(task.History, responseMessage)
 
 	h.logger.Info("Task processing completed with Redis storage",
 		zap.String("task_id", task.ID),
-		zap.String("response_preview", response[:min(100, len(response))]))
+		zap.String("response", response))
 
-	return nil
+	return task, nil
 }
 
 func main() {
@@ -66,37 +96,13 @@ func main() {
 	}
 
 	// Setup logger
-	logLevel := zapcore.InfoLevel
-	if cfg.A2A.Debug {
-		logLevel = zapcore.DebugLevel
-	}
-
-	logConfig := zap.Config{
-		Level:       zap.NewAtomicLevelAt(logLevel),
-		Development: cfg.Environment == "development",
-		Encoding:    "console",
-		EncoderConfig: zapcore.EncoderConfig{
-			TimeKey:        "timestamp",
-			LevelKey:       "level",
-			NameKey:        "logger",
-			CallerKey:      "caller",
-			MessageKey:     "message",
-			StacktraceKey:  "stacktrace",
-			LineEnding:     zapcore.DefaultLineEnding,
-			EncodeLevel:    zapcore.CapitalColorLevelEncoder,
-			EncodeTime:     zapcore.ISO8601TimeEncoder,
-			EncodeDuration: zapcore.StringDurationEncoder,
-			EncodeCaller:   zapcore.ShortCallerEncoder,
-		},
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
-
-	logger, err := logConfig.Build()
+	logger, err := zap.NewDevelopment()
 	if err != nil {
-		log.Fatal("Failed to build logger:", err)
+		log.Fatal("Failed to create logger:", err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	logger.Info("Starting A2A server with Redis queue storage",
 		zap.String("environment", cfg.Environment),
@@ -109,9 +115,24 @@ func main() {
 	taskHandler := NewRedisTaskHandler(logger)
 
 	// Build A2A server with Redis storage
-	a2aServer, err := server.NewA2AServerBuilder(logger).
-		WithConfig(&cfg.A2A).
-		WithTaskHandler(taskHandler).
+	a2aServer, err := server.NewA2AServerBuilder(serverConfig.Config(cfg.A2A), logger).
+		WithBackgroundTaskHandler(taskHandler).
+		WithDefaultStreamingTaskHandler().
+		WithAgentCard(types.AgentCard{
+			Name:            cfg.A2A.AgentName,
+			Description:     cfg.A2A.AgentDescription,
+			Version:         cfg.A2A.AgentVersion,
+			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			ProtocolVersion: "0.3.0",
+			Capabilities: types.AgentCapabilities{
+				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
+				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+			Skills:             []types.AgentSkill{},
+		}).
 		Build()
 	if err != nil {
 		logger.Fatal("Failed to build A2A server", zap.Error(err))
@@ -131,13 +152,6 @@ func main() {
 	// Wait for shutdown signal
 	<-ctx.Done()
 	logger.Info("Shutting down A2A server...")
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // maskCredentials masks sensitive credential values for logging
