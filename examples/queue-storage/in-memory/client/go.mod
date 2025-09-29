@@ -1,4 +1,4 @@
-module github.com/inference-gateway/adk/examples/queue-storage-examples/in-memory/client
+module github.com/inference-gateway/adk/examples/queue-storage/in-memory/client
 
 go 1.25
 

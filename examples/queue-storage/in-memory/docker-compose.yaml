@@ -2,26 +2,22 @@
 services:
   server:
     build:
-      context: ./server
+      context: ../../..
+      dockerfile: examples/queue-storage/in-memory/server/Dockerfile
       args:
         AGENT_NAME: in-memory-queue-example
         AGENT_DESCRIPTION: A2A server demonstrating in-memory queue storage
         AGENT_VERSION: 0.1.0
-    ports:
-      - "8080:8080"
     environment:
       ENVIRONMENT: development
       A2A_SERVER_PORT: 8080
       A2A_DEBUG: true
-      # In-Memory Queue Configuration
       A2A_QUEUE_PROVIDER: memory
       A2A_QUEUE_MAX_SIZE: 100
       A2A_QUEUE_CLEANUP_INTERVAL: 30s
-      # Task Retention
       A2A_TASK_RETENTION_MAX_COMPLETED_TASKS: 50
       A2A_TASK_RETENTION_MAX_FAILED_TASKS: 25
       A2A_TASK_RETENTION_CLEANUP_INTERVAL: 5m
-      # Capabilities
       A2A_CAPABILITIES_STREAMING: true
       A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
     networks:
@@ -29,7 +25,8 @@ services:
 
   client:
     build:
-      context: ./client
+      context: ../../..
+      dockerfile: examples/queue-storage/in-memory/client/Dockerfile
     depends_on:
       - server
     environment:
