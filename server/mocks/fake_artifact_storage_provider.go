@@ -5,11 +5,40 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/inference-gateway/adk/server"
 )
 
 type FakeArtifactStorageProvider struct {
+	CleanupExpiredArtifactsStub        func(context.Context, time.Duration) (int, error)
+	cleanupExpiredArtifactsMutex       sync.RWMutex
+	cleanupExpiredArtifactsArgsForCall []struct {
+		arg1 context.Context
+		arg2 time.Duration
+	}
+	cleanupExpiredArtifactsReturns struct {
+		result1 int
+		result2 error
+	}
+	cleanupExpiredArtifactsReturnsOnCall map[int]struct {
+		result1 int
+		result2 error
+	}
+	CleanupOldestArtifactsStub        func(context.Context, int) (int, error)
+	cleanupOldestArtifactsMutex       sync.RWMutex
+	cleanupOldestArtifactsArgsForCall []struct {
+		arg1 context.Context
+		arg2 int
+	}
+	cleanupOldestArtifactsReturns struct {
+		result1 int
+		result2 error
+	}
+	cleanupOldestArtifactsReturnsOnCall map[int]struct {
+		result1 int
+		result2 error
+	}
 	CloseStub        func() error
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
@@ -93,6 +122,136 @@ type FakeArtifactStorageProvider struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupExpiredArtifacts(arg1 context.Context, arg2 time.Duration) (int, error) {
+	fake.cleanupExpiredArtifactsMutex.Lock()
+	ret, specificReturn := fake.cleanupExpiredArtifactsReturnsOnCall[len(fake.cleanupExpiredArtifactsArgsForCall)]
+	fake.cleanupExpiredArtifactsArgsForCall = append(fake.cleanupExpiredArtifactsArgsForCall, struct {
+		arg1 context.Context
+		arg2 time.Duration
+	}{arg1, arg2})
+	stub := fake.CleanupExpiredArtifactsStub
+	fakeReturns := fake.cleanupExpiredArtifactsReturns
+	fake.recordInvocation("CleanupExpiredArtifacts", []interface{}{arg1, arg2})
+	fake.cleanupExpiredArtifactsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupExpiredArtifactsCallCount() int {
+	fake.cleanupExpiredArtifactsMutex.RLock()
+	defer fake.cleanupExpiredArtifactsMutex.RUnlock()
+	return len(fake.cleanupExpiredArtifactsArgsForCall)
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupExpiredArtifactsCalls(stub func(context.Context, time.Duration) (int, error)) {
+	fake.cleanupExpiredArtifactsMutex.Lock()
+	defer fake.cleanupExpiredArtifactsMutex.Unlock()
+	fake.CleanupExpiredArtifactsStub = stub
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupExpiredArtifactsArgsForCall(i int) (context.Context, time.Duration) {
+	fake.cleanupExpiredArtifactsMutex.RLock()
+	defer fake.cleanupExpiredArtifactsMutex.RUnlock()
+	argsForCall := fake.cleanupExpiredArtifactsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupExpiredArtifactsReturns(result1 int, result2 error) {
+	fake.cleanupExpiredArtifactsMutex.Lock()
+	defer fake.cleanupExpiredArtifactsMutex.Unlock()
+	fake.CleanupExpiredArtifactsStub = nil
+	fake.cleanupExpiredArtifactsReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupExpiredArtifactsReturnsOnCall(i int, result1 int, result2 error) {
+	fake.cleanupExpiredArtifactsMutex.Lock()
+	defer fake.cleanupExpiredArtifactsMutex.Unlock()
+	fake.CleanupExpiredArtifactsStub = nil
+	if fake.cleanupExpiredArtifactsReturnsOnCall == nil {
+		fake.cleanupExpiredArtifactsReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 error
+		})
+	}
+	fake.cleanupExpiredArtifactsReturnsOnCall[i] = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupOldestArtifacts(arg1 context.Context, arg2 int) (int, error) {
+	fake.cleanupOldestArtifactsMutex.Lock()
+	ret, specificReturn := fake.cleanupOldestArtifactsReturnsOnCall[len(fake.cleanupOldestArtifactsArgsForCall)]
+	fake.cleanupOldestArtifactsArgsForCall = append(fake.cleanupOldestArtifactsArgsForCall, struct {
+		arg1 context.Context
+		arg2 int
+	}{arg1, arg2})
+	stub := fake.CleanupOldestArtifactsStub
+	fakeReturns := fake.cleanupOldestArtifactsReturns
+	fake.recordInvocation("CleanupOldestArtifacts", []interface{}{arg1, arg2})
+	fake.cleanupOldestArtifactsMutex.Unlock()
+	if stub != nil {
+		return stub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupOldestArtifactsCallCount() int {
+	fake.cleanupOldestArtifactsMutex.RLock()
+	defer fake.cleanupOldestArtifactsMutex.RUnlock()
+	return len(fake.cleanupOldestArtifactsArgsForCall)
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupOldestArtifactsCalls(stub func(context.Context, int) (int, error)) {
+	fake.cleanupOldestArtifactsMutex.Lock()
+	defer fake.cleanupOldestArtifactsMutex.Unlock()
+	fake.CleanupOldestArtifactsStub = stub
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupOldestArtifactsArgsForCall(i int) (context.Context, int) {
+	fake.cleanupOldestArtifactsMutex.RLock()
+	defer fake.cleanupOldestArtifactsMutex.RUnlock()
+	argsForCall := fake.cleanupOldestArtifactsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupOldestArtifactsReturns(result1 int, result2 error) {
+	fake.cleanupOldestArtifactsMutex.Lock()
+	defer fake.cleanupOldestArtifactsMutex.Unlock()
+	fake.CleanupOldestArtifactsStub = nil
+	fake.cleanupOldestArtifactsReturns = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeArtifactStorageProvider) CleanupOldestArtifactsReturnsOnCall(i int, result1 int, result2 error) {
+	fake.cleanupOldestArtifactsMutex.Lock()
+	defer fake.cleanupOldestArtifactsMutex.Unlock()
+	fake.CleanupOldestArtifactsStub = nil
+	if fake.cleanupOldestArtifactsReturnsOnCall == nil {
+		fake.cleanupOldestArtifactsReturnsOnCall = make(map[int]struct {
+			result1 int
+			result2 error
+		})
+	}
+	fake.cleanupOldestArtifactsReturnsOnCall[i] = struct {
+		result1 int
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeArtifactStorageProvider) Close() error {
@@ -475,6 +634,10 @@ func (fake *FakeArtifactStorageProvider) StoreReturnsOnCall(i int, result1 strin
 func (fake *FakeArtifactStorageProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.cleanupExpiredArtifactsMutex.RLock()
+	defer fake.cleanupExpiredArtifactsMutex.RUnlock()
+	fake.cleanupOldestArtifactsMutex.RLock()
+	defer fake.cleanupOldestArtifactsMutex.RUnlock()
 	fake.closeMutex.RLock()
 	defer fake.closeMutex.RUnlock()
 	fake.deleteMutex.RLock()

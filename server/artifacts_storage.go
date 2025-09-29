@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"io"
+	"time"
 )
 
 // ArtifactStorageProvider defines the interface for artifact storage backends
@@ -24,13 +25,19 @@ type ArtifactStorageProvider interface {
 
 	// Close closes the storage provider and cleans up resources
 	Close() error
+
+	// CleanupExpiredArtifacts removes artifacts older than maxAge
+	CleanupExpiredArtifacts(ctx context.Context, maxAge time.Duration) (int, error)
+
+	// CleanupOldestArtifacts removes old artifacts keeping only maxCount per artifact ID
+	CleanupOldestArtifacts(ctx context.Context, maxCount int) (int, error)
 }
 
 // ArtifactMetadata holds metadata about stored artifacts
 type ArtifactMetadata struct {
-	ArtifactID  string `json:"artifact_id"`
-	Filename    string `json:"filename"`
-	Size        int64  `json:"size"`
-	ContentType string `json:"content_type"`
-	UploadedAt  string `json:"uploaded_at"`
+	ArtifactID  string    `json:"artifact_id"`
+	Filename    string    `json:"filename"`
+	Size        int64     `json:"size"`
+	ContentType string    `json:"content_type"`
+	UploadedAt  time.Time `json:"uploaded_at"`
 }

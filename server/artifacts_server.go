@@ -30,18 +30,21 @@ type ArtifactsServer interface {
 
 // ArtifactsServerImpl implements the ArtifactsServer interface
 type ArtifactsServerImpl struct {
-	config  *config.ArtifactsConfig
-	logger  *zap.Logger
-	storage ArtifactStorageProvider
-	server  *http.Server
-	router  *gin.Engine
+	config        *config.ArtifactsConfig
+	logger        *zap.Logger
+	storage       ArtifactStorageProvider
+	server        *http.Server
+	router        *gin.Engine
+	cleanupTicker *time.Ticker
+	stopCleanup   chan struct{}
 }
 
 // NewArtifactsServer creates a new artifacts server instance
 func NewArtifactsServer(cfg *config.ArtifactsConfig, logger *zap.Logger) ArtifactsServer {
 	return &ArtifactsServerImpl{
-		config: cfg,
-		logger: logger,
+		config:      cfg,
+		logger:      logger,
+		stopCleanup: make(chan struct{}),
 	}
 }
 
@@ -64,6 +67,8 @@ func (s *ArtifactsServerImpl) Start(ctx context.Context) error {
 	}
 
 	s.logger.Info("starting artifacts server", zap.String("address", addr))
+
+	s.startCleanupProcess(ctx)
 
 	errChan := make(chan error, 1)
 	go func() {
@@ -96,6 +101,8 @@ func (s *ArtifactsServerImpl) Stop(ctx context.Context) error {
 	}
 
 	s.logger.Info("stopping artifacts server")
+
+	s.stopCleanupProcess()
 
 	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -221,4 +228,76 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 
 	c.DataFromReader(http.StatusOK, -1, contentType, reader, nil)
+}
+
+// startCleanupProcess starts the background artifact cleanup process
+func (s *ArtifactsServerImpl) startCleanupProcess(ctx context.Context) {
+	cleanupInterval := s.config.RetentionConfig.CleanupInterval
+	if cleanupInterval <= 0 {
+		s.logger.Info("artifact cleanup disabled", zap.Duration("cleanup_interval", cleanupInterval))
+		return
+	}
+
+	s.logger.Info("starting artifact cleanup process", zap.Duration("cleanup_interval", cleanupInterval))
+
+	s.cleanupTicker = time.NewTicker(cleanupInterval)
+	go func() {
+		for {
+			select {
+			case <-s.stopCleanup:
+				s.logger.Info("artifact cleanup shutting down")
+				return
+			case <-s.cleanupTicker.C:
+				s.performCleanup(ctx)
+			}
+		}
+	}()
+}
+
+// stopCleanupProcess stops the background artifact cleanup process
+func (s *ArtifactsServerImpl) stopCleanupProcess() {
+	if s.cleanupTicker != nil {
+		s.cleanupTicker.Stop()
+	}
+
+	select {
+	case s.stopCleanup <- struct{}{}:
+	default:
+	}
+}
+
+// performCleanup performs the actual artifact cleanup
+func (s *ArtifactsServerImpl) performCleanup(ctx context.Context) {
+	s.logger.Debug("starting artifact cleanup run")
+
+	retentionConfig := s.config.RetentionConfig
+	totalRemoved := 0
+
+	if retentionConfig.MaxAge > 0 {
+		removed, err := s.storage.CleanupExpiredArtifacts(ctx, retentionConfig.MaxAge)
+		if err != nil {
+			s.logger.Error("failed to cleanup expired artifacts", zap.Error(err))
+		} else {
+			totalRemoved += removed
+			s.logger.Debug("cleaned up expired artifacts",
+				zap.Int("removed_count", removed),
+				zap.Duration("max_age", retentionConfig.MaxAge))
+		}
+	}
+
+	if retentionConfig.MaxArtifacts > 0 {
+		removed, err := s.storage.CleanupOldestArtifacts(ctx, retentionConfig.MaxArtifacts)
+		if err != nil {
+			s.logger.Error("failed to cleanup oldest artifacts", zap.Error(err))
+		} else {
+			totalRemoved += removed
+			s.logger.Debug("cleaned up oldest artifacts",
+				zap.Int("removed_count", removed),
+				zap.Int("max_artifacts", retentionConfig.MaxArtifacts))
+		}
+	}
+
+	if totalRemoved > 0 {
+		s.logger.Info("artifact cleanup completed", zap.Int("total_removed", totalRemoved))
+	}
 }

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -139,4 +141,82 @@ func (m *MinIOArtifactStorage) GetURL(artifactID string, filename string) string
 // Close closes the MinIO connection
 func (m *MinIOArtifactStorage) Close() error {
 	return nil
+}
+
+// CleanupExpiredArtifacts removes artifacts older than maxAge
+func (m *MinIOArtifactStorage) CleanupExpiredArtifacts(ctx context.Context, maxAge time.Duration) (int, error) {
+	if maxAge <= 0 {
+		return 0, nil
+	}
+
+	cutoffTime := time.Now().Add(-maxAge)
+	removedCount := 0
+
+	objectCh := m.client.ListObjects(ctx, m.bucketName, minio.ListObjectsOptions{
+		Recursive: true,
+	})
+
+	var objectsToDelete []minio.ObjectInfo
+	for object := range objectCh {
+		if object.Err != nil {
+			continue
+		}
+
+		if object.LastModified.Before(cutoffTime) {
+			objectsToDelete = append(objectsToDelete, object)
+		}
+	}
+
+	for _, obj := range objectsToDelete {
+		err := m.client.RemoveObject(ctx, m.bucketName, obj.Key, minio.RemoveObjectOptions{})
+		if err == nil {
+			removedCount++
+		}
+	}
+
+	return removedCount, nil
+}
+
+// CleanupOldestArtifacts removes old artifacts keeping only maxCount per artifact ID
+func (m *MinIOArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCount int) (int, error) {
+	if maxCount <= 0 {
+		return 0, nil
+	}
+
+	objectCh := m.client.ListObjects(ctx, m.bucketName, minio.ListObjectsOptions{
+		Recursive: true,
+	})
+
+	artifactGroups := make(map[string][]minio.ObjectInfo)
+	for object := range objectCh {
+		if object.Err != nil {
+			continue
+		}
+
+		parts := strings.Split(object.Key, "/")
+		if len(parts) >= 2 {
+			artifactID := parts[0]
+			artifactGroups[artifactID] = append(artifactGroups[artifactID], object)
+		}
+	}
+
+	removedCount := 0
+	for _, objects := range artifactGroups {
+		if len(objects) <= maxCount {
+			continue
+		}
+
+		sort.Slice(objects, func(i, j int) bool {
+			return objects[i].LastModified.After(objects[j].LastModified)
+		})
+
+		for i := maxCount; i < len(objects); i++ {
+			err := m.client.RemoveObject(ctx, m.bucketName, objects[i].Key, minio.RemoveObjectOptions{})
+			if err == nil {
+				removedCount++
+			}
+		}
+	}
+
+	return removedCount, nil
 }

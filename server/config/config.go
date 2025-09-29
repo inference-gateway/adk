@@ -124,9 +124,10 @@ type TelemetryConfig struct {
 
 // ArtifactsConfig holds artifacts server configuration
 type ArtifactsConfig struct {
-	Enable        bool                   `env:"ENABLE,default=false" description:"Enable artifacts server"`
-	ServerConfig  ArtifactsServerConfig  `env:",prefix=SERVER_" description:"HTTP server configuration for artifacts server"`
-	StorageConfig ArtifactsStorageConfig `env:",prefix=STORAGE_" description:"Storage configuration for artifacts"`
+	Enable          bool                    `env:"ENABLE,default=false" description:"Enable artifacts server"`
+	ServerConfig    ArtifactsServerConfig   `env:",prefix=SERVER_" description:"HTTP server configuration for artifacts server"`
+	StorageConfig   ArtifactsStorageConfig  `env:",prefix=STORAGE_" description:"Storage configuration for artifacts"`
+	RetentionConfig ArtifactRetentionConfig `env:",prefix=RETENTION_" description:"Artifact retention and cleanup configuration"`
 }
 
 // ArtifactsServerConfig holds artifacts HTTP server configuration
@@ -150,6 +151,13 @@ type ArtifactsStorageConfig struct {
 	Region      string            `env:"REGION,default=us-east-1" description:"Storage region"`
 	UseSSL      bool              `env:"USE_SSL,default=true" description:"Use SSL for storage connections"`
 	Credentials map[string]string `env:"CREDENTIALS" description:"Additional provider-specific credentials"`
+}
+
+// ArtifactRetentionConfig defines artifact cleanup policies
+type ArtifactRetentionConfig struct {
+	MaxArtifacts    int           `env:"MAX_ARTIFACTS,default=5" description:"Maximum artifacts to retain per task (0 = unlimited)"`
+	MaxAge          time.Duration `env:"MAX_AGE,default=168h" description:"Maximum age for artifacts (0 = no age limit)"`
+	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL,default=24h" description:"How often to run cleanup (0 = manual cleanup only)"`
 }
 
 // Load loads configuration from environment variables, merging with the provided base config.

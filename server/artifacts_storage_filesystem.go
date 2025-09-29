@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 )
 
 // FilesystemArtifactStorage implements ArtifactStorageProvider using local filesystem
@@ -134,6 +136,143 @@ func (fs *FilesystemArtifactStorage) GetURL(artifactID string, filename string) 
 // Close cleans up the filesystem storage (no-op for filesystem)
 func (fs *FilesystemArtifactStorage) Close() error {
 	return nil
+}
+
+// CleanupExpiredArtifacts removes artifacts older than maxAge
+func (fs *FilesystemArtifactStorage) CleanupExpiredArtifacts(ctx context.Context, maxAge time.Duration) (int, error) {
+	if maxAge <= 0 {
+		return 0, nil
+	}
+
+	cutoffTime := time.Now().Add(-maxAge)
+	removedCount := 0
+
+	err := filepath.Walk(fs.basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		if info.ModTime().Before(cutoffTime) {
+			if err := os.Remove(path); err == nil {
+				removedCount++
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return removedCount, fmt.Errorf("failed to cleanup expired artifacts: %w", err)
+	}
+
+	fs.cleanupEmptyDirectories()
+	return removedCount, nil
+}
+
+// CleanupOldestArtifacts removes old artifacts keeping only maxCount per artifact ID
+func (fs *FilesystemArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCount int) (int, error) {
+	if maxCount <= 0 {
+		return 0, nil
+	}
+
+	removedCount := 0
+
+	entries, err := os.ReadDir(fs.basePath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read artifacts directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		artifactDir := filepath.Join(fs.basePath, entry.Name())
+		cleaned, err := fs.cleanupArtifactDirectory(artifactDir, maxCount)
+		if err != nil {
+			continue
+		}
+		removedCount += cleaned
+	}
+
+	fs.cleanupEmptyDirectories()
+	return removedCount, nil
+}
+
+// cleanupArtifactDirectory removes oldest files in a directory, keeping only maxCount files
+func (fs *FilesystemArtifactStorage) cleanupArtifactDirectory(artifactDir string, maxCount int) (int, error) {
+	files, err := os.ReadDir(artifactDir)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(files) <= maxCount {
+		return 0, nil
+	}
+
+	type fileInfo struct {
+		name    string
+		modTime time.Time
+	}
+
+	var fileInfos []fileInfo
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		info, err := file.Info()
+		if err != nil {
+			continue
+		}
+
+		fileInfos = append(fileInfos, fileInfo{
+			name:    file.Name(),
+			modTime: info.ModTime(),
+		})
+	}
+
+	sort.Slice(fileInfos, func(i, j int) bool {
+		return fileInfos[i].modTime.After(fileInfos[j].modTime)
+	})
+
+	removedCount := 0
+	for i := maxCount; i < len(fileInfos); i++ {
+		filePath := filepath.Join(artifactDir, fileInfos[i].name)
+		if err := os.Remove(filePath); err == nil {
+			removedCount++
+		}
+	}
+
+	return removedCount, nil
+}
+
+// cleanupEmptyDirectories removes empty artifact directories
+func (fs *FilesystemArtifactStorage) cleanupEmptyDirectories() {
+	entries, err := os.ReadDir(fs.basePath)
+	if err != nil {
+		return
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		artifactDir := filepath.Join(fs.basePath, entry.Name())
+		files, err := os.ReadDir(artifactDir)
+		if err != nil {
+			continue
+		}
+
+		if len(files) == 0 {
+			_ = os.Remove(artifactDir)
+		}
+	}
 }
 
 // sanitizePath removes dangerous characters and path traversal attempts
