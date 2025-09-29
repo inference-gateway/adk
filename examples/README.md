@@ -28,7 +28,8 @@ examples/
 ├── ai-powered-streaming/ # AI with real-time streaming
 ├── streaming/            # Real-time streaming responses
 ├── artifacts-filesystem/ # Artifact storage using local filesystem
-└── artifacts-minio/      # Artifact storage using MinIO (S3-compatible)
+├── artifacts-minio/      # Artifact storage using MinIO (S3-compatible)
+├── queue-storage/        # Queue storage backends (in-memory and Redis)
 └── tls-example/          # TLS-enabled server with HTTPS communication
 ```
 
@@ -126,6 +127,15 @@ Demonstrates artifact creation and download using MinIO (S3-compatible) storage.
 - S3-compatible API
 - Production-ready cloud storage
 
+#### `queue-storage/`
+
+Demonstrates different queue storage backends for task management and horizontal scaling.
+
+- **In-Memory**: Simple development setup with in-memory storage
+- **Redis**: Production-ready Redis-based queue storage
+- Docker Compose setups for both storage backends
+- Complete server and client implementations
+
 #### `tls-example/`
 
 TLS-enabled A2A server demonstrating secure HTTPS communication.
@@ -169,7 +179,8 @@ See each example's README for specific configuration details.
 6. **`streaming/`** - Implement real-time streaming capabilities
 7. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
 8. **`artifacts-minio/`** - Production-ready artifact storage with MinIO
-9. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
+9. **`queue-storage/`** - Learn different queue storage backends for scaling
+10. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 
 ---
 

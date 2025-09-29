@@ -1,0 +1,31 @@
+FROM golang:1.25-alpine AS builder
+
+ARG AGENT_NAME="redis-queue-example"
+ARG AGENT_DESCRIPTION="A2A server demonstrating Redis queue storage"
+ARG AGENT_VERSION="0.1.0"
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application with build-time metadata
+RUN cd examples/queue-storage/redis/server && \
+    go build \
+    -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" \
+    -o server .
+
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+WORKDIR /app
+
+COPY --from=builder /app/examples/queue-storage/redis/server/server .
+
+EXPOSE 8080
+
+CMD ["./server"]
