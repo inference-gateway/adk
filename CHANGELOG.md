@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.1](https://github.com/inference-gateway/adk/compare/v0.12.0...v0.12.1) (2025-09-30)
+
+### ♻️ Improvements
+
+* Remove confusing setter for artifacts server configuration from A2AServerBuilder and related mocks ([94fc304](https://github.com/inference-gateway/adk/commit/94fc30498826f0576cb826d929b3509e408dec47))
+* Simplfy artifacts server and make it more configurable ([#87](https://github.com/inference-gateway/adk/issues/87)) ([9d7c300](https://github.com/inference-gateway/adk/commit/9d7c300ab63c3750d48131a30e20cad424150501))
+* Update README examples to reflect enterprise-ready storage configurations and remove outdated comments from tests ([2eb5454](https://github.com/inference-gateway/adk/commit/2eb545455d08464e1c1d931dd2f9379264c86567))
+
+### 📚 Documentation
+
+* **examples:** Add queue storage examples for in-memory and Redis backends ([#85](https://github.com/inference-gateway/adk/issues/85)) ([5be49e0](https://github.com/inference-gateway/adk/commit/5be49e0966695c375f3143edfab27853ad5b70da)), closes [#80](https://github.com/inference-gateway/adk/issues/80)
+* **examples:** Add TLS-enabled A2A server example with docker-compose ([#86](https://github.com/inference-gateway/adk/issues/86)) ([05d54ce](https://github.com/inference-gateway/adk/commit/05d54cedb55c5d2cb0377bee9d245b8fd2fb5048)), closes [#81](https://github.com/inference-gateway/adk/issues/81)
+
 ## [0.12.0](https://github.com/inference-gateway/adk/compare/v0.11.2...v0.12.0) (2025-09-29)
 
 ### ✨ Features
