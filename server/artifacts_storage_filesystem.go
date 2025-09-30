@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/inference-gateway/adk/server/config"
 )
 
 // FilesystemArtifactStorage implements ArtifactStorageProvider using local filesystem
@@ -18,15 +20,15 @@ type FilesystemArtifactStorage struct {
 }
 
 // NewFilesystemArtifactStorage creates a new filesystem-based artifact storage provider
-func NewFilesystemArtifactStorage(basePath, baseURL string) (*FilesystemArtifactStorage, error) {
-	if err := os.MkdirAll(basePath, 0755); err != nil {
+func NewFilesystemArtifactStorage(cfg *config.ArtifactsStorageConfig) (*FilesystemArtifactStorage, error) {
+	if err := os.MkdirAll(cfg.BasePath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create artifacts directory: %w", err)
 	}
 
-	baseURL = strings.TrimSuffix(baseURL, "/")
+	baseURL := strings.TrimSuffix(cfg.BaseURL, "/")
 
 	return &FilesystemArtifactStorage{
-		basePath: basePath,
+		basePath: cfg.BasePath,
 		baseURL:  baseURL,
 	}, nil
 }
