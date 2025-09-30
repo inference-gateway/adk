@@ -14,22 +14,28 @@ This example demonstrates an A2A server that creates downloadable artifacts usin
 
 ## Architecture
 
+This example supports two download modes for artifacts stored in MinIO:
+
+### Proxy Mode (Default)
+
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │                 │    │                  │    │                 │    │                 │
 │  A2A Client     │◄──►│  A2A Server      │◄──►│ Artifacts Server│◄──►│ MinIO Storage   │
-│  (Port 8080)    │    │  (Port 8080)     │    │  (Port 8081)    │    │  (Port 9000)    │
+│  (Downloads)    │    │  (Port 8080)     │    │  (Port 8081)    │    │  (Port 9000)    │
 │                 │    │                  │    │                 │    │                 │
 └─────────────────┘    └──────────────────┘    └─────────────────┘    └─────────────────┘
-                                │                        │                        │
-                                ▼                        ▼                        ▼
-                       ┌──────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-                       │                  │    │                 │    │                 │
-                       │  Task Processing │    │ Artifact API    │    │ MinIO Buckets   │
-                       │  & Artifact      │    │ Management      │    │ - artifacts/    │
-                       │  Creation        │    │                 │    │ - Versioning    │
-                       │                  │    │                 │    │ - Access Control│
-                       └──────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### Direct Mode (Configurable)
+
+```
+┌─────────────────┐                              ┌─────────────────┐
+│                 │                              │                 │
+│  A2A Client     │◄────────────────────────────►│ MinIO Storage   │
+│  (Downloads)    │                              │  (Port 9000)    │
+│                 │                              │                 │
+└─────────────────┘                              └─────────────────┘
 ```
 
 ## Running the Example
@@ -81,21 +87,22 @@ go run main.go
 
 The server can be configured via environment variables:
 
-| Variable                            | Default                    | Description              |
-| ----------------------------------- | -------------------------- | ------------------------ |
-| `A2A_AGENT_NAME`                    | `artifacts-minio-agent`    | Agent name               |
-| `A2A_AGENT_DESCRIPTION`             | `An agent that creates...` | Agent description        |
-| `A2A_AGENT_VERSION`                 | `0.1.0`                    | Agent version            |
-| `A2A_SERVER_PORT`                   | `8080`                     | A2A server port          |
-| `A2A_ARTIFACTS_ENABLE`              | `true`                     | Enable artifacts support |
-| `A2A_ARTIFACTS_SERVER_HOST`         | `localhost`                | Artifacts server host    |
-| `A2A_ARTIFACTS_SERVER_PORT`         | `8081`                     | Artifacts server port    |
-| `A2A_ARTIFACTS_STORAGE_PROVIDER`    | `minio`                    | Storage provider         |
-| `A2A_ARTIFACTS_STORAGE_ENDPOINT`    | `localhost:9000`           | MinIO endpoint           |
-| `A2A_ARTIFACTS_STORAGE_ACCESS_KEY`  | `minioadmin`               | MinIO access key         |
-| `A2A_ARTIFACTS_STORAGE_SECRET_KEY`  | `minioadmin`               | MinIO secret key         |
-| `A2A_ARTIFACTS_STORAGE_BUCKET_NAME` | `artifacts`                | MinIO bucket name        |
-| `A2A_ARTIFACTS_STORAGE_USE_SSL`     | `false`                    | Use SSL for MinIO        |
+| Variable                            | Default                           | Description                            |
+| ----------------------------------- | --------------------------------- | -------------------------------------- |
+| `A2A_AGENT_NAME`                    | `artifacts-minio-agent`           | Agent name                             |
+| `A2A_AGENT_DESCRIPTION`             | `An agent that creates...`        | Agent description                      |
+| `A2A_AGENT_VERSION`                 | `0.1.0`                           | Agent version                          |
+| `A2A_SERVER_PORT`                   | `8080`                            | A2A server port                        |
+| `A2A_ARTIFACTS_ENABLE`              | `true`                            | Enable artifacts support               |
+| `A2A_ARTIFACTS_SERVER_HOST`         | `localhost`                       | Artifacts server host                  |
+| `A2A_ARTIFACTS_SERVER_PORT`         | `8081`                            | Artifacts server port                  |
+| `A2A_ARTIFACTS_STORAGE_PROVIDER`    | `minio`                           | Storage provider                       |
+| `A2A_ARTIFACTS_STORAGE_ENDPOINT`    | `localhost:9000`                  | MinIO endpoint                         |
+| `A2A_ARTIFACTS_STORAGE_ACCESS_KEY`  | `minioadmin`                      | MinIO access key                       |
+| `A2A_ARTIFACTS_STORAGE_SECRET_KEY`  | `minioadmin`                      | MinIO secret key                       |
+| `A2A_ARTIFACTS_STORAGE_BUCKET_NAME` | `artifacts`                       | MinIO bucket name                      |
+| `A2A_ARTIFACTS_STORAGE_USE_SSL`     | `false`                           | Use SSL for MinIO                      |
+| `A2A_ARTIFACTS_STORAGE_BASE_URL`    | `http://server:8081` (proxy mode) | Override base URL for direct downloads |
 
 Client configuration:
 
@@ -104,6 +111,50 @@ Client configuration:
 | `SERVER_URL`    | `http://localhost:8080` | A2A server URL                         |
 | `ARTIFACTS_URL` | `http://localhost:8081` | Artifacts server URL                   |
 | `DOWNLOADS_DIR` | `downloads`             | Directory to save downloaded artifacts |
+
+## Download Modes
+
+This example demonstrates two different approaches for downloading artifacts from MinIO:
+
+### Proxy Mode (Default)
+
+**Flow**: Client → Artifacts Server → MinIO Storage
+
+In proxy mode, the artifacts server acts as an intermediary:
+
+- ✅ **Authentication**: Server can enforce access control and authentication
+- ✅ **Rate Limiting**: Server can implement rate limiting and throttling
+- ✅ **Audit Logging**: All downloads are logged through the artifacts server
+- ✅ **Error Handling**: Unified error responses and retry logic
+- ❌ **Performance**: Additional network hop adds latency
+- ❌ **Bandwidth**: All data flows through the artifacts server
+
+**Configuration**: Uses auto-generated URLs pointing to the artifacts server (port 8081).
+
+### Direct Mode
+
+**Flow**: Client → MinIO Storage (direct)
+
+In direct mode, clients download directly from MinIO:
+
+- ✅ **Performance**: Direct connection to storage eliminates proxy overhead
+- ✅ **Bandwidth**: Optimal network utilization
+- ✅ **Scalability**: MinIO handles download traffic directly
+- ❌ **Security**: RBAC must be configured on MinIO bucket itself
+- ❌ **Monitoring**: Download activity not tracked by artifacts server
+
+**Configuration**: Override the base URL to point directly to MinIO:
+
+```yaml
+# Enable direct downloads from MinIO
+A2A_ARTIFACTS_STORAGE_BASE_URL: http://minio:9000
+
+# Ensure bucket allows anonymous downloads
+# (configured in createbucket service)
+mc anonymous set download minio/artifacts
+```
+
+**Important**: When using direct mode, access control must be handled at the MinIO bucket level since the artifacts server is bypassed.
 
 ## What Happens
 

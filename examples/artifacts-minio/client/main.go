@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	envconfig "github.com/sethvargo/go-envconfig"
@@ -177,7 +178,7 @@ func main() {
 							if err := downloadArtifact(uri, filename, cfg.DownloadsDir); err != nil {
 								fmt.Printf("   ❌ Failed to download: %v\n", err)
 							} else {
-								fmt.Printf("   ✅ Downloaded successfully from MinIO to: %s\n", filepath.Join(cfg.DownloadsDir, filename))
+								fmt.Printf("   ✅ Downloaded successfully to: %s\n", filepath.Join(cfg.DownloadsDir, filename))
 							}
 						}
 					}
@@ -193,6 +194,16 @@ func main() {
 
 // downloadArtifact downloads an artifact from the given URI and saves it to the specified filename
 func downloadArtifact(uri, filename, downloadsDir string) error {
+	// Log the download source to demonstrate direct MinIO access
+	fmt.Printf("   🌐 Downloading from: %s\n", uri)
+
+	// Determine download source for demonstration
+	if containsMinIOEndpoint(uri) {
+		fmt.Printf("   ⚡ Direct download from MinIO storage (bypassing artifacts server)\n")
+	} else {
+		fmt.Printf("   🔄 Download via artifacts server proxy\n")
+	}
+
 	// Create HTTP client with timeout
 	httpClient := &http.Client{
 		Timeout: 30 * time.Second,
@@ -285,4 +296,10 @@ func createMessageWithFileUpload() types.Message {
 			},
 		},
 	}
+}
+
+// containsMinIOEndpoint checks if the URI contains a MinIO endpoint (port 9000)
+// to determine if we're downloading directly from MinIO vs artifacts server
+func containsMinIOEndpoint(uri string) bool {
+	return strings.Contains(uri, ":9000") || strings.Contains(uri, "localhost:9000")
 }

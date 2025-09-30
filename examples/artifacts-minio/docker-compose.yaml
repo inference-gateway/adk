@@ -29,7 +29,7 @@ services:
       /bin/sh -c "
       /usr/bin/mc alias set minio http://minio:9000 minioadmin minioadmin;
       /usr/bin/mc mb minio/artifacts;
-      /usr/bin/mc policy set public minio/artifacts;
+      /usr/bin/mc anonymous set download minio/artifacts;
       exit 0;
       "
     networks:
@@ -69,6 +69,10 @@ services:
       A2A_ARTIFACTS_STORAGE_USE_SSL: false
       A2A_ARTIFACTS_SERVER_PORT: 8081
       A2A_ARTIFACTS_SERVER_HOST: server
+      # Override base URL to allow clients to download artifacts directly from MinIO
+      # This bypasses the artifacts server and enables direct downloads from the storage backend
+      # Note: When using direct downloads, RBAC must be handled on the MinIO bucket itself
+      A2A_ARTIFACTS_STORAGE_BASE_URL: http://minio:9000
     networks:
       - a2a-network
 
