@@ -15,7 +15,6 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	storage := NewInMemoryStorage(logger, 10)
 
-	// Create a test task
 	task := &types.Task{
 		ID:        "test-task-1",
 		ContextID: "test-context",

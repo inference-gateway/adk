@@ -125,14 +125,14 @@ Demonstrates artifact creation and download using MinIO (S3-compatible) storage.
 
 - MinIO storage provider
 - S3-compatible API
-- Production-ready cloud storage
+- Enterprise-ready cloud storage
 
 #### `queue-storage/`
 
 Demonstrates different queue storage backends for task management and horizontal scaling.
 
 - **In-Memory**: Simple development setup with in-memory storage
-- **Redis**: Production-ready Redis-based queue storage
+- **Redis**: Enterprise-ready Redis-based queue storage
 - Docker Compose setups for both storage backends
 - Complete server and client implementations
 
@@ -178,7 +178,7 @@ See each example's README for specific configuration details.
 5. **`ai-powered/`** - Add LLM integration for intelligent responses
 6. **`streaming/`** - Implement real-time streaming capabilities
 7. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
-8. **`artifacts-minio/`** - Production-ready artifact storage with MinIO
+8. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
 9. **`queue-storage/`** - Learn different queue storage backends for scaling
 10. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 

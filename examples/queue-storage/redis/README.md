@@ -7,7 +7,7 @@ This example demonstrates Redis-based queue storage for production environments.
 - A2A server configured with Redis queue storage
 - Redis instance running in Docker container
 - Task persistence across server restarts
-- Production-ready queue configuration
+- Enterprise-ready queue configuration
 - Client demonstrating task submission and monitoring
 
 ## Features

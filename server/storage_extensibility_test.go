@@ -62,7 +62,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				err := storage.StoreDeadLetterTask(task)
 				require.NoError(t, err)
 
-				// Verify task is stored in dead letter
 				tasks, err := storage.ListTasksByContext(task.ContextID, TaskFilter{})
 				require.NoError(t, err)
 				assert.Len(t, tasks, 1)
@@ -96,7 +95,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, task.ID, queuedTask.Task.ID)
 
-				// Verify task is no longer active (queue should be empty)
 				length := storage.GetQueueLength()
 				assert.Equal(t, 0, length)
 			},
@@ -172,7 +170,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				storage := NewInMemoryStorage(logger, 100)
 				testContext := "test-context-delete"
 
-				// Create active task
 				activeTask := &types.Task{
 					ID:        "active-task",
 					ContextID: testContext,
@@ -186,7 +183,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				err = storage.UpdateActiveTask(activeTask)
 				require.NoError(t, err)
 
-				// Create dead letter task
 				deadTask := &types.Task{
 					ID:        "dead-task",
 					ContextID: testContext,
@@ -198,7 +194,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				err = storage.StoreDeadLetterTask(deadTask)
 				require.NoError(t, err)
 
-				// Verify both tasks exist
 				_, err = storage.GetActiveTask(activeTask.ID)
 				assert.NoError(t, err)
 
@@ -206,11 +201,9 @@ func TestQueueCentricOperations(t *testing.T) {
 				require.NoError(t, err)
 				assert.Len(t, tasks, 1)
 
-				// Delete context and tasks
 				err = storage.DeleteContextAndTasks(testContext)
 				require.NoError(t, err)
 
-				// Verify both tasks are deleted
 				_, err = storage.GetActiveTask(activeTask.ID)
 				assert.Error(t, err)
 
