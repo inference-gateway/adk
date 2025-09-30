@@ -297,11 +297,8 @@ func main() {
 	)
 
 	// Create artifacts server
-	artifactsServer, err := server.NewArtifactsServerBuilder(&cfg.A2A.ArtifactsConfig, logger).
-		WithFilesystemStorage(
-			cfg.A2A.ArtifactsConfig.StorageConfig.BasePath,
-			fmt.Sprintf("http://%s:%s", cfg.A2A.ArtifactsConfig.ServerConfig.Host, cfg.A2A.ArtifactsConfig.ServerConfig.Port),
-		).
+	artifactsServer, err := server.
+		NewArtifactsServerBuilder(&cfg.A2A.ArtifactsConfig, logger).
 		Build()
 	if err != nil {
 		logger.Fatal("failed to create artifacts server", zap.Error(err))

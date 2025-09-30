@@ -144,6 +144,7 @@ type ArtifactsServerConfig struct {
 type ArtifactsStorageConfig struct {
 	Provider    string            `env:"PROVIDER,default=filesystem" description:"Storage provider (filesystem, minio, s3, gcs)"`
 	BasePath    string            `env:"BASE_PATH,default=./artifacts" description:"Base path for filesystem storage"`
+	BaseURL     string            `env:"BASE_URL" description:"Base URL for accessing artifacts (e.g., https://api.example.com). If not set, will be auto-generated from server config"`
 	Endpoint    string            `env:"ENDPOINT" description:"Storage endpoint URL (for MinIO, S3, etc.)"`
 	AccessKey   string            `env:"ACCESS_KEY" description:"Storage access key"`
 	SecretKey   string            `env:"SECRET_KEY" description:"Storage secret key"`

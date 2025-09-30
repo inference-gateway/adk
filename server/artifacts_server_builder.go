@@ -14,18 +14,8 @@ import (
 // Example:
 //
 //	artifactsServer := NewArtifactsServerBuilder(cfg, logger).
-//	  WithFilesystemStorage("./artifacts", "http://localhost:8081").
 //	  Build()
 type ArtifactsServerBuilder interface {
-	// WithFilesystemStorage configures filesystem-based artifact storage
-	WithFilesystemStorage(basePath, baseURL string) ArtifactsServerBuilder
-
-	// WithMinIOStorage configures MinIO-based artifact storage
-	WithMinIOStorage(endpoint, accessKey, secretKey, bucketName, baseURL string, useSSL bool) ArtifactsServerBuilder
-
-	// WithCustomStorage sets a custom storage provider
-	WithCustomStorage(storage ArtifactStorageProvider) ArtifactsServerBuilder
-
 	// WithLogger sets a custom logger for the builder and resulting server
 	WithLogger(logger *zap.Logger) ArtifactsServerBuilder
 
@@ -69,41 +59,12 @@ type ArtifactsServerBuilderImpl struct {
 //	}
 //	logger, _ := zap.NewDevelopment()
 //	server := NewArtifactsServerBuilder(cfg, logger).
-//	  WithFilesystemStorage("./artifacts", "http://localhost:8081").
 //	  Build()
 func NewArtifactsServerBuilder(cfg *config.ArtifactsConfig, logger *zap.Logger) ArtifactsServerBuilder {
 	return &ArtifactsServerBuilderImpl{
 		config: cfg,
 		logger: logger,
 	}
-}
-
-// WithFilesystemStorage configures filesystem-based artifact storage
-func (b *ArtifactsServerBuilderImpl) WithFilesystemStorage(basePath, baseURL string) ArtifactsServerBuilder {
-	storage, err := NewFilesystemArtifactStorage(basePath, baseURL)
-	if err != nil {
-		b.logger.Error("failed to create filesystem storage", zap.Error(err))
-		return b
-	}
-	b.storage = storage
-	return b
-}
-
-// WithMinIOStorage configures MinIO-based artifact storage
-func (b *ArtifactsServerBuilderImpl) WithMinIOStorage(endpoint, accessKey, secretKey, bucketName, baseURL string, useSSL bool) ArtifactsServerBuilder {
-	storage, err := NewMinIOArtifactStorage(endpoint, accessKey, secretKey, bucketName, baseURL, useSSL)
-	if err != nil {
-		b.logger.Error("failed to create MinIO storage", zap.Error(err))
-		return b
-	}
-	b.storage = storage
-	return b
-}
-
-// WithCustomStorage sets a custom storage provider
-func (b *ArtifactsServerBuilderImpl) WithCustomStorage(storage ArtifactStorageProvider) ArtifactsServerBuilder {
-	b.storage = storage
-	return b
 }
 
 // WithLogger sets a custom logger for the builder
@@ -140,32 +101,29 @@ func (b *ArtifactsServerBuilderImpl) autoConfigureStorage() error {
 
 	switch storageConfig.Provider {
 	case "filesystem":
-		baseURL := fmt.Sprintf("http://0.0.0.0:%s", b.config.ServerConfig.Port)
+		if storageConfig.BaseURL == "" {
+			storageConfig.BaseURL = b.generateBaseURL()
+		}
 
-		storage, err := NewFilesystemArtifactStorage(storageConfig.BasePath, baseURL)
+		storage, err := NewFilesystemArtifactStorage(&storageConfig)
 		if err != nil {
 			return fmt.Errorf("failed to create filesystem storage: %w", err)
 		}
 		b.storage = storage
 		b.logger.Info("configured filesystem storage",
 			zap.String("base_path", storageConfig.BasePath),
-			zap.String("base_url", baseURL))
+			zap.String("base_url", storageConfig.BaseURL))
 
 	case "minio":
 		if storageConfig.Endpoint == "" || storageConfig.AccessKey == "" || storageConfig.SecretKey == "" {
 			return fmt.Errorf("MinIO storage requires endpoint, access key, and secret key")
 		}
 
-		baseURL := fmt.Sprintf("http://0.0.0.0:%s", b.config.ServerConfig.Port)
+		if storageConfig.BaseURL == "" {
+			storageConfig.BaseURL = b.generateBaseURL()
+		}
 
-		storage, err := NewMinIOArtifactStorage(
-			storageConfig.Endpoint,
-			storageConfig.AccessKey,
-			storageConfig.SecretKey,
-			storageConfig.BucketName,
-			baseURL,
-			storageConfig.UseSSL,
-		)
+		storage, err := NewMinIOArtifactStorage(&storageConfig)
 		if err != nil {
 			return fmt.Errorf("failed to create MinIO storage: %w", err)
 		}
@@ -182,18 +140,15 @@ func (b *ArtifactsServerBuilderImpl) autoConfigureStorage() error {
 	return nil
 }
 
-// SimpleArtifactsServerWithFilesystem creates a basic artifacts server with filesystem storage
-// This is a convenience function for filesystem-based use cases
-func SimpleArtifactsServerWithFilesystem(cfg *config.ArtifactsConfig, logger *zap.Logger, basePath, baseURL string) (ArtifactsServer, error) {
-	return NewArtifactsServerBuilder(cfg, logger).
-		WithFilesystemStorage(basePath, baseURL).
-		Build()
-}
-
-// SimpleArtifactsServerWithMinIO creates a basic artifacts server with MinIO storage
-// This is a convenience function for MinIO-based use cases
-func SimpleArtifactsServerWithMinIO(cfg *config.ArtifactsConfig, logger *zap.Logger, endpoint, accessKey, secretKey, bucketName, baseURL string, useSSL bool) (ArtifactsServer, error) {
-	return NewArtifactsServerBuilder(cfg, logger).
-		WithMinIOStorage(endpoint, accessKey, secretKey, bucketName, baseURL, useSSL).
-		Build()
+// generateBaseURL generates a base URL from the server configuration
+func (b *ArtifactsServerBuilderImpl) generateBaseURL() string {
+	scheme := "http"
+	if b.config.ServerConfig.TLSConfig.Enable {
+		scheme = "https"
+	}
+	host := b.config.ServerConfig.Host
+	if host == "" {
+		host = "localhost"
+	}
+	return fmt.Sprintf("%s://%s:%s", scheme, host, b.config.ServerConfig.Port)
 }

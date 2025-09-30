@@ -310,15 +310,8 @@ func main() {
 	)
 
 	// Create artifacts server with MinIO storage
-	artifactsServer, err := server.NewArtifactsServerBuilder(&cfg.A2A.ArtifactsConfig, logger).
-		WithMinIOStorage(
-			cfg.A2A.ArtifactsConfig.StorageConfig.Endpoint,
-			cfg.A2A.ArtifactsConfig.StorageConfig.AccessKey,
-			cfg.A2A.ArtifactsConfig.StorageConfig.SecretKey,
-			cfg.A2A.ArtifactsConfig.StorageConfig.BucketName,
-			fmt.Sprintf("http://%s:%s", cfg.A2A.ArtifactsConfig.ServerConfig.Host, cfg.A2A.ArtifactsConfig.ServerConfig.Port),
-			cfg.A2A.ArtifactsConfig.StorageConfig.UseSSL,
-		).
+	artifactsServer, err := server.
+		NewArtifactsServerBuilder(&cfg.A2A.ArtifactsConfig, logger).
 		Build()
 	if err != nil {
 		logger.Fatal("failed to create artifacts server with MinIO storage", zap.Error(err))

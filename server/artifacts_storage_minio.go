@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/inference-gateway/adk/server/config"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -20,10 +21,10 @@ type MinIOArtifactStorage struct {
 }
 
 // NewMinIOArtifactStorage creates a new MinIO-based artifact storage provider
-func NewMinIOArtifactStorage(endpoint, accessKey, secretKey, bucketName, baseURL string, useSSL bool) (*MinIOArtifactStorage, error) {
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
+func NewMinIOArtifactStorage(cfg *config.ArtifactsStorageConfig) (*MinIOArtifactStorage, error) {
+	client, err := minio.New(cfg.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+		Secure: cfg.UseSSL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create MinIO client: %w", err)
@@ -31,18 +32,18 @@ func NewMinIOArtifactStorage(endpoint, accessKey, secretKey, bucketName, baseURL
 
 	storage := &MinIOArtifactStorage{
 		client:     client,
-		bucketName: bucketName,
-		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		bucketName: cfg.BucketName,
+		baseURL:    strings.TrimSuffix(cfg.BaseURL, "/"),
 	}
 
 	ctx := context.Background()
-	exists, err := client.BucketExists(ctx, bucketName)
+	exists, err := client.BucketExists(ctx, cfg.BucketName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check bucket existence: %w", err)
 	}
 
 	if !exists {
-		err = client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
+		err = client.MakeBucket(ctx, cfg.BucketName, minio.MakeBucketOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bucket: %w", err)
 		}

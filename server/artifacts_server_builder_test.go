@@ -8,7 +8,6 @@ import (
 
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"
-	mocks "github.com/inference-gateway/adk/server/mocks"
 )
 
 func TestNewArtifactsServerBuilder(t *testing.T) {
@@ -28,36 +27,24 @@ func TestNewArtifactsServerBuilder(t *testing.T) {
 	assert.NotNil(t, builder)
 }
 
-func TestArtifactsServerBuilder_WithFilesystemStorage(t *testing.T) {
+func TestArtifactsServerBuilder_AutoConfigureStorage(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{
 			Port: "8081",
 		},
-	}
-
-	builder := server.NewArtifactsServerBuilder(cfg, logger)
-	result := builder.WithFilesystemStorage("./test-artifacts", "http://localhost:8081")
-
-	assert.Equal(t, builder, result)
-}
-
-func TestArtifactsServerBuilder_WithCustomStorage(t *testing.T) {
-	logger := zaptest.NewLogger(t)
-	cfg := &config.ArtifactsConfig{
-		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
-			Port: "8081",
+		StorageConfig: config.ArtifactsStorageConfig{
+			Provider: "filesystem",
+			BasePath: "./test-artifacts",
 		},
 	}
 
-	mockStorage := &mocks.FakeArtifactStorageProvider{}
-
 	builder := server.NewArtifactsServerBuilder(cfg, logger)
-	result := builder.WithCustomStorage(mockStorage)
+	srv, err := builder.Build()
 
-	assert.Equal(t, builder, result)
+	assert.NoError(t, err)
+	assert.NotNil(t, srv)
 }
 
 func TestArtifactsServerBuilder_WithLogger(t *testing.T) {
@@ -73,26 +60,6 @@ func TestArtifactsServerBuilder_WithLogger(t *testing.T) {
 	assert.Equal(t, builder, result)
 }
 
-func TestArtifactsServerBuilder_Build_WithMockStorage(t *testing.T) {
-	logger := zaptest.NewLogger(t)
-	cfg := &config.ArtifactsConfig{
-		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
-			Port: "8081",
-		},
-	}
-
-	mockStorage := &mocks.FakeArtifactStorageProvider{}
-
-	builder := server.NewArtifactsServerBuilder(cfg, logger)
-	builder = builder.WithCustomStorage(mockStorage)
-
-	srv, err := builder.Build()
-	assert.NoError(t, err)
-	assert.NotNil(t, srv)
-	assert.NotNil(t, srv.GetStorage())
-}
-
 func TestSimpleArtifactsServerWithFilesystem(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	cfg := &config.ArtifactsConfig{
@@ -100,9 +67,13 @@ func TestSimpleArtifactsServerWithFilesystem(t *testing.T) {
 		ServerConfig: config.ArtifactsServerConfig{
 			Port: "8081",
 		},
+		StorageConfig: config.ArtifactsStorageConfig{
+			Provider: "filesystem",
+			BasePath: "./test-artifacts",
+		},
 	}
 
-	srv, err := server.SimpleArtifactsServerWithFilesystem(cfg, logger, "./test-artifacts", "http://localhost:8081")
+	srv, err := server.NewArtifactsServerBuilder(cfg, logger).Build()
 	assert.NoError(t, err)
 	assert.NotNil(t, srv)
 	assert.NotNil(t, srv.GetStorage())

@@ -6,12 +6,17 @@ import (
 	"strings"
 	"testing"
 
+	config "github.com/inference-gateway/adk/server/config"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
 )
 
 func TestFilesystemArtifactStorage_NewFilesystemArtifactStorage(t *testing.T) {
-	storage, err := NewFilesystemArtifactStorage("./test-artifacts", "http://localhost:8081")
+	cfg := &config.ArtifactsStorageConfig{
+		BasePath: "./test-artifacts",
+		BaseURL:  "http://localhost:8081",
+	}
+	storage, err := NewFilesystemArtifactStorage(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, storage)
 
@@ -22,7 +27,11 @@ func TestFilesystemArtifactStorage_NewFilesystemArtifactStorage(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_Store(t *testing.T) {
-	storage, err := NewFilesystemArtifactStorage("./test-artifacts", "http://localhost:8081")
+	cfg := &config.ArtifactsStorageConfig{
+		BasePath: "./test-artifacts",
+		BaseURL:  "http://localhost:8081",
+	}
+	storage, err := NewFilesystemArtifactStorage(cfg)
 	require.NoError(t, err)
 	defer func() { _ = storage.Close() }()
 
@@ -42,7 +51,11 @@ func TestFilesystemArtifactStorage_Store(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_Retrieve(t *testing.T) {
-	storage, err := NewFilesystemArtifactStorage("./test-artifacts", "http://localhost:8081")
+	cfg := &config.ArtifactsStorageConfig{
+		BasePath: "./test-artifacts",
+		BaseURL:  "http://localhost:8081",
+	}
+	storage, err := NewFilesystemArtifactStorage(cfg)
 	require.NoError(t, err)
 	defer func() { _ = storage.Close() }()
 
@@ -65,7 +78,11 @@ func TestFilesystemArtifactStorage_Retrieve(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_GetURL(t *testing.T) {
-	storage, err := NewFilesystemArtifactStorage("./test-artifacts", "http://localhost:8081")
+	cfg := &config.ArtifactsStorageConfig{
+		BasePath: "./test-artifacts",
+		BaseURL:  "http://localhost:8081",
+	}
+	storage, err := NewFilesystemArtifactStorage(cfg)
 	require.NoError(t, err)
 	defer func() { _ = storage.Close() }()
 
@@ -74,7 +91,11 @@ func TestFilesystemArtifactStorage_GetURL(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_InvalidInputs(t *testing.T) {
-	storage, err := NewFilesystemArtifactStorage("./test-artifacts", "http://localhost:8081")
+	cfg := &config.ArtifactsStorageConfig{
+		BasePath: "./test-artifacts",
+		BaseURL:  "http://localhost:8081",
+	}
+	storage, err := NewFilesystemArtifactStorage(cfg)
 	require.NoError(t, err)
 	defer func() { _ = storage.Close() }()
 
