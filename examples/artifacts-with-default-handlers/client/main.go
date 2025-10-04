@@ -230,7 +230,7 @@ func displayTaskResult(testName string, task *types.Task) {
 			}
 
 			// Show artifact metadata if available
-			if artifact.Metadata != nil && len(artifact.Metadata) > 0 {
+			if len(artifact.Metadata) > 0 {
 				fmt.Printf("  Metadata: %v\n", artifact.Metadata)
 			}
 		}
@@ -253,7 +253,7 @@ func displayTaskResult(testName string, task *types.Task) {
 		}
 	}
 
-	fmt.Printf("\n" + strings.Repeat("-", 50) + "\n")
+	fmt.Println("\n" + strings.Repeat("-", 50))
 }
 
 // getMessageText extracts text content from a message
