@@ -1,6 +1,6 @@
 # Artifacts with Default Handlers Example
 
-This example demonstrates how to use artifacts with openai-compatible agent and **default task handlers**. It showcases the new automatic artifact extraction functionality where tools can create artifacts using `ArtifactHelper.CreateFileArtifactFromBytes()` and the default handlers will automatically extract and attach them to tasks.
+This example demonstrates how to use artifacts with an **AI-powered agent and default task handlers**. It showcases automatic artifact extraction functionality where AI agents use tools to create artifacts via `ArtifactHelper.CreateFileArtifactFromBytes()` and the default handlers automatically extract and attach them to tasks. This example requires an LLM provider configuration.
 
 ## Table of Contents
 
@@ -33,11 +33,11 @@ The client will automatically submit tasks and display artifacts created by the 
 
 ## Key Features
 
+- **AI-Powered Processing**: Requires LLM provider (OpenAI, Anthropic, DeepSeek, etc.) for intelligent task processing
 - **Default Task Handlers**: Uses `WithDefaultTaskHandlers()` with automatic artifact extraction
-- **Artifact-Creating Tools**: Tools that create reports and diagrams as downloadable artifacts
+- **Artifact-Creating Tools**: AI agent uses tools that create reports and diagrams as downloadable artifacts
 - **Automatic Extraction**: No custom task handler logic needed - default handlers extract artifacts from tool results
-- **OpenAI-Compatible Agent**: AI agent that can invoke tools which deterministically generate artifacts
-- **Mock LLM Support**: Works without LLM configuration for testing
+- **OpenAI-Compatible Agent**: AI agent that intelligently invokes tools to generate artifacts based on user requests
 
 ## Configuration
 
@@ -54,9 +54,9 @@ A2A_SERVER_PORT=8080                          # Server port
 A2A_DEBUG=true                               # Enable debug logging
 A2A_CAPABILITIES_STREAMING=true              # Enable streaming support
 
-# LLM Configuration (Optional)
-A2A_AGENT_CLIENT_PROVIDER=                   # LLM provider (e.g., openai, anthropic, deepseek)
-A2A_AGENT_CLIENT_MODEL=                      # Model to use (e.g., gpt-4, claude-3)
+# LLM Configuration (REQUIRED)
+A2A_AGENT_CLIENT_PROVIDER=openai             # LLM provider (e.g., openai, anthropic, deepseek)
+A2A_AGENT_CLIENT_MODEL=gpt-4                 # Model to use (e.g., gpt-4, claude-3)
 A2A_AGENT_CLIENT_BASE_URL=http://inference-gateway:8080/v1  # Base URL for LLM API
 
 # API Keys (Set the one matching your provider)
@@ -72,18 +72,9 @@ MISTRAL_API_KEY=                             # Mistral API key
 SERVER_URL=http://localhost:8080             # Server URL for client
 ```
 
-### Mock Mode
+### AI Configuration
 
-By default, if no LLM provider is configured, the example runs in mock mode:
-
-```bash
-# Leave A2A_AGENT_CLIENT_PROVIDER empty for mock mode
-go run main.go
-```
-
-### Production Mode with AI
-
-To enable AI-powered responses:
+This example requires an LLM provider to be configured. To set up AI-powered responses:
 
 1. Copy the environment file:
 
@@ -243,7 +234,7 @@ Response includes:
 
 | Example                             | Handler Type                  | Artifact Creation        | AI Required |
 | ----------------------------------- | ----------------------------- | ------------------------ | ----------- |
-| **artifacts-with-default-handlers** | `WithDefaultTaskHandlers()`   | **Automatic extraction** | Optional    |
+| **artifacts-with-default-handlers** | `WithDefaultTaskHandlers()`   | **Automatic extraction** | **Yes**     |
 | **artifacts-filesystem**            | Custom `ArtifactsTaskHandler` | Manual in handler        | No          |
 | **artifacts-minio**                 | Custom `ArtifactsTaskHandler` | Manual in handler        | No          |
 | **default-handlers**                | `WithDefaultTaskHandlers()`   | None                     | Optional    |

@@ -23,8 +23,8 @@ RUN cd examples/artifacts-with-default-handlers/server && \
 
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates for HTTPS requests and curl for health checks
+RUN apk --no-cache add ca-certificates curl
 
 WORKDIR /app
 

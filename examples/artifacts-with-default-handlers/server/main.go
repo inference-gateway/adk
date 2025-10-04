@@ -735,6 +735,7 @@ Artifact Details:
 		logger.Fatal("failed to create LLM client", zap.Error(err))
 	}
 
+	// Create AI agent with the configured LLM
 	agent, err := server.NewAgentBuilder(logger).
 		WithConfig(&cfg.A2A.AgentConfig).
 		WithLLMClient(llmClient).
@@ -746,10 +747,11 @@ Artifact Details:
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Build server with default handlers that automatically extract artifacts
+	// Build server with AI agent and default handlers that automatically extract artifacts
+	// Note: This example requires an AI agent - it does not support non-AI mode
 	serverBuilder := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithAgent(agent).
-		WithDefaultTaskHandlers() // This enables automatic artifact extraction
+		WithDefaultTaskHandlers() // This enables automatic artifact extraction with AI
 
 	// Build and start server
 	a2aServer, err := serverBuilder.
