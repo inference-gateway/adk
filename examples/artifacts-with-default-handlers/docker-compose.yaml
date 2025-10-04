@@ -22,6 +22,7 @@ services:
       dockerfile: examples/artifacts-with-default-handlers/server/Dockerfile
     ports:
       - "8080:8080"
+      - "8081:8081"
     environment:
       ENVIRONMENT: development
       A2A_SERVER_PORT: 8080

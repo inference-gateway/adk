@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
-	"strings"
+	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	zap "go.uber.org/zap"
@@ -14,24 +18,31 @@ import (
 	types "github.com/inference-gateway/adk/types"
 )
 
-// Artifacts with Default Handlers A2A Client Example
+// Artifacts with Default Handlers and Filesystem Server Client Example
 //
 // This client demonstrates how to interact with an A2A server that uses
-// default task handlers with automatic artifact extraction. It sends
-// requests that trigger artifact-creating tools and shows how the
-// artifacts are automatically extracted and returned.
+// default task handlers with automatic artifact extraction and a filesystem
+// server for artifact storage. It shows:
+// - Uploading files to the server
+// - Triggering artifact-creating tools
+// - Downloading generated artifacts
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🤖 Starting Artifacts with Default Handlers A2A Client...")
+	fmt.Println("🤖 Starting Artifacts with Default Handlers Client...")
 
-	// Get server URL from environment or use default
+	// Get server URLs from environment or use defaults
 	serverURL := "http://localhost:8080"
-	if envURL := getEnv("SERVER_URL"); envURL != "" {
+	artifactsURL := "http://localhost:8081"
+	if envURL := os.Getenv("SERVER_URL"); envURL != "" {
 		serverURL = envURL
 	}
+	if envURL := os.Getenv("ARTIFACTS_URL"); envURL != "" {
+		artifactsURL = envURL
+	}
 
-	fmt.Printf("Connecting to server: %s\n", serverURL)
+	fmt.Printf("📡 A2A Server: %s\n", serverURL)
+	fmt.Printf("📁 Artifacts Server: %s\n", artifactsURL)
 
 	// Initialize logger
 	logger, err := zap.NewDevelopment()
@@ -43,77 +54,153 @@ func main() {
 	// Create A2A client
 	a2aClient := client.NewClientWithLogger(serverURL, logger)
 
-	// Test requests that will trigger artifact-creating tools
-	requests := []struct {
-		name        string
-		description string
-		message     string
-	}{
-		{
-			name:        "Generate Report",
-			description: "Test artifact creation via report generation tool",
-			message:     "Generate a comprehensive report about renewable energy technologies including solar, wind, and hydroelectric power in markdown format",
-		},
-		{
-			name:        "Create Diagram",
-			description: "Test artifact creation via diagram creation tool",
-			message:     "Create a sequence diagram showing the user authentication flow with login, token validation, and logout steps",
-		},
-		{
-			name:        "Export Data",
-			description: "Test artifact creation via data export tool",
-			message:     "Export sample user data in CSV format for analysis purposes",
-		},
-		{
-			name:        "Complex Request",
-			description: "Test multiple artifact creation in a single request",
-			message:     "Create both a detailed analysis report about machine learning trends and a component diagram showing a typical ML system architecture",
-		},
-	}
+	// Test 1: Upload a file and have it processed
+	fmt.Println("\n=== Test 1: File Upload and Processing ===")
+	testFileUpload(a2aClient, logger, artifactsURL)
 
-	// Execute each test request
-	for i, req := range requests {
-		fmt.Printf("\n--- Request %d: %s ---\n", i+1, req.name)
-		fmt.Printf("Description: %s\n", req.description)
-		fmt.Printf("Sending: %s\n", req.message)
+	time.Sleep(2 * time.Second)
 
-		task, err := sendMessageAndWait(a2aClient, req.message, logger)
-		if err != nil {
-			log.Printf("Error in %s: %v", req.name, err)
-			continue
-		}
+	// Test 2: Generate a report with artifacts
+	fmt.Println("\n=== Test 2: Report Generation with Artifacts ===")
+	testReportGeneration(a2aClient, logger, artifactsURL)
 
-		displayTaskResult(req.name, task)
+	time.Sleep(2 * time.Second)
 
-		// Small delay between requests
-		time.Sleep(2 * time.Second)
-	}
+	// Test 3: Create multiple artifacts in one request
+	fmt.Println("\n=== Test 3: Multiple Artifact Creation ===")
+	testMultipleArtifacts(a2aClient, logger, artifactsURL)
 
 	fmt.Println("\n✅ All tests completed!")
-	fmt.Println("\nKey Points Demonstrated:")
-	fmt.Println("- Default task handlers automatically extract artifacts from tool results")
-	fmt.Println("- No custom task handler logic needed for artifact processing")
-	fmt.Println("- Tools can create artifacts using ArtifactHelper.CreateFileArtifactFromBytes()")
-	fmt.Println("- Artifacts appear in task.Artifacts array without additional code")
-	fmt.Println("- Works with any OpenAI-compatible LLM or falls back to mock responses")
+	fmt.Println("\nFeatures Demonstrated:")
+	fmt.Println("✓ File upload from client to server")
+	fmt.Println("✓ File processing and analysis by the agent")
+	fmt.Println("✓ Artifact creation using filesystem storage")
+	fmt.Println("✓ Artifact download from filesystem server")
+	fmt.Println("✓ Default handlers automatically extracting artifacts")
 }
 
-// sendMessageAndWait sends a message and waits for task completion
-func sendMessageAndWait(a2aClient client.A2AClient, messageText string, logger *zap.Logger) (*types.Task, error) {
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
+// testFileUpload demonstrates uploading a file to the server
+func testFileUpload(a2aClient client.A2AClient, logger *zap.Logger, artifactsURL string) {
+	fmt.Println("📤 Uploading a file to the server...")
 
-	// Create message
+	// Create a sample file content to upload
+	fileContent := `Energy Data Report 2024
+========================
+
+Solar Energy Production:
+- Q1: 250 GWh
+- Q2: 320 GWh
+- Q3: 380 GWh
+- Q4: 290 GWh
+
+Wind Energy Production:
+- Q1: 180 GWh
+- Q2: 220 GWh
+- Q3: 195 GWh
+- Q4: 210 GWh
+
+Hydroelectric Production:
+- Q1: 450 GWh
+- Q2: 480 GWh
+- Q3: 430 GWh
+- Q4: 410 GWh
+
+Total Renewable Energy: 3,615 GWh
+Year-over-Year Growth: 12.5%`
+
+	// Encode file content as base64
+	encodedContent := base64.StdEncoding.EncodeToString([]byte(fileContent))
+
+	// Create message with file upload
 	message := types.Message{
 		Role: "user",
 		Parts: []types.Part{
 			map[string]any{
 				"kind": "text",
-				"text": messageText,
+				"text": "Please analyze this energy data file I'm uploading and create a comprehensive analysis report",
+			},
+			map[string]any{
+				"kind":     "file",
+				"filename": "energy_data_2024.txt",
+				"file": map[string]any{
+					"bytes":    encodedContent,
+					"mimeType": "text/plain",
+				},
 			},
 		},
 	}
+
+	fmt.Printf("   📊 File size: %d bytes\n", len(fileContent))
+	fmt.Printf("   📄 Filename: energy_data_2024.txt\n")
+
+	// Send and wait for completion
+	task, err := sendMessageAndWait(a2aClient, message, logger)
+	if err != nil {
+		log.Printf("Error in file upload test: %v", err)
+		return
+	}
+
+	// Display results and download artifacts
+	displayTaskResult("File Upload Test", task, artifactsURL)
+}
+
+// testReportGeneration demonstrates report generation with artifacts
+func testReportGeneration(a2aClient client.A2AClient, logger *zap.Logger, artifactsURL string) {
+	fmt.Println("📝 Requesting report generation...")
+
+	// Create message requesting report
+	message := types.Message{
+		Role: "user",
+		Parts: []types.Part{
+			map[string]any{
+				"kind": "text",
+				"text": "Generate a comprehensive report about artificial intelligence trends in 2024, including machine learning, neural networks, and large language models. Please create it in markdown format.",
+			},
+		},
+	}
+
+	// Send and wait for completion
+	task, err := sendMessageAndWait(a2aClient, message, logger)
+	if err != nil {
+		log.Printf("Error in report generation test: %v", err)
+		return
+	}
+
+	// Display results and download artifacts
+	displayTaskResult("Report Generation Test", task, artifactsURL)
+}
+
+// testMultipleArtifacts demonstrates creating multiple artifacts
+func testMultipleArtifacts(a2aClient client.A2AClient, logger *zap.Logger, artifactsURL string) {
+	fmt.Println("📦 Requesting multiple artifact creation...")
+
+	// Create message requesting multiple artifacts
+	message := types.Message{
+		Role: "user",
+		Parts: []types.Part{
+			map[string]any{
+				"kind": "text",
+				"text": "Please do the following: 1) Create a sequence diagram showing microservices communication, 2) Generate a report about cloud computing trends, and 3) Export sample customer data in CSV format.",
+			},
+		},
+	}
+
+	// Send and wait for completion
+	task, err := sendMessageAndWait(a2aClient, message, logger)
+	if err != nil {
+		log.Printf("Error in multiple artifacts test: %v", err)
+		return
+	}
+
+	// Display results and download artifacts
+	displayTaskResult("Multiple Artifacts Test", task, artifactsURL)
+}
+
+// sendMessageAndWait sends a message and waits for task completion
+func sendMessageAndWait(a2aClient client.A2AClient, message types.Message, logger *zap.Logger) (*types.Task, error) {
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
 
 	// Send the message
 	params := types.MessageSendParams{
@@ -141,7 +228,7 @@ func sendMessageAndWait(a2aClient client.A2AClient, messageText string, logger *
 		return nil, fmt.Errorf("task ID not found in response")
 	}
 
-	fmt.Printf("Task created: %s - Polling for completion...\n", taskID)
+	fmt.Printf("⏳ Task created: %s - Polling for completion...\n", taskID)
 
 	// Poll for task completion
 	ticker := time.NewTicker(1 * time.Second)
@@ -186,32 +273,34 @@ func sendMessageAndWait(a2aClient client.A2AClient, messageText string, logger *
 				}
 				return &task, fmt.Errorf("task failed with no error message")
 
-			case "processing":
-				fmt.Printf("⏳ Task processing...\n")
-
-			case "input_required":
-				fmt.Printf("⏸️ Task requires input (paused)\n")
-
 			default:
-				fmt.Printf("📋 Task status: %s\n", task.Status.State)
+				// Continue polling
 			}
 		}
 	}
 }
 
-// displayTaskResult shows the task result and any artifacts
-func displayTaskResult(testName string, task *types.Task) {
-	fmt.Printf("\n=== %s Results ===\n", testName)
+// displayTaskResult shows the task result and downloads any artifacts
+func displayTaskResult(testName string, task *types.Task, artifactsURL string) {
+	fmt.Printf("\n📋 %s Results:\n", testName)
 
 	// Show final response
 	if task.Status.Message != nil {
 		responseText := getMessageText(task.Status.Message)
-		fmt.Printf("Response: %s\n", responseText)
+		fmt.Printf("Response: %s\n", truncateText(responseText, 200))
 	}
 
-	// Show artifacts - this is the key demonstration
+	// Process and download artifacts
 	if len(task.Artifacts) > 0 {
-		fmt.Printf("\n📁 Artifacts: %d artifact(s) found\n", len(task.Artifacts))
+		fmt.Printf("\n📁 Artifacts Found: %d\n", len(task.Artifacts))
+
+		// Create downloads directory
+		downloadsDir := "downloads"
+		if err := os.MkdirAll(downloadsDir, 0755); err != nil {
+			log.Printf("Failed to create downloads directory: %v", err)
+			return
+		}
+
 		for i, artifact := range task.Artifacts {
 			fmt.Printf("\nArtifact %d:\n", i+1)
 			fmt.Printf("  ID: %s\n", artifact.ArtifactID)
@@ -224,36 +313,90 @@ func displayTaskResult(testName string, task *types.Task) {
 				fmt.Printf("  Description: %s\n", *artifact.Description)
 			}
 
-			fmt.Printf("  Parts: %d part(s)\n", len(artifact.Parts))
-			for j, part := range artifact.Parts {
-				fmt.Printf("    Part %d: %s\n", j+1, describePart(part))
-			}
+			// Process each part of the artifact
+			for _, part := range artifact.Parts {
+				if partMap, ok := part.(map[string]any); ok {
+					if kind, ok := partMap["kind"].(string); ok && kind == "file" {
+						// Extract file information
+						filename := "unknown"
+						if fn, ok := partMap["filename"].(string); ok {
+							filename = fn
+						}
 
-			// Show artifact metadata if available
-			if len(artifact.Metadata) > 0 {
-				fmt.Printf("  Metadata: %v\n", artifact.Metadata)
+						// Check for URI (filesystem server artifact)
+						if uri, ok := partMap["uri"].(string); ok {
+							fmt.Printf("  📥 Downloading: %s\n", filename)
+							fmt.Printf("     URL: %s\n", uri)
+
+							// Download the artifact
+							if err := downloadArtifact(uri, filename, downloadsDir); err != nil {
+								fmt.Printf("     ❌ Download failed: %v\n", err)
+							} else {
+								savedPath := filepath.Join(downloadsDir, filename)
+								fmt.Printf("     ✅ Saved to: %s\n", savedPath)
+
+								// Show preview of downloaded content
+								if content, err := os.ReadFile(savedPath); err == nil {
+									preview := truncateText(string(content), 150)
+									fmt.Printf("     Preview: %s\n", preview)
+								}
+							}
+						} else if file, ok := partMap["file"].(map[string]any); ok {
+							// Handle embedded file content
+							if bytes, ok := file["bytes"].(string); ok {
+								fmt.Printf("  💾 Saving embedded file: %s\n", filename)
+
+								// Decode and save
+								if decoded, err := base64.StdEncoding.DecodeString(bytes); err == nil {
+									savedPath := filepath.Join(downloadsDir, filename)
+									if err := os.WriteFile(savedPath, decoded, 0644); err == nil {
+										fmt.Printf("     ✅ Saved to: %s\n", savedPath)
+										preview := truncateText(string(decoded), 150)
+										fmt.Printf("     Preview: %s\n", preview)
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 
-		fmt.Printf("\n🎉 SUCCESS: Artifacts were automatically extracted by default handlers!\n")
+		fmt.Printf("\n🎉 Artifacts processed successfully!\n")
 	} else {
-		fmt.Printf("\n📁 Artifacts: None found\n")
-		fmt.Printf("ℹ️  This might indicate that no artifact-creating tools were used or LLM is not configured\n")
+		fmt.Printf("\n📁 No artifacts found in response\n")
+	}
+}
+
+// downloadArtifact downloads an artifact from the given URI
+func downloadArtifact(uri, filename, downloadsDir string) error {
+	// Create HTTP client
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
 	}
 
-	// Show task history summary
-	if len(task.History) > 0 {
-		fmt.Printf("\n📝 Task History: %d message(s) in conversation\n", len(task.History))
-		for i, msg := range task.History {
-			if msg.Role == "tool" {
-				fmt.Printf("  Message %d: Tool result (%s)\n", i+1, msg.Role)
-			} else {
-				fmt.Printf("  Message %d: %s message\n", i+1, msg.Role)
-			}
-		}
+	// Make the request
+	resp, err := httpClient.Get(uri)
+	if err != nil {
+		return fmt.Errorf("failed to download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP error: %s", resp.Status)
 	}
 
-	fmt.Println("\n" + strings.Repeat("-", 50))
+	// Create the output file
+	outputPath := filepath.Join(downloadsDir, filename)
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer outFile.Close()
+
+	// Copy the content
+	_, err = io.Copy(outFile, resp.Body)
+	return err
 }
 
 // getMessageText extracts text content from a message
@@ -273,104 +416,10 @@ func getMessageText(message *types.Message) string {
 	return "[No text content]"
 }
 
-// describePart provides a human-readable description of a message part
-func describePart(part types.Part) string {
-	switch p := part.(type) {
-	case map[string]any:
-		if kind, ok := p["kind"].(string); ok {
-			switch kind {
-			case "text":
-				if text, ok := p["text"].(string); ok {
-					if len(text) > 50 {
-						return fmt.Sprintf("Text (%.50s...)", text)
-					}
-					return fmt.Sprintf("Text (%s)", text)
-				}
-				return "Text content"
-
-			case "file":
-				filename := "unknown"
-				if fn, ok := p["filename"].(string); ok {
-					filename = fn
-				} else if file, ok := p["file"].(map[string]any); ok {
-					if name, ok := file["name"].(string); ok {
-						filename = name
-					}
-				}
-				return fmt.Sprintf("File (%s)", filename)
-
-			case "data":
-				return "Structured data"
-
-			default:
-				return fmt.Sprintf("Part type: %s", kind)
-			}
-		}
-		return "Generic part"
-
-	case types.TextPart:
-		if len(p.Text) > 50 {
-			return fmt.Sprintf("Text (%.50s...)", p.Text)
-		}
-		return fmt.Sprintf("Text (%s)", p.Text)
-
-	case types.FilePart:
-		filename := "unknown"
-		switch file := p.File.(type) {
-		case types.FileWithBytes:
-			if file.Name != nil {
-				filename = *file.Name
-			}
-		case types.FileWithUri:
-			if file.Name != nil {
-				filename = *file.Name
-			}
-		}
-		return fmt.Sprintf("File (%s)", filename)
-
-	case types.DataPart:
-		return "Structured data"
-
-	default:
-		// Try to convert to JSON for display
-		if jsonBytes, err := json.Marshal(part); err == nil {
-			jsonStr := string(jsonBytes)
-			if len(jsonStr) > 100 {
-				return fmt.Sprintf("JSON (%.100s...)", jsonStr)
-			}
-			return fmt.Sprintf("JSON (%s)", jsonStr)
-		}
-		return "Unknown part type"
+// truncateText truncates text to specified length
+func truncateText(text string, maxLen int) string {
+	if len(text) <= maxLen {
+		return text
 	}
-}
-
-// getEnv gets an environment variable or returns empty string
-func getEnv(key string) string {
-	if value := strings.TrimSpace(getEnvRaw(key)); value != "" {
-		return value
-	}
-	return ""
-}
-
-// getEnvRaw gets raw environment variable value
-func getEnvRaw(key string) string {
-	return strings.TrimSpace(getRawEnv(key))
-}
-
-// getRawEnv gets environment variable without processing
-func getRawEnv(key string) string {
-	return getProcessEnv(key)
-}
-
-// getProcessEnv retrieves environment variable from process
-func getProcessEnv(key string) string {
-	// This is a simplified version - normally you'd use os.Getenv(key)
-	// but we're avoiding the os import per the error message
-	switch key {
-	case "SERVER_URL":
-		// Return default for testing
-		return ""
-	default:
-		return ""
-	}
+	return text[:maxLen] + "..."
 }

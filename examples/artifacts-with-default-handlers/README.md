@@ -2,13 +2,115 @@
 
 This example demonstrates how to use artifacts with openai-compatible agent and **default task handlers**. It showcases the new automatic artifact extraction functionality where tools can create artifacts using `ArtifactHelper.CreateFileArtifactFromBytes()` and the default handlers will automatically extract and attach them to tasks.
 
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Key Features](#key-features)
+- [Configuration](#configuration)
+- [Architecture](#architecture)
+- [Running the Example](#running-the-example)
+  - [Prerequisites](#prerequisites)
+  - [Option 1: Using Docker Compose](#option-1-using-docker-compose-recommended)
+  - [Option 2: Running Locally](#option-2-running-locally)
+- [Available Tools](#available-tools)
+- [Expected Output](#expected-output)
+- [Key Differences from Other Examples](#key-differences-from-other-examples)
+- [Project Structure](#project-structure)
+- [Testing the Artifact Extraction](#testing-the-artifact-extraction)
+
+## Quick Start
+
+```bash
+# Using Docker Compose (recommended)
+docker-compose up --build
+
+# Or run locally
+cd server && go run main.go  # Terminal 1
+cd client && go run main.go  # Terminal 2
+```
+
+The client will automatically submit tasks and display artifacts created by the AI agent.
+
 ## Key Features
 
 - **Default Task Handlers**: Uses `WithDefaultTaskHandlers()` with automatic artifact extraction
 - **Artifact-Creating Tools**: Tools that create reports and diagrams as downloadable artifacts
 - **Automatic Extraction**: No custom task handler logic needed - default handlers extract artifacts from tool results
-- **OpenAI-Compatible Agent**: Full AI integration with artifact-creating tools
+- **OpenAI-Compatible Agent**: AI agent that can invoke tools which deterministically generate artifacts
 - **Mock LLM Support**: Works without LLM configuration for testing
+
+## Configuration
+
+### Environment Variables
+
+The server supports configuration through environment variables. Copy `.env.example` to `.env` and configure:
+
+```bash
+# Environment
+ENVIRONMENT=development
+
+# A2A Server Configuration
+A2A_SERVER_PORT=8080                          # Server port
+A2A_DEBUG=true                               # Enable debug logging
+A2A_CAPABILITIES_STREAMING=true              # Enable streaming support
+
+# LLM Configuration (Optional)
+A2A_AGENT_CLIENT_PROVIDER=                   # LLM provider (e.g., openai, anthropic, deepseek)
+A2A_AGENT_CLIENT_MODEL=                      # Model to use (e.g., gpt-4, claude-3)
+A2A_AGENT_CLIENT_BASE_URL=http://inference-gateway:8080/v1  # Base URL for LLM API
+
+# API Keys (Set the one matching your provider)
+OPENAI_API_KEY=                              # OpenAI API key
+ANTHROPIC_API_KEY=                           # Anthropic API key
+DEEPSEEK_API_KEY=                            # DeepSeek API key
+GOOGLE_API_KEY=                              # Google API key
+CLOUDFLARE_API_KEY=                          # Cloudflare API key
+COHERE_API_KEY=                              # Cohere API key
+MISTRAL_API_KEY=                             # Mistral API key
+
+# Client Configuration
+SERVER_URL=http://localhost:8080             # Server URL for client
+```
+
+### Mock Mode
+
+By default, if no LLM provider is configured, the example runs in mock mode:
+
+```bash
+# Leave A2A_AGENT_CLIENT_PROVIDER empty for mock mode
+go run main.go
+```
+
+### Production Mode with AI
+
+To enable AI-powered responses:
+
+1. Copy the environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Configure your LLM provider in `.env`:
+
+   ```bash
+   # For OpenAI
+   A2A_AGENT_CLIENT_PROVIDER=openai
+   A2A_AGENT_CLIENT_MODEL=gpt-4
+   OPENAI_API_KEY=sk-your-key
+
+   # For Anthropic
+   A2A_AGENT_CLIENT_PROVIDER=anthropic
+   A2A_AGENT_CLIENT_MODEL=claude-3-opus
+   ANTHROPIC_API_KEY=your-anthropic-key
+
+   # For DeepSeek
+   A2A_AGENT_CLIENT_PROVIDER=deepseek
+   A2A_AGENT_CLIENT_MODEL=deepseek-chat
+   DEEPSEEK_API_KEY=your-deepseek-key
+   ```
+
+3. Restart the server to apply changes
 
 ## Architecture
 
@@ -67,43 +169,6 @@ The default handlers automatically:
    go mod tidy
    go run main.go
    ```
-
-## Configuration
-
-The server can be configured via environment variables:
-
-| Variable                     | Description              | Default       |
-| ---------------------------- | ------------------------ | ------------- |
-| `ENVIRONMENT`                | Runtime environment      | `development` |
-| `A2A_SERVER_PORT`            | Server port              | `8080`        |
-| `A2A_DEBUG`                  | Enable debug logging     | `false`       |
-| `A2A_CAPABILITIES_STREAMING` | Enable streaming support | `true`        |
-| `A2A_AGENT_CLIENT_PROVIDER`  | LLM provider (optional)  | -             |
-| `A2A_AGENT_CLIENT_MODEL`     | LLM model (optional)     | -             |
-
-### Adding AI Capabilities
-
-To enable AI-powered responses:
-
-1. Copy the example environment file:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Configure your LLM provider:
-
-   ```bash
-   # For OpenAI
-   A2A_AGENT_CLIENT_PROVIDER=openai
-   A2A_AGENT_CLIENT_MODEL=gpt-3.5-turbo
-
-   # For DeepSeek
-   A2A_AGENT_CLIENT_PROVIDER=deepseek
-   A2A_AGENT_CLIENT_MODEL=deepseek-chat
-   ```
-
-3. Restart the server
 
 ## Available Tools
 
@@ -183,24 +248,25 @@ Response includes:
 | **artifacts-minio**                 | Custom `ArtifactsTaskHandler` | Manual in handler        | No          |
 | **default-handlers**                | `WithDefaultTaskHandlers()`   | None                     | Optional    |
 
-## Files Structure
+## Project Structure
 
 ```
 artifacts-with-default-handlers/
-├── README.md
-├── docker-compose.yaml
-├── .env.example
+├── README.md                 # This file
+├── docker-compose.yaml       # Docker orchestration
+├── .env.example             # Environment variables template
 ├── server/
-│   ├── main.go
-│   ├── config/config.go
-│   ├── Dockerfile
-│   ├── go.mod
-│   └── go.sum
+│   ├── main.go              # Server entry point
+│   ├── config/
+│   │   └── config.go        # Configuration management
+│   ├── Dockerfile           # Server container definition
+│   ├── go.mod               # Go dependencies
+│   └── go.sum               # Dependency checksums
 └── client/
-    ├── main.go
-    ├── Dockerfile
-    ├── go.mod
-    └── go.sum
+    ├── main.go              # Client entry point
+    ├── Dockerfile           # Client container definition
+    ├── go.mod               # Go dependencies
+    └── go.sum               # Dependency checksums
 ```
 
 ## Testing the Artifact Extraction
