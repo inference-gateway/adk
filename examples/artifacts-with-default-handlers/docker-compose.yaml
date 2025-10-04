@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=development
+      - A2A_SERVER_PORT=8080
+      - A2A_DEBUG=true
+      - A2A_CAPABILITIES_STREAMING=true
+      # Add LLM configuration if desired
+      # - A2A_AGENT_CLIENT_PROVIDER=openai
+      # - A2A_AGENT_CLIENT_MODEL=gpt-3.5-turbo
+      # - A2A_AGENT_CLIENT_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - a2a-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    environment:
+      - SERVER_URL=http://server:8080
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - a2a-network
+
+networks:
+  a2a-network:
+    driver: bridge
