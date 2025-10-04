@@ -1,5 +1,4 @@
-version: '3.8'
-
+---
 services:
   gateway:
     image: ghcr.io/inference-gateway/inference-gateway:latest
@@ -30,6 +29,7 @@ services:
       A2A_SERVER_PORT: 8080
       A2A_DEBUG: true
       A2A_CAPABILITIES_STREAMING: true
+      A2A_ARTIFACTS_SERVER_HOST: server
       A2A_AGENT_CLIENT_PROVIDER: ${A2A_AGENT_CLIENT_PROVIDER}
       A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL}
       A2A_AGENT_CLIENT_BASE_URL: ${A2A_AGENT_CLIENT_BASE_URL}
@@ -50,6 +50,9 @@ services:
     build:
       context: ../..
       dockerfile: examples/artifacts-with-default-handlers/client/Dockerfile
+    volumes:
+      - ./client/downloads:/app/downloads
+      - ./client/uploads:/app/uploads
     environment:
       SERVER_URL: http://server:8080
     depends_on:

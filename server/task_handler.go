@@ -13,6 +13,14 @@ import (
 	zap "go.uber.org/zap"
 )
 
+// Context keys for injecting Task and ArtifactHelper into tool execution
+type ContextKey string
+
+const (
+	TaskContextKey           ContextKey = "task"
+	ArtifactHelperContextKey ContextKey = "artifactHelper"
+)
+
 // A2AProtocolHandler defines the interface for handling A2A protocol requests
 type A2AProtocolHandler interface {
 	// HandleMessageSend processes message/send requests
@@ -185,7 +193,11 @@ func (th *DefaultTaskHandler) processWithAgentBackground(ctx context.Context, ta
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	agentResponse, err := th.agent.Run(ctx, messages)
+	artifactHelper := NewArtifactHelper()
+	toolCtx := context.WithValue(ctx, TaskContextKey, task)
+	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
+
+	agentResponse, err := th.agent.Run(toolCtx, messages)
 	if err != nil {
 		th.logger.Error("agent processing failed", zap.Error(err))
 
@@ -218,175 +230,10 @@ func (th *DefaultTaskHandler) processWithAgentBackground(ctx context.Context, ta
 		task.History = append(task.History, *agentResponse.Response)
 	}
 
-	// Extract artifacts from tool execution results
-	if err := th.extractAndAttachArtifacts(task, agentResponse.AdditionalMessages); err != nil {
-		th.logger.Warn("failed to extract artifacts from tool results", zap.Error(err))
-	}
-
 	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = agentResponse.Response
 
 	return task, nil
-}
-
-// extractAndAttachArtifacts scans tool execution results for artifact references and adds them to the task
-func (th *DefaultTaskHandler) extractAndAttachArtifacts(task *types.Task, messages []types.Message) error {
-	if len(messages) == 0 {
-		return nil
-	}
-
-	artifactHelper := NewArtifactHelper()
-	artifactsFound := 0
-
-	for _, message := range messages {
-		// Skip non-tool messages
-		if message.Role != "tool" {
-			continue
-		}
-
-		// Look for artifact references in tool result messages
-		artifacts := th.extractArtifactsFromMessage(&message)
-		for _, artifact := range artifacts {
-			// Validate the artifact before adding it
-			if err := artifactHelper.ValidateArtifact(artifact); err != nil {
-				th.logger.Warn("invalid artifact found in tool result, skipping",
-					zap.String("artifact_id", artifact.ArtifactID),
-					zap.Error(err))
-				continue
-			}
-
-			// Add artifact to task
-			artifactHelper.AddArtifactToTask(task, artifact)
-			artifactsFound++
-
-			th.logger.Info("extracted artifact from tool result",
-				zap.String("task_id", task.ID),
-				zap.String("artifact_id", artifact.ArtifactID),
-				zap.String("artifact_name", func() string {
-					if artifact.Name != nil {
-						return *artifact.Name
-					}
-					return "unnamed"
-				}()))
-		}
-	}
-
-	if artifactsFound > 0 {
-		th.logger.Info("successfully extracted artifacts from tool results",
-			zap.String("task_id", task.ID),
-			zap.Int("artifacts_count", artifactsFound))
-	}
-
-	return nil
-}
-
-// extractArtifactsFromMessage extracts artifact references from a tool result message
-func (th *DefaultTaskHandler) extractArtifactsFromMessage(message *types.Message) []types.Artifact {
-	var artifacts []types.Artifact
-
-	// Scan message parts for artifact data
-	for _, part := range message.Parts {
-		switch p := part.(type) {
-		case map[string]any:
-			// Check if this part contains an artifact
-			if artifact := th.parseArtifactFromPart(p); artifact != nil {
-				artifacts = append(artifacts, *artifact)
-			}
-		case types.DataPart:
-			// Check if the data part contains artifact information
-			if artifact := th.parseArtifactFromData(p.Data); artifact != nil {
-				artifacts = append(artifacts, *artifact)
-			}
-		}
-	}
-
-	return artifacts
-}
-
-// parseArtifactFromPart attempts to parse an artifact from a message part
-func (th *DefaultTaskHandler) parseArtifactFromPart(part map[string]any) *types.Artifact {
-	// Look for artifact structure in the part
-	if artifactID, ok := part["artifactId"].(string); ok && artifactID != "" {
-		// This part contains an artifact reference
-		return th.buildArtifactFromPart(artifactID, part)
-	}
-
-	// Check for nested artifact in "artifact" field
-	if artifactData, ok := part["artifact"].(map[string]any); ok {
-		if artifactID, ok := artifactData["artifactId"].(string); ok && artifactID != "" {
-			return th.buildArtifactFromPart(artifactID, artifactData)
-		}
-	}
-
-	// Check if this part itself is artifact data
-	if kind, ok := part["kind"].(string); ok &&
-		(kind == "text" || kind == "file" || kind == "data") {
-		// This might be artifact content without explicit ID
-		// Generate an ID and create artifact
-		artifactID := uuid.New().String()
-		return th.buildArtifactFromPart(artifactID, part)
-	}
-
-	return nil
-}
-
-// parseArtifactFromData attempts to parse an artifact from structured data
-func (th *DefaultTaskHandler) parseArtifactFromData(data map[string]any) *types.Artifact {
-	if artifactID, ok := data["artifactId"].(string); ok && artifactID != "" {
-		return th.buildArtifactFromPart(artifactID, data)
-	}
-	return nil
-}
-
-// buildArtifactFromPart constructs an artifact from parsed data
-func (th *DefaultTaskHandler) buildArtifactFromPart(artifactID string, data map[string]any) *types.Artifact {
-	artifact := types.Artifact{
-		ArtifactID: artifactID,
-		Parts:      []types.Part{},
-	}
-
-	// Extract optional fields
-	if name, ok := data["name"].(string); ok {
-		artifact.Name = &name
-	}
-	if description, ok := data["description"].(string); ok {
-		artifact.Description = &description
-	}
-	if metadata, ok := data["metadata"].(map[string]any); ok {
-		artifact.Metadata = metadata
-	}
-
-	// Extract parts
-	if parts, ok := data["parts"].([]any); ok {
-		for _, partData := range parts {
-			if partMap, ok := partData.(map[string]any); ok {
-				artifact.Parts = append(artifact.Parts, partMap)
-			}
-		}
-	} else {
-		// Treat the entire data as a single part
-		if _, ok := data["kind"].(string); ok {
-			// Copy the data as a part, excluding artifact metadata
-			partData := make(map[string]any)
-			for k, v := range data {
-				// Exclude artifact-level fields
-				if k != "artifactId" && k != "name" && k != "description" && k != "metadata" {
-					partData[k] = v
-				}
-			}
-			artifact.Parts = append(artifact.Parts, partData)
-		}
-	}
-
-	// If no parts were found, create a data part from the entire structure
-	if len(artifact.Parts) == 0 {
-		artifact.Parts = append(artifact.Parts, types.DataPart{
-			Kind: "data",
-			Data: data,
-		})
-	}
-
-	return &artifact
 }
 
 // processWithoutAgentBackground processes a task without any agent capabilities
@@ -465,7 +312,12 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	agentResponse, err := bth.agent.Run(ctx, messages)
+	// Inject Task and ArtifactHelper into context for tool execution
+	artifactHelper := NewArtifactHelper()
+	toolCtx := context.WithValue(ctx, TaskContextKey, task)
+	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
+
+	agentResponse, err := bth.agent.Run(toolCtx, messages)
 	if err != nil {
 		bth.logger.Error("agent processing failed", zap.Error(err))
 
@@ -511,11 +363,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	}
 	if agentResponse.Response != nil {
 		task.History = append(task.History, *agentResponse.Response)
-	}
-
-	// Extract artifacts from tool execution results
-	if err := bth.extractAndAttachArtifacts(task, agentResponse.AdditionalMessages); err != nil {
-		bth.logger.Warn("failed to extract artifacts from tool results", zap.Error(err))
 	}
 
 	task.Status.State = types.TaskStateCompleted
@@ -585,166 +432,6 @@ func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inp
 	return task
 }
 
-// extractAndAttachArtifacts scans tool execution results for artifact references and adds them to the task
-func (bth *DefaultBackgroundTaskHandler) extractAndAttachArtifacts(task *types.Task, messages []types.Message) error {
-	if len(messages) == 0 {
-		return nil
-	}
-
-	artifactHelper := NewArtifactHelper()
-	artifactsFound := 0
-
-	for _, message := range messages {
-		// Skip non-tool messages
-		if message.Role != "tool" {
-			continue
-		}
-
-		// Look for artifact references in tool result messages
-		artifacts := bth.extractArtifactsFromMessage(&message)
-		for _, artifact := range artifacts {
-			// Validate the artifact before adding it
-			if err := artifactHelper.ValidateArtifact(artifact); err != nil {
-				bth.logger.Warn("invalid artifact found in tool result, skipping",
-					zap.String("artifact_id", artifact.ArtifactID),
-					zap.Error(err))
-				continue
-			}
-
-			// Add artifact to task
-			artifactHelper.AddArtifactToTask(task, artifact)
-			artifactsFound++
-
-			bth.logger.Info("extracted artifact from tool result",
-				zap.String("task_id", task.ID),
-				zap.String("artifact_id", artifact.ArtifactID),
-				zap.String("artifact_name", func() string {
-					if artifact.Name != nil {
-						return *artifact.Name
-					}
-					return "unnamed"
-				}()))
-		}
-	}
-
-	if artifactsFound > 0 {
-		bth.logger.Info("successfully extracted artifacts from tool results",
-			zap.String("task_id", task.ID),
-			zap.Int("artifacts_count", artifactsFound))
-	}
-
-	return nil
-}
-
-// extractArtifactsFromMessage extracts artifact references from a tool result message
-func (bth *DefaultBackgroundTaskHandler) extractArtifactsFromMessage(message *types.Message) []types.Artifact {
-	var artifacts []types.Artifact
-
-	// Scan message parts for artifact data
-	for _, part := range message.Parts {
-		switch p := part.(type) {
-		case map[string]any:
-			// Check if this part contains an artifact
-			if artifact := bth.parseArtifactFromPart(p); artifact != nil {
-				artifacts = append(artifacts, *artifact)
-			}
-		case types.DataPart:
-			// Check if the data part contains artifact information
-			if artifact := bth.parseArtifactFromData(p.Data); artifact != nil {
-				artifacts = append(artifacts, *artifact)
-			}
-		}
-	}
-
-	return artifacts
-}
-
-// parseArtifactFromPart attempts to parse an artifact from a message part
-func (bth *DefaultBackgroundTaskHandler) parseArtifactFromPart(part map[string]any) *types.Artifact {
-	// Look for artifact structure in the part
-	if artifactID, ok := part["artifactId"].(string); ok && artifactID != "" {
-		// This part contains an artifact reference
-		return bth.buildArtifactFromPart(artifactID, part)
-	}
-
-	// Check for nested artifact in "artifact" field
-	if artifactData, ok := part["artifact"].(map[string]any); ok {
-		if artifactID, ok := artifactData["artifactId"].(string); ok && artifactID != "" {
-			return bth.buildArtifactFromPart(artifactID, artifactData)
-		}
-	}
-
-	// Check if this part itself is artifact data
-	if kind, ok := part["kind"].(string); ok &&
-		(kind == "text" || kind == "file" || kind == "data") {
-		// This might be artifact content without explicit ID
-		// Generate an ID and create artifact
-		artifactID := uuid.New().String()
-		return bth.buildArtifactFromPart(artifactID, part)
-	}
-
-	return nil
-}
-
-// parseArtifactFromData attempts to parse an artifact from structured data
-func (bth *DefaultBackgroundTaskHandler) parseArtifactFromData(data map[string]any) *types.Artifact {
-	if artifactID, ok := data["artifactId"].(string); ok && artifactID != "" {
-		return bth.buildArtifactFromPart(artifactID, data)
-	}
-	return nil
-}
-
-// buildArtifactFromPart constructs an artifact from parsed data
-func (bth *DefaultBackgroundTaskHandler) buildArtifactFromPart(artifactID string, data map[string]any) *types.Artifact {
-	artifact := types.Artifact{
-		ArtifactID: artifactID,
-		Parts:      []types.Part{},
-	}
-
-	// Extract optional fields
-	if name, ok := data["name"].(string); ok {
-		artifact.Name = &name
-	}
-	if description, ok := data["description"].(string); ok {
-		artifact.Description = &description
-	}
-	if metadata, ok := data["metadata"].(map[string]any); ok {
-		artifact.Metadata = metadata
-	}
-
-	// Extract parts
-	if parts, ok := data["parts"].([]any); ok {
-		for _, partData := range parts {
-			if partMap, ok := partData.(map[string]any); ok {
-				artifact.Parts = append(artifact.Parts, partMap)
-			}
-		}
-	} else {
-		// Treat the entire data as a single part
-		if _, ok := data["kind"].(string); ok {
-			// Copy the data as a part, excluding artifact metadata
-			partData := make(map[string]any)
-			for k, v := range data {
-				// Exclude artifact-level fields
-				if k != "artifactId" && k != "name" && k != "description" && k != "metadata" {
-					partData[k] = v
-				}
-			}
-			artifact.Parts = append(artifact.Parts, partData)
-		}
-	}
-
-	// If no parts were found, create a data part from the entire structure
-	if len(artifact.Parts) == 0 {
-		artifact.Parts = append(artifact.Parts, types.DataPart{
-			Kind: "data",
-			Data: data,
-		})
-	}
-
-	return &artifact
-}
-
 // DefaultStreamingTaskHandler implements the TaskHandler interface optimized for streaming scenarios
 // This handler automatically handles input-required pausing with streaming-aware behavior
 type DefaultStreamingTaskHandler struct {
@@ -803,7 +490,12 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 		messages := make([]types.Message, len(task.History))
 		copy(messages, task.History)
 
-		streamChan, err := sth.agent.RunWithStream(ctx, messages)
+		// Inject Task and ArtifactHelper into context for tool execution
+		artifactHelper := NewArtifactHelper()
+		toolCtx := context.WithValue(ctx, TaskContextKey, task)
+		toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
+
+		streamChan, err := sth.agent.RunWithStream(toolCtx, messages)
 		if err != nil {
 			sth.logger.Error("agent streaming failed", zap.Error(err))
 
