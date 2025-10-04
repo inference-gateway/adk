@@ -21,6 +21,7 @@ serverBuilder := server.NewA2AServerBuilder(cfg.A2A, logger).
 ```
 
 Tools create artifacts:
+
 ```go
 artifactHelper := server.NewArtifactHelper()
 artifact := artifactHelper.CreateFileArtifactFromBytes(
@@ -28,8 +29,9 @@ artifact := artifactHelper.CreateFileArtifactFromBytes(
 ```
 
 The default handlers automatically:
+
 1. Extract artifacts from tool execution results
-2. Validate artifact structure  
+2. Validate artifact structure
 3. Attach artifacts to task responses
 
 ## Running the Example
@@ -108,24 +110,30 @@ To enable AI-powered responses:
 The server includes several artifact-creating tools:
 
 ### 1. Report Generator (`generate_report`)
+
 Creates markdown analysis reports with downloadable artifacts.
 
 **Parameters:**
+
 - `topic` (string): The topic for the report
 - `format` (string): Report format ("markdown", "json", "xml")
 
-### 2. Diagram Creator (`create_diagram`) 
+### 2. Diagram Creator (`create_diagram`)
+
 Generates PlantUML diagrams as text artifacts.
 
 **Parameters:**
+
 - `diagram_type` (string): Type of diagram ("sequence", "class", "activity")
 - `title` (string): Diagram title
 - `description` (string): Diagram description
 
 ### 3. Data Exporter (`export_data`)
+
 Creates CSV data exports with sample data.
 
 **Parameters:**
+
 - `dataset` (string): Dataset name to export
 - `format` (string): Export format (currently supports "csv")
 
@@ -134,6 +142,7 @@ Creates CSV data exports with sample data.
 When you run the example, you should see:
 
 **Server Output:**
+
 ```
 🔧 Starting Artifacts with Default Handlers A2A Server...
 2024/01/15 10:30:00 INFO configuration loaded
@@ -142,6 +151,7 @@ When you run the example, you should see:
 ```
 
 **Client Output:**
+
 ```
 --- Request 1: Generate Report ---
 Sending: Generate a comprehensive report about renewable energy technologies
@@ -157,7 +167,7 @@ Response includes:
 Sending: Create a sequence diagram showing user authentication flow
 
 Response includes:
-- Task completed successfully  
+- Task completed successfully
 - Artifacts: 1 artifact available
   - Name: "Authentication Flow Diagram"
   - Type: PlantUML diagram
@@ -166,12 +176,12 @@ Response includes:
 
 ## Key Differences from Other Examples
 
-| Example                           | Handler Type                | Artifact Creation        | AI Required |
-| --------------------------------- | --------------------------- | ------------------------ | ----------- |
-| **artifacts-with-default-handlers** | `WithDefaultTaskHandlers()` | **Automatic extraction** | Optional    |
-| **artifacts-filesystem**         | Custom `ArtifactsTaskHandler` | Manual in handler      | No          |
-| **artifacts-minio**              | Custom `ArtifactsTaskHandler` | Manual in handler      | No          |
-| **default-handlers**             | `WithDefaultTaskHandlers()` | None                   | Optional    |
+| Example                             | Handler Type                  | Artifact Creation        | AI Required |
+| ----------------------------------- | ----------------------------- | ------------------------ | ----------- |
+| **artifacts-with-default-handlers** | `WithDefaultTaskHandlers()`   | **Automatic extraction** | Optional    |
+| **artifacts-filesystem**            | Custom `ArtifactsTaskHandler` | Manual in handler        | No          |
+| **artifacts-minio**                 | Custom `ArtifactsTaskHandler` | Manual in handler        | No          |
+| **default-handlers**                | `WithDefaultTaskHandlers()`   | None                     | Optional    |
 
 ## Files Structure
 

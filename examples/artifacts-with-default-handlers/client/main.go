@@ -84,7 +84,7 @@ func main() {
 		}
 
 		displayTaskResult(req.name, task)
-		
+
 		// Small delay between requests
 		time.Sleep(2 * time.Second)
 	}

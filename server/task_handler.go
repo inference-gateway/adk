@@ -319,7 +319,7 @@ func (th *DefaultTaskHandler) parseArtifactFromPart(part map[string]any) *types.
 	}
 
 	// Check if this part itself is artifact data
-	if kind, ok := part["kind"].(string); ok && 
+	if kind, ok := part["kind"].(string); ok &&
 		(kind == "text" || kind == "file" || kind == "data") {
 		// This might be artifact content without explicit ID
 		// Generate an ID and create artifact
@@ -675,7 +675,7 @@ func (bth *DefaultBackgroundTaskHandler) parseArtifactFromPart(part map[string]a
 	}
 
 	// Check if this part itself is artifact data
-	if kind, ok := part["kind"].(string); ok && 
+	if kind, ok := part["kind"].(string); ok &&
 		(kind == "text" || kind == "file" || kind == "data") {
 		// This might be artifact content without explicit ID
 		// Generate an ID and create artifact

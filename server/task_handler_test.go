@@ -599,7 +599,7 @@ func stringPtr(s string) *string {
 
 func TestDefaultTaskHandler_ArtifactExtraction(t *testing.T) {
 	logger := zap.NewNop()
-	
+
 	tests := []struct {
 		name                string
 		agentResponse       *server.AgentResponse
@@ -689,10 +689,10 @@ func TestDefaultTaskHandler_ArtifactExtraction(t *testing.T) {
 						Role:      "tool",
 						Parts: []types.Part{
 							map[string]any{
-								"artifactId":  "multi-artifact-1",
-								"name":        "First Artifact",
-								"kind":        "text",
-								"text":        "First artifact content",
+								"artifactId": "multi-artifact-1",
+								"name":       "First Artifact",
+								"kind":       "text",
+								"text":       "First artifact content",
 							},
 						},
 					},
@@ -702,10 +702,10 @@ func TestDefaultTaskHandler_ArtifactExtraction(t *testing.T) {
 						Role:      "tool",
 						Parts: []types.Part{
 							map[string]any{
-								"artifactId":  "multi-artifact-2",
-								"name":        "Second Artifact",
-								"kind":        "data",
-								"data":        map[string]any{"key": "value"},
+								"artifactId": "multi-artifact-2",
+								"name":       "Second Artifact",
+								"kind":       "data",
+								"data":       map[string]any{"key": "value"},
 							},
 						},
 					},
@@ -834,8 +834,8 @@ func TestDefaultTaskHandler_ArtifactExtraction(t *testing.T) {
 			assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 
 			// Verify artifact extraction
-			assert.Equal(t, tt.expectedArtifacts, len(result.Artifacts), 
-				"Expected %d artifacts but got %d for: %s", 
+			assert.Equal(t, tt.expectedArtifacts, len(result.Artifacts),
+				"Expected %d artifacts but got %d for: %s",
 				tt.expectedArtifacts, len(result.Artifacts), tt.description)
 
 			// Verify specific artifact IDs
@@ -843,7 +843,7 @@ func TestDefaultTaskHandler_ArtifactExtraction(t *testing.T) {
 			for i, artifact := range result.Artifacts {
 				actualArtifactIDs[i] = artifact.ArtifactID
 			}
-			
+
 			if tt.expectedArtifacts > 0 {
 				for _, expectedID := range tt.expectedArtifactIDs {
 					assert.Contains(t, actualArtifactIDs, expectedID,
@@ -856,7 +856,7 @@ func TestDefaultTaskHandler_ArtifactExtraction(t *testing.T) {
 			artifactHelper := server.NewArtifactHelper()
 			for _, artifact := range result.Artifacts {
 				err := artifactHelper.ValidateArtifact(artifact)
-				assert.NoError(t, err, "Extracted artifact %s should be valid for: %s", 
+				assert.NoError(t, err, "Extracted artifact %s should be valid for: %s",
 					artifact.ArtifactID, tt.description)
 			}
 		})
@@ -865,7 +865,7 @@ func TestDefaultTaskHandler_ArtifactExtraction(t *testing.T) {
 
 func TestDefaultBackgroundTaskHandler_ArtifactExtraction(t *testing.T) {
 	logger := zap.NewNop()
-	
+
 	// Create a mock agent that returns a response with artifacts
 	mockAgent := &mocks.FakeOpenAICompatibleAgent{}
 	agentResponse := &server.AgentResponse{
