@@ -51,13 +51,13 @@ ENVIRONMENT=development
 
 # A2A Server Configuration
 A2A_SERVER_PORT=8080                          # Server port
-A2A_DEBUG=true                               # Enable debug logging
-A2A_CAPABILITIES_STREAMING=true              # Enable streaming support
+A2A_DEBUG=true                                # Enable debug logging
+A2A_CAPABILITIES_STREAMING=true               # Enable streaming support
 
 # LLM Configuration (REQUIRED)
-A2A_AGENT_CLIENT_PROVIDER=openai             # LLM provider (e.g., openai, anthropic, deepseek)
-A2A_AGENT_CLIENT_MODEL=gpt-4                 # Model to use (e.g., gpt-4, claude-3)
-A2A_AGENT_CLIENT_BASE_URL=http://inference-gateway:8080/v1  # Base URL for LLM API
+A2A_AGENT_CLIENT_PROVIDER=openai                  # LLM provider (e.g., openai, anthropic, deepseek)
+A2A_AGENT_CLIENT_MODEL=gpt-4                      # Model to use (e.g., gpt-4, claude-3)
+A2A_AGENT_CLIENT_BASE_URL=http://gateway:8080/v1  # Base URL for LLM API
 
 # API Keys (Set the one matching your provider)
 OPENAI_API_KEY=                              # OpenAI API key
