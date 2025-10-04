@@ -1,7 +1,6 @@
-# Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -13,15 +12,26 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o client main.go
+RUN cd /build/examples/artifacts-with-default-handlers/client && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -a -installsuffix cgo -o client .
 
-# Final stage
 FROM alpine:latest
 
-WORKDIR /root/
+# Install ca-certificates for HTTPS requests
+RUN apk --no-cache add ca-certificates
 
-# Copy the binary
-COPY --from=builder /app/client .
+WORKDIR /app
 
-# Run the client
+# Copy the binary from builder
+COPY --from=builder /build/examples/artifacts-with-default-handlers/client/client .
+
+# Copy the uploads directory with dummy data
+COPY --from=builder /build/examples/artifacts-with-default-handlers/client/uploads ./uploads
+
+# Create downloads directory
+RUN mkdir -p /app/downloads
+
+# Run the application
 CMD ["./client"]

@@ -18,8 +18,8 @@ services:
 
   server:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: examples/artifacts-with-default-handlers/server/Dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -44,8 +44,8 @@ services:
 
   client:
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: examples/artifacts-with-default-handlers/client/Dockerfile
     environment:
       SERVER_URL: http://server:8080
     depends_on:

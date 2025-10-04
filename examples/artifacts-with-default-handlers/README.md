@@ -98,9 +98,9 @@ To enable AI-powered responses:
    A2A_AGENT_CLIENT_PROVIDER=openai
    A2A_AGENT_CLIENT_MODEL=gpt-3.5-turbo
 
-   # For Anthropic
-   A2A_AGENT_CLIENT_PROVIDER=anthropic
-   A2A_AGENT_CLIENT_MODEL=claude-3-haiku-20240307
+   # For DeepSeek
+   A2A_AGENT_CLIENT_PROVIDER=deepseek
+   A2A_AGENT_CLIENT_MODEL=deepseek-chat
    ```
 
 3. Restart the server

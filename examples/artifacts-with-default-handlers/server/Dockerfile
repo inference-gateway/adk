@@ -1,7 +1,10 @@
-# Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
+ARG AGENT_NAME=artifacts-with-default-handlers
+ARG AGENT_DESCRIPTION="An agent that publishes artifacts to the client for download"
+ARG AGENT_VERSION=0.1.0
+
+WORKDIR /build
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -12,22 +15,24 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o server main.go
+# Build the application with ldflags
+RUN cd examples/artifacts-with-default-handlers/server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'" \
+    -a -installsuffix cgo -o main .
 
-# Final stage
 FROM alpine:latest
 
-# Install curl for health checks
-RUN apk --no-cache add curl
+# Install ca-certificates for HTTPS requests
+RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+WORKDIR /app
 
-# Copy the binary
-COPY --from=builder /app/server .
+# Copy the binary from builder
+COPY --from=builder /build/examples/artifacts-with-default-handlers/server/main .
 
-# Expose port
-EXPOSE 8080
+# Expose ports
+EXPOSE 8080 8081
 
-# Run the server
-CMD ["./server"]
+# Run the application
+CMD ["./main"]
