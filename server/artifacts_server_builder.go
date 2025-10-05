@@ -150,5 +150,9 @@ func (b *ArtifactsServerBuilderImpl) generateBaseURL() string {
 	if host == "" {
 		host = "localhost"
 	}
-	return fmt.Sprintf("%s://%s:%s", scheme, host, b.config.ServerConfig.Port)
+	port := b.config.ServerConfig.Port
+	if port == "" {
+		port = "8081"
+	}
+	return fmt.Sprintf("%s://%s:%s", scheme, host, port)
 }

@@ -144,6 +144,36 @@ The default handlers automatically:
 
 2. **The client will automatically run and demonstrate artifact creation**
 
+3. **Debug with a2a-debugger (optional):**
+
+   The a2a-debugger service is available for troubleshooting A2A protocol interactions:
+
+   ```bash
+   # Get agent card information
+   docker-compose run --rm a2a-debugger agent-card
+
+   # Test server connection
+   docker-compose run --rm a2a-debugger connect
+
+   # List all tasks
+   docker-compose run --rm a2a-debugger tasks list
+
+   # Get specific task details
+   docker-compose run --rm a2a-debugger tasks get <task-id>
+
+   # Submit a new task
+   docker-compose run --rm a2a-debugger tasks submit "Generate a report about AI trends"
+
+   # Submit a streaming task
+   docker-compose run --rm a2a-debugger tasks submit-streaming "Create a diagram"
+
+   # Get conversation history for a context
+   docker-compose run --rm a2a-debugger tasks history <context-id>
+
+   # Use JSON output format
+   docker-compose run --rm a2a-debugger tasks list -o json
+   ```
+
 ### Option 2: Running Locally
 
 1. **Start the server:**
@@ -243,8 +273,8 @@ Response includes:
 
 ```
 artifacts-with-default-handlers/
-├── README.md                 # This file
-├── docker-compose.yaml       # Docker orchestration
+├── README.md                # This file
+├── docker-compose.yaml      # Docker orchestration
 ├── .env.example             # Environment variables template
 ├── server/
 │   ├── main.go              # Server entry point
@@ -259,6 +289,15 @@ artifacts-with-default-handlers/
     ├── go.mod               # Go dependencies
     └── go.sum               # Dependency checksums
 ```
+
+### Docker Services
+
+The `docker-compose.yaml` includes these services:
+
+- **gateway**: Inference gateway for LLM routing (supports multiple providers)
+- **server**: A2A server with artifact support and default handlers
+- **client**: Example client demonstrating artifact downloads
+- **a2a-debugger**: Interactive debugging tool for A2A protocol (manual profile)
 
 ## Testing the Artifact Extraction
 

@@ -51,9 +51,9 @@ func main() {
 	cfg := &config.Config{
 		Environment: "development",
 		A2A: serverConfig.Config{
-			AgentName:        server.BuildAgentName,
-			AgentDescription: server.BuildAgentDescription,
-			AgentVersion:     server.BuildAgentVersion,
+			AgentName:        "artifacts-agent",
+			AgentDescription: "An AI agent that creates and manages artifacts using default task handlers",
+			AgentVersion:     "0.1.0",
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
 				Streaming:              true,
@@ -66,23 +66,20 @@ func main() {
 			ServerConfig: serverConfig.ServerConfig{
 				Port: "8080",
 			},
+			ArtifactsConfig: serverConfig.ArtifactsConfig{
+				Enable: true,
+				StorageConfig: serverConfig.ArtifactsStorageConfig{
+					Provider: "filesystem",
+					BasePath: "./artifacts",
+				},
+			},
 		},
 	}
 
-	// Load configuration from environment variables
+	// Load configuration from environment variables (will override defaults)
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
 		logger.Fatal("failed to load configuration", zap.Error(err))
-	}
-
-	// Enable artifacts server with filesystem storage
-	cfg.A2A.ArtifactsConfig = serverConfig.ArtifactsConfig{
-		Enable: true,
-		// ServerConfig and StorageConfig will be populated from environment variables via envconfig
-		StorageConfig: serverConfig.ArtifactsStorageConfig{
-			Provider: "filesystem",
-			BasePath: "./artifacts",
-		},
 	}
 
 	// Log configuration info
