@@ -1,8 +1,13 @@
 package client
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/inference-gateway/adk/types"
@@ -854,4 +859,494 @@ func TestFileData_Methods(t *testing.T) {
 // Helper function for creating string pointers
 func stringPtr(s string) *string {
 	return &s
+}
+
+// Integration tests for artifact download functionality
+func TestArtifactHelper_DownloadFileData(t *testing.T) {
+	helper := NewArtifactHelper()
+
+	tests := []struct {
+		name          string
+		setupFileData func(t *testing.T, tempDir string) (FileData, *DownloadConfig)
+		setupServer   func() *httptest.Server
+		wantErr       bool
+		validate      func(t *testing.T, result *DownloadResult, tempDir string)
+	}{
+		{
+			name: "byte-based file download",
+			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
+				fileName := "test.txt"
+				mimeType := "text/plain"
+				return FileData{
+						Name:     &fileName,
+						MIMEType: &mimeType,
+						Data:     []byte("Hello, World!"),
+					}, &DownloadConfig{
+						OutputDir:         tempDir,
+						OverwriteExisting: false,
+					}
+			},
+			wantErr: false,
+			validate: func(t *testing.T, result *DownloadResult, tempDir string) {
+				assert.Equal(t, "test.txt", result.FileName)
+				assert.Equal(t, int64(13), result.BytesWritten)
+				content, err := os.ReadFile(result.FilePath)
+				require.NoError(t, err)
+				assert.Equal(t, "Hello, World!", string(content))
+			},
+		},
+		{
+			name: "URI-based file download",
+			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
+				fileName := "downloaded.txt"
+				return FileData{
+						Name: &fileName,
+					}, &DownloadConfig{
+						OutputDir: tempDir,
+					}
+			},
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					_, err := w.Write([]byte("server content"))
+					require.NoError(t, err)
+				}))
+			},
+			wantErr: false,
+			validate: func(t *testing.T, result *DownloadResult, tempDir string) {
+				assert.Equal(t, "downloaded.txt", result.FileName)
+				content, err := os.ReadFile(result.FilePath)
+				require.NoError(t, err)
+				assert.Equal(t, "server content", string(content))
+			},
+		},
+		{
+			name: "file exists without overwrite",
+			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
+				fileName := "existing.txt"
+				filePath := filepath.Join(tempDir, fileName)
+				err := os.WriteFile(filePath, []byte("existing"), 0644)
+				require.NoError(t, err)
+
+				return FileData{
+						Name: &fileName,
+						Data: []byte("new content"),
+					}, &DownloadConfig{
+						OutputDir:         tempDir,
+						OverwriteExisting: false,
+					}
+			},
+			wantErr: true,
+		},
+		{
+			name: "file exists with overwrite",
+			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
+				fileName := "existing.txt"
+				filePath := filepath.Join(tempDir, fileName)
+				err := os.WriteFile(filePath, []byte("existing"), 0644)
+				require.NoError(t, err)
+
+				return FileData{
+						Name: &fileName,
+						Data: []byte("new content"),
+					}, &DownloadConfig{
+						OutputDir:         tempDir,
+						OverwriteExisting: true,
+					}
+			},
+			wantErr: false,
+			validate: func(t *testing.T, result *DownloadResult, tempDir string) {
+				content, err := os.ReadFile(result.FilePath)
+				require.NoError(t, err)
+				assert.Equal(t, "new content", string(content))
+			},
+		},
+		{
+			name: "HTTP error on URI download",
+			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
+				fileName := "error.txt"
+				return FileData{
+						Name: &fileName,
+					}, &DownloadConfig{
+						OutputDir: tempDir,
+					}
+			},
+			setupServer: func() *httptest.Server {
+				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusNotFound)
+				}))
+			},
+			wantErr: true,
+		},
+		{
+			name: "default filename when not provided",
+			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
+				return FileData{
+						Data: []byte("content"),
+					}, &DownloadConfig{
+						OutputDir: tempDir,
+					}
+			},
+			wantErr: false,
+			validate: func(t *testing.T, result *DownloadResult, tempDir string) {
+				assert.Equal(t, "unnamed_file", result.FileName)
+				assert.FileExists(t, filepath.Join(tempDir, "unnamed_file"))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			ctx := context.Background()
+
+			var server *httptest.Server
+			if tt.setupServer != nil {
+				server = tt.setupServer()
+				defer server.Close()
+			}
+
+			fileData, config := tt.setupFileData(t, tempDir)
+
+			if server != nil && fileData.URI == nil {
+				uri := server.URL + "/file"
+				fileData.URI = &uri
+			}
+
+			result, err := helper.DownloadFileData(ctx, fileData, config)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				if tt.validate != nil {
+					tt.validate(t, result, tempDir)
+				}
+			}
+		})
+	}
+}
+
+func TestArtifactHelper_DownloadArtifact(t *testing.T) {
+	helper := NewArtifactHelper()
+
+	tests := []struct {
+		name        string
+		setupTask   func(t *testing.T, serverURL string) *types.Artifact
+		config      *DownloadConfig
+		wantErr     bool
+		wantResults int
+		validate    func(t *testing.T, results []*DownloadResult, tempDir string)
+	}{
+		{
+			name: "single artifact with multiple files",
+			setupTask: func(t *testing.T, serverURL string) *types.Artifact {
+				return &types.Artifact{
+					ArtifactID: "artifact-123",
+					Name:       stringPtr("Test Artifact"),
+					Parts: []types.Part{
+						map[string]any{
+							"kind":     "file",
+							"filename": "file1.txt",
+							"file": map[string]any{
+								"bytes":    base64.StdEncoding.EncodeToString([]byte("content1")),
+								"mimeType": "text/plain",
+							},
+						},
+						map[string]any{
+							"kind":     "file",
+							"filename": "file2.txt",
+							"file": map[string]any{
+								"bytes":    base64.StdEncoding.EncodeToString([]byte("content2")),
+								"mimeType": "text/plain",
+							},
+						},
+					},
+				}
+			},
+			wantResults: 2,
+			validate: func(t *testing.T, results []*DownloadResult, tempDir string) {
+				for _, result := range results {
+					assert.Nil(t, result.Error)
+					assert.Greater(t, result.BytesWritten, int64(0))
+				}
+			},
+		},
+		{
+			name: "artifact organized by ID",
+			setupTask: func(t *testing.T, serverURL string) *types.Artifact {
+				return &types.Artifact{
+					ArtifactID: "artifact-456",
+					Parts: []types.Part{
+						map[string]any{
+							"kind":     "file",
+							"filename": "organized.txt",
+							"file": map[string]any{
+								"bytes":    base64.StdEncoding.EncodeToString([]byte("organized content")),
+								"mimeType": "text/plain",
+							},
+						},
+					},
+				}
+			},
+			wantResults: 1,
+			validate: func(t *testing.T, results []*DownloadResult, tempDir string) {
+				assert.Contains(t, results[0].FilePath, "artifact-456")
+				assert.FileExists(t, results[0].FilePath)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			ctx := context.Background()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, err := w.Write([]byte("server content"))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+
+			artifact := tt.setupTask(t, server.URL)
+
+			config := &DownloadConfig{
+				OutputDir:            tempDir,
+				OverwriteExisting:    true,
+				OrganizeByArtifactID: true,
+			}
+			if tt.config != nil {
+				config = tt.config
+				config.OutputDir = tempDir
+			}
+
+			results, err := helper.DownloadArtifact(ctx, artifact, config)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Len(t, results, tt.wantResults)
+				if tt.validate != nil {
+					tt.validate(t, results, tempDir)
+				}
+			}
+		})
+	}
+}
+
+func TestArtifactHelper_DownloadAllArtifacts(t *testing.T) {
+	helper := NewArtifactHelper()
+
+	tests := []struct {
+		name        string
+		setupTask   func(t *testing.T, serverURL string) *types.Task
+		config      *DownloadConfig
+		wantErr     bool
+		wantResults int
+		validate    func(t *testing.T, results []*DownloadResult, tempDir string)
+	}{
+		{
+			name: "multiple artifacts with collision prevention",
+			setupTask: func(t *testing.T, serverURL string) *types.Task {
+				return &types.Task{
+					ID: "task-123",
+					Artifacts: []types.Artifact{
+						{
+							ArtifactID: "artifact-1",
+							Parts: []types.Part{
+								map[string]any{
+									"kind":     "file",
+									"filename": "report.md",
+									"file": map[string]any{
+										"bytes":    base64.StdEncoding.EncodeToString([]byte("# Report 1")),
+										"mimeType": "text/markdown",
+									},
+								},
+							},
+						},
+						{
+							ArtifactID: "artifact-2",
+							Parts: []types.Part{
+								map[string]any{
+									"kind":     "file",
+									"filename": "report.md",
+									"file": map[string]any{
+										"bytes":    base64.StdEncoding.EncodeToString([]byte("# Report 2")),
+										"mimeType": "text/markdown",
+									},
+								},
+							},
+						},
+					},
+				}
+			},
+			wantResults: 2,
+			validate: func(t *testing.T, results []*DownloadResult, tempDir string) {
+				content1, err := os.ReadFile(results[0].FilePath)
+				require.NoError(t, err)
+				assert.Equal(t, "# Report 1", string(content1))
+
+				content2, err := os.ReadFile(results[1].FilePath)
+				require.NoError(t, err)
+				assert.Equal(t, "# Report 2", string(content2))
+
+				dir1 := filepath.Dir(results[0].FilePath)
+				dir2 := filepath.Dir(results[1].FilePath)
+				assert.NotEqual(t, dir1, dir2, "Files with same name should be in different artifact directories")
+			},
+		},
+		{
+			name: "URI and byte-based files mixed",
+			setupTask: func(t *testing.T, serverURL string) *types.Task {
+				return &types.Task{
+					ID: "task-456",
+					Artifacts: []types.Artifact{
+						{
+							ArtifactID: "artifact-bytes",
+							Parts: []types.Part{
+								map[string]any{
+									"kind":     "file",
+									"filename": "local.txt",
+									"file": map[string]any{
+										"bytes":    base64.StdEncoding.EncodeToString([]byte("local content")),
+										"mimeType": "text/plain",
+									},
+								},
+							},
+						},
+						{
+							ArtifactID: "artifact-uri",
+							Parts: []types.Part{
+								map[string]any{
+									"kind":     "file",
+									"filename": "remote.txt",
+									"file": map[string]any{
+										"uri":      serverURL + "/remote",
+										"mimeType": "text/plain",
+									},
+								},
+							},
+						},
+					},
+				}
+			},
+			wantResults: 2,
+			validate: func(t *testing.T, results []*DownloadResult, tempDir string) {
+				for _, result := range results {
+					assert.Nil(t, result.Error)
+					assert.FileExists(t, result.FilePath)
+				}
+
+				content1, err := os.ReadFile(results[0].FilePath)
+				require.NoError(t, err)
+				assert.Equal(t, "local content", string(content1))
+
+				content2, err := os.ReadFile(results[1].FilePath)
+				require.NoError(t, err)
+				assert.Equal(t, "server content", string(content2))
+			},
+		},
+		{
+			name: "empty task returns no results",
+			setupTask: func(t *testing.T, serverURL string) *types.Task {
+				return &types.Task{
+					ID:        "empty-task",
+					Artifacts: []types.Artifact{},
+				}
+			},
+			wantResults: 0,
+		},
+		{
+			name: "partial failure handling",
+			setupTask: func(t *testing.T, serverURL string) *types.Task {
+				return &types.Task{
+					ID: "task-partial",
+					Artifacts: []types.Artifact{
+						{
+							ArtifactID: "success",
+							Parts: []types.Part{
+								map[string]any{
+									"kind":     "file",
+									"filename": "success.txt",
+									"file": map[string]any{
+										"bytes":    base64.StdEncoding.EncodeToString([]byte("ok")),
+										"mimeType": "text/plain",
+									},
+								},
+							},
+						},
+						{
+							ArtifactID: "failure",
+							Parts: []types.Part{
+								map[string]any{
+									"kind":     "file",
+									"filename": "fail.txt",
+									"file": map[string]any{
+										"uri":      serverURL + "/fail",
+										"mimeType": "text/plain",
+									},
+								},
+							},
+						},
+					},
+				}
+			},
+			wantResults: 2,
+			validate: func(t *testing.T, results []*DownloadResult, tempDir string) {
+				successCount := 0
+				failCount := 0
+				for _, r := range results {
+					if r.Error != nil {
+						failCount++
+					} else {
+						successCount++
+					}
+				}
+				assert.Equal(t, 1, successCount)
+				assert.Equal(t, 1, failCount)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			ctx := context.Background()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/fail" {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				_, err := w.Write([]byte("server content"))
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+
+			task := tt.setupTask(t, server.URL)
+
+			config := &DownloadConfig{
+				OutputDir:            tempDir,
+				OverwriteExisting:    true,
+				OrganizeByArtifactID: true,
+			}
+			if tt.config != nil {
+				config = tt.config
+				config.OutputDir = tempDir
+			}
+
+			results, err := helper.DownloadAllArtifacts(ctx, task, config)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Len(t, results, tt.wantResults)
+				if tt.validate != nil {
+					tt.validate(t, results, tempDir)
+				}
+			}
+		})
+	}
 }
