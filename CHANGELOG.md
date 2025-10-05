@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0](https://github.com/inference-gateway/adk/compare/v0.12.1...v0.13.0) (2025-10-05)
+
+### ✨ Features
+
+* **server:** Add artifact extraction to default task handlers ([#89](https://github.com/inference-gateway/adk/issues/89)) ([49359ce](https://github.com/inference-gateway/adk/commit/49359ced013db84da303e2f5ed112c032987549e)), closes [#88](https://github.com/inference-gateway/adk/issues/88)
+
 ## [0.12.1](https://github.com/inference-gateway/adk/compare/v0.12.0...v0.12.1) (2025-09-30)
 
 ### ♻️ Improvements
