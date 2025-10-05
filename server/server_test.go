@@ -900,7 +900,7 @@ func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
 				},
 			}
 
-			taskHandler := server.NewDefaultTaskHandler(logger)
+			taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
 			if agent != nil {
 				taskHandler.SetAgent(agent)
 			}
@@ -1269,7 +1269,7 @@ func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
 				},
 			}
 
-			taskHandler := server.NewDefaultTaskHandler(logger)
+			taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
 			if agent != nil {
 				taskHandler.SetAgent(agent)
 			}
@@ -1352,7 +1352,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			},
 		}
 
-		taskHandler := server.NewDefaultTaskHandler(logger)
+		taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
 		if agent != nil {
 			taskHandler.SetAgent(agent)
 		}
@@ -1473,7 +1473,7 @@ func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
 			},
 		}
 
-		taskHandler := server.NewDefaultTaskHandler(logger)
+		taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
 		if agent != nil {
 			taskHandler.SetAgent(agent)
 		}
