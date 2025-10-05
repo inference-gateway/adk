@@ -5,10 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"mime"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -151,6 +149,7 @@ func main() {
 	if len(completedTask.Artifacts) > 0 {
 		fmt.Printf("\n📎 Found %d artifact(s):\n", len(completedTask.Artifacts))
 
+		// Display artifact details
 		for i, artifact := range completedTask.Artifacts {
 			fmt.Printf("\n🗂️  Artifact %d:\n", i+1)
 			fmt.Printf("   ID: %s\n", artifact.ArtifactID)
@@ -160,26 +159,27 @@ func main() {
 			if artifact.Description != nil {
 				fmt.Printf("   Description: %s\n", *artifact.Description)
 			}
+		}
 
-			// Process artifact parts to find downloadable files
-			for _, part := range artifact.Parts {
-				if partMap, ok := part.(map[string]any); ok {
-					if kind, ok := partMap["kind"].(string); ok && kind == "file" {
-						filename, hasFilename := partMap["filename"].(string)
-						uri, hasURI := partMap["uri"].(string)
+		// Use artifact helper to download all artifacts
+		helper := a2aClient.GetArtifactHelper()
+		downloadConfig := &client.DownloadConfig{
+			OutputDir:            cfg.DownloadsDir,
+			OverwriteExisting:    true,
+			OrganizeByArtifactID: true,
+		}
 
-						if hasFilename && hasURI {
-							fmt.Printf("   📥 File: %s\n", filename)
-							fmt.Printf("   🔗 URI: %s\n", uri)
-
-							// Download the artifact
-							if err := downloadArtifact(uri, filename, cfg.DownloadsDir); err != nil {
-								fmt.Printf("   ❌ Failed to download: %v\n", err)
-							} else {
-								fmt.Printf("   ✅ Downloaded successfully to: %s\n", filepath.Join(cfg.DownloadsDir, filename))
-							}
-						}
-					}
+		fmt.Println("\n📥 Downloading artifacts...")
+		results, err := helper.DownloadAllArtifacts(ctx, &completedTask, downloadConfig)
+		if err != nil {
+			fmt.Printf("❌ Download error: %v\n", err)
+		} else {
+			for _, result := range results {
+				if result.Error != nil {
+					fmt.Printf("   ❌ Failed to download %s: %v\n", result.FileName, result.Error)
+				} else {
+					fmt.Printf("   ✅ Downloaded %s (%d bytes)\n      Saved to: %s\n",
+						result.FileName, result.BytesWritten, result.FilePath)
 				}
 			}
 		}
@@ -188,46 +188,6 @@ func main() {
 	}
 
 	fmt.Println("\n🎉 Client example completed!")
-}
-
-// downloadArtifact downloads an artifact from the given URI and saves it to the specified filename
-func downloadArtifact(uri, filename, downloadsDir string) error {
-	// Create HTTP client with timeout
-	httpClient := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	// Make the request
-	resp, err := httpClient.Get(uri)
-	if err != nil {
-		return fmt.Errorf("failed to download artifact: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP error: %s", resp.Status)
-	}
-
-	// Create the downloads directory if it doesn't exist
-	if err := os.MkdirAll(downloadsDir, 0755); err != nil {
-		return fmt.Errorf("failed to create downloads directory: %w", err)
-	}
-
-	// Create the output file
-	outputPath := filepath.Join(downloadsDir, filename)
-	outFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer outFile.Close()
-
-	// Copy the content
-	_, err = io.Copy(outFile, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to save file: %w", err)
-	}
-
-	return nil
 }
 
 // createMessageWithFileUpload creates a message that includes the dummy data file upload
