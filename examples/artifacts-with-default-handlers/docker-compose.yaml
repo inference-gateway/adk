@@ -1,0 +1,66 @@
+---
+services:
+  gateway:
+    image: ghcr.io/inference-gateway/inference-gateway:latest
+    pull_policy: always
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      CLOUDFLARE_API_KEY: ${CLOUDFLARE_API_KEY}
+      COHERE_API_KEY: ${COHERE_API_KEY}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+    networks:
+      - a2a-network
+
+  server:
+    build:
+      context: ../..
+      dockerfile: examples/artifacts-with-default-handlers/server/Dockerfile
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - ./server/artifacts:/app/artifacts
+    environment:
+      ENVIRONMENT: development
+      A2A_SERVER_PORT: 8080
+      A2A_DEBUG: true
+      A2A_CAPABILITIES_STREAMING: true
+      A2A_ARTIFACTS_SERVER_HOST: server
+      A2A_AGENT_CLIENT_PROVIDER: ${A2A_AGENT_CLIENT_PROVIDER}
+      A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL}
+      A2A_AGENT_CLIENT_BASE_URL: ${A2A_AGENT_CLIENT_BASE_URL}
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8080/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - a2a-network
+
+  client:
+    build:
+      context: ../..
+      dockerfile: examples/artifacts-with-default-handlers/client/Dockerfile
+    volumes:
+      - ./client/downloads:/app/downloads
+      - ./client/uploads:/app/uploads
+    environment:
+      SERVER_URL: http://server:8080
+    depends_on:
+      server:
+        condition: service_healthy
+    networks:
+      - a2a-network
+
+networks:
+  a2a-network:
+    driver: bridge

@@ -12,7 +12,7 @@ import (
 	zap "go.uber.org/zap"
 )
 
-func TestDefaultTaskHandler_HandleTask(t *testing.T) {
+func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 	tests := []struct {
 		name        string
 		task        *types.Task
@@ -60,7 +60,7 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
-			taskHandler := server.NewDefaultTaskHandler(logger)
+			taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
 
 			ctx := context.Background()
 			message := tt.task.Status.Message
@@ -82,7 +82,7 @@ func TestDefaultTaskHandler_HandleTask(t *testing.T) {
 	}
 }
 
-func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
+func TestDefaultBackgroundTaskHandler_InputPausing(t *testing.T) {
 	logger := zap.NewNop()
 	ctx := context.Background()
 
