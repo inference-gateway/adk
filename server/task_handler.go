@@ -140,8 +140,9 @@ func (e *ArtifactUpdateStreamEvent) GetData() interface{} { return e.Event }
 // DefaultBackgroundTaskHandler implements the TaskHandler interface optimized for background scenarios
 // This handler automatically handles input-required pausing without requiring custom implementation
 type DefaultBackgroundTaskHandler struct {
-	logger *zap.Logger
-	agent  OpenAICompatibleAgent
+	logger  *zap.Logger
+	agent   OpenAICompatibleAgent
+	storage ArtifactStorageProvider
 }
 
 // NewDefaultBackgroundTaskHandler creates a new default background task handler
@@ -187,6 +188,9 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	copy(messages, task.History)
 
 	artifactHelper := NewArtifactHelper()
+	if bth.storage != nil {
+		artifactHelper.SetStorage(bth.storage)
+	}
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
 	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
 
@@ -308,8 +312,9 @@ func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inp
 // DefaultStreamingTaskHandler implements the TaskHandler interface optimized for streaming scenarios
 // This handler automatically handles input-required pausing with streaming-aware behavior
 type DefaultStreamingTaskHandler struct {
-	logger *zap.Logger
-	agent  OpenAICompatibleAgent
+	logger  *zap.Logger
+	agent   OpenAICompatibleAgent
+	storage ArtifactStorageProvider
 }
 
 // NewDefaultStreamingTaskHandler creates a new default streaming task handler
@@ -364,6 +369,9 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 		copy(messages, task.History)
 
 		artifactHelper := NewArtifactHelper()
+		if sth.storage != nil {
+			artifactHelper.SetStorage(sth.storage)
+		}
 		toolCtx := context.WithValue(ctx, TaskContextKey, task)
 		toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
 

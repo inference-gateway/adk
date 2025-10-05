@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"path/filepath"
@@ -10,11 +12,18 @@ import (
 )
 
 // ArtifactHelper provides utility functions for working with artifacts in the A2A protocol
-type ArtifactHelper struct{}
+type ArtifactHelper struct {
+	storage ArtifactStorageProvider
+}
 
 // NewArtifactHelper creates a new artifact helper instance
 func NewArtifactHelper() *ArtifactHelper {
 	return &ArtifactHelper{}
+}
+
+// SetStorage sets the artifact storage provider for this helper
+func (ah *ArtifactHelper) SetStorage(storage ArtifactStorageProvider) {
+	ah.storage = storage
 }
 
 // CreateTextArtifact creates a text artifact with the given content
@@ -32,8 +41,37 @@ func (ah *ArtifactHelper) CreateTextArtifact(name, description, text string) typ
 	}
 }
 
-// CreateFileArtifactFromBytes creates a file artifact from byte data
+// CreateFileArtifactFromBytes creates a file artifact from byte data.
+// If storage is available, it stores the file and returns a URI-based artifact.
+// Otherwise, it returns a base64-encoded artifact for backward compatibility.
 func (ah *ArtifactHelper) CreateFileArtifactFromBytes(name, description, filename string, data []byte, mimeType *string) types.Artifact {
+	artifactID := uuid.New().String()
+
+	if ah.storage != nil {
+		ctx := context.Background()
+		reader := bytes.NewReader(data)
+		uri, err := ah.storage.Store(ctx, artifactID, filename, reader)
+		if err == nil {
+			fileWithURI := types.FileWithUri{
+				Name:     &filename,
+				MIMEType: mimeType,
+				URI:      uri,
+			}
+
+			return types.Artifact{
+				ArtifactID:  artifactID,
+				Name:        &name,
+				Description: &description,
+				Parts: []types.Part{
+					types.FilePart{
+						Kind: "file",
+						File: fileWithURI,
+					},
+				},
+			}
+		}
+	}
+
 	encodedData := base64.StdEncoding.EncodeToString(data)
 
 	fileWithBytes := types.FileWithBytes{
@@ -43,7 +81,7 @@ func (ah *ArtifactHelper) CreateFileArtifactFromBytes(name, description, filenam
 	}
 
 	return types.Artifact{
-		ArtifactID:  uuid.New().String(),
+		ArtifactID:  artifactID,
 		Name:        &name,
 		Description: &description,
 		Parts: []types.Part{
