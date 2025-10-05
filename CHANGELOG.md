@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.1](https://github.com/inference-gateway/adk/compare/v0.13.0...v0.13.1) (2025-10-05)
+
+### ♻️ Improvements
+
+* **artifact:** Improve artifact storage support usage for URI-based artifacts and provide utilities to a2a clients for consistent downloads ([#90](https://github.com/inference-gateway/adk/issues/90)) ([a72ce62](https://github.com/inference-gateway/adk/commit/a72ce6233fd5ea4115edd1042aa7e2279550cb48))
+
+### 🔧 Miscellaneous
+
+* **deps:** Update claude-code version to ^2.0.1 in manifest files ([453cfd9](https://github.com/inference-gateway/adk/commit/453cfd92566c3700ef04fa475d057d52ec1f459f))
+
 ## [0.13.0](https://github.com/inference-gateway/adk/compare/v0.12.1...v0.13.0) (2025-10-05)
 
 ### ✨ Features
