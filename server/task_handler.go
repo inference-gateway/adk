@@ -312,7 +312,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	// Inject Task and ArtifactHelper into context for tool execution
 	artifactHelper := NewArtifactHelper()
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
 	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
@@ -490,7 +489,6 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 		messages := make([]types.Message, len(task.History))
 		copy(messages, task.History)
 
-		// Inject Task and ArtifactHelper into context for tool execution
 		artifactHelper := NewArtifactHelper()
 		toolCtx := context.WithValue(ctx, TaskContextKey, task)
 		toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
