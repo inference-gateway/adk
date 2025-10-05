@@ -20,17 +20,17 @@ import (
 	config "github.com/inference-gateway/adk/examples/artifacts-with-default-handlers/server/config"
 )
 
-// Artifacts with Default Handlers and Filesystem Server Example
+// Artifacts with Default Handlers and Automatic Storage Example
 //
 // This example demonstrates an A2A server using default task handlers with
-// automatic artifact extraction and a filesystem-based artifacts server.
-// Tools create artifacts using ArtifactHelper, the default handlers automatically
-// extract and attach them to tasks, and the artifacts server enables upload/download.
+// automatic artifact storage integration. When artifact storage is configured,
+// the ArtifactHelper automatically stores files as URIs instead of base64-encoded bytes.
 //
 // Features:
 // - Default task handlers with automatic artifact extraction
+// - Automatic artifact storage via WithArtifactStorage()
 // - Filesystem-based artifacts storage server
-// - Tools that create downloadable artifacts
+// - Tools create artifacts using simplified ArtifactHelper API
 // - Client can upload files that are processed by the agent
 // - Client can download generated artifacts via HTTP endpoints
 //
@@ -182,7 +182,7 @@ The file upload and processing demonstrates the complete artifact lifecycle:
 			mimeType := "text/markdown"
 			reportFilename := fmt.Sprintf("analysis_%s.md", filename)
 
-			// First create a placeholder artifact to get the artifact ID
+			// Create and add artifact - storage is handled automatically by ArtifactHelper
 			artifact := artifactHelper.CreateFileArtifactFromBytes(
 				fmt.Sprintf("Analysis Report for %s", filename),
 				fmt.Sprintf("Detailed analysis of the uploaded file: %s", filename),
@@ -190,34 +190,6 @@ The file upload and processing demonstrates the complete artifact lifecycle:
 				[]byte(analysisReport),
 				&mimeType,
 			)
-
-			// Store the analysis report using the artifact ID as directory name
-			var artifactURL string
-			if artifactsServer != nil {
-				storage := artifactsServer.GetStorage()
-
-				url, err := storage.Store(ctx, artifact.ArtifactID, reportFilename, strings.NewReader(analysisReport))
-				if err == nil {
-					artifactURL = url
-					logger.Info("artifact stored in filesystem",
-						zap.String("artifact_id", artifact.ArtifactID),
-						zap.String("filename", reportFilename),
-						zap.String("url", url))
-				}
-			}
-
-			// Create URI-based artifact if we have a URL, otherwise keep bytes-based
-			if artifactURL != "" {
-				artifact = artifactHelper.CreateFileArtifactFromURI(
-					fmt.Sprintf("Analysis Report for %s", filename),
-					fmt.Sprintf("Detailed analysis of the uploaded file: %s", filename),
-					reportFilename,
-					artifactURL,
-					&mimeType,
-				)
-			}
-
-			// Directly add artifact to task
 			artifactHelper.AddArtifactToTask(task, artifact)
 
 			return fmt.Sprintf("File '%s' processed successfully, analysis report created.", filename), nil
@@ -369,7 +341,7 @@ This report demonstrates how tools can create artifacts that are automatically e
 `, topic, topic, topic, topic, topic, topic, topic, time.Now().Format(time.RFC3339), "auto-generated")
 			}
 
-			// First create a placeholder artifact to get the artifact ID
+			// Create and add artifact - storage is handled automatically by ArtifactHelper
 			artifact := artifactHelper.CreateFileArtifactFromBytes(
 				fmt.Sprintf("%s Analysis Report", strings.Title(topic)),
 				fmt.Sprintf("Comprehensive analysis report about %s in %s format", topic, format),
@@ -377,34 +349,6 @@ This report demonstrates how tools can create artifacts that are automatically e
 				[]byte(content),
 				&mimeType,
 			)
-
-			// Store the report using the artifact ID as directory name
-			var artifactURL string
-			if artifactsServer != nil {
-				storage := artifactsServer.GetStorage()
-
-				url, err := storage.Store(ctx, artifact.ArtifactID, filename, strings.NewReader(content))
-				if err == nil {
-					artifactURL = url
-					logger.Info("artifact stored in filesystem",
-						zap.String("artifact_id", artifact.ArtifactID),
-						zap.String("filename", filename),
-						zap.String("url", url))
-				}
-			}
-
-			// Create URI-based artifact if we have a URL, otherwise keep bytes-based
-			if artifactURL != "" {
-				artifact = artifactHelper.CreateFileArtifactFromURI(
-					*artifact.Name,
-					*artifact.Description,
-					filename,
-					artifactURL,
-					&mimeType,
-				)
-			}
-
-			// Directly add artifact to task
 			artifactHelper.AddArtifactToTask(task, artifact)
 
 			return fmt.Sprintf("Report '%s' generated successfully in %s format.", topic, format), nil
@@ -563,7 +507,7 @@ note over User,Database : %s
 
 			mimeType := "text/plain"
 
-			// First create a placeholder artifact to get the artifact ID
+			// Create and add artifact - storage is handled automatically by ArtifactHelper
 			artifact := artifactHelper.CreateFileArtifactFromBytes(
 				fmt.Sprintf("%s - %s Diagram", title, strings.Title(diagramType)),
 				fmt.Sprintf("PlantUML %s diagram: %s", diagramType, description),
@@ -571,34 +515,6 @@ note over User,Database : %s
 				[]byte(plantumlContent),
 				&mimeType,
 			)
-
-			// Store the diagram using the artifact ID as directory name
-			var artifactURL string
-			if artifactsServer != nil {
-				storage := artifactsServer.GetStorage()
-
-				url, err := storage.Store(ctx, artifact.ArtifactID, filename, strings.NewReader(plantumlContent))
-				if err == nil {
-					artifactURL = url
-					logger.Info("artifact stored in filesystem",
-						zap.String("artifact_id", artifact.ArtifactID),
-						zap.String("filename", filename),
-						zap.String("url", url))
-				}
-			}
-
-			// Create URI-based artifact if we have a URL, otherwise keep bytes-based
-			if artifactURL != "" {
-				artifact = artifactHelper.CreateFileArtifactFromURI(
-					*artifact.Name,
-					*artifact.Description,
-					filename,
-					artifactURL,
-					&mimeType,
-				)
-			}
-
-			// Directly add artifact to task
 			artifactHelper.AddArtifactToTask(task, artifact)
 
 			return fmt.Sprintf("Diagram '%s' created successfully as a %s diagram.", title, diagramType), nil
@@ -706,7 +622,7 @@ note over User,Database : %s
 3,"Sample Item 3",300,"%s","%s"`, dataset, time.Now().Format("2006-01-02"), dataset, time.Now().Format("2006-01-02"), dataset, time.Now().Format("2006-01-02"))
 			}
 
-			// First create a placeholder artifact to get the artifact ID
+			// Create and add artifact - storage is handled automatically by ArtifactHelper
 			artifact := artifactHelper.CreateFileArtifactFromBytes(
 				fmt.Sprintf("%s Dataset Export", strings.Title(dataset)),
 				fmt.Sprintf("Data export of %s dataset in %s format", dataset, format),
@@ -714,34 +630,6 @@ note over User,Database : %s
 				[]byte(content),
 				&mimeType,
 			)
-
-			// Store the data export using the artifact ID as directory name
-			var artifactURL string
-			if artifactsServer != nil {
-				storage := artifactsServer.GetStorage()
-
-				url, err := storage.Store(ctx, artifact.ArtifactID, filename, strings.NewReader(content))
-				if err == nil {
-					artifactURL = url
-					logger.Info("artifact stored in filesystem",
-						zap.String("artifact_id", artifact.ArtifactID),
-						zap.String("filename", filename),
-						zap.String("url", url))
-				}
-			}
-
-			// Create URI-based artifact if we have a URL, otherwise keep bytes-based
-			if artifactURL != "" {
-				artifact = artifactHelper.CreateFileArtifactFromURI(
-					fmt.Sprintf("%s Dataset Export", strings.Title(dataset)),
-					fmt.Sprintf("Data export of %s dataset in %s format", dataset, format),
-					filename,
-					artifactURL,
-					&mimeType,
-				)
-			}
-
-			// Directly add artifact to task
 			artifactHelper.AddArtifactToTask(task, artifact)
 
 			return fmt.Sprintf("Data export '%s' completed successfully in %s format.", dataset, format), nil
@@ -771,7 +659,8 @@ note over User,Database : %s
 	// Note: This example requires an AI agent - it does not support non-AI mode
 	serverBuilder := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithAgent(agent).
-		WithDefaultTaskHandlers() // This enables automatic artifact extraction with AI
+		WithArtifactStorage(artifactsServer.GetStorage()). // Enable automatic artifact storage
+		WithDefaultTaskHandlers()
 
 	// Build and start server
 	a2aServer, err := serverBuilder.

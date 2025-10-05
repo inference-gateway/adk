@@ -56,6 +56,17 @@ type FakeA2AServerBuilder struct {
 	withAgentCardFromFileReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
+	WithArtifactStorageStub        func(server.ArtifactStorageProvider) server.A2AServerBuilder
+	withArtifactStorageMutex       sync.RWMutex
+	withArtifactStorageArgsForCall []struct {
+		arg1 server.ArtifactStorageProvider
+	}
+	withArtifactStorageReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withArtifactStorageReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
 	WithBackgroundTaskHandlerStub        func(server.TaskHandler) server.A2AServerBuilder
 	withBackgroundTaskHandlerMutex       sync.RWMutex
 	withBackgroundTaskHandlerArgsForCall []struct {
@@ -370,6 +381,67 @@ func (fake *FakeA2AServerBuilder) WithAgentCardFromFileReturnsOnCall(i int, resu
 		})
 	}
 	fake.withAgentCardFromFileReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactStorage(arg1 server.ArtifactStorageProvider) server.A2AServerBuilder {
+	fake.withArtifactStorageMutex.Lock()
+	ret, specificReturn := fake.withArtifactStorageReturnsOnCall[len(fake.withArtifactStorageArgsForCall)]
+	fake.withArtifactStorageArgsForCall = append(fake.withArtifactStorageArgsForCall, struct {
+		arg1 server.ArtifactStorageProvider
+	}{arg1})
+	stub := fake.WithArtifactStorageStub
+	fakeReturns := fake.withArtifactStorageReturns
+	fake.recordInvocation("WithArtifactStorage", []interface{}{arg1})
+	fake.withArtifactStorageMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactStorageCallCount() int {
+	fake.withArtifactStorageMutex.RLock()
+	defer fake.withArtifactStorageMutex.RUnlock()
+	return len(fake.withArtifactStorageArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactStorageCalls(stub func(server.ArtifactStorageProvider) server.A2AServerBuilder) {
+	fake.withArtifactStorageMutex.Lock()
+	defer fake.withArtifactStorageMutex.Unlock()
+	fake.WithArtifactStorageStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactStorageArgsForCall(i int) server.ArtifactStorageProvider {
+	fake.withArtifactStorageMutex.RLock()
+	defer fake.withArtifactStorageMutex.RUnlock()
+	argsForCall := fake.withArtifactStorageArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactStorageReturns(result1 server.A2AServerBuilder) {
+	fake.withArtifactStorageMutex.Lock()
+	defer fake.withArtifactStorageMutex.Unlock()
+	fake.WithArtifactStorageStub = nil
+	fake.withArtifactStorageReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithArtifactStorageReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withArtifactStorageMutex.Lock()
+	defer fake.withArtifactStorageMutex.Unlock()
+	fake.WithArtifactStorageStub = nil
+	if fake.withArtifactStorageReturnsOnCall == nil {
+		fake.withArtifactStorageReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withArtifactStorageReturnsOnCall[i] = struct {
 		result1 server.A2AServerBuilder
 	}{result1}
 }
@@ -788,6 +860,8 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.withAgentCardMutex.RUnlock()
 	fake.withAgentCardFromFileMutex.RLock()
 	defer fake.withAgentCardFromFileMutex.RUnlock()
+	fake.withArtifactStorageMutex.RLock()
+	defer fake.withArtifactStorageMutex.RUnlock()
 	fake.withBackgroundTaskHandlerMutex.RLock()
 	defer fake.withBackgroundTaskHandlerMutex.RUnlock()
 	fake.withDefaultBackgroundTaskHandlerMutex.RLock()
