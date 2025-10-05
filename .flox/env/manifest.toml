@@ -11,7 +11,7 @@ prettier.pkg-path = "prettier"
 prettier.version = "^3.6.2"
 
 claude-code.pkg-path = "claude-code"
-claude-code.version = "^1.0.123"
+claude-code.version = "^2.0.1"
 
 [hook]
 on-activate = """
