@@ -1,9 +1,14 @@
 package client
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/inference-gateway/adk/types"
@@ -380,4 +385,190 @@ func (ah *ArtifactHelper) FilterArtifactsByName(task *types.Task, namePattern st
 	}
 
 	return matchingArtifacts
+}
+
+// DownloadConfig holds configuration for downloading artifacts
+type DownloadConfig struct {
+	// OutputDir is the directory where files will be saved (default: current directory)
+	OutputDir string
+	// HTTPClient is the HTTP client to use for downloads (default: http.DefaultClient)
+	HTTPClient *http.Client
+	// OverwriteExisting allows overwriting existing files (default: false)
+	OverwriteExisting bool
+	// OrganizeByArtifactID creates subdirectories by artifact ID to prevent collisions (default: true)
+	OrganizeByArtifactID bool
+}
+
+// DownloadResult represents the result of a file download
+type DownloadResult struct {
+	// FileName is the name of the downloaded file
+	FileName string
+	// FilePath is the full path where the file was saved
+	FilePath string
+	// BytesWritten is the number of bytes written to disk
+	BytesWritten int64
+	// Error contains any error that occurred during download
+	Error error
+}
+
+// DownloadFileData downloads a FileData object to disk
+func (ah *ArtifactHelper) DownloadFileData(ctx context.Context, fileData FileData, config *DownloadConfig) (*DownloadResult, error) {
+	if config == nil {
+		config = &DownloadConfig{
+			OutputDir:  ".",
+			HTTPClient: http.DefaultClient,
+		}
+	}
+
+	if config.OutputDir == "" {
+		config.OutputDir = "."
+	}
+
+	if config.HTTPClient == nil {
+		config.HTTPClient = http.DefaultClient
+	}
+
+	fileName := fileData.GetFileName()
+	filePath := filepath.Join(config.OutputDir, fileName)
+
+	if !config.OverwriteExisting {
+		if _, err := os.Stat(filePath); err == nil {
+			return nil, fmt.Errorf("file already exists: %s (use OverwriteExisting to allow overwriting)", filePath)
+		}
+	}
+
+	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	var data []byte
+	var err error
+
+	if fileData.IsDataFile() {
+		data = fileData.Data
+	} else if fileData.IsURIFile() {
+		data, err = ah.downloadFromURI(ctx, *fileData.URI, config.HTTPClient)
+		if err != nil {
+			return &DownloadResult{
+				FileName: fileName,
+				FilePath: filePath,
+				Error:    err,
+			}, err
+		}
+	} else {
+		return nil, fmt.Errorf("file data contains neither bytes nor URI")
+	}
+
+	bytesWritten, err := ah.writeFile(filePath, data)
+	if err != nil {
+		return &DownloadResult{
+			FileName: fileName,
+			FilePath: filePath,
+			Error:    err,
+		}, err
+	}
+
+	return &DownloadResult{
+		FileName:     fileName,
+		FilePath:     filePath,
+		BytesWritten: bytesWritten,
+	}, nil
+}
+
+// DownloadArtifact downloads all files from an artifact
+func (ah *ArtifactHelper) DownloadArtifact(ctx context.Context, artifact *types.Artifact, config *DownloadConfig) ([]*DownloadResult, error) {
+	files, err := ah.ExtractFileDataFromArtifact(artifact)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract file data: %w", err)
+	}
+
+	artifactConfig := config
+	if config != nil && config.OrganizeByArtifactID && artifact != nil {
+		artifactConfig = &DownloadConfig{
+			OutputDir:         filepath.Join(config.OutputDir, artifact.ArtifactID),
+			HTTPClient:        config.HTTPClient,
+			OverwriteExisting: config.OverwriteExisting,
+		}
+	}
+
+	results := make([]*DownloadResult, 0, len(files))
+	for _, file := range files {
+		result, err := ah.DownloadFileData(ctx, file, artifactConfig)
+		if err != nil {
+			results = append(results, &DownloadResult{
+				FileName: file.GetFileName(),
+				Error:    err,
+			})
+			continue
+		}
+		results = append(results, result)
+	}
+
+	return results, nil
+}
+
+// DownloadAllArtifacts downloads all files from all artifacts in a task
+func (ah *ArtifactHelper) DownloadAllArtifacts(ctx context.Context, task *types.Task, config *DownloadConfig) ([]*DownloadResult, error) {
+	if !ah.HasArtifacts(task) {
+		return []*DownloadResult{}, nil
+	}
+
+	if config == nil {
+		config = &DownloadConfig{
+			OutputDir:            ".",
+			OrganizeByArtifactID: true,
+		}
+	}
+
+	results := make([]*DownloadResult, 0)
+	for _, artifact := range task.Artifacts {
+		artifactResults, err := ah.DownloadArtifact(ctx, &artifact, config)
+		if err != nil {
+			return results, fmt.Errorf("failed to download artifact %s: %w", artifact.ArtifactID, err)
+		}
+		results = append(results, artifactResults...)
+	}
+
+	return results, nil
+}
+
+// downloadFromURI downloads content from a URI
+func (ah *ArtifactHelper) downloadFromURI(ctx context.Context, uri string, client *http.Client) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download from %s: %w", uri, err)
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	return data, nil
+}
+
+// writeFile writes data to a file and returns the number of bytes written
+func (ah *ArtifactHelper) writeFile(filePath string, data []byte) (int64, error) {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close() //nolint:errcheck
+
+	n, err := file.Write(data)
+	if err != nil {
+		return 0, fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return int64(n), nil
 }

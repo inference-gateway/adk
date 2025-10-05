@@ -5,11 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	zap "go.uber.org/zap"
@@ -158,72 +155,25 @@ Total Renewable Energy: 3,615 GWh`
 				}
 
 				fmt.Printf("📁 Found %d artifacts\n", len(updatedTask.Artifacts))
-				os.MkdirAll("downloads", 0755)
 
-				for i, artifact := range updatedTask.Artifacts {
-					fmt.Printf("Artifact %d: %s\n", i+1, artifact.ArtifactID)
-					if artifact.Name != nil {
-						fmt.Printf("  Name: %s\n", *artifact.Name)
-					}
-					fmt.Printf("  Parts count: %d\n", len(artifact.Parts))
+				helper := a2aClient.GetArtifactHelper()
+				downloadConfig := &client.DownloadConfig{
+					OutputDir:            "downloads",
+					OverwriteExisting:    true,
+					OrganizeByArtifactID: true,
+				}
 
-					for j, part := range artifact.Parts {
-						fmt.Printf("  DEBUG Part %d: %+v\n", j+1, part)
+				results, err := helper.DownloadAllArtifacts(ctx, &updatedTask, downloadConfig)
+				if err != nil {
+					fmt.Printf("❌ Download error: %v\n", err)
+					return
+				}
 
-						// Parse as FilePart
-						partBytes, _ := json.Marshal(part)
-						var filePart types.FilePart
-						if err := json.Unmarshal(partBytes, &filePart); err != nil {
-							fmt.Printf("  Part %d: Failed to parse as FilePart: %v\n", j+1, err)
-							continue
-						}
-
-						if filePart.Kind != "file" {
-							fmt.Printf("  Part %d: Not a file part, kind: %s\n", j+1, filePart.Kind)
-							continue
-						}
-
-						fmt.Printf("  Part %d: FilePart.File = %+v\n", j+1, filePart.File)
-
-						// Try FileWithUri
-						fileBytes, _ := json.Marshal(filePart.File)
-						var fileWithUri types.FileWithUri
-						if err := json.Unmarshal(fileBytes, &fileWithUri); err != nil {
-							fmt.Printf("  Part %d: Failed to parse as FileWithUri: %v\n", j+1, err)
-							continue
-						}
-
-						if fileWithUri.URI == "" {
-							fmt.Printf("  Part %d: No URI found in FileWithUri\n", j+1)
-							continue
-						}
-
-						filename := "unknown"
-						if fileWithUri.Name != nil {
-							filename = *fileWithUri.Name
-						}
-
-						fmt.Printf("📥 Downloading %s from %s\n", filename, fileWithUri.URI)
-						resp, err := http.Get(fileWithUri.URI)
-						if err != nil {
-							fmt.Printf("  Download failed: %v\n", err)
-							continue
-						}
-						if resp.StatusCode != 200 {
-							fmt.Printf("  Download failed: HTTP %d\n", resp.StatusCode)
-							resp.Body.Close()
-							continue
-						}
-						defer resp.Body.Close()
-
-						outFile, err := os.Create(filepath.Join("downloads", filename))
-						if err != nil {
-							fmt.Printf("  File creation failed: %v\n", err)
-							continue
-						}
-						io.Copy(outFile, resp.Body)
-						outFile.Close()
-						fmt.Printf("✅ Downloaded to downloads/%s\n", filename)
+				for _, result := range results {
+					if result.Error != nil {
+						fmt.Printf("❌ Failed to download %s: %v\n", result.FileName, result.Error)
+					} else {
+						fmt.Printf("✅ Downloaded %s (%d bytes) to %s\n", result.FileName, result.BytesWritten, result.FilePath)
 					}
 				}
 				return
