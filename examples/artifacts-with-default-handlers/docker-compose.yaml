@@ -19,9 +19,6 @@ services:
     build:
       context: ../..
       dockerfile: examples/artifacts-with-default-handlers/server/Dockerfile
-    ports:
-      - "8080:8080"
-      - "8081:8081"
     volumes:
       - ./server/artifacts:/app/artifacts
     environment:
