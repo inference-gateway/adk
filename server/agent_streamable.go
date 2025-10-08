@@ -322,50 +322,37 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			case outputChan <- types.NewMessageEvent("adk.agent.tool.failed", failedEvent.MessageID, failedEvent, nil):
 			case <-ctx.Done():
 			}
-		} else {
-			if toolCall.Function.Name == "input_required" {
-				a.logger.Debug("input_required tool called in streaming mode",
-					zap.String("tool_call_id", toolCall.Id),
-					zap.String("message", toolCall.Function.Arguments))
+		} else if toolCall.Function.Name == "input_required" {
+			a.logger.Debug("input_required tool called in streaming mode",
+				zap.String("tool_call_id", toolCall.Id),
+				zap.String("message", toolCall.Function.Arguments))
 
-				result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			inputMessage := args["message"].(string)
+			inputRequiredMessage := types.NewInputRequiredMessage(toolCall.Id, inputMessage)
 
-				completedEvent := types.NewStreamingStatusMessage(
-					fmt.Sprintf("tool-completed-%s", toolCall.Id),
-					"completed",
-					map[string]any{
-						"tool_name": toolCall.Function.Name,
-					},
-				)
+			completedEvent := types.NewStreamingStatusMessage(
+				fmt.Sprintf("tool-completed-%s", toolCall.Id),
+				"completed",
+				map[string]any{
+					"tool_name": toolCall.Function.Name,
+				},
+			)
 
-				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.tool.completed", completedEvent.MessageID, completedEvent, nil):
-				case <-ctx.Done():
-					return toolResultMessages
-				}
-
-				toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
-
-				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
-				case <-ctx.Done():
-					return toolResultMessages
-				}
-
-				toolResultMessages = append(toolResultMessages, *toolResultMessage)
-
-				inputMessage := args["message"].(string)
-				inputRequiredMessage := types.NewInputRequiredMessage(toolCall.Id, inputMessage)
-
-				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.input.required", inputRequiredMessage.MessageID, inputRequiredMessage, nil):
-				case <-ctx.Done():
-				}
-
-				toolResultMessages = append(toolResultMessages, *inputRequiredMessage)
-
+			select {
+			case outputChan <- types.NewMessageEvent("adk.agent.tool.completed", completedEvent.MessageID, completedEvent, nil):
+			case <-ctx.Done():
 				return toolResultMessages
 			}
+
+			select {
+			case outputChan <- types.NewMessageEvent("adk.agent.input.required", inputRequiredMessage.MessageID, inputRequiredMessage, nil):
+			case <-ctx.Done():
+			}
+
+			toolResultMessages = append(toolResultMessages, *inputRequiredMessage)
+
+			return toolResultMessages
+		} else {
 
 			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
 			if toolErr != nil {

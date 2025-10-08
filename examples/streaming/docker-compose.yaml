@@ -2,7 +2,8 @@
 services:
   server:
     build:
-      context: ./server
+      context: ../..
+      dockerfile: examples/streaming/server/Dockerfile
       args:
         AGENT_NAME: streaming-agent
         AGENT_DESCRIPTION: An agent that streams responses in real-time
@@ -20,7 +21,8 @@ services:
 
   client:
     build:
-      context: ./client
+      context: ../..
+      dockerfile: examples/streaming/client/Dockerfile
     depends_on:
       - server
     environment:

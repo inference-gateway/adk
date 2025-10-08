@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	sdk "github.com/inference-gateway/sdk"
 )
@@ -69,8 +68,13 @@ func NewDefaultToolBox() *DefaultToolBox {
 			"required": []string{"message"},
 		},
 		func(ctx context.Context, args map[string]any) (string, error) {
-			message := args["message"].(string)
-			return fmt.Sprintf("Input requested from user: %s", message), nil
+			// NOTE: This handler is never executed in practice.
+			// The agent intercepts input_required tool calls before execution
+			// (see agent.go:186-204 and agent_streamable.go:325-354) and extracts
+			// the 'message' argument directly from the tool call to create an
+			// input_required response. This handler exists only to satisfy the
+			// tool registration interface requirements.
+			return "", nil
 		},
 	)
 	toolBox.AddTool(inputRequiredTool)

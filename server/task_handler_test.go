@@ -244,23 +244,6 @@ func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	mockAgent := &mocks.FakeOpenAICompatibleAgent{}
 
-	inputRequiredResponse := &server.AgentResponse{
-		Response: &types.Message{
-			Kind:      "input_required",
-			MessageID: "input-req-123",
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "I need more information from you to continue.",
-				},
-			},
-		},
-		AdditionalMessages: []types.Message{},
-	}
-
-	mockAgent.RunReturns(inputRequiredResponse, nil)
-
 	streamChan := make(chan cloudevents.Event, 1)
 
 	inputMessage := &types.Message{

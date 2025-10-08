@@ -194,17 +194,11 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
 	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
 
-	agentResponse, err := bth.agent.Run(toolCtx, messages)
+	eventChan, err := bth.agent.RunWithStream(toolCtx, messages)
 	if err != nil {
-		bth.logger.Error("agent processing failed", zap.Error(err))
+		bth.logger.Error("agent streaming failed to start", zap.Error(err))
 
 		task.Status.State = types.TaskStateFailed
-
-		errorText := err.Error()
-		if strings.Contains(errorText, "failed to create chat completion") {
-			errorText = "LLM request failed: " + err.Error()
-		}
-
 		task.Status.Message = &types.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("error-%s", task.ID),
@@ -212,38 +206,133 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "text",
-					"text": errorText,
+					"text": fmt.Sprintf("Failed to start agent: %s", err.Error()),
 				},
 			},
 		}
 		return task, nil
 	}
 
-	if agentResponse.Response != nil {
-		lastMessage := agentResponse.Response
-		if lastMessage.Kind == "input_required" {
-			inputMessage := "Please provide more information to continue."
-			if len(lastMessage.Parts) > 0 {
-				if textPart, ok := lastMessage.Parts[0].(map[string]any); ok {
-					if text, exists := textPart["text"].(string); exists && text != "" {
-						inputMessage = text
-					}
-				}
+	var finalMessage *types.Message
+
+	for event := range eventChan {
+		eventType := event.Type()
+		bth.logger.Debug("background handler received event",
+			zap.String("task_id", task.ID),
+			zap.String("event_type", eventType))
+
+		switch eventType {
+		case "adk.agent.iteration.completed":
+			var iterationMessage types.Message
+			if err := event.DataAs(&iterationMessage); err == nil {
+				finalMessage = &iterationMessage
+				bth.logger.Debug("captured iteration message",
+					zap.String("task_id", task.ID),
+					zap.String("message_kind", iterationMessage.Kind))
 			}
-			task.History = append(task.History, *agentResponse.Response)
-			return bth.pauseTaskForInput(task, inputMessage), nil
+
+		case "adk.agent.input.required":
+			var inputMessage types.Message
+			if err := event.DataAs(&inputMessage); err == nil {
+				if task.History == nil {
+					task.History = []types.Message{}
+				}
+				task.History = append(task.History, inputMessage)
+
+				task.Status.State = types.TaskStateInputRequired
+				task.Status.Message = &inputMessage
+
+				bth.logger.Info("background task paused for user input",
+					zap.String("task_id", task.ID),
+					zap.String("state", string(task.Status.State)))
+
+				return task, nil
+			}
+
+		case "adk.agent.stream.failed":
+			var errorData struct {
+				Error string `json:"error"`
+			}
+			if err := event.DataAs(&errorData); err == nil {
+				task.Status.State = types.TaskStateFailed
+				errorText := errorData.Error
+				if strings.Contains(errorText, "failed to create chat completion") {
+					errorText = "LLM request failed: " + errorData.Error
+				}
+
+				task.Status.Message = &types.Message{
+					Kind:      "message",
+					MessageID: fmt.Sprintf("error-%s", task.ID),
+					Role:      "assistant",
+					Parts: []types.Part{
+						map[string]any{
+							"kind": "text",
+							"text": errorText,
+						},
+					},
+				}
+
+				bth.logger.Error("background task failed during streaming",
+					zap.String("task_id", task.ID),
+					zap.String("error", errorText))
+
+				return task, nil
+			}
+
+		case "adk.agent.task.interrupted":
+			task.Status.State = types.TaskStateFailed
+			task.Status.Message = &types.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("interrupted-%s", task.ID),
+				Role:      "assistant",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": "Task was interrupted",
+					},
+				},
+			}
+
+			bth.logger.Info("background task interrupted",
+				zap.String("task_id", task.ID))
+
+			return task, nil
+
+		case "adk.agent.delta":
+			continue
+
+		case "adk.agent.tool.started", "adk.agent.tool.completed", "adk.agent.tool.failed", "adk.agent.tool.result":
+			bth.logger.Debug("tool event in background task",
+				zap.String("task_id", task.ID),
+				zap.String("event_type", eventType))
 		}
 	}
 
-	if len(agentResponse.AdditionalMessages) > 0 {
-		task.History = append(task.History, agentResponse.AdditionalMessages...)
-	}
-	if agentResponse.Response != nil {
-		task.History = append(task.History, *agentResponse.Response)
+	if finalMessage != nil {
+		task.Status.State = types.TaskStateCompleted
+		task.Status.Message = finalMessage
+
+		bth.logger.Info("background task completed successfully",
+			zap.String("task_id", task.ID))
+
+		return task, nil
 	}
 
+	bth.logger.Warn("background task completed but no final message received",
+		zap.String("task_id", task.ID))
+
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = agentResponse.Response
+	task.Status.Message = &types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("empty-response-%s", task.ID),
+		Role:      "assistant",
+		Parts: []types.Part{
+			map[string]any{
+				"kind": "text",
+				"text": "Task completed",
+			},
+		},
+	}
 
 	return task, nil
 }
@@ -273,40 +362,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 	task.Status.Message = response
 
 	return task, nil
-}
-
-// pauseTaskForInput updates a task to input-required state with the given message
-func (bth *DefaultBackgroundTaskHandler) pauseTaskForInput(task *types.Task, inputMessage string) *types.Task {
-	bth.logger.Info("pausing background task for user input",
-		zap.String("task_id", task.ID),
-		zap.String("input_message", inputMessage))
-
-	message := &types.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("input-request-%d", time.Now().Unix()),
-		Role:      "assistant",
-		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": inputMessage,
-			},
-		},
-	}
-
-	if task.History == nil {
-		task.History = []types.Message{}
-	}
-	task.History = append(task.History, *message)
-
-	task.Status.State = types.TaskStateInputRequired
-	task.Status.Message = message
-
-	bth.logger.Info("background task paused for user input",
-		zap.String("task_id", task.ID),
-		zap.String("state", string(task.Status.State)),
-		zap.Int("conversation_history_count", len(task.History)))
-
-	return task
 }
 
 // DefaultStreamingTaskHandler implements the TaskHandler interface optimized for streaming scenarios

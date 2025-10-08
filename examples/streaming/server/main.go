@@ -25,39 +25,6 @@ type MockAgent struct {
 	logger *zap.Logger
 }
 
-func (m *MockAgent) Run(ctx context.Context, messages []types.Message) (*server.AgentResponse, error) {
-	// Extract the last user message
-	userInput := "Hello!"
-	for _, msg := range messages {
-		if msg.Role == "user" {
-			for _, part := range msg.Parts {
-				if partMap, ok := part.(map[string]any); ok {
-					if text, ok := partMap["text"].(string); ok {
-						userInput = text
-						break
-					}
-				}
-			}
-		}
-	}
-
-	response := fmt.Sprintf("Mock AI response: I received your message '%s'. This is a mock response since no AI provider is configured.", userInput)
-
-	responseMessage := types.Message{
-		Role: "assistant",
-		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": response,
-			},
-		},
-	}
-
-	return &server.AgentResponse{
-		Response: &responseMessage,
-	}, nil
-}
-
 func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message) (<-chan cloudevents.Event, error) {
 	m.logger.Info("mock agent starting streaming")
 	eventChan := make(chan cloudevents.Event, 100)

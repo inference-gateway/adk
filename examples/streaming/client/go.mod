@@ -3,7 +3,7 @@ module github.com/inference-gateway/adk/examples/streaming/client
 go 1.25
 
 require (
-	github.com/inference-gateway/adk v0.11.2
+	github.com/inference-gateway/adk v0.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.27.0
 )
 

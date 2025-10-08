@@ -303,7 +303,7 @@ The `docker-compose.yaml` includes these services:
 
 The example demonstrates how artifacts created by tools are automatically:
 
-1. **Extracted** from tool execution results in `agentResponse.AdditionalMessages`
+1. **Extracted** from tool execution results as the agent appends messages to `task.History`
 2. **Validated** using `ArtifactHelper.ValidateArtifact()`
 3. **Attached** to the task using `ArtifactHelper.AddArtifactToTask()`
 4. **Returned** in the response without any custom handler logic

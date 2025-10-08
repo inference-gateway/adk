@@ -52,20 +52,21 @@ func (h *AITaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 		userInput = "Hello! How can I help you?"
 	}
 
-	// Use the agent to process the message
-	response, err := h.agent.Run(ctx, []types.Message{*message})
+	taskCtx := context.WithValue(ctx, server.TaskContextKey, task)
+
+	response, err := h.agent.Run(taskCtx, []types.Message{*message})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AI response: %w", err)
 	}
 
-	// Add all messages from the agent response to history
-	task.History = append(task.History, response.AdditionalMessages...)
+	if response.Response != nil && response.Response.Kind == "input_required" {
+		task.Status.State = types.TaskStateInputRequired
+		task.Status.Message = response.Response
+		return task, nil
+	}
 
-	responseMessage := *response.Response
-
-	task.History = append(task.History, responseMessage)
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = &responseMessage
+	task.Status.Message = response.Response
 
 	return task, nil
 }
