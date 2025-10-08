@@ -172,12 +172,12 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 		Name:        stringPtr("Analysis Report"),
 		Description: stringPtr("A detailed analysis report based on your request, stored in MinIO cloud storage"),
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "file",
-				"file": map[string]any{
-					"uri":      url,
-					"mimeType": "text/markdown",
-					"name":     filename,
+			types.FilePart{
+				Kind: "file",
+				File: types.FileWithUri{
+					URI:      url,
+					MIMEType: stringPtr("text/markdown"),
+					Name:     stringPtr(filename),
 				},
 			},
 		},

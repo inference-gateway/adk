@@ -167,11 +167,13 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 		Name:        stringPtr("Analysis Report"),
 		Description: stringPtr("A detailed analysis report based on your request"),
 		Parts: []types.Part{
-			map[string]any{
-				"kind":     "file",
-				"filename": filename,
-				"uri":      url,
-				"mimeType": "text/markdown",
+			types.FilePart{
+				Kind: "file",
+				File: types.FileWithUri{
+					URI:      url,
+					MIMEType: stringPtr("text/markdown"),
+					Name:     stringPtr(filename),
+				},
 			},
 		},
 	}
