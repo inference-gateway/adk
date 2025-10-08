@@ -2,16 +2,19 @@ version = 1
 
 [install]
 go.pkg-path = "go"
-go.version = "^1.25"
+go.version = "1.25"
 
 golangci-lint.pkg-path = "golangci-lint"
-golangci-lint.version = "^2.5.0"
+golangci-lint.version = "2.5.0"
 
 prettier.pkg-path = "prettier"
-prettier.version = "^3.6.2"
+prettier.version = "3.6.2"
 
 claude-code.pkg-path = "claude-code"
-claude-code.version = "^2.0.1"
+claude-code.version = "2.0.8"
+
+gh.pkg-path = "gh"
+gh.version = "2.81.0"
 
 [hook]
 on-activate = """
