@@ -136,17 +136,13 @@ func NewIterationCompletedEvent(iteration int, taskID string, finalMessage *Mess
 }
 
 // NewMessageEvent creates a CloudEvent with a message payload and custom event type
-func NewMessageEvent(eventType, eventID string, message *Message, extensions map[string]any) cloudevents.Event {
+func NewMessageEvent(eventType, eventID string, message *Message) cloudevents.Event {
 	event := cloudevents.NewEvent()
 	event.SetID(eventID)
 	event.SetType(eventType)
 	event.SetSource("adk/agent")
 	event.SetTime(time.Now())
 	_ = event.SetData(cloudevents.ApplicationJSON, message)
-
-	for key, value := range extensions {
-		event.SetExtension(key, value)
-	}
 
 	return event
 }

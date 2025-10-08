@@ -78,21 +78,13 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 					}
 
-					interruptedTask := &types.Task{
-						ID:        fmt.Sprintf("interrupted-%d", iteration),
-						ContextID: fmt.Sprintf("streaming-task-%d", iteration),
-						Status:    types.TaskStatus{State: types.TaskStateWorking},
-					}
 					interruptMessage := types.NewStreamingStatusMessage(
 						fmt.Sprintf("task-interrupted-%d", iteration),
-						"interrupted",
-						map[string]any{
-							"reason": "context_cancelled",
-							"task":   interruptedTask,
-						},
+						string(types.TaskStateCanceled),
+						nil,
 					)
 					select {
-					case outputChan <- types.NewMessageEvent("adk.agent.task.interrupted", interruptMessage.MessageID, interruptMessage, nil):
+					case outputChan <- types.NewMessageEvent(types.EventTaskInterrupted, interruptMessage.MessageID, interruptMessage):
 					default:
 					}
 					return
@@ -103,14 +95,11 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 						errorMessage := types.NewStreamingStatusMessage(
 							fmt.Sprintf("streaming-error-%d", iteration),
-							"failed",
-							map[string]any{
-								"error":     streamErr.Error(),
-								"iteration": iteration,
-							},
+							string(types.TaskStateFailed),
+							nil,
 						)
 						select {
-						case outputChan <- types.NewMessageEvent("adk.agent.stream.failed", errorMessage.MessageID, errorMessage, nil):
+						case outputChan <- types.NewMessageEvent(types.EventStreamFailed, errorMessage.MessageID, errorMessage):
 						default:
 						}
 						return
@@ -280,123 +269,83 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 // executeToolCallsWithEvents executes tool calls and emits events, returning tool result messages
 func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- cloudevents.Event) []types.Message {
-	toolResultMessages := make([]types.Message, 0)
+	toolResultMessages := make([]types.Message, 0, len(toolCalls))
 
 	for _, toolCall := range toolCalls {
 		if toolCall.Function.Name == "" {
 			continue
 		}
 
-		startEvent := types.NewStreamingStatusMessage(
-			fmt.Sprintf("tool-start-%s", toolCall.Id),
-			"started",
-			map[string]any{
-				"tool_name": toolCall.Function.Name,
-			},
-		)
-
 		select {
-		case outputChan <- types.NewMessageEvent("adk.agent.tool.started", startEvent.MessageID, startEvent, nil):
+		case outputChan <- types.NewMessageEvent(types.EventToolStarted, fmt.Sprintf("tool-start-%s", toolCall.Id),
+			types.NewStreamingStatusMessage(fmt.Sprintf("tool-start-%s", toolCall.Id), string(types.TaskStateWorking), nil)):
 		case <-ctx.Done():
 			return toolResultMessages
 		}
 
 		var args map[string]any
-		var result string
-		var toolErr error
-
 		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 			a.logger.Error("failed to parse tool arguments", zap.String("tool", toolCall.Function.Name), zap.Error(err))
-			result = fmt.Sprintf("Error parsing tool arguments: %s", err.Error())
-			toolErr = err
-
-			failedEvent := types.NewStreamingStatusMessage(
-				fmt.Sprintf("tool-failed-%s", toolCall.Id),
-				"failed",
-				map[string]any{
-					"tool_name": toolCall.Function.Name,
-				},
-			)
 
 			select {
-			case outputChan <- types.NewMessageEvent("adk.agent.tool.failed", failedEvent.MessageID, failedEvent, nil):
+			case outputChan <- types.NewMessageEvent(types.EventToolFailed, fmt.Sprintf("tool-failed-%s", toolCall.Id),
+				types.NewStreamingStatusMessage(fmt.Sprintf("tool-failed-%s", toolCall.Id), string(types.TaskStateFailed), nil)):
 			case <-ctx.Done():
 			}
-		} else if toolCall.Function.Name == "input_required" {
-			a.logger.Debug("input_required tool called in streaming mode",
-				zap.String("tool_call_id", toolCall.Id),
-				zap.String("message", toolCall.Function.Arguments))
 
-			inputMessage := args["message"].(string)
-			inputRequiredMessage := types.NewInputRequiredMessage(toolCall.Id, inputMessage)
+			toolResultMessages = append(toolResultMessages, *types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, fmt.Sprintf("Error parsing tool arguments: %s", err.Error()), true))
+			continue
+		}
 
-			completedEvent := types.NewStreamingStatusMessage(
-				fmt.Sprintf("tool-completed-%s", toolCall.Id),
-				"completed",
-				map[string]any{
-					"tool_name": toolCall.Function.Name,
-				},
-			)
+		switch toolCall.Function.Name {
+		case types.ToolInputRequired:
+			a.logger.Debug("input_required tool called in streaming mode", zap.String("tool_call_id", toolCall.Id), zap.String("message", toolCall.Function.Arguments))
+			inputRequiredMessage := types.NewInputRequiredMessage(toolCall.Id, args["message"].(string))
 
 			select {
-			case outputChan <- types.NewMessageEvent("adk.agent.tool.completed", completedEvent.MessageID, completedEvent, nil):
+			case outputChan <- types.NewMessageEvent(types.EventToolCompleted, fmt.Sprintf("tool-completed-%s", toolCall.Id),
+				types.NewStreamingStatusMessage(fmt.Sprintf("tool-completed-%s", toolCall.Id), string(types.TaskStateCompleted), nil)):
 			case <-ctx.Done():
 				return toolResultMessages
 			}
 
 			select {
-			case outputChan <- types.NewMessageEvent("adk.agent.input.required", inputRequiredMessage.MessageID, inputRequiredMessage, nil):
+			case outputChan <- types.NewMessageEvent(types.EventInputRequired, inputRequiredMessage.MessageID, inputRequiredMessage):
 			case <-ctx.Done():
 			}
 
-			toolResultMessages = append(toolResultMessages, *inputRequiredMessage)
+			return append(toolResultMessages, *inputRequiredMessage)
 
-			return toolResultMessages
-		} else {
+		default:
+			result, toolErr := a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
 
-			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
 			if toolErr != nil {
 				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
 				result = fmt.Sprintf("Tool execution failed: %s", toolErr.Error())
 
-				failedEvent := types.NewStreamingStatusMessage(
-					fmt.Sprintf("tool-failed-%s", toolCall.Id),
-					"failed",
-					map[string]any{
-						"tool_name": toolCall.Function.Name,
-					},
-				)
-
 				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.tool.failed", failedEvent.MessageID, failedEvent, nil):
+				case outputChan <- types.NewMessageEvent(types.EventToolFailed, fmt.Sprintf("tool-failed-%s", toolCall.Id),
+					types.NewStreamingStatusMessage(fmt.Sprintf("tool-failed-%s", toolCall.Id), string(types.TaskStateFailed), nil)):
 				case <-ctx.Done():
 				}
 			} else {
-				completedEvent := types.NewStreamingStatusMessage(
-					fmt.Sprintf("tool-completed-%s", toolCall.Id),
-					"completed",
-					map[string]any{
-						"tool_name": toolCall.Function.Name,
-					},
-				)
-
 				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.tool.completed", completedEvent.MessageID, completedEvent, nil):
+				case outputChan <- types.NewMessageEvent(types.EventToolCompleted, fmt.Sprintf("tool-completed-%s", toolCall.Id),
+					types.NewStreamingStatusMessage(fmt.Sprintf("tool-completed-%s", toolCall.Id), string(types.TaskStateCompleted), nil)):
 				case <-ctx.Done():
 					return toolResultMessages
 				}
 			}
+
+			toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
+			select {
+			case outputChan <- types.NewMessageEvent(types.EventToolResult, toolResultMessage.MessageID, toolResultMessage):
+			case <-ctx.Done():
+				return toolResultMessages
+			}
+
+			toolResultMessages = append(toolResultMessages, *toolResultMessage)
 		}
-
-		toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
-
-		select {
-		case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
-		case <-ctx.Done():
-			return toolResultMessages
-		}
-
-		toolResultMessages = append(toolResultMessages, *toolResultMessage)
 	}
 
 	return toolResultMessages

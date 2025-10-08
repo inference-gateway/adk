@@ -54,3 +54,19 @@ const (
 	HealthStatusDegraded  = "degraded"
 	HealthStatusUnhealthy = "unhealthy"
 )
+
+// CloudEvent type constants for agent streaming operations
+const (
+	EventToolStarted     = "adk.agent.tool.started"
+	EventToolCompleted   = "adk.agent.tool.completed"
+	EventToolFailed      = "adk.agent.tool.failed"
+	EventToolResult      = "adk.agent.tool.result"
+	EventInputRequired   = "adk.agent.input.required"
+	EventTaskInterrupted = "adk.agent.task.interrupted"
+	EventStreamFailed    = "adk.agent.stream.failed"
+)
+
+// Tool name constants
+const (
+	ToolInputRequired = "input_required"
+)

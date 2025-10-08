@@ -1371,3 +1371,215 @@ func TestRunWithStream_MultipleIterations(t *testing.T) {
 	assert.Equal(t, 3, iterationCount, "Should complete 3 iterations (2 with tools, 1 final)")
 	assert.Equal(t, 3, callCount, "Should call LLM 3 times")
 }
+
+func TestRunWithStream_AllEventTypesEmitted(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+				{
+					Index: 0,
+					ID:    "call_success",
+					Type:  "function",
+					Function: struct {
+						Name      string `json:"name,omitempty"`
+						Arguments string `json:"arguments,omitempty"`
+					}{
+						Name:      "success_tool",
+						Arguments: `{"param":"value"}`,
+					},
+				},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	successTool := server.NewBasicTool(
+		"success_tool",
+		"Tool that succeeds",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"param": map[string]any{"type": "string"},
+			},
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return "success result", nil
+		},
+	)
+	toolBox.AddTool(successTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		WithMaxChatCompletion(1).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Execute tool"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	eventTypes := make(map[string]int)
+	for event := range eventChan {
+		eventTypes[event.Type()]++
+	}
+
+	assert.Greater(t, eventTypes[types.EventToolStarted], 0, "Should emit tool.started event")
+	assert.Greater(t, eventTypes[types.EventToolCompleted], 0, "Should emit tool.completed event")
+	assert.Greater(t, eventTypes[types.EventToolResult], 0, "Should emit tool.result event")
+	assert.Greater(t, eventTypes["adk.agent.iteration.completed"], 0, "Should emit iteration.completed event")
+}
+
+func TestRunWithStream_ToolFailedEventEmitted(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+				{
+					Index: 0,
+					ID:    "call_fail",
+					Type:  "function",
+					Function: struct {
+						Name      string `json:"name,omitempty"`
+						Arguments string `json:"arguments,omitempty"`
+					}{
+						Name:      "fail_tool",
+						Arguments: `{"param":"value"}`,
+					},
+				},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	failTool := server.NewBasicTool(
+		"fail_tool",
+		"Tool that fails",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"param": map[string]any{"type": "string"},
+			},
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return "", fmt.Errorf("intentional failure")
+		},
+	)
+	toolBox.AddTool(failTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		WithMaxChatCompletion(1).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Execute failing tool"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	eventTypes := make(map[string]int)
+	for event := range eventChan {
+		eventTypes[event.Type()]++
+	}
+
+	assert.Greater(t, eventTypes[types.EventToolStarted], 0, "Should emit tool.started event")
+	assert.Greater(t, eventTypes[types.EventToolFailed], 0, "Should emit tool.failed event")
+	assert.Greater(t, eventTypes[types.EventToolResult], 0, "Should emit tool.result event even on failure")
+}
+
+func TestRunWithStream_StreamFailedEventEmitted(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			errorChan <- fmt.Errorf("streaming connection error")
+		}()
+
+		return responseChan, errorChan
+	}
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Trigger error"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	eventTypes := make(map[string]int)
+	for event := range eventChan {
+		eventTypes[event.Type()]++
+	}
+
+	assert.Greater(t, eventTypes[types.EventStreamFailed], 0, "Should emit stream.failed event on error")
+}

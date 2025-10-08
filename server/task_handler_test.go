@@ -258,7 +258,7 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 		},
 	}
 
-	event := types.NewMessageEvent("adk.agent.input.required", "stream-input-req-123", inputMessage, nil)
+	event := types.NewMessageEvent("adk.agent.input.required", "stream-input-req-123", inputMessage)
 	streamChan <- event
 	close(streamChan)
 

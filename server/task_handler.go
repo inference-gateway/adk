@@ -555,6 +555,24 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 				eventsChan <- &TaskInterruptedStreamEvent{Task: task, Reason: "context_cancelled"}
 				return
 			}
+
+			if event.Type() == types.EventToolStarted {
+				sth.logger.Debug("tool execution started",
+					zap.String("task_id", task.ID),
+					zap.String("event_id", event.ID()))
+			}
+
+			if event.Type() == types.EventToolCompleted {
+				sth.logger.Debug("tool execution completed",
+					zap.String("task_id", task.ID),
+					zap.String("event_id", event.ID()))
+			}
+
+			if event.Type() == types.EventToolFailed {
+				sth.logger.Debug("tool execution failed",
+					zap.String("task_id", task.ID),
+					zap.String("event_id", event.ID()))
+			}
 		}
 
 		task.Status.State = types.TaskStateCompleted
