@@ -36,37 +36,50 @@ func (h *AITaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 		return nil, fmt.Errorf("no AI agent configured")
 	}
 
-	userInput := ""
-	if message != nil {
-		for _, part := range message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					userInput = text
-					break
-				}
-			}
-		}
-	}
-
-	if userInput == "" {
-		userInput = "Hello! How can I help you?"
-	}
-
 	taskCtx := context.WithValue(ctx, server.TaskContextKey, task)
 
-	response, err := h.agent.Run(taskCtx, []types.Message{*message})
+	streamChan, err := h.agent.RunWithStream(taskCtx, []types.Message{*message})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AI response: %w", err)
 	}
 
-	if response.Response != nil && response.Response.Kind == "input_required" {
-		task.Status.State = types.TaskStateInputRequired
-		task.Status.Message = response.Response
-		return task, nil
+	var fullResponse string
+
+	// Process all streaming events to completion
+	for cloudEvent := range streamChan {
+		switch cloudEvent.Type() {
+		case "adk.agent.delta":
+			// Extract delta from cloud event
+			var deltaMsg types.Message
+			if err := cloudEvent.DataAs(&deltaMsg); err == nil {
+				for _, part := range deltaMsg.Parts {
+					if partMap, ok := part.(map[string]any); ok {
+						if text, ok := partMap["text"].(string); ok {
+							fullResponse += text
+						}
+					}
+				}
+			}
+		case "adk.agent.iteration.completed":
+			// Task completion event from agent
+			h.logger.Info("AI agent completed iteration")
+		}
+	}
+
+	// Create final response message
+	responseMessage := types.Message{
+		Role: "assistant",
+		Parts: []types.Part{
+			map[string]any{
+				"kind": "text",
+				"text": fullResponse,
+			},
+		},
 	}
 
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = response.Response
+	task.Status.Message = &responseMessage
+	task.History = append(task.History, responseMessage)
 
 	return task, nil
 }
@@ -186,33 +199,26 @@ func main() {
 	)
 	toolBox.AddTool(timeTool)
 
-	// Create AI agent with LLM client (if provider is configured)
-	var agent server.OpenAICompatibleAgent
-	if cfg.A2A.AgentConfig.Provider != "" && cfg.A2A.AgentConfig.Model != "" {
-		llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
-		if err != nil {
-			logger.Fatal("failed to create LLM client", zap.Error(err))
-		}
-
-		agent, err = server.NewAgentBuilder(logger).
-			WithConfig(&cfg.A2A.AgentConfig).
-			WithLLMClient(llmClient).
-			WithSystemPrompt("You are a helpful AI assistant with access to weather and time tools. Be concise and friendly in your responses.").
-			WithMaxChatCompletion(10).
-			WithToolBox(toolBox).
-			Build()
-		if err != nil {
-			logger.Fatal("failed to create AI agent", zap.Error(err))
-		}
-	} else {
-		logger.Warn("no LLM provider configured - agent will return errors for AI tasks")
+	// Create AI agent with LLM client
+	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
+	if err != nil {
+		logger.Fatal("failed to create LLM client", zap.Error(err))
 	}
 
-	// Create task handler
+	agent, err := server.NewAgentBuilder(logger).
+		WithConfig(&cfg.A2A.AgentConfig).
+		WithLLMClient(llmClient).
+		WithSystemPrompt("You are a helpful AI assistant with access to weather and time tools. Be concise and friendly in your responses.").
+		WithMaxChatCompletion(10).
+		WithToolBox(toolBox).
+		Build()
+	if err != nil {
+		logger.Fatal("failed to create AI agent", zap.Error(err))
+	}
+
+	// Create task handler with AI agent
 	taskHandler := NewAITaskHandler(logger)
-	if agent != nil {
-		taskHandler.SetAgent(agent)
-	}
+	taskHandler.SetAgent(agent)
 
 	// Build and start server
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).

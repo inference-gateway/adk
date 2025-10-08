@@ -2,6 +2,8 @@ module github.com/inference-gateway/adk/examples/default-handlers/server
 
 go 1.25
 
+replace github.com/inference-gateway/adk => ../../..
+
 require (
 	github.com/inference-gateway/adk v0.13.1
 	github.com/sethvargo/go-envconfig v1.3.0

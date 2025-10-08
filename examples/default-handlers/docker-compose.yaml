@@ -17,7 +17,8 @@ services:
 
   server:
     build:
-      context: ./server
+      context: ../..
+      dockerfile: examples/default-handlers/server/Dockerfile
       args:
         AGENT_NAME: default-handlers-agent
         AGENT_DESCRIPTION: An A2A server using default handlers for task processing
@@ -40,7 +41,8 @@ services:
 
   client:
     build:
-      context: ./client
+      context: ../..
+      dockerfile: examples/default-handlers/client/Dockerfile
     depends_on:
       - server
     environment:

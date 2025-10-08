@@ -38,19 +38,48 @@ func (h *AIStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Tas
 
 	taskCtx := context.WithValue(ctx, server.TaskContextKey, task)
 
-	response, err := h.agent.Run(taskCtx, []types.Message{*message})
+	streamChan, err := h.agent.RunWithStream(taskCtx, []types.Message{*message})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AI response: %w", err)
 	}
 
-	if response.Response != nil && response.Response.Kind == "input_required" {
-		task.Status.State = types.TaskStateInputRequired
-		task.Status.Message = response.Response
-		return task, nil
+	var fullResponse string
+
+	// Process all streaming events to completion
+	for cloudEvent := range streamChan {
+		switch cloudEvent.Type() {
+		case "adk.agent.delta":
+			// Extract delta from cloud event
+			var deltaMsg types.Message
+			if err := cloudEvent.DataAs(&deltaMsg); err == nil {
+				for _, part := range deltaMsg.Parts {
+					if partMap, ok := part.(map[string]any); ok {
+						if text, ok := partMap["text"].(string); ok {
+							fullResponse += text
+						}
+					}
+				}
+			}
+		case "adk.agent.iteration.completed":
+			// Task completion event from agent
+			h.logger.Info("AI agent completed iteration")
+		}
+	}
+
+	// Create final response message
+	responseMessage := types.Message{
+		Role: "assistant",
+		Parts: []types.Part{
+			map[string]any{
+				"kind": "text",
+				"text": fullResponse,
+			},
+		},
 	}
 
 	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = response.Response
+	task.Status.Message = &responseMessage
+	task.History = append(task.History, responseMessage)
 
 	return task, nil
 }

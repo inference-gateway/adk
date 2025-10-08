@@ -2,6 +2,8 @@ module github.com/inference-gateway/adk/examples/minimal/server
 
 go 1.25
 
+replace github.com/inference-gateway/adk => ../../..
+
 require (
 	github.com/google/uuid v1.6.0
 	github.com/inference-gateway/adk v0.13.1

@@ -16,10 +16,10 @@ RUN go mod download
 COPY . .
 
 # Build the application with ldflags
-RUN cd examples/artifacts-filesystem/server && \
+RUN cd /build/examples/artifacts-filesystem/server && \
     CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'" \
-    -a -installsuffix cgo -o main .
+    -a -installsuffix cgo -o server .
 
 FROM alpine:latest
 
@@ -29,7 +29,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 # Copy the binary from builder
-COPY --from=builder /build/examples/artifacts-filesystem/server/main .
+COPY --from=builder /build/examples/artifacts-filesystem/server/server .
 
 # Create artifacts directory
 RUN mkdir -p /app/artifacts
@@ -38,4 +38,4 @@ RUN mkdir -p /app/artifacts
 EXPOSE 8080 8081
 
 # Run the application
-CMD ["./main"]
+CMD ["./server"]

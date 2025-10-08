@@ -20,7 +20,8 @@ services:
 
   server:
     build:
-      context: ./server
+      context: ../..
+      dockerfile: examples/ai-powered-streaming/server/Dockerfile
       args:
         AGENT_NAME: ai-powered-agent
         AGENT_DESCRIPTION: An AI-powered A2A server with weather and time tools
@@ -42,7 +43,8 @@ services:
 
   client:
     build:
-      context: ./client
+      context: ../..
+      dockerfile: examples/ai-powered-streaming/client/Dockerfile
     depends_on:
       - server
     environment:

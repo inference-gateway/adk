@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN cd examples/artifacts-filesystem/client && \
+RUN cd /build/examples/artifacts-filesystem/client && \
     CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-w -s" \
     -a -installsuffix cgo -o client .

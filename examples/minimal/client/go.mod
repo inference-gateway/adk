@@ -2,6 +2,8 @@ module github.com/inference-gateway/adk/examples/minimal/client
 
 go 1.25
 
+replace github.com/inference-gateway/adk => ../../..
+
 require (
 	github.com/inference-gateway/adk v0.13.1
 	go.uber.org/zap v1.27.0

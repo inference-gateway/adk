@@ -14,7 +14,11 @@ ARG AGENT_NAME="ai-powered-agent"
 ARG AGENT_DESCRIPTION="An AI-powered A2A server with weather and time tools - supporting streaming"
 ARG AGENT_VERSION="0.1.0"
 
-RUN go build -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" -o server .
+# Build the application with ldflags
+RUN cd /app/examples/ai-powered-streaming/server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'" \
+    -a -installsuffix cgo -o server .
 
 FROM alpine:latest
 
@@ -22,7 +26,7 @@ RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
-COPY --from=builder /app/server .
+COPY --from=builder /app/examples/ai-powered-streaming/server/server .
 
 EXPOSE 8080
 
