@@ -21,18 +21,16 @@ This example demonstrates the simplest queue storage configuration using in-memo
 ```
 in-memory/
 ├── client/
-│   ├── main.go       # A2A client submitting tasks
-│   ├── go.mod        # Client dependencies
-│   └── Dockerfile    # Client container
+│   ├── main.go         # A2A client submitting tasks
+│   └── go.mod          # Client dependencies
 ├── server/
-│   ├── main.go       # A2A server with in-memory storage
+│   ├── main.go         # A2A server with in-memory storage
 │   ├── config/
-│   │   └── config.go # Configuration structure
-│   ├── go.mod        # Server dependencies
-│   └── Dockerfile    # Server container
-├── docker-compose.yaml # Docker setup
-├── .env.example      # Environment variables
-└── README.md         # This file
+│   │   └── config.go   # Configuration structure
+│   └── go.mod          # Server dependencies
+├── docker-compose.yaml # Docker setup, uses ../../Dockerfile.server and ../../Dockerfile.client
+├── .env.example        # Environment variables
+└── README.md           # This file
 ```
 
 ## Running the Example

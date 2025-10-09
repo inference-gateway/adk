@@ -14,12 +14,10 @@ This example demonstrates real-time streaming responses from an A2A server, perf
 ```
 streaming/
 ├── client/
-│   ├── main.go       # Streaming client
-│   └── Dockerfile
+│   └── main.go          # Streaming client
 ├── server/
-│   ├── main.go       # Streaming-enabled server
-│   └── Dockerfile
-├── docker-compose.yaml
+│   └── main.go          # Streaming-enabled server
+├── docker-compose.yaml  # Uses ../Dockerfile.server and ../Dockerfile.client
 └── README.md
 ```
 

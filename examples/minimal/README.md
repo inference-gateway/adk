@@ -13,14 +13,12 @@ This example demonstrates the most basic A2A server and client setup without any
 ```
 minimal/
 ├── client/
-│   ├── main.go       # Simple A2A client
-│   └── Dockerfile    # Client container
+│   └── main.go          # Simple A2A client
 ├── server/
-│   ├── main.go       # Basic A2A server with echo handler
-│   ├── config/
-│   │   └── config.go # Configuration
-│   └── Dockerfile    # Server container
-├── docker-compose.yaml
+│   ├── main.go          # Basic A2A server with echo handler
+│   └── config/
+│       └── config.go    # Configuration
+├── docker-compose.yaml  # Uses ../Dockerfile.server and ../Dockerfile.client
 └── README.md
 ```
 

@@ -24,18 +24,16 @@ This example demonstrates Redis-based queue storage for production environments.
 ```
 redis/
 ├── client/
-│   ├── main.go       # A2A client submitting tasks
-│   ├── go.mod        # Client dependencies
-│   └── Dockerfile    # Client container
+│   ├── main.go         # A2A client submitting tasks
+│   └── go.mod          # Client dependencies
 ├── server/
-│   ├── main.go       # A2A server with Redis storage
+│   ├── main.go         # A2A server with Redis storage
 │   ├── config/
-│   │   └── config.go # Configuration structure
-│   ├── go.mod        # Server dependencies
-│   └── Dockerfile    # Server container
-├── docker-compose.yaml # Docker setup with Redis
-├── .env.example      # Environment variables
-└── README.md         # This file
+│   │   └── config.go   # Configuration structure
+│   └── go.mod          # Server dependencies
+├── docker-compose.yaml # Docker setup with Redis, uses ../../Dockerfile.server and ../../Dockerfile.client
+├── .env.example        # Environment variables
+└── README.md           # This file
 ```
 
 ## Running the Example

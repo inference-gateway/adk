@@ -280,14 +280,14 @@ artifacts-with-default-handlers/
 │   ├── main.go              # Server entry point
 │   ├── config/
 │   │   └── config.go        # Configuration management
-│   ├── Dockerfile           # Server container definition
 │   ├── go.mod               # Go dependencies
 │   └── go.sum               # Dependency checksums
 └── client/
     ├── main.go              # Client entry point
-    ├── Dockerfile           # Client container definition
     ├── go.mod               # Go dependencies
     └── go.sum               # Dependency checksums
+
+Note: Uses ../Dockerfile.server and ../Dockerfile.client for containers
 ```
 
 ### Docker Services

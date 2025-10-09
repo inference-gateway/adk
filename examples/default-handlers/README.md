@@ -152,12 +152,12 @@ default-handlers/
 ├── server/
 │   ├── main.go
 │   ├── config/config.go
-│   ├── Dockerfile
 │   ├── go.mod
 │   └── go.sum
 └── client/
     ├── main.go
-    ├── Dockerfile
     ├── go.mod
     └── go.sum
+
+Note: Uses ../Dockerfile.server and ../Dockerfile.client for containers
 ```

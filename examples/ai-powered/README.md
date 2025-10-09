@@ -14,15 +14,13 @@ This example demonstrates an A2A server with AI/LLM integration and built-in too
 ```
 ai-powered/
 ├── client/
-│   ├── main.go       # A2A client sending AI prompts
-│   └── Dockerfile    # Client container
+│   └── main.go         # A2A client sending AI prompts
 ├── server/
-│   ├── main.go       # AI-powered A2A server with tools
-│   ├── config/
-│   │   └── config.go # Configuration
-│   └── Dockerfile    # Server container with build-time metadata
-├── docker-compose.yaml # Includes Inference Gateway
-├── .env.example      # All provider API keys
+│   ├── main.go         # AI-powered A2A server with tools
+│   └── config/
+│       └── config.go   # Configuration
+├── docker-compose.yaml # Includes Inference Gateway, uses ../Dockerfile.server and ../Dockerfile.client
+├── .env.example        # All provider API keys
 └── README.md
 ```
 

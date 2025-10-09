@@ -18,18 +18,18 @@ tls-example/
 │   ├── main.go           # TLS-enabled A2A server
 │   ├── config/
 │   │   └── config.go     # Server configuration
-│   ├── go.mod            # Server dependencies
-│   └── Dockerfile        # Server container with TLS support
+│   └── go.mod            # Server dependencies
 ├── client/
 │   ├── main.go           # TLS-aware A2A client
 │   ├── config/
 │   │   └── config.go     # Client configuration
-│   ├── go.mod            # Client dependencies
-│   └── Dockerfile        # Client container
+│   └── go.mod            # Client dependencies
 ├── certs/
 │   └── generate-certs.sh # Self-signed certificate generation script
 ├── docker-compose.yaml   # TLS orchestration with cert generation
 └── README.md
+
+Note: Uses ../Dockerfile.server and ../Dockerfile.client for containers
 ```
 
 ## Quick Start
