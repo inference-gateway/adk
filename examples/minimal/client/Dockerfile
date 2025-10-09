@@ -10,6 +10,12 @@ RUN go mod download
 COPY . .
 
 # Build the client
+RUN cd /app/examples/minimal/client && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -a -installsuffix cgo -o client .
+
+# Build the client
 RUN go build -o client .
 
 FROM alpine:latest
@@ -18,6 +24,6 @@ RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
 
-COPY --from=builder /app/client .
+COPY --from=builder /app/examples/minimal/client/client .
 
 CMD ["./client"]
