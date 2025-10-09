@@ -299,6 +299,15 @@ The `docker-compose.yaml` includes these services:
 - **client**: Example client demonstrating artifact downloads
 - **a2a-debugger**: Interactive debugging tool for A2A protocol (manual profile)
 
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list
+```
+
 ## Testing the Artifact Extraction
 
 The example demonstrates how artifacts created by tools are automatically:

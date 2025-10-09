@@ -2,6 +2,17 @@
 
 This example demonstrates the most basic A2A server and client setup without any AI integration.
 
+## Table of Contents
+
+- [What This Example Shows](#what-this-example-shows)
+- [Directory Structure](#directory-structure)
+- [Running the Example](#running-the-example)
+- [Server Configuration](#server-configuration)
+- [Client Configuration](#client-configuration)
+- [Understanding the Code](#understanding-the-code)
+- [Troubleshooting](#troubleshooting)
+- [Next Steps](#next-steps)
+
 ## What This Example Shows
 
 - Basic A2A server setup with mock responses
@@ -125,6 +136,15 @@ a2aClient := client.NewClient(serverURL)
 
 // Send task
 response, err := a2aClient.SendTask(ctx, message)
+```
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list
 ```
 
 ## Next Steps

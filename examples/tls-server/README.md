@@ -2,6 +2,16 @@
 
 This example demonstrates how to run an A2A server with TLS encryption, providing secure HTTPS communication between client and server using self-signed certificates.
 
+## Table of Contents
+
+- [What This Example Shows](#what-this-example-shows)
+- [Directory Structure](#directory-structure)
+- [Quick Start](#quick-start)
+- [TLS Configuration](#tls-configuration)
+- [Certificate Generation](#certificate-generation)
+- [Troubleshooting](#troubleshooting)
+- [Next Steps](#next-steps)
+
 ## What This Example Shows
 
 - A2A server configured with TLS/SSL encryption
@@ -312,6 +322,15 @@ docker-compose up --build
 - Check the `ai-powered` example for AI integration
 - Learn about streaming with the `streaming` example
 - Review production deployment patterns in the main documentation
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server (note: uses --skip-tls-verify for self-signed certs)
+docker compose run --rm a2a-debugger tasks list
+```
 
 ## Related Examples
 

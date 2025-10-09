@@ -2,6 +2,16 @@
 
 This example demonstrates an A2A server using the **default handlers** provided by the ADK. The server uses `WithDefaultTaskHandlers()` which provides built-in task processing capabilities without requiring custom handler implementations.
 
+## Table of Contents
+
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Running the Example](#running-the-example)
+- [AI Integration](#ai-integration)
+- [How Default Handlers Work](#how-default-handlers-work)
+- [Files Structure](#files-structure)
+- [Troubleshooting](#troubleshooting)
+
 ## Key Features
 
 - **Default Task Handlers**: Uses built-in handlers for both background and streaming tasks - no need to implement agent logic yourself
@@ -160,4 +170,13 @@ default-handlers/
     └── go.sum
 
 Note: Uses ../Dockerfile.server and ../Dockerfile.client for containers
+```
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list
 ```

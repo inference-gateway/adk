@@ -36,6 +36,11 @@ tasks:
     desc: 'Run Go static analysis and linting'
     cmds:
       - golangci-lint run
+  
+  lint:examples:
+    desc: 'Run markdownlint on all examples'
+    cmds:
+      - markdownlint-cli2 --fix examples/**.md
 
   test:
     desc: 'Run tests'

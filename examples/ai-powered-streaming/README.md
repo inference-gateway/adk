@@ -4,6 +4,20 @@
 
 This example demonstrates the **combination of AI/LLM integration with real-time streaming capabilities**. It shows how to build an A2A server that can process natural language requests using AI models while streaming responses in real-time for an interactive, chat-like experience.
 
+## Table of Contents
+
+- [Purpose](#purpose)
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Running the Example](#running-the-example)
+- [Configuration](#configuration)
+- [Project Structure](#project-structure)
+- [How It Works](#how-it-works)
+- [Example Interaction](#example-interaction)
+- [Supported AI Providers](#supported-ai-providers)
+- [Troubleshooting](#troubleshooting)
+- [Next Steps](#next-steps)
+
 **Key Benefits:**
 
 - **Real-time AI Interaction**: Stream AI responses as they're generated for immediate user feedback
@@ -233,6 +247,15 @@ ai-powered-streaming/
 │   └── main.go                 # AI streaming server implementation
 └── client/
     └── main.go                 # Streaming client with AI demos
+```
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list
 ```
 
 ## Next Steps

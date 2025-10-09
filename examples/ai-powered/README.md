@@ -2,6 +2,18 @@
 
 This example demonstrates an A2A server with AI/LLM integration and built-in tools for weather and time queries.
 
+## Table of Contents
+
+- [What This Example Shows](#what-this-example-shows)
+- [Directory Structure](#directory-structure)
+- [Running the Example](#running-the-example)
+- [Server Configuration](#server-configuration)
+- [Supported Providers](#supported-providers)
+- [Built-in Tools](#built-in-tools)
+- [Understanding the Code](#understanding-the-code)
+- [Troubleshooting](#troubleshooting)
+- [Next Steps](#next-steps)
+
 ## What This Example Shows
 
 - A2A server with AI agent integration using multiple LLM providers
@@ -159,6 +171,15 @@ Agent metadata is injected via LD flags at build time instead of being hardcoded
 
 ```dockerfile
 RUN go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}" -o server .
+```
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list
 ```
 
 ## Next Steps

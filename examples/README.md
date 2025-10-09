@@ -1,6 +1,7 @@
 # A2A ADK Examples
 
-This directory contains scenario-based examples demonstrating different capabilities of the A2A Agent Development Kit (ADK).
+This directory contains scenario-based examples demonstrating different
+capabilities of the A2A Agent Development Kit (ADK).
 
 ## Table of Contents
 
@@ -19,7 +20,7 @@ Each example is a self-contained scenario with:
 - **Configuration**: Environment-based config
 - **README**: Detailed documentation and usage instructions
 
-```
+```text
 examples/
 ├── minimal/              # Basic server/client without AI (echo responses)
 ├── default-handlers/     # Using built-in default task handlers
@@ -129,7 +130,8 @@ Demonstrates artifact creation and download using MinIO (S3-compatible) storage.
 
 #### `queue-storage/`
 
-Demonstrates different queue storage backends for task management and horizontal scaling.
+Demonstrates different queue storage backends for task management and horizontal
+scaling.
 
 - **In-Memory**: Simple development setup with in-memory storage
 - **Redis**: Enterprise-ready Redis-based queue storage
@@ -184,6 +186,9 @@ See each example's README for specific configuration details.
 
 ---
 
-For detailed setup instructions, configuration options, and troubleshooting, see each example's individual README file.
+For detailed setup instructions, configuration options, and troubleshooting, see
+each example's individual README file.
 
-For more information about the A2A protocol and framework, see the main [README](../README.md) or refer to the [official documentation](https://google.github.io/adk-docs/).
+For more information about the A2A protocol and framework, see the main
+[README](../README.md) or refer to the
+[official documentation](https://google.github.io/adk-docs/).

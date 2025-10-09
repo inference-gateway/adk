@@ -2,6 +2,17 @@
 
 This example demonstrates the simplest queue storage configuration using in-memory storage. This is the default storage backend and is perfect for development, testing, and small deployments where persistence is not required.
 
+## Table of Contents
+
+- [What This Example Shows](#what-this-example-shows)
+- [Features](#features)
+- [Directory Structure](#directory-structure)
+- [Running the Example](#running-the-example)
+- [Configuration](#configuration)
+- [How It Works](#how-it-works)
+- [Next Steps](#next-steps)
+- [Troubleshooting](#troubleshooting)
+
 ## What This Example Shows
 
 - A2A server with in-memory queue storage (default configuration)
@@ -138,6 +149,13 @@ INFO: Task status: completed
 - Check the main ADK documentation for advanced configuration options
 
 ## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list
+```
 
 ### Common Issues
 
