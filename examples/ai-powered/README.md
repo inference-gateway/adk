@@ -80,7 +80,7 @@ This will:
 cd server
 export A2A_AGENT_CLIENT_PROVIDER=openai
 export A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
-export A2A_AGENT_CLIENT_BASE_URL=https://api.openai.com
+export A2A_AGENT_CLIENT_BASE_URL=http://localhost:8080/v1
 go run main.go
 ```
 
