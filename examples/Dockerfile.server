@@ -36,8 +36,12 @@ FROM alpine:latest
 ARG EXAMPLE_PATH
 ARG COMPONENT
 ENV COMPONENT=${COMPONENT}
-RUN apk --no-cache add curl ca-certificates
+RUN apk --no-cache add curl ca-certificates && \
+    addgroup -g 1000 a2a && \
+    adduser -D -u 1000 -G a2a agent
 WORKDIR /app
 COPY --from=builder /build/${EXAMPLE_PATH}/${COMPONENT}/${COMPONENT} .
+RUN chown -R agent:a2a /app
+USER agent
 EXPOSE 8080 8081 8443
 ENTRYPOINT ["/bin/sh", "-c", "./${COMPONENT}"]
