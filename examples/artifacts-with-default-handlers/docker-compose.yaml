@@ -3,6 +3,8 @@ services:
   gateway:
     image: ghcr.io/inference-gateway/inference-gateway:latest
     pull_policy: always
+    ports:
+      - 8080:8080
     environment:
       ENVIRONMENT: ${ENVIRONMENT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
