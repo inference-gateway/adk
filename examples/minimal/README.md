@@ -144,7 +144,7 @@ response, err := a2aClient.SendTask(ctx, message)
 
 ```bash
 # List tasks and debug the A2A server
-docker compose run --rm a2a-debugger tasks list
+docker compose run --rm a2a-debugger tasks list --include-history
 ```
 
 ## Next Steps

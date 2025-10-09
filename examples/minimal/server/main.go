@@ -53,6 +53,8 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 	responseMessage := types.Message{
 		Kind:      "message",
 		MessageID: uuid.New().String(),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
 			map[string]any{
