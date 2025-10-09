@@ -23,6 +23,17 @@ services:
       A2A_TASK_RETENTION_CLEANUP_INTERVAL: 5m
       A2A_CAPABILITIES_STREAMING: true
       A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:8080/health
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - queue-demo-network
 
@@ -35,10 +46,10 @@ services:
         EXAMPLE_PATH: examples/queue-storage/in-memory
         COMPONENT: client
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       SERVER_URL: http://server:8080
-    command: sh -c "sleep 5 && /app/client"
     networks:
       - queue-demo-network
 
