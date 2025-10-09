@@ -75,6 +75,19 @@ services:
       - tls-network
     restart: "no"
 
+  a2a-debugger:
+    image: ghcr.io/inference-gateway/a2a-debugger:latest
+    pull_policy: always
+    entrypoint:
+      - /a2a
+      - --server-url
+      - https://tls-server:8443
+      - --skip-tls-verify
+    networks:
+      - tls-network
+    profiles:
+      - manual
+
 networks:
   tls-network:
     driver: bridge

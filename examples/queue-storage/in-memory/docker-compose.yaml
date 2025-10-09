@@ -42,6 +42,18 @@ services:
     networks:
       - queue-demo-network
 
+  a2a-debugger:
+    image: ghcr.io/inference-gateway/a2a-debugger:latest
+    pull_policy: always
+    entrypoint:
+      - /a2a
+      - --server-url
+      - http://server:8080
+    networks:
+      - queue-demo-network
+    profiles:
+      - manual
+
 networks:
   queue-demo-network:
     driver: bridge
