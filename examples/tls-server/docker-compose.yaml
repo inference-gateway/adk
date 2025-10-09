@@ -22,11 +22,14 @@ services:
   tls-server:
     build:
       context: ../..
-      dockerfile: examples/tls-server/server/Dockerfile
+      dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: "tls-server"
         AGENT_DESCRIPTION: "TLS-enabled A2A server demonstrating secure communication"
         AGENT_VERSION: "0.1.0"
+        LD_FLAGS: "-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'"
+        EXAMPLE_PATH: examples/tls-server
+        COMPONENT: server
     ports:
       - "8443:8443"
     environment:
@@ -55,7 +58,11 @@ services:
   tls-client:
     build:
       context: ../..
-      dockerfile: examples/tls-server/client/Dockerfile
+      dockerfile: examples/Dockerfile.client
+      args:
+        LD_FLAGS: "-w -s"
+        EXAMPLE_PATH: examples/tls-server
+        COMPONENT: client
     environment:
       ENVIRONMENT: development
       A2A_SERVER_URL: "https://tls-server:8443"

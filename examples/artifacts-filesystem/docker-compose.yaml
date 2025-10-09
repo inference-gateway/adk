@@ -3,11 +3,14 @@ services:
   server:
     build:
       context: ../..
-      dockerfile: examples/artifacts-filesystem/server/Dockerfile
+      dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: artifacts-filesystem-agent
         AGENT_DESCRIPTION: An agent that creates and serves artifacts using filesystem storage
         AGENT_VERSION: 0.1.0
+        LD_FLAGS: "-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'"
+        EXAMPLE_PATH: examples/artifacts-filesystem
+        COMPONENT: server
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -33,7 +36,11 @@ services:
   client:
     build:
       context: ../..
-      dockerfile: examples/artifacts-filesystem/client/Dockerfile
+      dockerfile: examples/Dockerfile.client
+      args:
+        LD_FLAGS: "-w -s"
+        EXAMPLE_PATH: examples/artifacts-filesystem
+        COMPONENT: client
     depends_on:
       - server
     environment:

@@ -21,11 +21,14 @@ services:
   server:
     build:
       context: ../..
-      dockerfile: examples/ai-powered-streaming/server/Dockerfile
+      dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: ai-powered-agent
         AGENT_DESCRIPTION: An AI-powered A2A server with weather and time tools
         AGENT_VERSION: 0.1.0
+        LD_FLAGS: "-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'"
+        EXAMPLE_PATH: examples/ai-powered-streaming
+        COMPONENT: server
     depends_on:
       - inference-gateway
     environment:
@@ -44,7 +47,11 @@ services:
   client:
     build:
       context: ../..
-      dockerfile: examples/ai-powered-streaming/client/Dockerfile
+      dockerfile: examples/Dockerfile.client
+      args:
+        LD_FLAGS: "-w -s"
+        EXAMPLE_PATH: examples/ai-powered-streaming
+        COMPONENT: client
     depends_on:
       - server
     environment:

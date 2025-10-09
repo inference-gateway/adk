@@ -18,7 +18,11 @@ services:
   server:
     build:
       context: ../..
-      dockerfile: examples/artifacts-with-default-handlers/server/Dockerfile
+      dockerfile: examples/Dockerfile.server
+      args:
+        LD_FLAGS: "-w -s"
+        EXAMPLE_PATH: examples/artifacts-with-default-handlers
+        COMPONENT: server
     volumes:
       - ./server/artifacts:/app/artifacts
     environment:
@@ -48,7 +52,11 @@ services:
   client:
     build:
       context: ../..
-      dockerfile: examples/artifacts-with-default-handlers/client/Dockerfile
+      dockerfile: examples/Dockerfile.client
+      args:
+        LD_FLAGS: "-w -s"
+        EXAMPLE_PATH: examples/artifacts-with-default-handlers
+        COMPONENT: client
     volumes:
       - ./client/downloads:/app/downloads
       - ./client/uploads:/app/uploads

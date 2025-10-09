@@ -1,0 +1,43 @@
+ARG AGENT_NAME=""
+ARG AGENT_DESCRIPTION=""
+ARG AGENT_VERSION=""
+ARG LD_FLAGS=""
+ARG EXAMPLE_PATH=""
+ARG COMPONENT="server"
+
+FROM golang:1.25-alpine AS builder
+
+ARG AGENT_NAME
+ARG AGENT_DESCRIPTION
+ARG AGENT_VERSION
+ARG LD_FLAGS
+ARG EXAMPLE_PATH
+ARG COMPONENT
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application with ldflags
+RUN cd /build/${EXAMPLE_PATH}/${COMPONENT} && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="${LD_FLAGS}" \
+    -a -installsuffix cgo -o $COMPONENT .
+
+# Copy the binary to the final stage
+FROM alpine:latest
+ARG EXAMPLE_PATH
+ARG COMPONENT
+ENV COMPONENT=${COMPONENT}
+RUN apk --no-cache add ca-certificates
+WORKDIR /app
+COPY --from=builder /build/${EXAMPLE_PATH}/${COMPONENT}/${COMPONENT} .
+EXPOSE 8080 8081 8443
+ENTRYPOINT ["/bin/sh", "-c", "./${COMPONENT}"]
