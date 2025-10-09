@@ -203,6 +203,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 			Kind:      "message",
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      "assistant",
+			TaskID:    &task.ID,
+			ContextID: &task.ContextID,
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "text",
@@ -264,6 +266,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 					Kind:      "message",
 					MessageID: fmt.Sprintf("error-%s", task.ID),
 					Role:      "assistant",
+					TaskID:    &task.ID,
+					ContextID: &task.ContextID,
 					Parts: []types.Part{
 						map[string]any{
 							"kind": "text",
@@ -285,6 +289,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 				Kind:      "message",
 				MessageID: fmt.Sprintf("interrupted-%s", task.ID),
 				Role:      "assistant",
+				TaskID:    &task.ID,
+				ContextID: &task.ContextID,
 				Parts: []types.Part{
 					map[string]any{
 						"kind": "text",
@@ -326,6 +332,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		Kind:      "message",
 		MessageID: fmt.Sprintf("empty-response-%s", task.ID),
 		Role:      "assistant",
+		TaskID:    &task.ID,
+		ContextID: &task.ContextID,
 		Parts: []types.Part{
 			map[string]any{
 				"kind": "text",
@@ -346,6 +354,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 		Kind:      "message",
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		Role:      "assistant",
+		TaskID:    &task.ID,
+		ContextID: &task.ContextID,
 		Parts: []types.Part{
 			map[string]any{
 				"kind": "text",
@@ -444,6 +454,8 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 				Kind:      "message",
 				MessageID: fmt.Sprintf("stream-error-%s", task.ID),
 				Role:      "assistant",
+				TaskID:    &task.ID,
+				ContextID: &task.ContextID,
 				Parts: []types.Part{
 					map[string]any{
 						"kind": "text",
@@ -599,6 +611,8 @@ func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.T
 		Kind:      "message",
 		MessageID: fmt.Sprintf("stream-input-request-%d", time.Now().Unix()),
 		Role:      "assistant",
+		TaskID:    &task.ID,
+		ContextID: &task.ContextID,
 		Parts: []types.Part{
 			map[string]any{
 				"kind": "text",
@@ -760,6 +774,8 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 			Kind:      "message",
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
+			TaskID:    &task.ID,
+			ContextID: &task.ContextID,
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "text",
