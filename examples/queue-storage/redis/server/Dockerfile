@@ -14,10 +14,10 @@ RUN go mod download
 COPY . .
 
 # Build the application with build-time metadata
-RUN cd examples/queue-storage/redis/server && \
-    go build \
-    -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" \
-    -o server .
+RUN cd /app/examples/queue-storage/redis/server && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s -X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" \
+    -a -installsuffix cgo -o server .
 
 FROM alpine:latest
 

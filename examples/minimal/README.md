@@ -48,7 +48,7 @@ cd server
 go run main.go
 ```
 
-The server will start on `http://localhost:8080`
+The server will start on port `8080`
 
 #### Run the Client
 

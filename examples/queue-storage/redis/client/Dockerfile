@@ -10,8 +10,10 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN cd examples/queue-storage/redis/client && \
-    go build -o client .
+RUN cd /app/examples/queue-storage/redis/client && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -a -installsuffix cgo -o client .
 
 FROM alpine:latest
 

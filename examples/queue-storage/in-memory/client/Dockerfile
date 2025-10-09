@@ -11,7 +11,9 @@ COPY . .
 
 # Build the application
 RUN cd examples/queue-storage/in-memory/client && \
-    go build -o client .
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -a -installsuffix cgo -o client .
 
 FROM alpine:latest
 

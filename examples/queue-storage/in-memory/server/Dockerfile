@@ -15,9 +15,9 @@ COPY . .
 
 # Build the application with build-time metadata
 RUN cd examples/queue-storage/in-memory/server && \
-    go build \
-    -ldflags="-X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" \
-    -o server .
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s -X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" \
+    -a -installsuffix cgo -o server .
 
 FROM alpine:latest
 

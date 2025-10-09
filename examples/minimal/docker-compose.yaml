@@ -8,8 +8,6 @@ services:
         AGENT_NAME: minimal-agent
         AGENT_DESCRIPTION: An A2A server using the minimal approach
         AGENT_VERSION: 0.1.0
-    ports:
-      - "8080:8080"
     environment:
       ENVIRONMENT: development
       A2A_AGENT_NAME: minimal-agent
