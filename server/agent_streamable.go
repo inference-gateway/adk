@@ -36,6 +36,16 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 	go func() {
 		defer close(outputChan)
 
+		statusEvent := cloudevents.NewEvent()
+		statusEvent.SetType(types.EventTaskStatusChanged)
+		if err := statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+			State: types.TaskStateWorking,
+		}); err != nil {
+			a.logger.Error("failed to set status event data", zap.Error(err))
+			return
+		}
+		outputChan <- statusEvent
+
 		currentMessages := make([]types.Message, len(messages))
 		copy(currentMessages, messages)
 
@@ -85,6 +95,19 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 					}
 
+					cancelledStatusEvent := cloudevents.NewEvent()
+					cancelledStatusEvent.SetType(types.EventTaskStatusChanged)
+					if err := cancelledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+						State: types.TaskStateCanceled,
+					}); err != nil {
+						a.logger.Error("failed to set cancelled status event data", zap.Error(err))
+						return
+					}
+					select {
+					case outputChan <- cancelledStatusEvent:
+					case <-time.After(100 * time.Millisecond):
+					}
+
 					interruptMessage := types.NewStreamingStatusMessage(
 						fmt.Sprintf("task-interrupted-%d", iteration),
 						string(types.TaskStateCanceled),
@@ -101,6 +124,19 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				case streamErr := <-streamErrorChan:
 					if streamErr != nil {
 						a.logger.Error("streaming failed", zap.Error(streamErr))
+
+						failedStatusEvent := cloudevents.NewEvent()
+						failedStatusEvent.SetType(types.EventTaskStatusChanged)
+						if err := failedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+							State: types.TaskStateFailed,
+						}); err != nil {
+							a.logger.Error("failed to set failed status event data", zap.Error(err))
+							return
+						}
+						select {
+						case outputChan <- failedStatusEvent:
+						default:
+						}
 
 						errorMessage := types.NewStreamingStatusMessage(
 							fmt.Sprintf("streaming-error-%d", iteration),

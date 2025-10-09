@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
 	types "github.com/inference-gateway/adk/types"
@@ -68,9 +68,10 @@ type TaskHandler interface {
 // StreamableTaskHandler defines how to handle streaming task processing
 // This interface should be implemented by streaming task handlers that need to return real-time data
 type StreamableTaskHandler interface {
-	// HandleStreamingTask processes a task and returns a channel of streaming events
+	// HandleStreamingTask processes a task and returns a channel of CloudEvents
 	// The channel should be closed when streaming is complete
-	HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan StreamEvent, error)
+	// Event flow: agent → handler → protocol handler → client
+	HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error)
 
 	// SetAgent sets the OpenAI-compatible agent for the task handler
 	SetAgent(agent OpenAICompatibleAgent)
@@ -78,64 +79,6 @@ type StreamableTaskHandler interface {
 	// GetAgent returns the configured OpenAI-compatible agent
 	GetAgent() OpenAICompatibleAgent
 }
-
-// StreamEvent represents a streaming event that can be sent to clients
-type StreamEvent interface {
-	// GetEventType returns the type of the streaming event (delta, status, error, etc.)
-	GetEventType() string
-
-	// GetData returns the event data
-	GetData() interface{}
-}
-
-// DeltaStreamEvent represents a delta streaming event
-type DeltaStreamEvent struct {
-	Data interface{}
-}
-
-func (e *DeltaStreamEvent) GetEventType() string { return "delta" }
-func (e *DeltaStreamEvent) GetData() interface{} { return e.Data }
-
-// StatusStreamEvent represents a status update streaming event
-type StatusStreamEvent struct {
-	Status interface{}
-}
-
-func (e *StatusStreamEvent) GetEventType() string { return "status" }
-func (e *StatusStreamEvent) GetData() interface{} { return e.Status }
-
-// ErrorStreamEvent represents an error streaming event
-type ErrorStreamEvent struct {
-	ErrorMessage string
-}
-
-func (e *ErrorStreamEvent) GetEventType() string { return "error" }
-func (e *ErrorStreamEvent) GetData() interface{} { return e.ErrorMessage }
-
-// TaskCompleteStreamEvent represents a task completion streaming event
-type TaskCompleteStreamEvent struct {
-	Task *types.Task
-}
-
-func (e *TaskCompleteStreamEvent) GetEventType() string { return "task_complete" }
-func (e *TaskCompleteStreamEvent) GetData() interface{} { return e.Task }
-
-// TaskInterruptedStreamEvent represents a task interruption streaming event
-type TaskInterruptedStreamEvent struct {
-	Task   *types.Task
-	Reason string
-}
-
-func (e *TaskInterruptedStreamEvent) GetEventType() string { return "task_interrupted" }
-func (e *TaskInterruptedStreamEvent) GetData() interface{} { return e.Task }
-
-// ArtifactUpdateStreamEvent represents an artifact update streaming event
-type ArtifactUpdateStreamEvent struct {
-	Event types.TaskArtifactUpdateEvent
-}
-
-func (e *ArtifactUpdateStreamEvent) GetEventType() string { return "artifact_update" }
-func (e *ArtifactUpdateStreamEvent) GetData() interface{} { return e.Event }
 
 // DefaultBackgroundTaskHandler implements the TaskHandler interface optimized for background scenarios
 // This handler automatically handles input-required pausing without requiring custom implementation
@@ -224,7 +167,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 			zap.String("event_type", eventType))
 
 		switch eventType {
-		case "adk.agent.iteration.completed":
+		case types.EventIterationCompleted:
 			var iterationMessage types.Message
 			if err := event.DataAs(&iterationMessage); err == nil {
 				finalMessage = &iterationMessage
@@ -233,7 +176,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 					zap.String("message_kind", iterationMessage.Kind))
 			}
 
-		case "adk.agent.input.required":
+		case types.EventInputRequired:
 			var inputMessage types.Message
 			if err := event.DataAs(&inputMessage); err == nil {
 				if task.History == nil {
@@ -251,7 +194,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 				return task, nil
 			}
 
-		case "adk.agent.stream.failed":
+		case types.EventStreamFailed:
 			var errorData struct {
 				Error string `json:"error"`
 			}
@@ -283,7 +226,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 				return task, nil
 			}
 
-		case "adk.agent.task.interrupted":
+		case types.EventTaskInterrupted:
 			task.Status.State = types.TaskStateFailed
 			task.Status.Message = &types.Message{
 				Kind:      "message",
@@ -304,10 +247,10 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 
 			return task, nil
 
-		case "adk.agent.delta":
+		case types.EventDelta:
 			continue
 
-		case "adk.agent.tool.started", "adk.agent.tool.completed", "adk.agent.tool.failed", "adk.agent.tool.result":
+		case types.EventToolStarted, types.EventToolCompleted, types.EventToolFailed, types.EventToolResult:
 			bth.logger.Debug("tool event in background task",
 				zap.String("task_id", task.ID),
 				zap.String("event_type", eventType))
@@ -405,236 +348,30 @@ func (sth *DefaultStreamingTaskHandler) GetAgent() OpenAICompatibleAgent {
 	return sth.agent
 }
 
-// HandleStreamingTask processes a task and returns a channel of streaming events
-func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan StreamEvent, error) {
-	eventsChan := make(chan StreamEvent, 100)
-
-	go func() {
-		defer close(eventsChan)
-
-		sth.logger.Info("processing streaming task internally",
-			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID),
-			zap.Bool("has_agent", sth.agent != nil))
-
-		var updatedTask *types.Task
-		var err error
-
-		if sth.agent == nil {
-			eventsChan <- &ErrorStreamEvent{ErrorMessage: "streaming task handler requires an agent to be configured - use SetAgent() to configure an OpenAI-compatible agent for streaming support"}
-			return
-		}
-
-		sth.logger.Info("processing streaming task with agent capabilities",
-			zap.String("task_id", task.ID))
-
-		eventsChan <- &StatusStreamEvent{Status: "starting"}
-
-		messages := make([]types.Message, len(task.History))
-		copy(messages, task.History)
-
-		artifactHelper := NewArtifactHelper()
-		if sth.storage != nil {
-			artifactHelper.SetStorage(sth.storage)
-		}
-		toolCtx := context.WithValue(ctx, TaskContextKey, task)
-		toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
-
-		streamChan, err := sth.agent.RunWithStream(toolCtx, messages)
-		if err != nil {
-			sth.logger.Error("agent streaming failed", zap.Error(err))
-
-			task.Status.State = types.TaskStateFailed
-			errorText := err.Error()
-			if strings.Contains(errorText, "failed to create chat completion") {
-				errorText = "LLM streaming request failed: " + err.Error()
-			}
-
-			task.Status.Message = &types.Message{
-				Kind:      "message",
-				MessageID: fmt.Sprintf("stream-error-%s", task.ID),
-				Role:      "assistant",
-				TaskID:    &task.ID,
-				ContextID: &task.ContextID,
-				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": errorText,
-					},
-				},
-			}
-			eventsChan <- &ErrorStreamEvent{ErrorMessage: err.Error()}
-			return
-		}
-
-		for event := range streamChan {
-			if event.Type() == "adk.agent.delta" {
-				var deltaMessage types.Message
-				if err := event.DataAs(&deltaMessage); err == nil {
-					eventsChan <- &DeltaStreamEvent{Data: deltaMessage}
-				}
-			}
-
-			if event.Type() == "adk.agent.iteration.completed" {
-				var finalMessage types.Message
-				if err := event.DataAs(&finalMessage); err != nil {
-					sth.logger.Error("failed to parse iteration completed event data", zap.Error(err))
-					continue
-				}
-
-				task.History = append(task.History, finalMessage)
-				sth.logger.Debug("stored iteration completed message to history",
-					zap.String("task_id", task.ID),
-					zap.String("message_id", finalMessage.MessageID),
-					zap.String("event_id", event.ID()))
-			}
-
-			if event.Type() == "adk.agent.tool.result" {
-				var toolResultMessage types.Message
-				if err := event.DataAs(&toolResultMessage); err != nil {
-					sth.logger.Error("failed to parse tool result event data", zap.Error(err))
-					continue
-				}
-
-				task.History = append(task.History, toolResultMessage)
-				sth.logger.Debug("stored tool result message to history",
-					zap.String("task_id", task.ID),
-					zap.String("message_id", toolResultMessage.MessageID),
-					zap.String("event_id", event.ID()))
-			}
-
-			if event.Type() == "adk.agent.input.required" {
-				var inputMessage types.Message
-				if err := event.DataAs(&inputMessage); err != nil {
-					sth.logger.Error("failed to parse input required event data", zap.Error(err))
-					continue
-				}
-
-				if inputMessage.Kind == "input_required" {
-					inputText := "Please provide more information to continue streaming."
-					if len(inputMessage.Parts) > 0 {
-						if textPart, ok := inputMessage.Parts[0].(map[string]any); ok {
-							if text, exists := textPart["text"].(string); exists && text != "" {
-								inputText = text
-							}
-						}
-					}
-
-					task.History = append(task.History, inputMessage)
-					updatedTask = sth.pauseTaskForStreamingInput(task, inputText)
-					eventsChan <- &TaskCompleteStreamEvent{Task: updatedTask}
-					return
-				}
-			}
-
-			if event.Type() == "adk.agent.stream.failed" {
-				var errorMessage types.Message
-				if err := event.DataAs(&errorMessage); err != nil {
-					sth.logger.Error("failed to parse stream failed event data", zap.Error(err))
-					continue
-				}
-
-				sth.logger.Error("streaming failed",
-					zap.String("task_id", task.ID),
-					zap.String("context_id", task.ContextID),
-					zap.String("event_id", event.ID()))
-
-				task.History = append(task.History, errorMessage)
-
-				task.Status.State = types.TaskStateFailed
-				task.Status.Message = &errorMessage
-
-				eventsChan <- &TaskCompleteStreamEvent{Task: task}
-				return
-			}
-
-			if event.Type() == "adk.agent.task.interrupted" {
-				var interruptMessage types.Message
-				if err := event.DataAs(&interruptMessage); err != nil {
-					sth.logger.Error("failed to parse task interrupted event data", zap.Error(err))
-					continue
-				}
-
-				sth.logger.Info("streaming task was interrupted by agent",
-					zap.String("task_id", task.ID),
-					zap.String("context_id", task.ContextID),
-					zap.Int("preserved_history_count", len(task.History)))
-
-				task.Status.State = types.TaskStateWorking
-				if len(task.History) > 0 {
-					task.Status.Message = &task.History[len(task.History)-1]
-				}
-				eventsChan <- &TaskInterruptedStreamEvent{Task: task, Reason: "context_cancelled"}
-				return
-			}
-
-			if event.Type() == types.EventToolStarted {
-				sth.logger.Debug("tool execution started",
-					zap.String("task_id", task.ID),
-					zap.String("event_id", event.ID()))
-			}
-
-			if event.Type() == types.EventToolCompleted {
-				sth.logger.Debug("tool execution completed",
-					zap.String("task_id", task.ID),
-					zap.String("event_id", event.ID()))
-			}
-
-			if event.Type() == types.EventToolFailed {
-				sth.logger.Debug("tool execution failed",
-					zap.String("task_id", task.ID),
-					zap.String("event_id", event.ID()))
-			}
-		}
-
-		task.Status.State = types.TaskStateCompleted
-		if len(task.History) > 0 {
-			task.Status.Message = &task.History[len(task.History)-1]
-		} else {
-			task.Status.Message = nil
-		}
-
-		eventsChan <- &StatusStreamEvent{Status: "completed"}
-		eventsChan <- &TaskCompleteStreamEvent{Task: task}
-	}()
-
-	return eventsChan, nil
-}
-
-// pauseTaskForStreamingInput updates a task to input-required state optimized for streaming scenarios
-func (sth *DefaultStreamingTaskHandler) pauseTaskForStreamingInput(task *types.Task, inputMessage string) *types.Task {
-	sth.logger.Info("pausing streaming task for user input",
+// HandleStreamingTask processes a task and returns a channel of CloudEvents
+// It forwards events from the agent directly without conversion
+func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
+	sth.logger.Info("processing streaming task",
 		zap.String("task_id", task.ID),
-		zap.String("input_message", inputMessage))
+		zap.String("context_id", task.ContextID),
+		zap.Bool("has_agent", sth.agent != nil))
 
-	message := &types.Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("stream-input-request-%d", time.Now().Unix()),
-		Role:      "assistant",
-		TaskID:    &task.ID,
-		ContextID: &task.ContextID,
-		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": inputMessage,
-			},
-		},
+	if sth.agent == nil {
+		return nil, fmt.Errorf("streaming task handler requires an agent to be configured - use SetAgent() to configure an OpenAI-compatible agent for streaming support")
 	}
 
-	if task.History == nil {
-		task.History = []types.Message{}
+	messages := make([]types.Message, len(task.History))
+	copy(messages, task.History)
+
+	artifactHelper := NewArtifactHelper()
+	if sth.storage != nil {
+		artifactHelper.SetStorage(sth.storage)
 	}
-	task.History = append(task.History, *message)
+	toolCtx := context.WithValue(ctx, TaskContextKey, task)
+	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
 
-	task.Status.State = types.TaskStateInputRequired
-	task.Status.Message = message
-
-	sth.logger.Info("streaming task paused for user input",
-		zap.String("task_id", task.ID),
-		zap.String("state", string(task.Status.State)),
-		zap.Int("conversation_history_count", len(task.History)))
-
-	return task
+	// Get CloudEvents directly from agent and forward them
+	return sth.agent.RunWithStream(toolCtx, messages)
 }
 
 // DefaultA2AProtocolHandler implements the A2AProtocolHandler interface
@@ -926,137 +663,138 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		return
 	}
 
-	var finalTask *types.Task
-	for event := range eventsChan {
-		switch event.GetEventType() {
-		case "delta":
-			deltaData := event.GetData()
-			var deltaMessage *types.Message
+	var accumulatedText string
 
-			switch msg := deltaData.(type) {
-			case types.Message:
-				deltaMessage = &msg
-			case *types.Message:
-				deltaMessage = msg
+	for event := range eventsChan {
+		switch event.Type() {
+		case types.EventDelta:
+			var deltaMessage types.Message
+			if err := event.DataAs(&deltaMessage); err == nil {
+				for _, part := range deltaMessage.Parts {
+					if textPart, ok := part.(types.TextPart); ok {
+						accumulatedText += textPart.Text
+					}
+				}
+				h.logger.Debug("accumulated delta text",
+					zap.String("task_id", task.ID),
+					zap.Int("total_length", len(accumulatedText)))
 			}
 
-			if deltaMessage != nil {
+		case types.EventIterationCompleted:
+			var iterationMessage types.Message
+			if err := event.DataAs(&iterationMessage); err == nil {
+				task.History = append(task.History, iterationMessage)
+				h.logger.Debug("stored iteration completed message to history",
+					zap.String("task_id", task.ID),
+					zap.String("message_id", iterationMessage.MessageID),
+					zap.Int("history_size", len(task.History)))
+			}
+
+		case types.EventTaskStatusChanged:
+			var statusData types.TaskStatus
+			if err := event.DataAs(&statusData); err == nil {
+				h.logger.Info("task state changed",
+					zap.String("task_id", task.ID),
+					zap.String("new_state", string(statusData.State)))
+
+				task.Status.State = statusData.State
+
 				statusUpdate := types.TaskStatusUpdateEvent{
 					Kind:      "status-update",
 					TaskID:    task.ID,
 					ContextID: task.ContextID,
-					Status: types.TaskStatus{
-						State:   "working",
-						Message: deltaMessage,
-					},
-					Final: false,
+					Status:    statusData,
+					Final:     statusData.State == types.TaskStateCompleted || statusData.State == types.TaskStateFailed || statusData.State == types.TaskStateCanceled,
 				}
 
-				deltaResponse := types.JSONRPCSuccessResponse{
+				statusResponse := types.JSONRPCSuccessResponse{
 					JSONRPC: "2.0",
 					ID:      req.ID,
 					Result:  statusUpdate,
 				}
-				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
-					h.logger.Error("failed to write streaming delta", zap.Error(err))
+
+				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
+					h.logger.Error("failed to write status change", zap.Error(err))
 					return
 				}
 			}
-		case "artifact_update":
-			if artifactEvent, ok := event.GetData().(types.TaskArtifactUpdateEvent); ok {
-				h.logger.Debug("received artifact update",
-					zap.String("artifact_id", artifactEvent.Artifact.ArtifactID),
-					zap.String("task_id", artifactEvent.TaskID))
 
-				artifactResponse := types.JSONRPCSuccessResponse{
-					JSONRPC: "2.0",
-					ID:      req.ID,
-					Result:  artifactEvent,
-				}
-				if err := h.writeStreamingResponse(c, &artifactResponse); err != nil {
-					h.logger.Error("failed to write streaming artifact update", zap.Error(err))
-					return
-				}
-			}
-		case "status":
-			h.logger.Debug("received status update", zap.Any("status", event.GetData()))
-		case "task_complete":
-			if taskData, ok := event.GetData().(*types.Task); ok {
-				finalTask = taskData
-			}
-		case "task_interrupted":
-			if taskData, ok := event.GetData().(*types.Task); ok {
-				h.logger.Info("streaming task was interrupted, saving task with preserved history",
-					zap.String("task_id", taskData.ID),
-					zap.String("context_id", taskData.ContextID),
-					zap.Int("history_count", len(taskData.History)))
+		case types.EventTaskInterrupted:
+			var interruptMessage types.Message
+			if err := event.DataAs(&interruptMessage); err == nil {
+				task.History = append(task.History, interruptMessage)
+				task.Status.State = types.TaskStateCanceled
 
-				if err := h.taskManager.UpdateTask(taskData); err != nil {
-					h.logger.Error("failed to save interrupted task to storage",
-						zap.String("task_id", taskData.ID),
+				h.logger.Info("streaming task was interrupted",
+					zap.String("task_id", task.ID),
+					zap.String("context_id", task.ContextID))
+
+				if err := h.taskManager.UpdateTask(task); err != nil {
+					h.logger.Error("failed to save interrupted task",
+						zap.String("task_id", task.ID),
 						zap.Error(err))
-				} else {
-					h.logger.Info("successfully saved interrupted task with history to storage",
-						zap.String("task_id", taskData.ID),
-						zap.Int("history_count", len(taskData.History)))
 				}
 				return
 			}
-		case "error":
-			h.logger.Error("streaming task error", zap.Any("error", event.GetData()))
 
-			if taskData, ok := event.GetData().(*types.Task); ok && taskData != nil {
-				h.logger.Info("saving failed streaming task with error in history",
-					zap.String("task_id", taskData.ID),
-					zap.String("context_id", taskData.ContextID),
-					zap.Int("history_count", len(taskData.History)))
+		case types.EventStreamFailed:
+			var errorMessage types.Message
+			if err := event.DataAs(&errorMessage); err == nil {
+				task.History = append(task.History, errorMessage)
+				task.Status.State = types.TaskStateFailed
+				task.Status.Message = &errorMessage
 
-				if err := h.taskManager.UpdateTask(taskData); err != nil {
-					h.logger.Error("failed to save failed streaming task to storage",
-						zap.String("task_id", taskData.ID),
+				h.logger.Error("streaming task failed",
+					zap.String("task_id", task.ID))
+
+				if err := h.taskManager.UpdateTask(task); err != nil {
+					h.logger.Error("failed to save failed task",
+						zap.String("task_id", task.ID),
 						zap.Error(err))
 				}
-			}
 
-			errorResponse := types.JSONRPCErrorResponse{
-				JSONRPC: "2.0",
-				ID:      req.ID,
-				Error: &types.JSONRPCError{
-					Code:    int(ErrInternalError),
-					Message: fmt.Sprintf("streaming error: %v", event.GetData()),
-				},
+				errorResponse := types.JSONRPCErrorResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Error: &types.JSONRPCError{
+						Code:    int(ErrInternalError),
+						Message: "streaming failed",
+					},
+				}
+				if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+					h.logger.Error("failed to write error response", zap.Error(writeErr))
+				}
+				return
 			}
-			if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
-				h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
-			}
-			return
 		}
 	}
 
-	if finalTask != nil {
-		finalResponse := types.TaskStatusUpdateEvent{
+	if len(task.History) > 0 {
+		task.Status.State = types.TaskStateCompleted
+		task.Status.Message = &task.History[len(task.History)-1]
+
+		statusUpdate := types.TaskStatusUpdateEvent{
 			Kind:      "status-update",
-			TaskID:    finalTask.ID,
-			ContextID: finalTask.ContextID,
-			Status:    finalTask.Status,
+			TaskID:    task.ID,
+			ContextID: task.ContextID,
+			Status:    task.Status,
 			Final:     true,
 		}
 
-		jsonRPCResponse := types.JSONRPCSuccessResponse{
+		statusResponse := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Result:  finalResponse,
+			Result:  statusUpdate,
 		}
 
-		if err := h.writeStreamingResponse(c, &jsonRPCResponse); err != nil {
-			h.logger.Error("failed to write final streaming response", zap.Error(err))
-		} else {
-			if err := h.taskManager.UpdateTask(finalTask); err != nil {
-				h.logger.Error("failed to update streaming task",
-					zap.Error(err),
-					zap.String("task_id", finalTask.ID),
-					zap.String("context_id", finalTask.ContextID))
-			}
+		if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
+			h.logger.Error("failed to write final status", zap.Error(err))
+		}
+
+		if err := h.taskManager.UpdateTask(task); err != nil {
+			h.logger.Error("failed to update completed task",
+				zap.Error(err),
+				zap.String("task_id", task.ID))
 		}
 	}
 

@@ -13,37 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// extractDeltaText attempts to extract delta text from various event structures
-func extractDeltaText(result any) string {
-	resultBytes, _ := json.Marshal(result)
-
-	// Try TaskStatusUpdateEvent
-	var taskEvent types.TaskStatusUpdateEvent
-	if err := json.Unmarshal(resultBytes, &taskEvent); err == nil && taskEvent.Status.Message != nil {
-		return extractTextFromParts(taskEvent.Status.Message.Parts)
-	}
-
-	// Try Task directly
-	var task types.Task
-	if err := json.Unmarshal(resultBytes, &task); err == nil && task.Status.Message != nil {
-		return extractTextFromParts(task.Status.Message.Parts)
-	}
-
-	return ""
-}
-
-// extractTextFromParts extracts text from message parts
-func extractTextFromParts(parts []types.Part) string {
-	for _, part := range parts {
-		if partMap, ok := part.(map[string]any); ok {
-			if text, ok := partMap["text"].(string); ok {
-				return text
-			}
-		}
-	}
-	return ""
-}
-
 func main() {
 	// Get server URL from environment or use default
 	serverURL := os.Getenv("SERVER_URL")
@@ -72,9 +41,9 @@ func main() {
 	message := types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Please write a detailed explanation about machine learning. Stream your response as you generate it.",
+			types.TextPart{
+				Kind: "text",
+				Text: "Please write a detailed explanation about machine learning. Stream your response as you generate it.",
 			},
 		},
 	}
@@ -88,7 +57,7 @@ func main() {
 		},
 	}
 
-	fmt.Printf("Sending streaming request: %s\n", message.Parts[0].(map[string]any)["text"])
+	fmt.Printf("Sending streaming request: %s\n", message.Parts[0].(types.TextPart).Text)
 
 	// Test streaming
 	eventChan, err := a2aClient.SendTaskStreaming(ctx, params)
@@ -99,27 +68,55 @@ func main() {
 
 	fmt.Println("📡 Streaming response:")
 	var eventCount int
+	var finalResponse string
 
-	// Process streaming events
-	var accumulatedText string
+	// Process streaming events (expect 2: working → completed)
 	for event := range eventChan {
 		eventCount++
 
+		// Parse status update
 		if event.Result == nil {
 			continue
 		}
 
-		if deltaText := extractDeltaText(event.Result); deltaText != "" {
-			accumulatedText += deltaText
-			logger.Info("received delta",
+		resultBytes, _ := json.Marshal(event.Result)
+		var statusUpdate types.TaskStatusUpdateEvent
+		if err := json.Unmarshal(resultBytes, &statusUpdate); err != nil {
+			logger.Debug("failed to parse event", zap.Int("event", eventCount), zap.Error(err))
+			continue
+		}
+
+		// Handle different task states
+		switch statusUpdate.Status.State {
+		case types.TaskStateWorking:
+			logger.Info("task started", zap.Int("event", eventCount))
+
+		case types.TaskStateCompleted:
+			logger.Info("task completed", zap.Int("event", eventCount))
+			// Extract final message
+			if statusUpdate.Status.Message != nil && len(statusUpdate.Status.Message.Parts) > 0 {
+				if textPart, ok := statusUpdate.Status.Message.Parts[0].(types.TextPart); ok {
+					finalResponse = textPart.Text
+				}
+			}
+
+		case types.TaskStateFailed:
+			logger.Error("task failed", zap.Int("event", eventCount))
+
+		case types.TaskStateCanceled:
+			logger.Info("task canceled", zap.Int("event", eventCount))
+
+		default:
+			logger.Debug("unknown state",
 				zap.Int("event", eventCount),
-				zap.String("delta", deltaText))
-		} else {
-			logger.Debug("received non-delta event", zap.Int("event", eventCount))
+				zap.String("state", string(statusUpdate.Status.State)))
 		}
 	}
 
-	fmt.Printf("✅ Streaming completed. Total events: %d\n", eventCount)
+	fmt.Printf("\n✅ Streaming completed. Total events: %d\n", eventCount)
+	if finalResponse != "" {
+		fmt.Printf("📝 Response:\n%s\n", finalResponse)
+	}
 
 	// Also test regular (non-streaming) message for comparison
 	fmt.Println("\n--- Testing regular message ---")
@@ -127,9 +124,9 @@ func main() {
 	regularMessage := types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "What is the capital of France?",
+			types.TextPart{
+				Kind: "text",
+				Text: "What is the capital of France?",
 			},
 		},
 	}

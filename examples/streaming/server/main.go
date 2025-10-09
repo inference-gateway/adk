@@ -41,6 +41,14 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 		defer close(eventChan)
 		defer m.logger.Info("mock agent finished streaming")
 
+		// Send initial status change event - task is now working
+		statusEvent := cloudevents.NewEvent()
+		statusEvent.SetType(types.EventTaskStatusChanged)
+		statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+			State: types.TaskStateWorking,
+		})
+		eventChan <- statusEvent
+
 		// Stream a mock response word by word
 		words := []string{
 			"This", "is", "a", "mock", "streaming", "response.", "Each", "word", "appears",
@@ -71,15 +79,15 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 				deltaMessage := types.Message{
 					Role: "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": delta,
+						types.TextPart{
+							Kind: "text",
+							Text: delta,
 						},
 					},
 				}
 
 				event := cloudevents.NewEvent()
-				event.SetType("adk.agent.delta")
+				event.SetType(types.EventDelta)
 				event.SetData(cloudevents.ApplicationJSON, deltaMessage)
 
 				m.logger.Info("sending delta", zap.String("delta", delta))
@@ -97,9 +105,9 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 			TaskID:    &taskID,
 			ContextID: &contextID,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": fullText,
+				types.TextPart{
+					Kind: "text",
+					Text: fullText,
 				},
 			},
 		}
@@ -154,9 +162,9 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 		TaskID:    &task.ID,
 		ContextID: &task.ContextID,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": response,
+			types.TextPart{
+				Kind: "text",
+				Text: response,
 			},
 		},
 	}
@@ -168,63 +176,17 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	return task, nil
 }
 
-// HandleStreamingTask processes streaming tasks with mock responses
-func (h *MockTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
+// HandleStreamingTask processes streaming tasks by forwarding CloudEvents from the agent
+func (h *MockTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
 	h.logger.Info("processing mock streaming task", zap.String("task_id", task.ID))
 
-	eventChan := make(chan server.StreamEvent, 100)
+	if h.agent == nil {
+		return nil, fmt.Errorf("no agent configured for streaming")
+	}
 
-	go func() {
-		defer close(eventChan)
-
-		// Send status update
-		eventChan <- &server.StatusStreamEvent{
-			Status: map[string]any{
-				"task_id": task.ID,
-				"state":   "working",
-			},
-		}
-
-		// Stream a mock response character by character
-		response := "This is a mock streaming response. Each character appears with a delay to simulate real-time streaming. No AI provider is configured, so this is a demonstration of the streaming capabilities."
-
-		for _, char := range response {
-			select {
-			case <-ctx.Done():
-				eventChan <- &server.ErrorStreamEvent{
-					ErrorMessage: "Task cancelled",
-				}
-				return
-			default:
-				eventChan <- &server.DeltaStreamEvent{
-					Data: string(char),
-				}
-				time.Sleep(20 * time.Millisecond)
-			}
-		}
-
-		// Send completion
-		task.Status.State = types.TaskStateCompleted
-		task.Status.Message = &types.Message{
-			Kind:      "message",
-			MessageID: fmt.Sprintf("mock-streaming-response-%s", task.ID),
-			Role:      "assistant",
-			TaskID:    &task.ID,
-			ContextID: &task.ContextID,
-			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": response,
-				},
-			},
-		}
-
-		eventChan <- &server.TaskCompleteStreamEvent{
-			Task: task,
-		}
-	}()
-
-	return eventChan, nil
+	// Forward CloudEvents directly from agent (no conversion)
+	// Flow: agent → handler → protocol handler → client
+	return h.agent.RunWithStream(ctx, []types.Message{*message})
 }
 
 // Streaming A2A Server Example

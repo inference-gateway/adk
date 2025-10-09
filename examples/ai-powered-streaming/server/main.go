@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
@@ -48,19 +49,17 @@ func (h *AIStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Tas
 	// Process all streaming events to completion
 	for cloudEvent := range streamChan {
 		switch cloudEvent.Type() {
-		case "adk.agent.delta":
+		case types.EventDelta:
 			// Extract delta from cloud event
 			var deltaMsg types.Message
 			if err := cloudEvent.DataAs(&deltaMsg); err == nil {
 				for _, part := range deltaMsg.Parts {
-					if partMap, ok := part.(map[string]any); ok {
-						if text, ok := partMap["text"].(string); ok {
-							fullResponse += text
-						}
+					if textPart, ok := part.(types.TextPart); ok {
+						fullResponse += textPart.Text
 					}
 				}
 			}
-		case "adk.agent.iteration.completed":
+		case types.EventIterationCompleted:
 			// Task completion event from agent
 			h.logger.Info("AI agent completed iteration")
 		}
@@ -70,9 +69,9 @@ func (h *AIStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Tas
 	responseMessage := types.Message{
 		Role: "assistant",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": fullResponse,
+			types.TextPart{
+				Kind: "text",
+				Text: fullResponse,
 			},
 		},
 	}
@@ -85,124 +84,16 @@ func (h *AIStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Tas
 }
 
 // HandleStreamingTask processes streaming tasks using the configured AI agent with real-time streaming
-func (h *AIStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
+// It forwards CloudEvents from the agent directly without conversion
+func (h *AIStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
 	h.logger.Info("processing AI streaming task", zap.String("task_id", task.ID))
 
 	if h.agent == nil {
-		// Return error event if no agent is configured
-		eventChan := make(chan server.StreamEvent, 1)
-		go func() {
-			defer close(eventChan)
-			eventChan <- &server.ErrorStreamEvent{
-				ErrorMessage: "No AI agent configured for streaming",
-			}
-		}()
-		return eventChan, nil
+		return nil, fmt.Errorf("no AI agent configured for streaming")
 	}
 
-	eventChan := make(chan server.StreamEvent, 100)
-
-	go func() {
-		defer close(eventChan)
-
-		// Send status update
-		eventChan <- &server.StatusStreamEvent{
-			Status: map[string]any{
-				"task_id": task.ID,
-				"state":   "working",
-			},
-		}
-
-		// Use the agent's streaming capability
-		streamChan, err := h.agent.RunWithStream(ctx, []types.Message{*message})
-		if err != nil {
-			h.logger.Error("failed to start AI streaming", zap.Error(err))
-			eventChan <- &server.ErrorStreamEvent{
-				ErrorMessage: fmt.Sprintf("Failed to start AI streaming: %v", err),
-			}
-			return
-		}
-
-		var fullResponse string
-
-		// Process streaming events from the AI agent
-		for cloudEvent := range streamChan {
-			select {
-			case <-ctx.Done():
-				eventChan <- &server.ErrorStreamEvent{
-					ErrorMessage: "Task cancelled",
-				}
-				return
-			default:
-				switch cloudEvent.Type() {
-				case "adk.agent.delta":
-					// Extract delta from cloud event
-					var deltaMsg types.Message
-					if err := cloudEvent.DataAs(&deltaMsg); err == nil {
-						for _, part := range deltaMsg.Parts {
-							if partMap, ok := part.(map[string]any); ok {
-								if text, ok := partMap["text"].(string); ok {
-									fullResponse += text
-									// Send delta event
-									eventChan <- &server.DeltaStreamEvent{
-										Data: text,
-									}
-								}
-							}
-						}
-					}
-				case "adk.agent.iteration.completed":
-					// Task completion event from agent
-					h.logger.Info("AI agent completed iteration")
-
-					// Create final response message
-					responseMessage := types.Message{
-						Role: "assistant",
-						Parts: []types.Part{
-							map[string]any{
-								"kind": "text",
-								"text": fullResponse,
-							},
-						},
-					}
-
-					// Update task
-					task.Status.State = types.TaskStateCompleted
-					task.Status.Message = &responseMessage
-					task.History = append(task.History, responseMessage)
-
-					// Send completion event
-					eventChan <- &server.TaskCompleteStreamEvent{
-						Task: task,
-					}
-					return
-				}
-			}
-		}
-
-		// Fallback completion if no completion event was received
-		if fullResponse != "" {
-			responseMessage := types.Message{
-				Role: "assistant",
-				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": fullResponse,
-					},
-				},
-			}
-
-			task.Status.State = types.TaskStateCompleted
-			task.Status.Message = &responseMessage
-			task.History = append(task.History, responseMessage)
-
-			eventChan <- &server.TaskCompleteStreamEvent{
-				Task: task,
-			}
-		}
-	}()
-
-	return eventChan, nil
+	// Forward CloudEvents directly from agent
+	return h.agent.RunWithStream(ctx, []types.Message{*message})
 }
 
 // SetAgent sets the OpenAI-compatible agent
