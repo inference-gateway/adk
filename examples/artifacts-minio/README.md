@@ -304,7 +304,7 @@ docker run --rm --network host minio/mc \
 
 ```bash
 # List tasks and debug the A2A server
-docker compose run --rm a2a-debugger tasks list
+docker compose run --rm a2a-debugger tasks list --include-artifacts
 ```
 
 ## MinIO Benefits
