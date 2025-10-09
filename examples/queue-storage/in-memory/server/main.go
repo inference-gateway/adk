@@ -72,6 +72,8 @@ func (h *DemoTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	responseMessage := types.Message{
 		Kind:      "response",
 		MessageID: fmt.Sprintf("response-%s", task.ID),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
 			types.TextPart{

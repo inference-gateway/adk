@@ -70,6 +70,8 @@ func (h *RedisTaskHandler) HandleTask(ctx context.Context, task *types.Task, mes
 	responseMessage := types.Message{
 		Kind:      "response",
 		MessageID: fmt.Sprintf("response-%s", task.ID),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
 			types.TextPart{
