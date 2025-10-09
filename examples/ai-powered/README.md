@@ -1,6 +1,6 @@
 # AI-Powered A2A Example
 
-This example demonstrates an A2A server with AI/LLM integration and built-in tools for weather and time queries.
+This example demonstrates an A2A server with AI/LLM integration and adding tools for weather and time queries.
 
 ## Table of Contents
 
@@ -9,7 +9,7 @@ This example demonstrates an A2A server with AI/LLM integration and built-in too
 - [Running the Example](#running-the-example)
 - [Server Configuration](#server-configuration)
 - [Supported Providers](#supported-providers)
-- [Built-in Tools](#built-in-tools)
+- [Adding Tools](#adding-tools)
 - [Understanding the Code](#understanding-the-code)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
@@ -17,7 +17,7 @@ This example demonstrates an A2A server with AI/LLM integration and built-in too
 ## What This Example Shows
 
 - A2A server with AI agent integration using multiple LLM providers
-- Built-in tools: weather lookup and current time
+- Adding tools: weather lookup and current time
 - Local Inference Gateway for provider abstraction
 - Environment-based configuration following production patterns
 
@@ -120,7 +120,7 @@ Via the included Inference Gateway:
 - Cohere
 - Mistral
 
-## Built-in Tools
+## Adding Tools
 
 The server includes two sample tools:
 
