@@ -28,8 +28,6 @@ services:
         LD_FLAGS: "-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'"
         EXAMPLE_PATH: examples/ai-powered
         COMPONENT: server
-    ports:
-      - "8080:8080"
     depends_on:
       - inference-gateway
     environment:
@@ -41,6 +39,17 @@ services:
       A2A_AGENT_CLIENT_BASE_URL: http://inference-gateway:8080/v1
       A2A_AGENT_CLIENT_PROVIDER: ${A2A_AGENT_CLIENT_PROVIDER}
       A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL}
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:8080/health
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - a2a-network
 
@@ -53,10 +62,10 @@ services:
         EXAMPLE_PATH: examples/ai-powered
         COMPONENT: client
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       SERVER_URL: http://server:8080
-    command: sh -c "sleep 5 && /app/client"
     networks:
       - a2a-network
 
