@@ -11,6 +11,7 @@ Use Taskfile.yml for all project operations:
 ```bash
 # Core development workflow
 task lint                    # Run golangci-lint for code quality checks
+task lint:examples           # Run markdown-lint on all examples
 task test                    # Run all tests with coverage
 task tidy                    # Tidy all Go modules
 task format                  # Format Go files and markdown
