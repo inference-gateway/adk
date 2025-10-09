@@ -115,5 +115,5 @@ T-h-i-s- -i-s- -a- -s-t-r-e-a-m-i-n-g- -r-e-s-p-o-n-s-e-.- -E-a-c-h- -c-h-a-r-a-
 
 ```bash
 # List tasks and debug the A2A server
-docker compose run --rm a2a-debugger tasks list
+docker compose run --rm a2a-debugger tasks list --include-history
 ```

@@ -29,6 +29,14 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 	m.logger.Info("mock agent starting streaming")
 	eventChan := make(chan cloudevents.Event, 100)
 
+	// Extract task from context
+	var taskID string
+	var contextID string
+	if task, ok := ctx.Value(server.TaskContextKey).(*types.Task); ok && task != nil {
+		taskID = task.ID
+		contextID = task.ContextID
+	}
+
 	go func() {
 		defer close(eventChan)
 		defer m.logger.Info("mock agent finished streaming")
@@ -86,6 +94,8 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 			Kind:      "message",
 			MessageID: fmt.Sprintf("mock-completion-%d", time.Now().UnixNano()),
 			Role:      "assistant",
+			TaskID:    &taskID,
+			ContextID: &contextID,
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "text",
@@ -94,7 +104,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 			},
 		}
 
-		completeEvent := types.NewIterationCompletedEvent(1, "mock-streaming-task", &finalMessage)
+		completeEvent := types.NewIterationCompletedEvent(1, taskID, &finalMessage)
 		eventChan <- completeEvent
 	}()
 
@@ -138,7 +148,11 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	response := fmt.Sprintf("Mock response: I received your message '%s'. This is a mock response since no AI provider is configured.", userInput)
 
 	responseMessage := types.Message{
-		Role: "assistant",
+		Kind:      "message",
+		MessageID: fmt.Sprintf("mock-response-%s", task.ID),
+		Role:      "assistant",
+		TaskID:    &task.ID,
+		ContextID: &task.ContextID,
 		Parts: []types.Part{
 			map[string]any{
 				"kind": "text",
@@ -192,7 +206,11 @@ func (h *MockTaskHandler) HandleStreamingTask(ctx context.Context, task *types.T
 		// Send completion
 		task.Status.State = types.TaskStateCompleted
 		task.Status.Message = &types.Message{
-			Role: "assistant",
+			Kind:      "message",
+			MessageID: fmt.Sprintf("mock-streaming-response-%s", task.ID),
+			Role:      "assistant",
+			TaskID:    &task.ID,
+			ContextID: &task.ContextID,
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "text",
