@@ -12,8 +12,8 @@ services:
         EXAMPLE_PATH: examples/artifacts-filesystem
         COMPONENT: server
     ports:
-      - "8080:8080"
-      - "8081:8081"
+      - 8080:8080
+      - 8081:8081
     environment:
       ENVIRONMENT: development
       A2A_AGENT_NAME: artifacts-filesystem-agent
@@ -30,6 +30,17 @@ services:
       A2A_ARTIFACTS_SERVER_HOST: server
     volumes:
       - ./server/artifacts:/app/artifacts
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:8080/health
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - a2a-network
 
@@ -42,14 +53,14 @@ services:
         EXAMPLE_PATH: examples/artifacts-filesystem
         COMPONENT: client
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       SERVER_URL: http://server:8080
       ARTIFACTS_URL: http://server:8081
       DOWNLOADS_DIR: /app/downloads
     volumes:
       - ./client/downloads:/app/downloads
-    command: sh -c "sleep 5 && /app/client"
     networks:
       - a2a-network
 
