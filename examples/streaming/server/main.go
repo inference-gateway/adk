@@ -282,9 +282,9 @@ func main() {
 	// Build and start server
 	a2aServer, err := serverBuilder.
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.A2A.AgentName,
-			Description:     cfg.A2A.AgentDescription,
-			Version:         cfg.A2A.AgentVersion,
+			Name:            server.BuildAgentName,
+			Description:     server.BuildAgentDescription,
+			Version:         server.BuildAgentVersion,
 			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
 			ProtocolVersion: "3.0.0",
 			Capabilities: types.AgentCapabilities{

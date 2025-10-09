@@ -22,7 +22,7 @@ COPY . .
 # Build the application with ldflags
 RUN cd /build/${EXAMPLE_PATH}/${COMPONENT} && \
     CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="${LD_FLAGS}" \
+    -ldflags="-w -s" \
     -a -installsuffix cgo -o $COMPONENT .
 
 # Copy the binary to the final stage

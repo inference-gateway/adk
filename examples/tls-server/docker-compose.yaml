@@ -27,7 +27,6 @@ services:
         AGENT_NAME: "tls-server"
         AGENT_DESCRIPTION: "TLS-enabled A2A server demonstrating secure communication"
         AGENT_VERSION: "0.1.0"
-        LD_FLAGS: "-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'"
         EXAMPLE_PATH: examples/tls-server
         COMPONENT: server
     ports:
@@ -64,7 +63,6 @@ services:
       context: ../..
       dockerfile: examples/Dockerfile.client
       args:
-        LD_FLAGS: "-w -s"
         EXAMPLE_PATH: examples/tls-server
         COMPONENT: client
     environment:

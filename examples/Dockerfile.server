@@ -1,7 +1,6 @@
 ARG AGENT_NAME=""
 ARG AGENT_DESCRIPTION=""
 ARG AGENT_VERSION=""
-ARG LD_FLAGS=""
 ARG EXAMPLE_PATH=""
 ARG COMPONENT="server"
 
@@ -10,7 +9,6 @@ FROM golang:1.25-alpine AS builder
 ARG AGENT_NAME
 ARG AGENT_DESCRIPTION
 ARG AGENT_VERSION
-ARG LD_FLAGS
 ARG EXAMPLE_PATH
 ARG COMPONENT
 
@@ -28,7 +26,7 @@ COPY . .
 # Build the application with ldflags
 RUN cd /build/${EXAMPLE_PATH}/${COMPONENT} && \
     CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="${LD_FLAGS}" \
+    -ldflags="-w -s -X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" \
     -a -installsuffix cgo -o $COMPONENT .
 
 # Copy the binary to the final stage

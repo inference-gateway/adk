@@ -8,14 +8,10 @@ services:
         AGENT_NAME: minimal-agent
         AGENT_DESCRIPTION: An A2A server using the minimal approach
         AGENT_VERSION: 0.1.0
-        LD_FLAGS: "-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'"
         EXAMPLE_PATH: examples/minimal
         COMPONENT: server
     environment:
       ENVIRONMENT: development
-      A2A_AGENT_NAME: minimal-agent
-      A2A_AGENT_DESCRIPTION: A minimal A2A server that echoes messages
-      A2A_AGENT_VERSION: 0.1.0
       A2A_SERVER_PORT: 8080
       A2A_DEBUG: true
       A2A_CAPABILITIES_STREAMING: false
@@ -39,7 +35,6 @@ services:
       context: ../..
       dockerfile: examples/Dockerfile.client
       args:
-        LD_FLAGS: "-w -s"
         EXAMPLE_PATH: examples/minimal
         COMPONENT: client
     depends_on:

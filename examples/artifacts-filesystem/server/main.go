@@ -20,13 +20,6 @@ import (
 	types "github.com/inference-gateway/adk/types"
 )
 
-// Build-time variables set via ldflags
-var (
-	AgentName        = "artifacts-filesystem-agent"
-	AgentDescription = "An agent that creates and serves artifacts using filesystem storage"
-	AgentVersion     = "0.1.0"
-)
-
 // Config holds the configuration for the artifacts filesystem example server
 type Config struct {
 	// Environment determines runtime environment (development, production, etc.)
@@ -253,9 +246,9 @@ func main() {
 	cfg := &Config{
 		Environment: "development",
 		A2A: serverConfig.Config{
-			AgentName:        AgentName,
-			AgentDescription: AgentDescription,
-			AgentVersion:     AgentVersion,
+			AgentName:        server.BuildAgentName,
+			AgentDescription: server.BuildAgentDescription,
+			AgentVersion:     server.BuildAgentVersion,
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
 				Streaming:              false,

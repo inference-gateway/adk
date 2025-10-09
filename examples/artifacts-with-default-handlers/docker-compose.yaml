@@ -22,7 +22,6 @@ services:
       context: ../..
       dockerfile: examples/Dockerfile.server
       args:
-        LD_FLAGS: "-w -s"
         EXAMPLE_PATH: examples/artifacts-with-default-handlers
         COMPONENT: server
     volumes:
@@ -56,7 +55,6 @@ services:
       context: ../..
       dockerfile: examples/Dockerfile.client
       args:
-        LD_FLAGS: "-w -s"
         EXAMPLE_PATH: examples/artifacts-with-default-handlers
         COMPONENT: client
     volumes:

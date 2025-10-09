@@ -23,7 +23,6 @@ services:
         AGENT_NAME: default-handlers-agent
         AGENT_DESCRIPTION: An A2A server using default handlers for task processing
         AGENT_VERSION: 0.1.0
-        LD_FLAGS: "-w -s -X 'main.AgentName=${AGENT_NAME}' -X 'main.AgentDescription=${AGENT_DESCRIPTION}' -X 'main.AgentVersion=${AGENT_VERSION}'"
         EXAMPLE_PATH: examples/default-handlers
         COMPONENT: server
     ports:
@@ -58,7 +57,6 @@ services:
       context: ../..
       dockerfile: examples/Dockerfile.client
       args:
-        LD_FLAGS: "-w -s"
         EXAMPLE_PATH: examples/default-handlers
         COMPONENT: client
     depends_on:
