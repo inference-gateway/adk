@@ -22,7 +22,7 @@ type CallbackContext struct {
 	ContextID string
 
 	// State provides access to session state that can be read and modified
-	State map[string]interface{}
+	State map[string]any
 
 	// Logger provides access to the logger for callback implementations
 	Logger *zap.Logger
