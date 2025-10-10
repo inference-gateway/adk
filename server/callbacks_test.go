@@ -47,9 +47,9 @@ func TestCallbackExecutor_ExecuteBeforeAgent(t *testing.T) {
 							MessageID: "test-skip",
 							Role:      "assistant",
 							Parts: []types.Part{
-								map[string]any{
-									"kind": "text",
-									"text": "Execution skipped by callback",
+								types.TextPart{
+									Kind: "text",
+									Text: "Execution skipped by callback",
 								},
 							},
 						}
@@ -61,9 +61,9 @@ func TestCallbackExecutor_ExecuteBeforeAgent(t *testing.T) {
 				MessageID: "test-skip",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Execution skipped by callback",
+					types.TextPart{
+						Kind: "text",
+						Text: "Execution skipped by callback",
 					},
 				},
 			},
@@ -194,10 +194,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 							MessageID:        "test-modified",
 							Role:             "assistant",
 							Parts: []types.Part{
-								map[string]any{
-									"kind": "text",
-									"text": "Response modified by callback",
-								},
+								types.TextPart{Kind: "text", Text: "Response modified by callback"},
 							},
 						}
 					},
@@ -209,10 +206,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				MessageID:        "original",
 				Role:             "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Original response",
-					},
+					types.TextPart{Kind: "text", Text: "Original response"},
 				},
 			},
 			expected: &types.Message{
@@ -221,9 +215,9 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				MessageID:        "test-modified",
 				Role:             "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Response modified by callback",
+					types.TextPart{
+						Kind: "text",
+						Text: "Response modified by callback",
 					},
 				},
 			},
@@ -257,9 +251,9 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				MessageID: "original",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Original response",
+					types.TextPart{
+						Kind: "text",
+						Text: "Original response",
 					},
 				},
 			},
@@ -268,9 +262,9 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				MessageID: "test-modified",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Original response",
+					types.TextPart{
+						Kind: "text",
+						Text: "Original response",
 					},
 				},
 				Metadata: map[string]any{
@@ -405,9 +399,9 @@ func TestCallbackExecutor_ExecuteBeforeModel(t *testing.T) {
 								MessageID: "test-blocked",
 								Role:      "assistant",
 								Parts: []types.Part{
-									map[string]any{
-										"kind": "text",
-										"text": "LLM call blocked by callback",
+									types.TextPart{
+										Kind: "text",
+										Text: "LLM call blocked by callback",
 									},
 								},
 							},
@@ -422,9 +416,9 @@ func TestCallbackExecutor_ExecuteBeforeModel(t *testing.T) {
 					MessageID: "test-blocked",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "LLM call blocked by callback",
+						types.TextPart{
+							Kind: "text",
+							Text: "LLM call blocked by callback",
 						},
 					},
 				},
@@ -443,9 +437,9 @@ func TestCallbackExecutor_ExecuteBeforeModel(t *testing.T) {
 						llmRequest.Config.SystemInstruction = &types.Message{
 							Role: "system",
 							Parts: []types.Part{
-								map[string]any{
-									"kind": "text",
-									"text": "[Modified by Callback] You are a helpful assistant.",
+								types.TextPart{
+									Kind: "text",
+									Text: "[Modified by Callback] You are a helpful assistant.",
 								},
 							},
 						}
@@ -550,7 +544,7 @@ func TestCallbackExecutor_ExecuteBeforeModel(t *testing.T) {
 			if tt.name == "callback modifies request and returns nil" {
 				assert.NotNil(t, tt.request.Config.SystemInstruction)
 				assert.Equal(t, temperature, *tt.request.Config.Temperature)
-				assert.Contains(t, tt.request.Config.SystemInstruction.Parts[0].(map[string]any)["text"], "[Modified by Callback]")
+				assert.Contains(t, tt.request.Config.SystemInstruction.Parts[0].(types.TextPart).Text, "[Modified by Callback]")
 			}
 		})
 	}
@@ -597,9 +591,9 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 							MessageID:        "test-modified",
 							Role:             "assistant",
 							Parts: []types.Part{
-								map[string]any{
-									"kind": "text",
-									"text": "Response modified by callback",
+								types.TextPart{
+									Kind: "text",
+									Text: "Response modified by callback",
 								},
 							},
 						},
@@ -613,9 +607,9 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 					MessageID:        "original",
 					Role:             "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Original response",
+						types.TextPart{
+							Kind: "text",
+							Text: "Original response",
 						},
 					},
 				},
@@ -627,9 +621,9 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 					MessageID:        "test-modified",
 					Role:             "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Response modified by callback",
+						types.TextPart{
+							Kind: "text",
+							Text: "Response modified by callback",
 						},
 					},
 				},
@@ -665,9 +659,9 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 					MessageID: "original",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Original response",
+						types.TextPart{
+							Kind: "text",
+							Text: "Original response",
 						},
 					},
 				},
@@ -678,9 +672,9 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 					MessageID: "test-modified",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Original response",
+						types.TextPart{
+							Kind: "text",
+							Text: "Original response",
 						},
 					},
 					Metadata: map[string]any{
