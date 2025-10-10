@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	gin "github.com/gin-gonic/gin"
@@ -167,6 +166,25 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 			zap.String("event_type", eventType))
 
 		switch eventType {
+		case types.EventTaskStatusChanged:
+			var statusData types.TaskStatus
+			if err := event.DataAs(&statusData); err == nil {
+				task.Status.State = statusData.State
+				if statusData.Message != nil {
+					task.Status.Message = statusData.Message
+				}
+
+				bth.logger.Info("background task status changed",
+					zap.String("task_id", task.ID),
+					zap.String("state", string(statusData.State)))
+
+				if statusData.State == types.TaskStateCompleted ||
+					statusData.State == types.TaskStateFailed ||
+					statusData.State == types.TaskStateCanceled {
+					return task, nil
+				}
+			}
+
 		case types.EventIterationCompleted:
 			var iterationMessage types.Message
 			if err := event.DataAs(&iterationMessage); err == nil {
@@ -193,59 +211,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 
 				return task, nil
 			}
-
-		case types.EventStreamFailed:
-			var errorData struct {
-				Error string `json:"error"`
-			}
-			if err := event.DataAs(&errorData); err == nil {
-				task.Status.State = types.TaskStateFailed
-				errorText := errorData.Error
-				if strings.Contains(errorText, "failed to create chat completion") {
-					errorText = "LLM request failed: " + errorData.Error
-				}
-
-				task.Status.Message = &types.Message{
-					Kind:      "message",
-					MessageID: fmt.Sprintf("error-%s", task.ID),
-					Role:      "assistant",
-					TaskID:    &task.ID,
-					ContextID: &task.ContextID,
-					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": errorText,
-						},
-					},
-				}
-
-				bth.logger.Error("background task failed during streaming",
-					zap.String("task_id", task.ID),
-					zap.String("error", errorText))
-
-				return task, nil
-			}
-
-		case types.EventTaskInterrupted:
-			task.Status.State = types.TaskStateFailed
-			task.Status.Message = &types.Message{
-				Kind:      "message",
-				MessageID: fmt.Sprintf("interrupted-%s", task.ID),
-				Role:      "assistant",
-				TaskID:    &task.ID,
-				ContextID: &task.ContextID,
-				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Task was interrupted",
-					},
-				},
-			}
-
-			bth.logger.Info("background task interrupted",
-				zap.String("task_id", task.ID))
-
-			return task, nil
 
 		case types.EventDelta:
 			continue
@@ -772,24 +737,6 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 	if len(task.History) > 0 {
 		task.Status.State = types.TaskStateCompleted
 		task.Status.Message = &task.History[len(task.History)-1]
-
-		statusUpdate := types.TaskStatusUpdateEvent{
-			Kind:      "status-update",
-			TaskID:    task.ID,
-			ContextID: task.ContextID,
-			Status:    task.Status,
-			Final:     true,
-		}
-
-		statusResponse := types.JSONRPCSuccessResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Result:  statusUpdate,
-		}
-
-		if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
-			h.logger.Error("failed to write final status", zap.Error(err))
-		}
 
 		if err := h.taskManager.UpdateTask(task); err != nil {
 			h.logger.Error("failed to update completed task",

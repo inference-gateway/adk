@@ -718,6 +718,11 @@ func TestBackgroundHandler_WithStreamingAgent(t *testing.T) {
 					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Task completed"}},
 				},
 			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{FinishReason: "stop"},
+				},
+			}
 		}()
 
 		return responseChan, errorChan

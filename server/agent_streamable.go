@@ -300,6 +300,21 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					zap.Int("iteration", iteration),
 					zap.Int("final_message_count", len(currentMessages)),
 					zap.Bool("has_assistant_message", assistantMessage != nil))
+
+				completedStatusEvent := cloudevents.NewEvent()
+				completedStatusEvent.SetType(types.EventTaskStatusChanged)
+				if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+					State:   types.TaskStateCompleted,
+					Message: assistantMessage,
+				}); err != nil {
+					a.logger.Error("failed to set completed status event data", zap.Error(err))
+					return
+				}
+				select {
+				case outputChan <- completedStatusEvent:
+				case <-time.After(100 * time.Millisecond):
+				}
+
 				return
 			}
 
@@ -311,6 +326,31 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		}
 
 		a.logger.Warn("max streaming iterations reached", zap.Int("max_iterations", a.config.MaxChatCompletionIterations))
+
+		canceledStatusEvent := cloudevents.NewEvent()
+		canceledStatusEvent.SetType(types.EventTaskStatusChanged)
+		if err := canceledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+			State: types.TaskStateCanceled,
+		}); err != nil {
+			a.logger.Error("failed to set canceled status event data", zap.Error(err))
+			return
+		}
+		select {
+		case outputChan <- canceledStatusEvent:
+		case <-time.After(100 * time.Millisecond):
+		}
+
+		interruptMessage := types.NewStreamingStatusMessage(
+			"max-iterations-reached",
+			string(types.TaskStateCanceled),
+			nil,
+		)
+		interruptMessage.TaskID = taskID
+		interruptMessage.ContextID = contextID
+		select {
+		case outputChan <- types.NewMessageEvent(types.EventTaskInterrupted, interruptMessage.MessageID, interruptMessage):
+		default:
+		}
 	}()
 
 	return outputChan, nil
