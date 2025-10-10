@@ -5,47 +5,58 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
+	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
 	client "github.com/inference-gateway/adk/client"
 	types "github.com/inference-gateway/adk/types"
 )
 
+// Config holds client configuration
+type Config struct {
+	Environment string `env:"ENVIRONMENT,default=development"`
+	ServerURL   string `env:"SERVER_URL,default=http://localhost:8080"`
+}
+
 func main() {
-	// Setup logger
-	logger, err := zap.NewDevelopment()
+	// Load configuration
+	ctx := context.Background()
+	var cfg Config
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
+	}
+
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
 	if err != nil {
-		log.Fatal("Failed to create logger:", err)
+		log.Fatalf("failed to create logger: %v", err)
 	}
-	defer func() {
-		_ = logger.Sync()
-	}()
+	defer logger.Sync()
 
-	// Get server URL from environment or use default
-	serverURL := os.Getenv("SERVER_URL")
-	if serverURL == "" {
-		serverURL = "http://localhost:8080"
-	}
-
-	logger.Info("Starting A2A client for in-memory queue storage demo",
-		zap.String("server_url", serverURL))
+	logger.Info("client starting", zap.String("server_url", cfg.ServerURL))
+	logger.Info("in-memory queue storage demo")
 
 	// Create A2A client
-	a2aClient := client.NewClientWithLogger(serverURL, logger)
+	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
 	// Test server health
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	healthCtx, healthCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer healthCancel()
 
-	health, err := a2aClient.GetHealth(ctx)
+	health, err := a2aClient.GetHealth(healthCtx)
 	if err != nil {
-		logger.Fatal("Failed to get server health", zap.Error(err))
+		logger.Fatal("failed to get server health", zap.Error(err))
 	}
 
-	logger.Info("Server health check passed", zap.String("status", health.Status))
+	logger.Info("server health check passed", zap.String("status", health.Status))
 
 	// Submit multiple tasks to demonstrate queue processing
 	tasks := []string{
@@ -58,10 +69,13 @@ func main() {
 
 	var submittedTasks []string
 
+	taskCtx, taskCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer taskCancel()
+
 	for i, taskContent := range tasks {
 		contextID := fmt.Sprintf("demo-context-%d", i+1)
 
-		logger.Info("Submitting task to in-memory queue",
+		logger.Info("submitting task to in-memory queue",
 			zap.String("context_id", contextID),
 			zap.String("content", taskContent))
 
@@ -80,9 +94,9 @@ func main() {
 		params := types.MessageSendParams{
 			Message: message,
 		}
-		resp, err := a2aClient.SendTask(ctx, params)
+		resp, err := a2aClient.SendTask(taskCtx, params)
 		if err != nil {
-			logger.Error("Failed to submit task",
+			logger.Error("failed to submit task",
 				zap.Error(err),
 				zap.String("content", taskContent))
 			continue
@@ -92,12 +106,12 @@ func main() {
 		var task types.Task
 		resultBytes, ok := resp.Result.(json.RawMessage)
 		if !ok {
-			logger.Error("Failed to cast response to json.RawMessage",
+			logger.Error("failed to cast response to json.RawMessage",
 				zap.String("content", taskContent))
 			continue
 		}
 		if err := json.Unmarshal(resultBytes, &task); err != nil {
-			logger.Error("Failed to parse task response",
+			logger.Error("failed to parse task response",
 				zap.Error(err),
 				zap.String("content", taskContent))
 			continue
@@ -105,7 +119,7 @@ func main() {
 
 		submittedTasks = append(submittedTasks, task.ID)
 
-		logger.Info("Task submitted successfully",
+		logger.Info("task submitted successfully",
 			zap.String("task_id", task.ID),
 			zap.String("context_id", contextID))
 
@@ -114,20 +128,20 @@ func main() {
 	}
 
 	// Wait a bit for processing to complete
-	logger.Info("Waiting for tasks to be processed by in-memory queue...")
+	logger.Info("waiting for tasks to be processed by in-memory queue")
 	time.Sleep(5 * time.Second)
 
 	// Check status of submitted tasks
 	for _, taskID := range submittedTasks {
 		// Create fresh context for each GetTask call
-		taskCtx, taskCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		getTaskCtx, getTaskCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		params := types.TaskQueryParams{
 			ID: taskID,
 		}
-		resp, err := a2aClient.GetTask(taskCtx, params)
-		taskCancel()
+		resp, err := a2aClient.GetTask(getTaskCtx, params)
+		getTaskCancel()
 		if err != nil {
-			logger.Error("Failed to get task status",
+			logger.Error("failed to get task status",
 				zap.Error(err),
 				zap.String("task_id", taskID))
 			continue
@@ -137,12 +151,12 @@ func main() {
 		var task types.Task
 		resultBytes, ok := resp.Result.(json.RawMessage)
 		if !ok {
-			logger.Error("Failed to cast response to json.RawMessage",
+			logger.Error("failed to cast response to json.RawMessage",
 				zap.String("task_id", taskID))
 			continue
 		}
 		if err := json.Unmarshal(resultBytes, &task); err != nil {
-			logger.Error("Failed to parse task response",
+			logger.Error("failed to parse task response",
 				zap.Error(err),
 				zap.String("task_id", taskID))
 			continue
@@ -150,7 +164,7 @@ func main() {
 		status := task.Status
 		history := task.History
 
-		logger.Info("Task status",
+		logger.Info("task status",
 			zap.String("task_id", task.ID),
 			zap.String("context_id", task.ContextID),
 			zap.String("state", string(status.State)),
@@ -171,7 +185,7 @@ func main() {
 			if len(content) > 100 {
 				contentPreview = content[:100] + "..."
 			}
-			logger.Info("Task response",
+			logger.Info("task response",
 				zap.String("task_id", task.ID),
 				zap.String("role", lastMessage.Role),
 				zap.String("content", contentPreview))
@@ -179,13 +193,15 @@ func main() {
 	}
 
 	// Demonstrate queue stats
-	logger.Info("In-memory queue demo completed successfully",
+	logger.Info("in-memory queue demo completed successfully",
 		zap.Int("tasks_submitted", len(submittedTasks)))
 
-	logger.Info("Demo highlights:")
-	logger.Info("✓ Tasks queued and processed using in-memory storage")
-	logger.Info("✓ No external dependencies required")
-	logger.Info("✓ Fast processing with direct memory access")
-	logger.Info("✓ Perfect for development and testing scenarios")
-	logger.Info("⚠ Tasks will be lost if server restarts (memory-only)")
+	logger.Info("demo highlights",
+		zap.Strings("features", []string{
+			"tasks queued and processed using in-memory storage",
+			"no external dependencies required",
+			"fast processing with direct memory access",
+			"perfect for development and testing scenarios",
+			"tasks will be lost if server restarts (memory-only)",
+		}))
 }

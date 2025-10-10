@@ -5,30 +5,48 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
-	"github.com/inference-gateway/adk/client"
-	"github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
+
+	client "github.com/inference-gateway/adk/client"
+	types "github.com/inference-gateway/adk/types"
 )
 
+// Config holds client configuration
+type Config struct {
+	Environment string `env:"ENVIRONMENT,default=development"`
+	ServerURL   string `env:"SERVER_URL,default=http://localhost:8080"`
+}
+
 func main() {
-	// Get server URL from environment or use default
-	serverURL := os.Getenv("SERVER_URL")
-	if serverURL == "" {
-		serverURL = "http://localhost:8080"
+	// Load configuration
+	ctx := context.Background()
+	var cfg Config
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("Failed to create logger: %v", err)
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
 	}
-	defer logger.Sync()
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	logger.Info("client starting", zap.String("server_url", cfg.ServerURL))
 
 	// Create client
-	a2aClient := client.NewClientWithLogger(serverURL, logger)
+	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -63,7 +81,7 @@ func main() {
 
 		response, err := a2aClient.SendTask(ctx, params)
 		if err != nil {
-			log.Printf("Failed to send message %d: %v", i+1, err)
+			logger.Error("failed to send message", zap.Int("message_number", i+1), zap.Error(err))
 			continue
 		}
 
@@ -73,11 +91,11 @@ func main() {
 		}
 		resultBytes, ok := response.Result.(json.RawMessage)
 		if !ok {
-			log.Printf("Failed to parse result as json.RawMessage")
+			logger.Error("failed to parse result as json.RawMessage")
 			continue
 		}
 		if err := json.Unmarshal(resultBytes, &taskResult); err != nil {
-			log.Printf("Failed to parse task ID: %v", err)
+			logger.Error("failed to parse task ID", zap.Error(err))
 			continue
 		}
 
@@ -93,18 +111,21 @@ func main() {
 				ID: taskResult.ID,
 			})
 			if err != nil {
-				log.Printf("\nFailed to get task status: %v", err)
+				logger.Error("failed to get task status", zap.Error(err))
+				fmt.Println()
 				break
 			}
 
 			var task types.Task
 			taskResultBytes, ok := taskResponse.Result.(json.RawMessage)
 			if !ok {
-				log.Printf("\nFailed to parse task result as json.RawMessage")
+				logger.Error("failed to parse task result as json.RawMessage")
+				fmt.Println()
 				break
 			}
 			if err := json.Unmarshal(taskResultBytes, &task); err != nil {
-				log.Printf("\nFailed to parse task: %v", err)
+				logger.Error("failed to parse task", zap.Error(err))
+				fmt.Println()
 				break
 			}
 

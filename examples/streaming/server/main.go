@@ -26,7 +26,7 @@ type MockAgent struct {
 }
 
 func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message) (<-chan cloudevents.Event, error) {
-	m.logger.Info("mock agent starting streaming")
+	m.logger.Debug("mock agent starting streaming")
 	eventChan := make(chan cloudevents.Event, 100)
 
 	// Extract task from context
@@ -39,7 +39,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 
 	go func() {
 		defer close(eventChan)
-		defer m.logger.Info("mock agent finished streaming")
+		defer m.logger.Debug("mock agent finished streaming")
 
 		// Send initial status change event - task is now working
 		statusEvent := cloudevents.NewEvent()
@@ -62,7 +62,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 		for i, word := range words {
 			select {
 			case <-ctx.Done():
-				m.logger.Info("mock agent streaming cancelled")
+				m.logger.Debug("mock agent streaming cancelled")
 				return
 			default:
 				// Build the delta (just the new token)
@@ -90,14 +90,14 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 				event.SetType(types.EventDelta)
 				event.SetData(cloudevents.ApplicationJSON, deltaMessage)
 
-				m.logger.Info("sending delta", zap.String("delta", delta))
+				m.logger.Debug("sending delta", zap.String("delta", delta))
 				eventChan <- event
 				time.Sleep(200 * time.Millisecond)
 			}
 		}
 
 		// Send task completion event with final message
-		m.logger.Info("sending task completion event")
+		m.logger.Debug("sending task completion event")
 		finalMessage := types.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("mock-completion-%d", time.Now().UnixNano()),
@@ -137,7 +137,7 @@ func (h *MockTaskHandler) SetAgent(agent server.OpenAICompatibleAgent) {
 
 // HandleTask processes background tasks with mock responses
 func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	h.logger.Info("processing mock background task", zap.String("task_id", task.ID))
+	h.logger.Debug("processing mock background task", zap.String("task_id", task.ID))
 
 	// Extract user input
 	userInput := "Hello!"
@@ -178,7 +178,7 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 
 // HandleStreamingTask processes streaming tasks by forwarding CloudEvents from the agent
 func (h *MockTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
-	h.logger.Info("processing mock streaming task", zap.String("task_id", task.ID))
+	h.logger.Debug("processing mock streaming task", zap.String("task_id", task.ID))
 
 	if h.agent == nil {
 		return nil, fmt.Errorf("no agent configured for streaming")
@@ -196,17 +196,6 @@ func (h *MockTaskHandler) HandleStreamingTask(ctx context.Context, task *types.T
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🚀 Starting Streaming A2A Server...")
-
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
-	}
-	defer func() {
-		_ = logger.Sync()
-	}()
-
 	// Create configuration with defaults
 	cfg := &config.Config{
 		Environment: "development",
@@ -232,11 +221,25 @@ func main() {
 	// Load configuration from environment variables
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		logger.Fatal("failed to load configuration", zap.Error(err))
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Log configuration info
-	logger.Info("configuration loaded",
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" || cfg.A2A.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	logger.Info("server starting",
 		zap.String("environment", cfg.Environment),
 		zap.String("agent_name", cfg.A2A.AgentName),
 		zap.String("port", cfg.A2A.ServerConfig.Port),
@@ -281,8 +284,6 @@ func main() {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
 
-	logger.Info("✅ server created")
-
 	// Start server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -293,14 +294,14 @@ func main() {
 		}
 	}()
 
-	logger.Info("🌐 server running on port " + cfg.A2A.ServerConfig.Port)
+	logger.Info("server running", zap.String("port", cfg.A2A.ServerConfig.Port))
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("🛑 shutting down...")
+	logger.Info("shutting down server")
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -308,7 +309,5 @@ func main() {
 
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
-	} else {
-		logger.Info("✅ goodbye!")
 	}
 }

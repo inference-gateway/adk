@@ -15,6 +15,7 @@ import (
 
 // Config holds the client configuration
 type Config struct {
+	Environment   string        `env:"ENVIRONMENT,default=development"`
 	ServerURL     string        `env:"SERVER_URL,default=http://localhost:8080"`
 	ClientTimeout time.Duration `env:"CLIENT_TIMEOUT,default=90s"`
 }
@@ -33,15 +34,25 @@ func main() {
 	// Load configuration from environment
 	var config Config
 	if err := envconfig.Process(context.Background(), &config); err != nil {
-		log.Fatalf("Failed to process config: %v", err)
+		log.Fatalf("failed to process config: %v", err)
 	}
 
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("Failed to create logger: %v", err)
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if config.Environment == "development" || config.Environment == "dev" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
 	}
-	defer logger.Sync() //nolint:errcheck
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	logger.Info("client starting", zap.String("server_url", config.ServerURL))
 
 	fmt.Println("🤖 AI-Powered Streaming Demo")
 	fmt.Printf("Server: %s\n\n", config.ServerURL)

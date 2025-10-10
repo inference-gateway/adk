@@ -94,19 +94,25 @@ func main() {
 	// Load configuration
 	var cfg config.Config
 	if err := envconfig.Process(context.Background(), &cfg); err != nil {
-		log.Fatal("Failed to process environment config:", err)
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Setup logger
-	logger, err := zap.NewDevelopment()
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" || cfg.A2A.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
 	if err != nil {
-		log.Fatal("Failed to create logger:", err)
+		log.Fatalf("failed to create logger: %v", err)
 	}
 	defer func() {
 		_ = logger.Sync()
 	}()
 
-	logger.Info("Starting A2A server with Redis queue storage",
+	logger.Info("server starting",
 		zap.String("environment", cfg.Environment),
 		zap.String("queue_provider", cfg.A2A.QueueConfig.Provider),
 		zap.String("queue_url", cfg.A2A.QueueConfig.URL),
@@ -145,15 +151,17 @@ func main() {
 	defer cancel()
 
 	// Start server
-	if err := a2aServer.Start(ctx); err != nil {
-		logger.Fatal("Failed to start server", zap.Error(err))
-	}
+	go func() {
+		if err := a2aServer.Start(ctx); err != nil {
+			logger.Fatal("server failed to start", zap.Error(err))
+		}
+	}()
 
-	logger.Info("A2A server with Redis queue storage started successfully")
+	logger.Info("server running", zap.String("port", cfg.A2A.ServerConfig.Port))
 
 	// Wait for shutdown signal
 	<-ctx.Done()
-	logger.Info("Shutting down A2A server...")
+	logger.Info("shutting down server")
 }
 
 // maskCredentials masks sensitive credential values for logging
