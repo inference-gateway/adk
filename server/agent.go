@@ -25,11 +25,12 @@ type OpenAICompatibleAgent interface {
 // OpenAICompatibleAgentImpl is the implementation of OpenAICompatibleAgent
 // This implementation is stateless and does not maintain conversation history
 type OpenAICompatibleAgentImpl struct {
-	logger    *zap.Logger
-	llmClient LLMClient
-	toolBox   ToolBox
-	converter utils.MessageConverter
-	config    *config.AgentConfig
+	logger           *zap.Logger
+	llmClient        LLMClient
+	toolBox          ToolBox
+	callbackExecutor CallbackExecutor
+	converter        utils.MessageConverter
+	config           *config.AgentConfig
 }
 
 // NewOpenAICompatibleAgent creates a new OpenAICompatibleAgentImpl
@@ -81,4 +82,17 @@ func (a *OpenAICompatibleAgentImpl) SetLLMClient(client LLMClient) {
 // SetToolBox sets the tool box for the agent
 func (a *OpenAICompatibleAgentImpl) SetToolBox(toolBox ToolBox) {
 	a.toolBox = toolBox
+}
+
+// SetCallbackExecutor sets the callback executor for the agent
+func (a *OpenAICompatibleAgentImpl) SetCallbackExecutor(executor CallbackExecutor) {
+	a.callbackExecutor = executor
+}
+
+// GetCallbackExecutor returns the callback executor for the agent if available or a provided default
+func (a *OpenAICompatibleAgentImpl) GetCallbackExecutor() CallbackExecutor {
+	if a.callbackExecutor == nil {
+		return NewCallbackExecutor(nil, a.logger)
+	}
+	return a.callbackExecutor
 }
