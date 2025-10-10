@@ -54,23 +54,17 @@ func extractMessageContent(message *types.Message) (string, string, string) {
 	}
 
 	for _, part := range message.Parts {
-		partMap, ok := part.(map[string]any)
-		if !ok {
-			continue
-		}
-
 		// Extract text content
-		if text, ok := partMap["text"].(string); ok {
-			userText = text
+		if textPart, ok := part.(types.TextPart); ok {
+			userText = textPart.Text
 		}
 
 		// Extract file content
-		if kind, ok := partMap["kind"].(string); ok && kind == "file" {
-			if filename, ok := partMap["filename"].(string); ok {
-				fileName = filename
-			}
-
-			if fileData, ok := partMap["file"].(map[string]any); ok {
+		if filePart, ok := part.(types.FilePart); ok {
+			if fileData, ok := filePart.File.(map[string]any); ok {
+				if name, ok := fileData["name"].(string); ok {
+					fileName = name
+				}
 				if bytes, ok := fileData["bytes"].(string); ok {
 					if decoded, err := base64.StdEncoding.DecodeString(bytes); err == nil {
 						fileContent = string(decoded)
@@ -181,9 +175,9 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": responseText,
+			types.TextPart{
+				Kind: "text",
+				Text: responseText,
 			},
 		},
 	}

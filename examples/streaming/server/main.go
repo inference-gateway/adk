@@ -143,11 +143,9 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	userInput := "Hello!"
 	if message != nil {
 		for _, part := range message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					userInput = text
-					break
-				}
+			if textPart, ok := part.(types.TextPart); ok {
+				userInput = textPart.Text
+				break
 			}
 		}
 	}

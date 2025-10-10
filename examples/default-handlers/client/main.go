@@ -67,9 +67,9 @@ func main() {
 		message := types.Message{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": prompt,
+				types.TextPart{
+					Kind: "text",
+					Text: prompt,
 				},
 			},
 		}

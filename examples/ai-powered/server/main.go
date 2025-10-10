@@ -53,10 +53,8 @@ func (h *AITaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 			var deltaMsg types.Message
 			if err := cloudEvent.DataAs(&deltaMsg); err == nil {
 				for _, part := range deltaMsg.Parts {
-					if partMap, ok := part.(map[string]any); ok {
-						if text, ok := partMap["text"].(string); ok {
-							fullResponse += text
-						}
+					if textPart, ok := part.(types.TextPart); ok {
+						fullResponse += textPart.Text
 					}
 				}
 			}
@@ -74,9 +72,9 @@ func (h *AITaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": fullResponse,
+			types.TextPart{
+				Kind: "text",
+				Text: fullResponse,
 			},
 		},
 	}

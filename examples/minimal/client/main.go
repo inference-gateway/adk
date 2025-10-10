@@ -56,9 +56,9 @@ func main() {
 	message := types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Hello, this is a test message. Please respond with a greeting.",
+			types.TextPart{
+				Kind: "text",
+				Text: "Hello, this is a test message. Please respond with a greeting.",
 			},
 		},
 	}

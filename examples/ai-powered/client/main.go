@@ -67,9 +67,9 @@ func main() {
 		message := types.Message{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": prompt,
+				types.TextPart{
+					Kind: "text",
+					Text: prompt,
 				},
 			},
 		}
@@ -136,10 +136,8 @@ func main() {
 				// Display the response
 				if task.Status.Message != nil {
 					for _, part := range task.Status.Message.Parts {
-						if partMap, ok := part.(map[string]any); ok {
-							if text, ok := partMap["text"].(string); ok {
-								fmt.Printf("\nResponse: %s\n", text)
-							}
+						if textPart, ok := part.(types.TextPart); ok {
+							fmt.Printf("\nResponse: %s\n", textPart.Text)
 						}
 					}
 				}

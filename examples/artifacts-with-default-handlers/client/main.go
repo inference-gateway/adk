@@ -71,9 +71,9 @@ func main() {
 func runTest(a2aClient client.A2AClient, logger *zap.Logger, prompt string, includeFile bool) {
 	// Create message parts
 	parts := []types.Part{
-		map[string]any{
-			"kind": "text",
-			"text": prompt,
+		types.TextPart{
+			Kind: "text",
+			Text: prompt,
 		},
 	}
 
@@ -97,12 +97,14 @@ Wind Energy Production:
 Total Renewable Energy: 3,615 GWh`
 
 		encodedContent := base64.StdEncoding.EncodeToString([]byte(fileContent))
-		parts = append(parts, map[string]any{
-			"kind":     "file",
-			"filename": "energy_data_2024.txt",
-			"file": map[string]any{
+		filename := "energy_data_2024.txt"
+		mimeType := "text/plain"
+		parts = append(parts, types.FilePart{
+			Kind: "file",
+			File: map[string]any{
 				"bytes":    encodedContent,
-				"mimeType": "text/plain",
+				"mimeType": mimeType,
+				"name":     filename,
 			},
 		})
 		logger.Info("uploading file", zap.String("filename", "energy_data_2024.txt"), zap.Int("size_bytes", len(fileContent)))

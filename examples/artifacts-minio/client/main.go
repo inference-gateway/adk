@@ -150,10 +150,8 @@ func main() {
 	if completedTask.Status.Message != nil {
 		fmt.Println("\n📄 Response from server:")
 		for _, part := range completedTask.Status.Message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					fmt.Printf("   %s\n", text)
-				}
+			if textPart, ok := part.(types.TextPart); ok {
+				fmt.Printf("   %s\n", textPart.Text)
 			}
 		}
 	}
@@ -223,9 +221,9 @@ func createMessageWithFileUpload() types.Message {
 		return types.Message{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations. This will be stored in MinIO cloud storage.",
+				types.TextPart{
+					Kind: "text",
+					Text: "Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations. This will be stored in MinIO cloud storage.",
 				},
 			},
 		}
@@ -248,17 +246,17 @@ func createMessageWithFileUpload() types.Message {
 	return types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics. The report will be stored in MinIO cloud storage for scalable access.",
+			types.TextPart{
+				Kind: "text",
+				Text: "Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics. The report will be stored in MinIO cloud storage for scalable access.",
 			},
-			map[string]any{
-				"kind": "file",
-				"file": map[string]any{
+			types.FilePart{
+				Kind: "file",
+				File: map[string]any{
 					"bytes":    encodedContent,
 					"mimeType": mimeType,
+					"name":     filename,
 				},
-				"filename": filename,
 			},
 		},
 	}

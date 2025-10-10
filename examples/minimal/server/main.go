@@ -36,11 +36,9 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 	userInput := ""
 	if message != nil {
 		for _, part := range message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					userInput = text
-					break
-				}
+			switch p := part.(type) {
+			case types.TextPart:
+				userInput = p.Text
 			}
 		}
 	}
@@ -57,9 +55,9 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": responseText,
+			types.TextPart{
+				Kind: "text",
+				Text: responseText,
 			},
 		},
 	}
