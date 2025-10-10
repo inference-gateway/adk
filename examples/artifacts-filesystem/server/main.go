@@ -20,13 +20,6 @@ import (
 	types "github.com/inference-gateway/adk/types"
 )
 
-// Build-time variables set via ldflags
-var (
-	AgentName        = "artifacts-filesystem-agent"
-	AgentDescription = "An agent that creates and serves artifacts using filesystem storage"
-	AgentVersion     = "0.1.0"
-)
-
 // Config holds the configuration for the artifacts filesystem example server
 type Config struct {
 	// Environment determines runtime environment (development, production, etc.)
@@ -61,23 +54,17 @@ func extractMessageContent(message *types.Message) (string, string, string) {
 	}
 
 	for _, part := range message.Parts {
-		partMap, ok := part.(map[string]any)
-		if !ok {
-			continue
-		}
-
 		// Extract text content
-		if text, ok := partMap["text"].(string); ok {
-			userText = text
+		if textPart, ok := part.(types.TextPart); ok {
+			userText = textPart.Text
 		}
 
 		// Extract file content
-		if kind, ok := partMap["kind"].(string); ok && kind == "file" {
-			if filename, ok := partMap["filename"].(string); ok {
-				fileName = filename
-			}
-
-			if fileData, ok := partMap["file"].(map[string]any); ok {
+		if filePart, ok := part.(types.FilePart); ok {
+			if fileData, ok := filePart.File.(map[string]any); ok {
+				if name, ok := fileData["name"].(string); ok {
+					fileName = name
+				}
 				if bytes, ok := fileData["bytes"].(string); ok {
 					if decoded, err := base64.StdEncoding.DecodeString(bytes); err == nil {
 						fileContent = string(decoded)
@@ -167,11 +154,13 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 		Name:        stringPtr("Analysis Report"),
 		Description: stringPtr("A detailed analysis report based on your request"),
 		Parts: []types.Part{
-			map[string]any{
-				"kind":     "file",
-				"filename": filename,
-				"uri":      url,
-				"mimeType": "text/markdown",
+			types.FilePart{
+				Kind: "file",
+				File: types.FileWithUri{
+					URI:      url,
+					MIMEType: stringPtr("text/markdown"),
+					Name:     stringPtr(filename),
+				},
 			},
 		},
 	}
@@ -182,11 +171,13 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	responseMessage := types.Message{
 		Kind:      "message",
 		MessageID: uuid.New().String(),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": responseText,
+			types.TextPart{
+				Kind: "text",
+				Text: responseText,
 			},
 		},
 	}
@@ -238,22 +229,13 @@ func stringPtr(s string) *string {
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🤖 Starting Artifacts Filesystem A2A Server...")
-
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
-	}
-	defer logger.Sync()
-
 	// Create configuration with defaults
 	cfg := &Config{
 		Environment: "development",
 		A2A: serverConfig.Config{
-			AgentName:        AgentName,
-			AgentDescription: AgentDescription,
-			AgentVersion:     AgentVersion,
+			AgentName:        server.BuildAgentName,
+			AgentDescription: server.BuildAgentDescription,
+			AgentVersion:     server.BuildAgentVersion,
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
 				Streaming:              false,
@@ -282,11 +264,26 @@ func main() {
 	// Load configuration from environment variables
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		logger.Fatal("failed to load configuration", zap.Error(err))
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" || cfg.A2A.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
 	// Log configuration info
-	logger.Info("configuration loaded",
+	logger.Info("server starting",
 		zap.String("environment", cfg.Environment),
 		zap.String("agent_name", cfg.A2A.AgentName),
 		zap.String("a2a_port", cfg.A2A.ServerConfig.Port),
@@ -330,8 +327,6 @@ func main() {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
 
-	logger.Info("✅ servers created")
-
 	// Start servers
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -350,15 +345,14 @@ func main() {
 		}
 	}()
 
-	logger.Info("🌐 A2A server running on port " + cfg.A2A.ServerConfig.Port)
-	logger.Info("📁 Artifacts server running on port " + cfg.A2A.ArtifactsConfig.ServerConfig.Port)
+	logger.Info("server running", zap.String("port", cfg.A2A.ServerConfig.Port))
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("🛑 shutting down...")
+	logger.Info("shutting down server")
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -373,6 +367,4 @@ func main() {
 	if err := artifactsServer.Stop(shutdownCtx); err != nil {
 		logger.Error("artifacts server shutdown error", zap.Error(err))
 	}
-
-	logger.Info("✅ goodbye!")
 }

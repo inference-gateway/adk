@@ -1,0 +1,36 @@
+ARG LD_FLAGS=""
+ARG EXAMPLE_PATH=""
+ARG COMPONENT="client"
+
+FROM golang:1.25-alpine AS builder
+
+ARG LD_FLAGS
+ARG EXAMPLE_PATH
+ARG COMPONENT
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application with ldflags
+RUN cd /build/${EXAMPLE_PATH}/${COMPONENT} && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s" \
+    -a -installsuffix cgo -o $COMPONENT .
+
+# Copy the binary to the final stage
+FROM alpine:latest
+ARG EXAMPLE_PATH
+ARG COMPONENT
+ENV COMPONENT=${COMPONENT}
+RUN apk --no-cache add ca-certificates
+WORKDIR /app
+COPY --from=builder /build/${EXAMPLE_PATH}/${COMPONENT}/${COMPONENT} .
+ENTRYPOINT ["/bin/sh", "-c", "./${COMPONENT}"]

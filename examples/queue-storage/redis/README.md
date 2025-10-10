@@ -2,6 +2,19 @@
 
 This example demonstrates Redis-based queue storage for production environments. Redis provides persistent, scalable queue storage with support for horizontal scaling and high availability.
 
+## Table of Contents
+
+- [What This Example Shows](#what-this-example-shows)
+- [Features](#features)
+- [Directory Structure](#directory-structure)
+- [Running the Example](#running-the-example)
+- [Configuration](#configuration)
+- [How It Works](#how-it-works)
+- [Comparison: In-Memory vs Redis](#comparison-in-memory-vs-redis)
+- [Redis Monitoring](#redis-monitoring)
+- [Next Steps](#next-steps)
+- [Troubleshooting](#troubleshooting)
+
 ## What This Example Shows
 
 - A2A server configured with Redis queue storage
@@ -24,18 +37,16 @@ This example demonstrates Redis-based queue storage for production environments.
 ```
 redis/
 ├── client/
-│   ├── main.go       # A2A client submitting tasks
-│   ├── go.mod        # Client dependencies
-│   └── Dockerfile    # Client container
+│   ├── main.go         # A2A client submitting tasks
+│   └── go.mod          # Client dependencies
 ├── server/
-│   ├── main.go       # A2A server with Redis storage
+│   ├── main.go         # A2A server with Redis storage
 │   ├── config/
-│   │   └── config.go # Configuration structure
-│   ├── go.mod        # Server dependencies
-│   └── Dockerfile    # Server container
-├── docker-compose.yaml # Docker setup with Redis
-├── .env.example      # Environment variables
-└── README.md         # This file
+│   │   └── config.go   # Configuration structure
+│   └── go.mod          # Server dependencies
+├── docker-compose.yaml # Docker setup with Redis, uses ../../Dockerfile.server and ../../Dockerfile.client
+├── .env.example        # Environment variables
+└── README.md           # This file
 ```
 
 ## Running the Example
@@ -265,6 +276,15 @@ docker logs redis-queue-example
 
 # View queue contents
 redis-cli LRANGE a2a:queue 0 -1
+```
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list
 ```
 
 ## Next Steps

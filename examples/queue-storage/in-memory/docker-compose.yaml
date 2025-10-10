@@ -3,11 +3,13 @@ services:
   server:
     build:
       context: ../../..
-      dockerfile: examples/queue-storage/in-memory/server/Dockerfile
+      dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: in-memory-queue-example
         AGENT_DESCRIPTION: A2A server demonstrating in-memory queue storage
         AGENT_VERSION: 0.1.0
+        EXAMPLE_PATH: examples/queue-storage/in-memory
+        COMPONENT: server
     environment:
       ENVIRONMENT: development
       A2A_SERVER_PORT: 8080
@@ -20,20 +22,46 @@ services:
       A2A_TASK_RETENTION_CLEANUP_INTERVAL: 5m
       A2A_CAPABILITIES_STREAMING: true
       A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:8080/health
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - queue-demo-network
 
   client:
     build:
       context: ../../..
-      dockerfile: examples/queue-storage/in-memory/client/Dockerfile
+      dockerfile: examples/Dockerfile.client
+      args:
+        EXAMPLE_PATH: examples/queue-storage/in-memory
+        COMPONENT: client
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       SERVER_URL: http://server:8080
-    command: sh -c "sleep 5 && /app/client"
     networks:
       - queue-demo-network
+
+  a2a-debugger:
+    image: ghcr.io/inference-gateway/a2a-debugger:latest
+    pull_policy: always
+    entrypoint:
+      - /a2a
+      - --server-url
+      - http://server:8080
+    networks:
+      - queue-demo-network
+    profiles:
+      - manual
 
 networks:
   queue-demo-network:

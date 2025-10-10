@@ -5,6 +5,7 @@ import (
 	"context"
 	"sync"
 
+	v2 "github.com/cloudevents/sdk-go/v2"
 	"github.com/inference-gateway/adk/server"
 	"github.com/inference-gateway/adk/types"
 )
@@ -20,7 +21,7 @@ type FakeStreamableTaskHandler struct {
 	getAgentReturnsOnCall map[int]struct {
 		result1 server.OpenAICompatibleAgent
 	}
-	HandleStreamingTaskStub        func(context.Context, *types.Task, *types.Message) (<-chan server.StreamEvent, error)
+	HandleStreamingTaskStub        func(context.Context, *types.Task, *types.Message) (<-chan v2.Event, error)
 	handleStreamingTaskMutex       sync.RWMutex
 	handleStreamingTaskArgsForCall []struct {
 		arg1 context.Context
@@ -28,11 +29,11 @@ type FakeStreamableTaskHandler struct {
 		arg3 *types.Message
 	}
 	handleStreamingTaskReturns struct {
-		result1 <-chan server.StreamEvent
+		result1 <-chan v2.Event
 		result2 error
 	}
 	handleStreamingTaskReturnsOnCall map[int]struct {
-		result1 <-chan server.StreamEvent
+		result1 <-chan v2.Event
 		result2 error
 	}
 	SetAgentStub        func(server.OpenAICompatibleAgent)
@@ -97,7 +98,7 @@ func (fake *FakeStreamableTaskHandler) GetAgentReturnsOnCall(i int, result1 serv
 	}{result1}
 }
 
-func (fake *FakeStreamableTaskHandler) HandleStreamingTask(arg1 context.Context, arg2 *types.Task, arg3 *types.Message) (<-chan server.StreamEvent, error) {
+func (fake *FakeStreamableTaskHandler) HandleStreamingTask(arg1 context.Context, arg2 *types.Task, arg3 *types.Message) (<-chan v2.Event, error) {
 	fake.handleStreamingTaskMutex.Lock()
 	ret, specificReturn := fake.handleStreamingTaskReturnsOnCall[len(fake.handleStreamingTaskArgsForCall)]
 	fake.handleStreamingTaskArgsForCall = append(fake.handleStreamingTaskArgsForCall, struct {
@@ -124,7 +125,7 @@ func (fake *FakeStreamableTaskHandler) HandleStreamingTaskCallCount() int {
 	return len(fake.handleStreamingTaskArgsForCall)
 }
 
-func (fake *FakeStreamableTaskHandler) HandleStreamingTaskCalls(stub func(context.Context, *types.Task, *types.Message) (<-chan server.StreamEvent, error)) {
+func (fake *FakeStreamableTaskHandler) HandleStreamingTaskCalls(stub func(context.Context, *types.Task, *types.Message) (<-chan v2.Event, error)) {
 	fake.handleStreamingTaskMutex.Lock()
 	defer fake.handleStreamingTaskMutex.Unlock()
 	fake.HandleStreamingTaskStub = stub
@@ -137,28 +138,28 @@ func (fake *FakeStreamableTaskHandler) HandleStreamingTaskArgsForCall(i int) (co
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeStreamableTaskHandler) HandleStreamingTaskReturns(result1 <-chan server.StreamEvent, result2 error) {
+func (fake *FakeStreamableTaskHandler) HandleStreamingTaskReturns(result1 <-chan v2.Event, result2 error) {
 	fake.handleStreamingTaskMutex.Lock()
 	defer fake.handleStreamingTaskMutex.Unlock()
 	fake.HandleStreamingTaskStub = nil
 	fake.handleStreamingTaskReturns = struct {
-		result1 <-chan server.StreamEvent
+		result1 <-chan v2.Event
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeStreamableTaskHandler) HandleStreamingTaskReturnsOnCall(i int, result1 <-chan server.StreamEvent, result2 error) {
+func (fake *FakeStreamableTaskHandler) HandleStreamingTaskReturnsOnCall(i int, result1 <-chan v2.Event, result2 error) {
 	fake.handleStreamingTaskMutex.Lock()
 	defer fake.handleStreamingTaskMutex.Unlock()
 	fake.HandleStreamingTaskStub = nil
 	if fake.handleStreamingTaskReturnsOnCall == nil {
 		fake.handleStreamingTaskReturnsOnCall = make(map[int]struct {
-			result1 <-chan server.StreamEvent
+			result1 <-chan v2.Event
 			result2 error
 		})
 	}
 	fake.handleStreamingTaskReturnsOnCall[i] = struct {
-		result1 <-chan server.StreamEvent
+		result1 <-chan v2.Event
 		result2 error
 	}{result1, result2}
 }

@@ -1,15 +1,19 @@
-package server
+package server_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	server "github.com/inference-gateway/adk/server"
+	mocks "github.com/inference-gateway/adk/server/mocks"
 	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 )
 
 func TestStreamingMessageAccumulation(t *testing.T) {
@@ -816,7 +820,7 @@ func TestToolCallAccumulator(t *testing.T) {
 					if toolCallChunk.Function.Arguments != "" {
 						if toolCall.Function.Arguments == "" {
 							toolCall.Function.Arguments = toolCallChunk.Function.Arguments
-						} else if !isCompleteJSON(toolCall.Function.Arguments) {
+						} else {
 							toolCall.Function.Arguments += toolCallChunk.Function.Arguments
 						}
 					}
@@ -846,4 +850,736 @@ func TestToolCallAccumulator(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRunWithStream_ContextCancellation(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Partial "}},
+				},
+			}
+			time.Sleep(50 * time.Millisecond)
+		}()
+
+		return responseChan, errorChan
+	}
+
+	agent, err := server.NewAgentBuilder(logger).WithLLMClient(mockLLMClient).Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Hello"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(ctx, messages)
+	require.NoError(t, err)
+
+	cancel()
+
+	var receivedInterrupted bool
+	for event := range eventChan {
+		if event.Type() == "adk.agent.task.interrupted" {
+			receivedInterrupted = true
+		}
+	}
+
+	assert.True(t, receivedInterrupted, "Should receive task.interrupted event when context is cancelled")
+}
+
+func TestRunWithStream_WithInputRequiredTool(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+				{
+					Index: 0,
+					ID:    "call_input",
+					Type:  "function",
+					Function: struct {
+						Name      string `json:"name,omitempty"`
+						Arguments string `json:"arguments,omitempty"`
+					}{
+						Name:      "input_required",
+						Arguments: `{"message":"Please provide more details"}`,
+					},
+				},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Hello"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	var hasInputRequired bool
+	for event := range eventChan {
+		if event.Type() == "adk.agent.input.required" {
+			hasInputRequired = true
+		}
+	}
+
+	assert.True(t, hasInputRequired, "Should emit input.required event when input_required tool is called")
+}
+
+func TestRunWithStream_MaxIterationsReached(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+				{
+					Index: 0,
+					ID:    fmt.Sprintf("call_%d", time.Now().UnixNano()),
+					Type:  "function",
+					Function: struct {
+						Name      string `json:"name,omitempty"`
+						Arguments string `json:"arguments,omitempty"`
+					}{
+						Name:      "test_tool",
+						Arguments: `{"param":"value"}`,
+					},
+				},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	testTool := server.NewBasicTool(
+		"test_tool",
+		"Test tool",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"param": map[string]any{"type": "string"},
+			},
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return "result", nil
+		},
+	)
+	toolBox.AddTool(testTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		WithMaxChatCompletion(3).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Keep calling the tool"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	iterationCount := 0
+	for event := range eventChan {
+		if event.Type() == "adk.agent.iteration.completed" {
+			iterationCount++
+		}
+	}
+
+	assert.Equal(t, 3, iterationCount, "Should execute exactly max iterations")
+}
+
+func TestRunWithStream_ToolExecutionError(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+				{
+					Index: 0,
+					ID:    "call_fail",
+					Type:  "function",
+					Function: struct {
+						Name      string `json:"name,omitempty"`
+						Arguments string `json:"arguments,omitempty"`
+					}{
+						Name:      "failing_tool",
+						Arguments: `{"param":"value"}`,
+					},
+				},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	failingTool := server.NewBasicTool(
+		"failing_tool",
+		"Tool that fails",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"param": map[string]any{"type": "string"},
+			},
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return "", fmt.Errorf("tool execution failed")
+		},
+	)
+	toolBox.AddTool(failingTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Execute the failing tool"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	var hasToolFailed bool
+	for event := range eventChan {
+		if event.Type() == "adk.agent.tool.failed" {
+			hasToolFailed = true
+		}
+	}
+
+	assert.True(t, hasToolFailed, "Should emit tool.failed event when tool execution fails")
+}
+
+func TestRunWithStream_InvalidToolArguments(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+				{
+					Index: 0,
+					ID:    "call_invalid",
+					Type:  "function",
+					Function: struct {
+						Name      string `json:"name,omitempty"`
+						Arguments string `json:"arguments,omitempty"`
+					}{
+						Name:      "test_tool",
+						Arguments: `{invalid json`,
+					},
+				},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	testTool := server.NewBasicTool(
+		"test_tool",
+		"Test tool",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"param": map[string]any{"type": "string"},
+			},
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return "result", nil
+		},
+	)
+	toolBox.AddTool(testTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Test"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	var hasToolFailed bool
+	for event := range eventChan {
+		if event.Type() == "adk.agent.tool.failed" {
+			hasToolFailed = true
+		}
+	}
+
+	assert.True(t, hasToolFailed, "Should emit tool.failed event when tool arguments are invalid JSON")
+}
+
+func TestRunWithStream_WithSystemPrompt(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	var capturedMessages []sdk.Message
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		capturedMessages = messages
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: "Response"},
+						FinishReason: "stop",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithSystemPrompt("You are a helpful assistant").
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Hello"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	for range eventChan {
+	}
+
+	require.NotEmpty(t, capturedMessages, "Should have captured messages")
+	assert.Equal(t, sdk.System, capturedMessages[0].Role, "First message should be system message")
+	assert.Equal(t, "You are a helpful assistant", capturedMessages[0].Content, "System prompt should match")
+}
+
+func TestRunWithStream_MultipleIterations(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	callCount := 0
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			callCount++
+			if callCount <= 2 {
+				toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+					{
+						Index: 0,
+						ID:    fmt.Sprintf("call_%d", callCount),
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "iteration_tool",
+							Arguments: `{"iteration":` + fmt.Sprintf("%d", callCount) + `}`,
+						},
+					},
+				}
+				responseChan <- &sdk.CreateChatCompletionStreamResponse{
+					Choices: []sdk.ChatCompletionStreamChoice{
+						{
+							Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+							FinishReason: "tool_calls",
+						},
+					},
+				}
+			} else {
+				responseChan <- &sdk.CreateChatCompletionStreamResponse{
+					Choices: []sdk.ChatCompletionStreamChoice{
+						{
+							Delta:        sdk.ChatCompletionStreamResponseDelta{Content: "Final response"},
+							FinishReason: "stop",
+						},
+					},
+				}
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	iterationTool := server.NewBasicTool(
+		"iteration_tool",
+		"Tool for iterations",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"iteration": map[string]any{"type": "number"},
+			},
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return fmt.Sprintf("Iteration %v completed", args["iteration"]), nil
+		},
+	)
+	toolBox.AddTool(iterationTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Run iterations"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	iterationCount := 0
+	for event := range eventChan {
+		if event.Type() == "adk.agent.iteration.completed" {
+			iterationCount++
+		}
+	}
+
+	assert.Equal(t, 3, iterationCount, "Should complete 3 iterations (2 with tools, 1 final)")
+	assert.Equal(t, 3, callCount, "Should call LLM 3 times")
+}
+
+func TestRunWithStream_AllEventTypesEmitted(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+				{
+					Index: 0,
+					ID:    "call_success",
+					Type:  "function",
+					Function: struct {
+						Name      string `json:"name,omitempty"`
+						Arguments string `json:"arguments,omitempty"`
+					}{
+						Name:      "success_tool",
+						Arguments: `{"param":"value"}`,
+					},
+				},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	successTool := server.NewBasicTool(
+		"success_tool",
+		"Tool that succeeds",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"param": map[string]any{"type": "string"},
+			},
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return "success result", nil
+		},
+	)
+	toolBox.AddTool(successTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		WithMaxChatCompletion(1).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Execute tool"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	eventTypes := make(map[string]int)
+	for event := range eventChan {
+		eventTypes[event.Type()]++
+	}
+
+	assert.Greater(t, eventTypes[types.EventToolStarted], 0, "Should emit tool.started event")
+	assert.Greater(t, eventTypes[types.EventToolCompleted], 0, "Should emit tool.completed event")
+	assert.Greater(t, eventTypes[types.EventToolResult], 0, "Should emit tool.result event")
+	assert.Greater(t, eventTypes["adk.agent.iteration.completed"], 0, "Should emit iteration.completed event")
+}
+
+func TestRunWithStream_ToolFailedEventEmitted(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
+				{
+					Index: 0,
+					ID:    "call_fail",
+					Type:  "function",
+					Function: struct {
+						Name      string `json:"name,omitempty"`
+						Arguments string `json:"arguments,omitempty"`
+					}{
+						Name:      "fail_tool",
+						Arguments: `{"param":"value"}`,
+					},
+				},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	failTool := server.NewBasicTool(
+		"fail_tool",
+		"Tool that fails",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"param": map[string]any{"type": "string"},
+			},
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return "", fmt.Errorf("intentional failure")
+		},
+	)
+	toolBox.AddTool(failTool)
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		WithMaxChatCompletion(1).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Execute failing tool"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	eventTypes := make(map[string]int)
+	for event := range eventChan {
+		eventTypes[event.Type()]++
+	}
+
+	assert.Greater(t, eventTypes[types.EventToolStarted], 0, "Should emit tool.started event")
+	assert.Greater(t, eventTypes[types.EventToolFailed], 0, "Should emit tool.failed event")
+	assert.Greater(t, eventTypes[types.EventToolResult], 0, "Should emit tool.result event even on failure")
+}
+
+func TestRunWithStream_StreamFailedEventEmitted(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			errorChan <- fmt.Errorf("streaming connection error")
+		}()
+
+		return responseChan, errorChan
+	}
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				map[string]any{"kind": "text", "text": "Trigger error"},
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	eventTypes := make(map[string]int)
+	for event := range eventChan {
+		eventTypes[event.Type()]++
+	}
+
+	assert.Greater(t, eventTypes[types.EventStreamFailed], 0, "Should emit stream.failed event on error")
 }

@@ -27,17 +27,6 @@ import (
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🔧 Starting Default Handlers A2A Server...")
-
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
-	}
-	defer func() {
-		_ = logger.Sync()
-	}()
-
 	// Create configuration with defaults
 	cfg := &config.Config{
 		Environment: "development",
@@ -63,11 +52,25 @@ func main() {
 	// Load configuration from environment variables
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		logger.Fatal("failed to load configuration", zap.Error(err))
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Log configuration info
-	logger.Info("configuration loaded",
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" || cfg.A2A.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	logger.Info("server starting",
 		zap.String("environment", cfg.Environment),
 		zap.String("agent_name", cfg.A2A.AgentName),
 		zap.String("port", cfg.A2A.ServerConfig.Port),
@@ -160,8 +163,6 @@ func main() {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
 
-	logger.Info("✅ server created")
-
 	// Start server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -172,14 +173,14 @@ func main() {
 		}
 	}()
 
-	logger.Info("🌐 server running on port " + cfg.A2A.ServerConfig.Port)
+	logger.Info("server running", zap.String("port", cfg.A2A.ServerConfig.Port))
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("🛑 shutting down...")
+	logger.Info("shutting down server")
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -187,7 +188,5 @@ func main() {
 
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
-	} else {
-		logger.Info("✅ goodbye!")
 	}
 }

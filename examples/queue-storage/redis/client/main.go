@@ -5,58 +5,69 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
+	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
 	client "github.com/inference-gateway/adk/client"
 	types "github.com/inference-gateway/adk/types"
 )
 
+// Config holds client configuration
+type Config struct {
+	Environment string `env:"ENVIRONMENT,default=development"`
+	ServerURL   string `env:"SERVER_URL,default=http://localhost:8080"`
+}
+
 func main() {
-	// Setup logger
-	logger, err := zap.NewDevelopment()
+	// Load configuration
+	ctx := context.Background()
+	var cfg Config
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
+	}
+
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
 	if err != nil {
-		log.Fatal("Failed to create logger:", err)
+		log.Fatalf("failed to create logger: %v", err)
 	}
-	defer func() {
-		_ = logger.Sync()
-	}()
+	defer logger.Sync()
 
-	// Get server URL from environment or use default
-	serverURL := os.Getenv("SERVER_URL")
-	if serverURL == "" {
-		serverURL = "http://localhost:8080"
-	}
-
-	logger.Info("Starting A2A client for Redis queue storage demo",
-		zap.String("server_url", serverURL))
+	logger.Info("client starting", zap.String("server_url", cfg.ServerURL))
+	logger.Info("redis queue storage demo")
 
 	// Create A2A client
-	a2aClient := client.NewClientWithLogger(serverURL, logger)
+	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
 	// Test server health with retry for Redis connection
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	healthCtx, healthCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer healthCancel()
 
 	var health *client.HealthResponse
 	for i := 0; i < 6; i++ {
-		health, err = a2aClient.GetHealth(ctx)
+		health, err = a2aClient.GetHealth(healthCtx)
 		if err == nil {
 			break
 		}
-		logger.Info("Waiting for server and Redis to be ready...",
+		logger.Info("waiting for server and redis to be ready",
 			zap.Int("attempt", i+1),
 			zap.Error(err))
 		time.Sleep(5 * time.Second)
 	}
 
 	if err != nil {
-		logger.Fatal("Failed to get server health after retries", zap.Error(err))
+		logger.Fatal("failed to get server health after retries", zap.Error(err))
 	}
 
-	logger.Info("Server health check passed", zap.String("status", health.Status))
+	logger.Info("server health check passed", zap.String("status", health.Status))
 
 	// Submit multiple tasks to demonstrate Redis queue persistence
 	tasks := []string{
@@ -72,12 +83,15 @@ func main() {
 
 	var submittedTasks []string
 
-	logger.Info("Submitting tasks to Redis queue for persistent processing")
+	logger.Info("submitting tasks to redis queue for persistent processing")
+
+	taskCtx, taskCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer taskCancel()
 
 	for i, taskContent := range tasks {
 		contextID := fmt.Sprintf("redis-context-%d", i+1)
 
-		logger.Info("Submitting task to Redis queue",
+		logger.Info("submitting task to redis queue",
 			zap.String("context_id", contextID),
 			zap.String("content", taskContent))
 
@@ -96,9 +110,9 @@ func main() {
 		params := types.MessageSendParams{
 			Message: message,
 		}
-		resp, err := a2aClient.SendTask(ctx, params)
+		resp, err := a2aClient.SendTask(taskCtx, params)
 		if err != nil {
-			logger.Error("Failed to submit task",
+			logger.Error("failed to submit task",
 				zap.Error(err),
 				zap.String("content", taskContent))
 			continue
@@ -108,12 +122,12 @@ func main() {
 		var task types.Task
 		resultBytes, ok := resp.Result.(json.RawMessage)
 		if !ok {
-			logger.Error("Failed to cast response to json.RawMessage",
+			logger.Error("failed to cast response to json.RawMessage",
 				zap.String("content", taskContent))
 			continue
 		}
 		if err := json.Unmarshal(resultBytes, &task); err != nil {
-			logger.Error("Failed to parse task response",
+			logger.Error("failed to parse task response",
 				zap.Error(err),
 				zap.String("content", taskContent))
 			continue
@@ -121,7 +135,7 @@ func main() {
 
 		submittedTasks = append(submittedTasks, task.ID)
 
-		logger.Info("Task submitted to Redis queue successfully",
+		logger.Info("task submitted to redis queue successfully",
 			zap.String("task_id", task.ID),
 			zap.String("context_id", contextID))
 
@@ -130,22 +144,22 @@ func main() {
 	}
 
 	// Wait for processing to complete
-	logger.Info("Waiting for Redis queue processing to complete...")
+	logger.Info("waiting for redis queue processing to complete")
 	time.Sleep(8 * time.Second)
 
 	// Check status of submitted tasks
-	logger.Info("Checking task status in Redis storage...")
+	logger.Info("checking task status in redis storage")
 
 	for _, taskID := range submittedTasks {
 		// Create fresh context for each GetTask call
-		taskCtx, taskCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		getTaskCtx, getTaskCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		params := types.TaskQueryParams{
 			ID: taskID,
 		}
-		resp, err := a2aClient.GetTask(taskCtx, params)
-		taskCancel()
+		resp, err := a2aClient.GetTask(getTaskCtx, params)
+		getTaskCancel()
 		if err != nil {
-			logger.Error("Failed to get task status from Redis",
+			logger.Error("failed to get task status from redis",
 				zap.Error(err),
 				zap.String("task_id", taskID))
 			continue
@@ -155,12 +169,12 @@ func main() {
 		var task types.Task
 		resultBytes, ok := resp.Result.(json.RawMessage)
 		if !ok {
-			logger.Error("Failed to cast response to json.RawMessage",
+			logger.Error("failed to cast response to json.RawMessage",
 				zap.String("task_id", taskID))
 			continue
 		}
 		if err := json.Unmarshal(resultBytes, &task); err != nil {
-			logger.Error("Failed to parse task response",
+			logger.Error("failed to parse task response",
 				zap.Error(err),
 				zap.String("task_id", taskID))
 			continue
@@ -168,7 +182,7 @@ func main() {
 		status := task.Status
 		history := task.History
 
-		logger.Info("Task status from Redis storage",
+		logger.Info("task status from redis storage",
 			zap.String("task_id", task.ID),
 			zap.String("context_id", task.ContextID),
 			zap.String("state", string(status.State)),
@@ -189,7 +203,7 @@ func main() {
 			if len(content) > 100 {
 				contentPreview = content[:100] + "..."
 			}
-			logger.Info("Task response from Redis queue",
+			logger.Info("task response from redis queue",
 				zap.String("task_id", task.ID),
 				zap.String("role", lastMessage.Role),
 				zap.String("content", contentPreview))
@@ -197,20 +211,24 @@ func main() {
 	}
 
 	// Demonstrate Redis queue benefits
-	logger.Info("Redis queue demo completed successfully",
+	logger.Info("redis queue demo completed successfully",
 		zap.Int("tasks_submitted", len(submittedTasks)))
 
-	logger.Info("Redis Queue Storage Benefits Demonstrated:")
-	logger.Info("✓ Persistent task storage - tasks survive server restarts")
-	logger.Info("✓ Scalable processing - multiple servers can share the queue")
-	logger.Info("✓ Reliable delivery - Redis ensures task durability")
-	logger.Info("✓ Production ready - suitable for high-volume workloads")
-	logger.Info("✓ Monitoring support - Redis provides comprehensive metrics")
-	logger.Info("✓ Clustering support - can scale to Redis clusters")
+	logger.Info("redis queue storage benefits demonstrated",
+		zap.Strings("benefits", []string{
+			"persistent task storage - tasks survive server restarts",
+			"scalable processing - multiple servers can share the queue",
+			"reliable delivery - redis ensures task durability",
+			"production ready - suitable for high-volume workloads",
+			"monitoring support - redis provides comprehensive metrics",
+			"clustering support - can scale to redis clusters",
+		}))
 
-	logger.Info("Next Steps:")
-	logger.Info("• Restart the server to see task persistence in action")
-	logger.Info("• Scale to multiple server instances sharing the same Redis")
-	logger.Info("• Monitor Redis performance with redis-cli or RedisInsight")
-	logger.Info("• Configure Redis clustering for production deployments")
+	logger.Info("next steps",
+		zap.Strings("steps", []string{
+			"restart the server to see task persistence in action",
+			"scale to multiple server instances sharing the same redis",
+			"monitor redis performance with redis-cli or redisinsight",
+			"configure redis clustering for production deployments",
+		}))
 }

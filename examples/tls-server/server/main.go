@@ -35,11 +35,9 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 	userInput := ""
 	if message != nil {
 		for _, part := range message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					userInput = text
-					break
-				}
+			if textPart, ok := part.(types.TextPart); ok {
+				userInput = textPart.Text
+				break
 			}
 		}
 	}
@@ -52,11 +50,15 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 
 	// Create response message
 	responseMessage := types.Message{
-		Role: "assistant",
+		Kind:      "message",
+		MessageID: fmt.Sprintf("msg-%s", task.ID),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
+		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]any{
-				"type": "text",
-				"text": responseText,
+			types.TextPart{
+				Kind: "text",
+				Text: responseText,
 			},
 		},
 	}
@@ -101,17 +103,6 @@ func (h *SimpleTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🔒 Starting TLS-Enabled A2A Server...")
-
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
-	}
-	defer func() {
-		_ = logger.Sync()
-	}()
-
 	// Create configuration with defaults
 	cfg := &config.Config{
 		Environment: "development",
@@ -142,11 +133,26 @@ func main() {
 	// Load configuration from environment variables
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		logger.Fatal("failed to load configuration", zap.Error(err))
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" || cfg.A2A.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
 	// Log configuration info
-	logger.Info("configuration loaded",
+	logger.Info("server starting",
 		zap.String("environment", cfg.Environment),
 		zap.String("agent_name", cfg.A2A.AgentName),
 		zap.String("port", cfg.A2A.ServerConfig.Port),
@@ -169,8 +175,6 @@ func main() {
 		if _, err := os.Stat(cfg.A2A.ServerConfig.TLSConfig.KeyPath); os.IsNotExist(err) {
 			logger.Fatal("TLS key file does not exist", zap.String("path", cfg.A2A.ServerConfig.TLSConfig.KeyPath))
 		}
-
-		logger.Info("✅ TLS certificates found and validated")
 	}
 
 	// Create task handler
@@ -200,8 +204,6 @@ func main() {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
 
-	logger.Info("✅ server created")
-
 	// Start server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -212,15 +214,14 @@ func main() {
 		}
 	}()
 
-	logger.Info("🔒 TLS server running on port " + cfg.A2A.ServerConfig.Port)
-	logger.Info("🌐 Server URL: https://localhost:" + cfg.A2A.ServerConfig.Port)
+	logger.Info("server running", zap.String("port", cfg.A2A.ServerConfig.Port))
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("🛑 shutting down...")
+	logger.Info("shutting down server")
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -228,7 +229,5 @@ func main() {
 
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
-	} else {
-		logger.Info("✅ goodbye!")
 	}
 }

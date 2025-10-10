@@ -1,11 +1,23 @@
 # AI-Powered A2A Example
 
-This example demonstrates an A2A server with AI/LLM integration and built-in tools for weather and time queries.
+This example demonstrates an A2A server with AI/LLM integration and adding tools for weather and time queries.
+
+## Table of Contents
+
+- [What This Example Shows](#what-this-example-shows)
+- [Directory Structure](#directory-structure)
+- [Running the Example](#running-the-example)
+- [Server Configuration](#server-configuration)
+- [Supported Providers](#supported-providers)
+- [Adding Tools](#adding-tools)
+- [Understanding the Code](#understanding-the-code)
+- [Troubleshooting](#troubleshooting)
+- [Next Steps](#next-steps)
 
 ## What This Example Shows
 
 - A2A server with AI agent integration using multiple LLM providers
-- Built-in tools: weather lookup and current time
+- Adding tools: weather lookup and current time
 - Local Inference Gateway for provider abstraction
 - Environment-based configuration following production patterns
 
@@ -14,15 +26,13 @@ This example demonstrates an A2A server with AI/LLM integration and built-in too
 ```
 ai-powered/
 ├── client/
-│   ├── main.go       # A2A client sending AI prompts
-│   └── Dockerfile    # Client container
+│   └── main.go         # A2A client sending AI prompts
 ├── server/
-│   ├── main.go       # AI-powered A2A server with tools
-│   ├── config/
-│   │   └── config.go # Configuration
-│   └── Dockerfile    # Server container with build-time metadata
-├── docker-compose.yaml # Includes Inference Gateway
-├── .env.example      # All provider API keys
+│   ├── main.go         # AI-powered A2A server with tools
+│   └── config/
+│       └── config.go   # Configuration
+├── docker-compose.yaml # Includes Inference Gateway, uses ../Dockerfile.server and ../Dockerfile.client
+├── .env.example        # All provider API keys
 └── README.md
 ```
 
@@ -70,7 +80,7 @@ This will:
 cd server
 export A2A_AGENT_CLIENT_PROVIDER=openai
 export A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
-export A2A_AGENT_CLIENT_BASE_URL=https://api.openai.com
+export A2A_AGENT_CLIENT_BASE_URL=http://localhost:8080/v1
 go run main.go
 ```
 
@@ -110,7 +120,7 @@ Via the included Inference Gateway:
 - Cohere
 - Mistral
 
-## Built-in Tools
+## Adding Tools
 
 The server includes two sample tools:
 
@@ -161,6 +171,15 @@ Agent metadata is injected via LD flags at build time instead of being hardcoded
 
 ```dockerfile
 RUN go build -ldflags="-X github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}" -o server .
+```
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list --include-history
 ```
 
 ## Next Steps

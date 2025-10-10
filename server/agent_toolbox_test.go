@@ -33,9 +33,9 @@ func TestNewDefaultToolBox_IncludesInputRequiredTool(t *testing.T) {
 		t.Errorf("Expected no error when executing input_required tool, got: %v", err)
 	}
 
-	expectedResult := "Input requested from user: Please provide more details about your request"
+	expectedResult := ""
 	if result != expectedResult {
-		t.Errorf("Expected result '%s', got '%s'", expectedResult, result)
+		t.Errorf("Expected empty result (no-op handler), got '%s'", result)
 	}
 }
 

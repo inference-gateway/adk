@@ -16,6 +16,9 @@ claude-code.version = "2.0.8"
 gh.pkg-path = "gh"
 gh.version = "2.81.0"
 
+markdownlint-cli2.pkg-path = "markdownlint-cli2"
+markdownlint-cli2.version = "0.18.1"
+
 [hook]
 on-activate = """
   export GOENV="$FLOX_ENV_CACHE/goenv"

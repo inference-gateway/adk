@@ -3,6 +3,8 @@ services:
   inference-gateway:
     image: ghcr.io/inference-gateway/inference-gateway:latest
     pull_policy: always
+    ports:
+      - 8080:8080
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -20,11 +22,14 @@ services:
 
   server:
     build:
-      context: ./server
+      context: ../..
+      dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: ai-powered-agent
         AGENT_DESCRIPTION: An AI-powered A2A server with weather and time tools
         AGENT_VERSION: 0.1.0
+        EXAMPLE_PATH: examples/ai-powered-streaming
+        COMPONENT: server
     depends_on:
       - inference-gateway
     environment:
@@ -37,20 +42,47 @@ services:
       A2A_AGENT_CLIENT_PROVIDER: ${A2A_AGENT_CLIENT_PROVIDER}
       A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL}
       A2A_AGENT_CLIENT_TIMEOUT: 230s
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:8080/health
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - a2a-network
 
   client:
     build:
-      context: ./client
+      context: ../..
+      dockerfile: examples/Dockerfile.client
+      args:
+        EXAMPLE_PATH: examples/ai-powered-streaming
+        COMPONENT: client
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       SERVER_URL: http://server:8080
       CLIENT_TIMEOUT: 230s
-    command: sh -c "sleep 5 && /app/client"
     networks:
       - a2a-network
+
+  a2a-debugger:
+    image: ghcr.io/inference-gateway/a2a-debugger:latest
+    pull_policy: always
+    entrypoint:
+      - /a2a
+      - --server-url
+      - http://server:8080
+    networks:
+      - a2a-network
+    profiles:
+      - manual
 
 networks:
   a2a-network:

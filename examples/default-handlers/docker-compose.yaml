@@ -17,11 +17,14 @@ services:
 
   server:
     build:
-      context: ./server
+      context: ../..
+      dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: default-handlers-agent
         AGENT_DESCRIPTION: An A2A server using default handlers for task processing
         AGENT_VERSION: 0.1.0
+        EXAMPLE_PATH: examples/default-handlers
+        COMPONENT: server
     ports:
       - "8080:8080"
     depends_on:
@@ -35,19 +38,46 @@ services:
       A2A_AGENT_CLIENT_BASE_URL: http://inference-gateway:8080/v1
       A2A_AGENT_CLIENT_PROVIDER: ${A2A_AGENT_CLIENT_PROVIDER}
       A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL}
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - http://localhost:8080/health
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - a2a-network
 
   client:
     build:
-      context: ./client
+      context: ../..
+      dockerfile: examples/Dockerfile.client
+      args:
+        EXAMPLE_PATH: examples/default-handlers
+        COMPONENT: client
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       SERVER_URL: http://server:8080
-    command: sh -c "sleep 5 && /app/client"
     networks:
       - a2a-network
+
+  a2a-debugger:
+    image: ghcr.io/inference-gateway/a2a-debugger:latest
+    pull_policy: always
+    entrypoint:
+      - /a2a
+      - --server-url
+      - http://server:8080
+    networks:
+      - a2a-network
+    profiles:
+      - manual
 
 networks:
   a2a-network:

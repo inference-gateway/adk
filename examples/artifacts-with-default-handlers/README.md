@@ -280,14 +280,14 @@ artifacts-with-default-handlers/
 │   ├── main.go              # Server entry point
 │   ├── config/
 │   │   └── config.go        # Configuration management
-│   ├── Dockerfile           # Server container definition
 │   ├── go.mod               # Go dependencies
 │   └── go.sum               # Dependency checksums
 └── client/
     ├── main.go              # Client entry point
-    ├── Dockerfile           # Client container definition
     ├── go.mod               # Go dependencies
     └── go.sum               # Dependency checksums
+
+Note: Uses ../Dockerfile.server and ../Dockerfile.client for containers
 ```
 
 ### Docker Services
@@ -299,11 +299,20 @@ The `docker-compose.yaml` includes these services:
 - **client**: Example client demonstrating artifact downloads
 - **a2a-debugger**: Interactive debugging tool for A2A protocol (manual profile)
 
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list --include-artifacts
+```
+
 ## Testing the Artifact Extraction
 
 The example demonstrates how artifacts created by tools are automatically:
 
-1. **Extracted** from tool execution results in `agentResponse.AdditionalMessages`
+1. **Extracted** from tool execution results as the agent appends messages to `task.History`
 2. **Validated** using `ArtifactHelper.ValidateArtifact()`
 3. **Attached** to the task using `ArtifactHelper.AddArtifactToTask()`
 4. **Returned** in the response without any custom handler logic

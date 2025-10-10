@@ -11,20 +11,6 @@ import (
 )
 
 type FakeOpenAICompatibleAgent struct {
-	RunStub        func(context.Context, []types.Message) (*server.AgentResponse, error)
-	runMutex       sync.RWMutex
-	runArgsForCall []struct {
-		arg1 context.Context
-		arg2 []types.Message
-	}
-	runReturns struct {
-		result1 *server.AgentResponse
-		result2 error
-	}
-	runReturnsOnCall map[int]struct {
-		result1 *server.AgentResponse
-		result2 error
-	}
 	RunWithStreamStub        func(context.Context, []types.Message) (<-chan v2.Event, error)
 	runWithStreamMutex       sync.RWMutex
 	runWithStreamArgsForCall []struct {
@@ -41,76 +27,6 @@ type FakeOpenAICompatibleAgent struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *FakeOpenAICompatibleAgent) Run(arg1 context.Context, arg2 []types.Message) (*server.AgentResponse, error) {
-	var arg2Copy []types.Message
-	if arg2 != nil {
-		arg2Copy = make([]types.Message, len(arg2))
-		copy(arg2Copy, arg2)
-	}
-	fake.runMutex.Lock()
-	ret, specificReturn := fake.runReturnsOnCall[len(fake.runArgsForCall)]
-	fake.runArgsForCall = append(fake.runArgsForCall, struct {
-		arg1 context.Context
-		arg2 []types.Message
-	}{arg1, arg2Copy})
-	stub := fake.RunStub
-	fakeReturns := fake.runReturns
-	fake.recordInvocation("Run", []interface{}{arg1, arg2Copy})
-	fake.runMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *FakeOpenAICompatibleAgent) RunCallCount() int {
-	fake.runMutex.RLock()
-	defer fake.runMutex.RUnlock()
-	return len(fake.runArgsForCall)
-}
-
-func (fake *FakeOpenAICompatibleAgent) RunCalls(stub func(context.Context, []types.Message) (*server.AgentResponse, error)) {
-	fake.runMutex.Lock()
-	defer fake.runMutex.Unlock()
-	fake.RunStub = stub
-}
-
-func (fake *FakeOpenAICompatibleAgent) RunArgsForCall(i int) (context.Context, []types.Message) {
-	fake.runMutex.RLock()
-	defer fake.runMutex.RUnlock()
-	argsForCall := fake.runArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *FakeOpenAICompatibleAgent) RunReturns(result1 *server.AgentResponse, result2 error) {
-	fake.runMutex.Lock()
-	defer fake.runMutex.Unlock()
-	fake.RunStub = nil
-	fake.runReturns = struct {
-		result1 *server.AgentResponse
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeOpenAICompatibleAgent) RunReturnsOnCall(i int, result1 *server.AgentResponse, result2 error) {
-	fake.runMutex.Lock()
-	defer fake.runMutex.Unlock()
-	fake.RunStub = nil
-	if fake.runReturnsOnCall == nil {
-		fake.runReturnsOnCall = make(map[int]struct {
-			result1 *server.AgentResponse
-			result2 error
-		})
-	}
-	fake.runReturnsOnCall[i] = struct {
-		result1 *server.AgentResponse
-		result2 error
-	}{result1, result2}
 }
 
 func (fake *FakeOpenAICompatibleAgent) RunWithStream(arg1 context.Context, arg2 []types.Message) (<-chan v2.Event, error) {
@@ -186,8 +102,6 @@ func (fake *FakeOpenAICompatibleAgent) RunWithStreamReturnsOnCall(i int, result1
 func (fake *FakeOpenAICompatibleAgent) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.runMutex.RLock()
-	defer fake.runMutex.RUnlock()
 	fake.runWithStreamMutex.RLock()
 	defer fake.runWithStreamMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

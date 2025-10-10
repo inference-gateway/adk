@@ -2,6 +2,21 @@
 
 This example demonstrates an A2A server that creates downloadable artifacts using MinIO cloud storage. The server generates analysis reports as markdown files and makes them available for download via HTTP endpoints using MinIO as the storage backend.
 
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Running the Example](#running-the-example)
+- [Configuration](#configuration)
+- [Download Modes](#download-modes)
+- [What Happens](#what-happens)
+- [Generated Artifacts](#generated-artifacts)
+- [API Endpoints](#api-endpoints)
+- [Example Usage](#example-usage)
+- [Troubleshooting](#troubleshooting)
+- [MinIO Benefits](#minio-benefits)
+- [Next Steps](#next-steps)
+
 ## Features
 
 - **MinIO Cloud Storage**: Stores artifacts in MinIO object storage for scalability and distributed access
@@ -283,6 +298,13 @@ docker run --rm --network host minio/mc \
 # Check bucket policy
 docker run --rm --network host minio/mc \
   mc policy get minio/artifacts --insecure
+```
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list --include-artifacts
 ```
 
 ## MinIO Benefits

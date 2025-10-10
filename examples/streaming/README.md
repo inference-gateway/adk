@@ -2,6 +2,16 @@
 
 This example demonstrates real-time streaming responses from an A2A server, perfect for chat applications and interactive experiences.
 
+## Table of Contents
+
+- [What This Example Shows](#what-this-example-shows)
+- [Directory Structure](#directory-structure)
+- [Running the Example](#running-the-example)
+- [Understanding Streaming](#understanding-streaming)
+- [Configuration](#configuration)
+- [Use Cases](#use-cases)
+- [Troubleshooting](#troubleshooting)
+
 ## What This Example Shows
 
 - Real-time streaming of responses
@@ -14,12 +24,10 @@ This example demonstrates real-time streaming responses from an A2A server, perf
 ```
 streaming/
 ├── client/
-│   ├── main.go       # Streaming client
-│   └── Dockerfile
+│   └── main.go          # Streaming client
 ├── server/
-│   ├── main.go       # Streaming-enabled server
-│   └── Dockerfile
-├── docker-compose.yaml
+│   └── main.go          # Streaming-enabled server
+├── docker-compose.yaml  # Uses ../Dockerfile.server and ../Dockerfile.client
 └── README.md
 ```
 
@@ -100,3 +108,12 @@ T-h-i-s- -i-s- -a- -s-t-r-e-a-m-i-n-g- -r-e-s-p-o-n-s-e-.- -E-a-c-h- -c-h-a-r-a-
 - **Code Generation**: Show code as it's generated
 - **Content Creation**: Display writing in progress
 - **Progress Updates**: Stream processing steps
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list --include-history
+```

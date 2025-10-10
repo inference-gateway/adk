@@ -36,36 +36,52 @@ func (h *AITaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 		return nil, fmt.Errorf("no AI agent configured")
 	}
 
-	userInput := ""
-	if message != nil {
-		for _, part := range message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					userInput = text
-					break
-				}
-			}
-		}
-	}
+	taskCtx := context.WithValue(ctx, server.TaskContextKey, task)
 
-	if userInput == "" {
-		userInput = "Hello! How can I help you?"
-	}
-
-	// Use the agent to process the message
-	response, err := h.agent.Run(ctx, []types.Message{*message})
+	streamChan, err := h.agent.RunWithStream(taskCtx, []types.Message{*message})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AI response: %w", err)
 	}
 
-	// Add all messages from the agent response to history
-	task.History = append(task.History, response.AdditionalMessages...)
+	var fullResponse string
 
-	responseMessage := *response.Response
+	// Process all streaming events to completion
+	for cloudEvent := range streamChan {
+		switch cloudEvent.Type() {
+		case "adk.agent.delta":
+			// Extract delta from cloud event
+			var deltaMsg types.Message
+			if err := cloudEvent.DataAs(&deltaMsg); err == nil {
+				for _, part := range deltaMsg.Parts {
+					if textPart, ok := part.(types.TextPart); ok {
+						fullResponse += textPart.Text
+					}
+				}
+			}
+		case "adk.agent.iteration.completed":
+			// Task completion event from agent
+			h.logger.Debug("agent completed iteration")
+		}
+	}
 
-	task.History = append(task.History, responseMessage)
+	// Create final response message
+	responseMessage := types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("msg-%s", task.ID),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
+		Role:      "assistant",
+		Parts: []types.Part{
+			types.TextPart{
+				Kind: "text",
+				Text: fullResponse,
+			},
+		},
+	}
+
 	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = &responseMessage
+	task.History = append(task.History, responseMessage)
 
 	return task, nil
 }
@@ -96,17 +112,6 @@ func (h *AITaskHandler) GetAgent() server.OpenAICompatibleAgent {
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🤖 Starting AI-Powered A2A Server...")
-
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
-	}
-	defer func() {
-		_ = logger.Sync()
-	}()
-
 	// Create configuration with defaults
 	cfg := &config.Config{
 		Environment: "development",
@@ -132,11 +137,25 @@ func main() {
 	// Load configuration from environment variables
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		logger.Fatal("failed to load configuration", zap.Error(err))
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Log configuration info
-	logger.Info("configuration loaded",
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" || cfg.A2A.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	logger.Info("server starting",
 		zap.String("environment", cfg.Environment),
 		zap.String("agent_name", cfg.A2A.AgentName),
 		zap.String("port", cfg.A2A.ServerConfig.Port),
@@ -185,33 +204,26 @@ func main() {
 	)
 	toolBox.AddTool(timeTool)
 
-	// Create AI agent with LLM client (if provider is configured)
-	var agent server.OpenAICompatibleAgent
-	if cfg.A2A.AgentConfig.Provider != "" && cfg.A2A.AgentConfig.Model != "" {
-		llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
-		if err != nil {
-			logger.Fatal("failed to create LLM client", zap.Error(err))
-		}
-
-		agent, err = server.NewAgentBuilder(logger).
-			WithConfig(&cfg.A2A.AgentConfig).
-			WithLLMClient(llmClient).
-			WithSystemPrompt("You are a helpful AI assistant with access to weather and time tools. Be concise and friendly in your responses.").
-			WithMaxChatCompletion(10).
-			WithToolBox(toolBox).
-			Build()
-		if err != nil {
-			logger.Fatal("failed to create AI agent", zap.Error(err))
-		}
-	} else {
-		logger.Warn("no LLM provider configured - agent will return errors for AI tasks")
+	// Create AI agent with LLM client
+	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
+	if err != nil {
+		logger.Fatal("failed to create LLM client", zap.Error(err))
 	}
 
-	// Create task handler
+	agent, err := server.NewAgentBuilder(logger).
+		WithConfig(&cfg.A2A.AgentConfig).
+		WithLLMClient(llmClient).
+		WithSystemPrompt("You are a helpful AI assistant with access to weather and time tools. Be concise and friendly in your responses.").
+		WithMaxChatCompletion(10).
+		WithToolBox(toolBox).
+		Build()
+	if err != nil {
+		logger.Fatal("failed to create AI agent", zap.Error(err))
+	}
+
+	// Create task handler with AI agent
 	taskHandler := NewAITaskHandler(logger)
-	if agent != nil {
-		taskHandler.SetAgent(agent)
-	}
+	taskHandler.SetAgent(agent)
 
 	// Build and start server
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
@@ -237,8 +249,6 @@ func main() {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
 
-	logger.Info("✅ server created")
-
 	// Start server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -249,14 +259,14 @@ func main() {
 		}
 	}()
 
-	logger.Info("🌐 server running on port " + cfg.A2A.ServerConfig.Port)
+	logger.Info("server running", zap.String("port", cfg.A2A.ServerConfig.Port))
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("🛑 shutting down...")
+	logger.Info("shutting down server")
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -264,7 +274,5 @@ func main() {
 
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
-	} else {
-		logger.Info("✅ goodbye!")
 	}
 }

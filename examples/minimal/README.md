@@ -2,6 +2,17 @@
 
 This example demonstrates the most basic A2A server and client setup without any AI integration.
 
+## Table of Contents
+
+- [What This Example Shows](#what-this-example-shows)
+- [Directory Structure](#directory-structure)
+- [Running the Example](#running-the-example)
+- [Server Configuration](#server-configuration)
+- [Client Configuration](#client-configuration)
+- [Understanding the Code](#understanding-the-code)
+- [Troubleshooting](#troubleshooting)
+- [Next Steps](#next-steps)
+
 ## What This Example Shows
 
 - Basic A2A server setup with mock responses
@@ -13,14 +24,12 @@ This example demonstrates the most basic A2A server and client setup without any
 ```
 minimal/
 ├── client/
-│   ├── main.go       # Simple A2A client
-│   └── Dockerfile    # Client container
+│   └── main.go          # Simple A2A client
 ├── server/
-│   ├── main.go       # Basic A2A server with echo handler
-│   ├── config/
-│   │   └── config.go # Configuration
-│   └── Dockerfile    # Server container
-├── docker-compose.yaml
+│   ├── main.go          # Basic A2A server with echo handler
+│   └── config/
+│       └── config.go    # Configuration
+├── docker-compose.yaml  # Uses ../Dockerfile.server and ../Dockerfile.client
 └── README.md
 ```
 
@@ -48,7 +57,7 @@ cd server
 go run main.go
 ```
 
-The server will start on `http://localhost:8080`
+The server will start on port `8080`
 
 #### Run the Client
 
@@ -127,6 +136,15 @@ a2aClient := client.NewClient(serverURL)
 
 // Send task
 response, err := a2aClient.SendTask(ctx, message)
+```
+
+## Troubleshooting
+
+### Troubleshooting with A2A Debugger
+
+```bash
+# List tasks and debug the A2A server
+docker compose run --rm a2a-debugger tasks list --include-history
 ```
 
 ## Next Steps
