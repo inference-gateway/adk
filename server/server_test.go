@@ -645,873 +645,261 @@ func TestToolResultProcessingFix(t *testing.T) {
 	})
 }
 
-func TestLLMIntegration_CompleteWorkflow(t *testing.T) {
+func TestAgentStreamingIntegration_SimpleResponse(t *testing.T) {
 	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
 
-	tests := []struct {
-		name           string
-		userMessage    string
-		llmResponses   []any
-		expectedStates []types.TaskState
-		toolCallsCount int
-		description    string
-	}{
-		{
-			name:        "simple text response without tools",
-			userMessage: "Hello, how are you?",
-			llmResponses: []any{
-				&sdk.CreateChatCompletionResponse{
-					Id:     "chatcmpl-simple-response",
-					Object: "chat.completion",
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Index: 0,
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "Hello! I'm doing well, thank you for asking. How can I help you today?",
-							},
-							FinishReason: "stop",
-						},
-					},
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Hello"}},
 				},
-			},
-			expectedStates: []types.TaskState{types.TaskStateCompleted},
-			toolCallsCount: 0,
-			description:    "Simple conversation without tool usage",
-		},
-		{
-			name:        "workflow with tool calls",
-			userMessage: "What's the weather like today?",
-			llmResponses: []any{
-				&sdk.CreateChatCompletionResponse{
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "",
-								ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
-									{
-										Id:   "call_weather_123",
-										Type: "function",
-										Function: sdk.ChatCompletionMessageToolCallFunction{
-											Name:      "get_weather",
-											Arguments: `{"location": "current"}`,
-										},
-									},
-								},
-							},
-						},
-					},
+			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: " world!"}},
 				},
-				&sdk.CreateChatCompletionResponse{
-					Id:     "chatcmpl-weather-final",
-					Object: "chat.completion",
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Index: 0,
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "Based on the weather data, it's currently sunny with a temperature of 72°F. Perfect weather for outdoor activities!",
-							},
-							FinishReason: "stop",
-						},
-					},
-				},
-			},
-			expectedStates: []types.TaskState{types.TaskStateCompleted},
-			toolCallsCount: 1,
-			description:    "Tool calling workflow with weather check",
-		},
-		{
-			name:        "multiple tool calls in sequence",
-			userMessage: "Schedule a meeting and check my calendar",
-			llmResponses: []any{
-				&sdk.CreateChatCompletionResponse{
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "",
-								ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
-									{
-										Id:   "call_calendar_check",
-										Type: "function",
-										Function: sdk.ChatCompletionMessageToolCallFunction{
-											Name:      "check_calendar",
-											Arguments: `{"date": "today"}`,
-										},
-									},
-									{
-										Id:   "call_schedule_meeting",
-										Type: "function",
-										Function: sdk.ChatCompletionMessageToolCallFunction{
-											Name:      "schedule_meeting",
-											Arguments: `{"title": "Team Sync", "duration": 60}`,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				&sdk.CreateChatCompletionResponse{
-					Id:     "chatcmpl-calendar-final",
-					Object: "chat.completion",
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Index: 0,
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "I've checked your calendar and scheduled the meeting. You have 2 free slots today, and I've booked the Team Sync meeting for 1 hour.",
-							},
-							FinishReason: "stop",
-						},
-					},
-				},
-			},
-			expectedStates: []types.TaskState{types.TaskStateCompleted},
-			toolCallsCount: 2,
-			description:    "Multiple tool calls in single workflow",
-		},
-		{
-			name:        "LLM error handling",
-			userMessage: "Process this complex request",
-			llmResponses: []any{
-				fmt.Errorf("LLM service temporarily unavailable"),
-			},
-			expectedStates: []types.TaskState{types.TaskStateFailed},
-			toolCallsCount: 0,
-			description:    "LLM error should result in failed task",
-		},
+			}
+		}()
+
+		return responseChan, errorChan
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockLLMClient := &mocks.FakeLLMClient{}
-			responseIndex := 0
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		Build()
+	require.NoError(t, err)
 
-			mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
-				if responseIndex >= len(tt.llmResponses) {
-					return nil, fmt.Errorf("unexpected additional LLM call")
-				}
-
-				response := tt.llmResponses[responseIndex]
-				responseIndex++
-
-				if err, ok := response.(error); ok {
-					return nil, err
-				}
-
-				if sdkResp, ok := response.(*sdk.CreateChatCompletionResponse); ok {
-					return sdkResp, nil
-				}
-
-				return nil, fmt.Errorf("unexpected response type in test")
-			}
-
-			mockToolBox := server.NewDefaultToolBox()
-
-			weatherTool := server.NewBasicTool(
-				"get_weather",
-				"Get current weather information",
-				map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"location": map[string]any{
-							"type":        "string",
-							"description": "Location for weather",
-						},
-					},
-					"required": []string{"location"},
-				},
-				func(ctx context.Context, args map[string]any) (string, error) {
-					return `{"temperature": 72, "condition": "sunny", "humidity": 45}`, nil
-				},
-			)
-
-			calendarTool := server.NewBasicTool(
-				"check_calendar",
-				"Check calendar availability",
-				map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"date": map[string]any{
-							"type":        "string",
-							"description": "Date to check",
-						},
-					},
-					"required": []string{"date"},
-				},
-				func(ctx context.Context, args map[string]any) (string, error) {
-					return `{"free_slots": 2, "busy_slots": 3, "next_meeting": "3:00 PM"}`, nil
-				},
-			)
-
-			meetingTool := server.NewBasicTool(
-				"schedule_meeting",
-				"Schedule a new meeting",
-				map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"title": map[string]any{
-							"type":        "string",
-							"description": "Meeting title",
-						},
-						"time": map[string]any{
-							"type":        "string",
-							"description": "Meeting time",
-						},
-					},
-					"required": []string{"title", "time"},
-				},
-				func(ctx context.Context, args map[string]any) (string, error) {
-					return `{"meeting_id": "mtg_456", "status": "scheduled", "time": "2:00 PM"}`, nil
-				},
-			)
-
-			mockToolBox.AddTool(weatherTool)
-			mockToolBox.AddTool(calendarTool)
-			mockToolBox.AddTool(meetingTool)
-
-			agentBuilder := server.NewAgentBuilder(logger).
-				WithLLMClient(mockLLMClient)
-			if tt.toolCallsCount > 0 {
-				agentBuilder = agentBuilder.WithToolBox(mockToolBox)
-			}
-			agent, err := agentBuilder.Build()
-			require.NoError(t, err)
-
-			task := &types.Task{
-				ID:      fmt.Sprintf("test-task-%s", tt.name),
-				Kind:    "task",
-				History: []types.Message{},
-				Status: types.TaskStatus{
-					State: types.TaskStateSubmitted,
-				},
-			}
-
-			message := &types.Message{
-				Role: "user",
-				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": tt.userMessage,
-					},
-				},
-			}
-
-			taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
-			if agent != nil {
-				taskHandler.SetAgent(agent)
-			}
-			result, err := taskHandler.HandleTask(context.Background(), task, message)
-
-			if tt.expectedStates[0] == types.TaskStateFailed {
-				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
-				assert.Equal(t, tt.expectedStates[0], result.Status.State, "Task state should be failed for %s", tt.description)
-			} else {
-				assert.NoError(t, err, "Should not have error for %s", tt.description)
-				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
-				assert.Equal(t, tt.expectedStates[0], result.Status.State, "Task state should match expected for %s", tt.description)
-
-				if tt.toolCallsCount > 0 {
-					expectedMinHistoryLength := 1 + tt.toolCallsCount
-					assert.GreaterOrEqual(t, len(result.History), expectedMinHistoryLength,
-						"History should contain at least user message and tool results for %s", tt.description)
-
-					toolResultCount := 0
-					for _, historyMsg := range result.History {
-						if historyMsg.Role == "tool" {
-							toolResultCount++
-						}
-					}
-					assert.Equal(t, tt.toolCallsCount, toolResultCount,
-						"Should have %d tool result messages for %s", tt.toolCallsCount, tt.description)
-				}
-
-				if result.Status.Message != nil {
-					finalContent := ""
-					for _, part := range result.Status.Message.Parts {
-						if partMap, ok := part.(map[string]any); ok {
-							if text, exists := partMap["text"]; exists {
-								if textStr, ok := text.(string); ok {
-									finalContent += textStr
-								}
-							}
-						}
-					}
-
-					if tt.expectedStates[0] == types.TaskStateCompleted {
-						assert.NotEmpty(t, finalContent, "Final message should not be empty for completed task: %s", tt.description)
-					}
-				}
-			}
-
-			assert.Equal(t, len(tt.llmResponses), responseIndex,
-				"Should have made %d LLM calls for %s", len(tt.llmResponses), tt.description)
-		})
-	}
-}
-
-func TestOpenAICompatibleIntegration_CompleteWorkflows(t *testing.T) {
-	logger := zap.NewNop()
-
-	tests := []struct {
-		name                 string
-		userMessage          string
-		openAIResponses      []any
-		expectedFinalState   types.TaskState
-		expectedToolCalls    int
-		validateFinalMessage func(t *testing.T, msg *types.Message)
-		description          string
-	}{
+	messages := []types.Message{
 		{
-			name:        "openai_simple_text_completion",
-			userMessage: "Explain quantum computing in simple terms",
-			openAIResponses: []any{
-				&sdk.CreateChatCompletionResponse{
-					Id:     "chatcmpl-simple-text",
-					Object: "chat.completion",
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Index: 0,
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "Quantum computing is a revolutionary approach to processing information...",
-							},
-							FinishReason: "stop",
-						},
-					},
-				},
-			},
-			expectedFinalState: types.TaskStateCompleted,
-			expectedToolCalls:  0,
-			validateFinalMessage: func(t *testing.T, msg *types.Message) {
-				assert.Equal(t, "assistant", msg.Role)
-				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]any)
-				assert.Equal(t, "text", part["kind"])
-				assert.Contains(t, part["text"], "Quantum computing")
-			},
-			description: "Simple OpenAI-style completion without tools",
-		},
-		{
-			name:        "openai_function_calling_workflow",
-			userMessage: "What's the weather like in San Francisco today?",
-			openAIResponses: []any{
-				&sdk.CreateChatCompletionResponse{
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "",
-								ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
-									{
-										Id:   "call_abc123",
-										Type: "function",
-										Function: sdk.ChatCompletionMessageToolCallFunction{
-											Name:      "get_weather",
-											Arguments: `{"location": "San Francisco, CA"}`,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				&sdk.CreateChatCompletionResponse{
-					Id:     "chatcmpl-final-response",
-					Object: "chat.completion",
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Index: 0,
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "Based on the weather data, it's currently 68°F and sunny in San Francisco today. Perfect weather for outdoor activities!",
-							},
-							FinishReason: "stop",
-						},
-					},
-				},
-			},
-			expectedFinalState: types.TaskStateCompleted,
-			expectedToolCalls:  1,
-			validateFinalMessage: func(t *testing.T, msg *types.Message) {
-				assert.Equal(t, "assistant", msg.Role)
-				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]any)
-				assert.Equal(t, "text", part["kind"])
-				assert.Contains(t, part["text"], "68°F")
-				assert.Contains(t, part["text"], "San Francisco")
-			},
-			description: "OpenAI function calling with tool execution",
-		},
-		{
-			name:        "openai_multiple_function_calls",
-			userMessage: "Schedule a meeting for tomorrow and check if I have any conflicts",
-			openAIResponses: []any{
-				&sdk.CreateChatCompletionResponse{
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "",
-								ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
-									{
-										Id:   "call_check_calendar",
-										Type: "function",
-										Function: sdk.ChatCompletionMessageToolCallFunction{
-											Name:      "check_calendar",
-											Arguments: `{"date": "tomorrow"}`,
-										},
-									},
-									{
-										Id:   "call_schedule_meeting",
-										Type: "function",
-										Function: sdk.ChatCompletionMessageToolCallFunction{
-											Name:      "schedule_meeting",
-											Arguments: `{"title": "Team Meeting", "time": "2:00 PM", "duration": "1 hour"}`,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				&sdk.CreateChatCompletionResponse{
-					Id:     "chatcmpl-multi-final",
-					Object: "chat.completion",
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Index: 0,
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "I've checked your calendar and successfully scheduled the team meeting for tomorrow at 2:00 PM. You have no conflicts at that time. The meeting has been added to your calendar.",
-							},
-							FinishReason: "stop",
-						},
-					},
-				},
-			},
-			expectedFinalState: types.TaskStateCompleted,
-			expectedToolCalls:  2,
-			validateFinalMessage: func(t *testing.T, msg *types.Message) {
-				assert.Equal(t, "assistant", msg.Role)
-				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]any)
-				assert.Equal(t, "text", part["kind"])
-				content := part["text"].(string)
-				assert.Contains(t, content, "scheduled")
-				assert.Contains(t, content, "2:00 PM")
-				assert.Contains(t, content, "no conflicts")
-			},
-			description: "Multiple OpenAI function calls in sequence",
-		},
-		{
-			name:        "openai_streaming_simulation",
-			userMessage: "Write a short poem about AI",
-			openAIResponses: []any{
-				&sdk.CreateChatCompletionResponse{
-					Id:     "chatcmpl-poem-response",
-					Object: "chat.completion",
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Index: 0,
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "In circuits deep and algorithms bright,\nAI awakens with digital sight.\nThrough data vast and logic clear,\nA future of wonder draws near.",
-							},
-							FinishReason: "stop",
-						},
-					},
-				},
-			},
-			expectedFinalState: types.TaskStateCompleted,
-			expectedToolCalls:  0,
-			validateFinalMessage: func(t *testing.T, msg *types.Message) {
-				assert.Equal(t, "assistant", msg.Role)
-				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]any)
-				assert.Equal(t, "text", part["kind"])
-				content := part["text"].(string)
-				assert.Contains(t, content, "AI")
-				assert.Contains(t, content, "\n")
-			},
-			description: "OpenAI response with creative content",
-		},
-		{
-			name:        "openai_error_response_simulation",
-			userMessage: "This request will trigger an error",
-			openAIResponses: []any{
-				fmt.Errorf("openai api error: rate limit exceeded (status: 429)"),
-			},
-			expectedFinalState: types.TaskStateFailed,
-			expectedToolCalls:  0,
-			validateFinalMessage: func(t *testing.T, msg *types.Message) {
-				assert.Equal(t, "assistant", msg.Role)
-				assert.Len(t, msg.Parts, 1)
-				part := msg.Parts[0].(map[string]any)
-				assert.Equal(t, "text", part["kind"])
-				content := part["text"].(string)
-				assert.Contains(t, content, "LLM request failed")
-			},
-			description: "OpenAI API error handling",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockLLMClient := &mocks.FakeLLMClient{}
-			responseIndex := 0
-
-			mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
-				if responseIndex >= len(tt.openAIResponses) {
-					return nil, fmt.Errorf("unexpected additional LLM call")
-				}
-
-				response := tt.openAIResponses[responseIndex]
-				responseIndex++
-
-				if err, ok := response.(error); ok {
-					return nil, err
-				}
-
-				return response.(*sdk.CreateChatCompletionResponse), nil
-			}
-
-			mockToolBox := server.NewDefaultToolBox()
-
-			weatherTool := server.NewBasicTool(
-				"get_weather",
-				"Get current weather information for a location",
-				map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"location": map[string]any{
-							"type":        "string",
-							"description": "The location to get weather for",
-						},
-					},
-					"required": []string{"location"},
-				},
-				func(ctx context.Context, args map[string]any) (string, error) {
-					location := args["location"].(string)
-					return fmt.Sprintf(`{"location": "%s", "temperature": 68, "condition": "sunny", "humidity": 65}`, location), nil
-				},
-			)
-
-			calendarTool := server.NewBasicTool(
-				"check_calendar",
-				"Check calendar for availability",
-				map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"date": map[string]any{
-							"type":        "string",
-							"description": "Date to check",
-						},
-					},
-					"required": []string{"date"},
-				},
-				func(ctx context.Context, args map[string]any) (string, error) {
-					return `{"available_slots": ["2:00 PM", "3:00 PM"], "conflicts": []}`, nil
-				},
-			)
-
-			scheduleTool := server.NewBasicTool(
-				"schedule_meeting",
-				"Schedule a new meeting",
-				map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"title":    map[string]any{"type": "string"},
-						"time":     map[string]any{"type": "string"},
-						"duration": map[string]any{"type": "string"},
-					},
-					"required": []string{"title", "time"},
-				},
-				func(ctx context.Context, args map[string]any) (string, error) {
-					title := args["title"].(string)
-					timeArg := args["time"].(string)
-					return fmt.Sprintf(`{"meeting_id": "mtg_%d", "title": "%s", "time": "%s", "status": "scheduled"}`,
-						time.Now().Unix(), title, timeArg), nil
-				},
-			)
-
-			mockToolBox.AddTool(weatherTool)
-			mockToolBox.AddTool(calendarTool)
-			mockToolBox.AddTool(scheduleTool)
-
-			agentBuilder := server.NewAgentBuilder(logger).
-				WithLLMClient(mockLLMClient)
-			if tt.expectedToolCalls > 0 {
-				agentBuilder = agentBuilder.WithToolBox(mockToolBox)
-			}
-			agent, err := agentBuilder.Build()
-			require.NoError(t, err)
-
-			task := &types.Task{
-				ID:      fmt.Sprintf("openai-test-%s", tt.name),
-				Kind:    "task",
-				History: []types.Message{},
-				Status: types.TaskStatus{
-					State: types.TaskStateSubmitted,
-				},
-			}
-
-			message := &types.Message{
-				Role: "user",
-				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": tt.userMessage,
-					},
-				},
-			}
-
-			taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
-			if agent != nil {
-				taskHandler.SetAgent(agent)
-			}
-			result, err := taskHandler.HandleTask(context.Background(), task, message)
-
-			if tt.expectedFinalState == types.TaskStateFailed {
-				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
-				assert.Equal(t, tt.expectedFinalState, result.Status.State, "Task state should be failed for %s", tt.description)
-			} else {
-				assert.NoError(t, err, "Should not have error for %s", tt.description)
-				assert.NotNil(t, result, "Result should not be nil for %s", tt.description)
-				assert.Equal(t, tt.expectedFinalState, result.Status.State, "Task state should match expected for %s", tt.description)
-
-				if tt.expectedToolCalls > 0 {
-					toolResultCount := 0
-					for _, historyMsg := range result.History {
-						if historyMsg.Role == "tool" {
-							toolResultCount++
-						}
-					}
-					assert.Equal(t, tt.expectedToolCalls, toolResultCount,
-						"Should have %d tool result messages for %s", tt.expectedToolCalls, tt.description)
-				}
-			}
-
-			if tt.validateFinalMessage != nil && result.Status.Message != nil {
-				tt.validateFinalMessage(t, result.Status.Message)
-			}
-
-			assert.Equal(t, len(tt.openAIResponses), responseIndex,
-				"Should have made %d LLM calls for %s", len(tt.openAIResponses), tt.description)
-		})
-	}
-}
-
-func TestOpenAICompatibleIntegration_ResponseFormatValidation(t *testing.T) {
-	logger := zap.NewNop()
-
-	t.Run("openai_response_to_a2a_message_conversion", func(t *testing.T) {
-		mockLLMClient := &mocks.FakeLLMClient{}
-
-		mockResponse := &sdk.CreateChatCompletionResponse{
-			Id:     "chatcmpl-test",
-			Object: "chat.completion",
-			Choices: []sdk.ChatCompletionChoice{
-				{
-					Index: 0,
-					Message: sdk.Message{
-						Role:    sdk.Assistant,
-						Content: "This is a test response from OpenAI format",
-					},
-					FinishReason: "stop",
-				},
-			},
-		}
-
-		mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
-			return mockResponse, nil
-		}
-
-		agent, err := server.NewAgentBuilder(logger).
-			WithLLMClient(mockLLMClient).
-			Build()
-		require.NoError(t, err)
-
-		task := &types.Task{
-			ID:      "format-validation-test",
-			Kind:    "task",
-			History: []types.Message{},
-			Status:  types.TaskStatus{State: types.TaskStateSubmitted},
-		}
-
-		message := &types.Message{
 			Role: "user",
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "text",
-					"text": "Test message",
+					"text": "Say hello",
 				},
 			},
-		}
+		},
+	}
 
-		taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
-		if agent != nil {
-			taskHandler.SetAgent(agent)
-		}
-		result, err := taskHandler.HandleTask(context.Background(), task, message)
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+	require.NotNil(t, eventChan)
 
-		assert.NoError(t, err)
-		assert.Equal(t, types.TaskStateCompleted, result.Status.State)
-		assert.NotNil(t, result.Status.Message)
+	eventCount := 0
+	for range eventChan {
+		eventCount++
+	}
 
-		finalMessage := result.Status.Message
-		assert.Equal(t, "assistant", finalMessage.Role)
-		assert.Equal(t, "message", finalMessage.Kind)
-		assert.NotEmpty(t, finalMessage.MessageID)
-		assert.Len(t, finalMessage.Parts, 1)
+	assert.Greater(t, eventCount, 0, "Should receive events from streaming agent")
+}
 
-		part := finalMessage.Parts[0].(map[string]any)
-		assert.Equal(t, "text", part["kind"])
-		assert.Equal(t, "This is a test response from OpenAI format", part["text"])
-	})
+func TestBackgroundHandler_WithStreamingAgent(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
 
-	t.Run("openai_tool_call_format_validation", func(t *testing.T) {
-		mockLLMClient := &mocks.FakeLLMClient{}
-		callCount := 0
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
 
-		mockLLMClient.CreateChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
-			callCount++
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
 
-			if callCount == 1 {
-				return &sdk.CreateChatCompletionResponse{
-					Id:      "chatcmpl-tool123",
-					Object:  "chat.completion",
-					Created: 1677649450,
-					Model:   "gpt-3.5-turbo",
-					Choices: []sdk.ChatCompletionChoice{
-						{
-							Index: 0,
-							Message: sdk.Message{
-								Role:    sdk.Assistant,
-								Content: "",
-								ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
-									{
-										Id:   "call_test_function",
-										Type: "function",
-										Function: sdk.ChatCompletionMessageToolCallFunction{
-											Name:      "test_function",
-											Arguments: `{"param": "test_value"}`,
-										},
-									},
-								},
-							},
-							FinishReason: "tool_calls",
-						},
-					},
-					Usage: &sdk.CompletionUsage{
-						PromptTokens:     15,
-						CompletionTokens: 10,
-						TotalTokens:      25,
-					},
-				}, nil
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Task completed"}},
+				},
 			}
+			responseChan <- &sdk.CreateChatCompletionStreamResponse{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{FinishReason: "stop"},
+				},
+			}
+		}()
 
-			return &sdk.CreateChatCompletionResponse{
-				Id:     "chatcmpl-final",
-				Object: "chat.completion",
-				Choices: []sdk.ChatCompletionChoice{
+		return responseChan, errorChan
+	}
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		Build()
+	require.NoError(t, err)
+
+	handler := server.NewDefaultBackgroundTaskHandler(logger, agent)
+
+	task := &types.Task{
+		ID:        "test-task",
+		ContextID: "test-context",
+		History:   []types.Message{},
+		Status: types.TaskStatus{
+			State: types.TaskStateSubmitted,
+		},
+	}
+
+	message := &types.Message{
+		Role: "user",
+		Parts: []types.Part{
+			map[string]any{
+				"kind": "text",
+				"text": "Complete this task",
+			},
+		},
+	}
+
+	result, err := handler.HandleTask(context.Background(), task, message)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
+	assert.NotNil(t, result.Status.Message)
+}
+
+func TestBackgroundHandler_StreamingFailure(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			errorChan <- fmt.Errorf("LLM streaming failed")
+			close(errorChan)
+			close(responseChan)
+		}()
+
+		return responseChan, errorChan
+	}
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		Build()
+	require.NoError(t, err)
+
+	handler := server.NewDefaultBackgroundTaskHandler(logger, agent)
+
+	task := &types.Task{
+		ID:        "test-task-fail",
+		ContextID: "test-context",
+		History:   []types.Message{},
+		Status: types.TaskStatus{
+			State: types.TaskStateSubmitted,
+		},
+	}
+
+	message := &types.Message{
+		Role: "user",
+		Parts: []types.Part{
+			map[string]any{
+				"kind": "text",
+				"text": "This will fail",
+			},
+		},
+	}
+
+	result, err := handler.HandleTask(context.Background(), task, message)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, types.TaskStateFailed, result.Status.State)
+}
+
+func TestAgentStreaming_WithToolCalls(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	callCount := 0
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 10)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			callCount++
+			if callCount == 1 {
+				toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 					{
 						Index: 0,
-						Message: sdk.Message{
-							Role:    sdk.Assistant,
-							Content: "Function executed successfully with result: test_result",
+						ID:    "call_123",
+						Type:  "function",
+						Function: struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						}{
+							Name:      "test_tool",
+							Arguments: `{"arg":"value"}`,
 						},
-						FinishReason: "stop",
 					},
-				},
-			}, nil
-		}
-
-		mockToolBox := server.NewDefaultToolBox()
-		testTool := server.NewBasicTool(
-			"test_function",
-			"A test function for validation",
-			map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"param": map[string]any{
-						"type":        "string",
-						"description": "Test parameter",
+				}
+				responseChan <- &sdk.CreateChatCompletionStreamResponse{
+					Choices: []sdk.ChatCompletionStreamChoice{
+						{Delta: sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks}},
 					},
-				},
-				"required": []string{"param"},
+				}
+			} else {
+				responseChan <- &sdk.CreateChatCompletionStreamResponse{
+					Choices: []sdk.ChatCompletionStreamChoice{
+						{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Tool executed successfully"}},
+					},
+				}
+			}
+		}()
+
+		return responseChan, errorChan
+	}
+
+	toolBox := server.NewDefaultToolBox()
+	testTool := server.NewBasicTool(
+		"test_tool",
+		"Test tool",
+		map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"arg": map[string]any{"type": "string"},
 			},
-			func(ctx context.Context, args map[string]any) (string, error) {
-				return "test_result", nil
-			},
-		)
-		mockToolBox.AddTool(testTool)
+		},
+		func(ctx context.Context, args map[string]any) (string, error) {
+			return `{"result": "success"}`, nil
+		},
+	)
+	toolBox.AddTool(testTool)
 
-		agent, err := server.NewAgentBuilder(logger).
-			WithLLMClient(mockLLMClient).
-			WithToolBox(mockToolBox).
-			Build()
-		require.NoError(t, err)
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		WithToolBox(toolBox).
+		Build()
+	require.NoError(t, err)
 
-		task := &types.Task{
-			ID:      "tool-format-test",
-			Kind:    "task",
-			History: []types.Message{},
-			Status:  types.TaskStatus{State: types.TaskStateSubmitted},
-		}
-
-		message := &types.Message{
+	messages := []types.Message{
+		{
 			Role: "user",
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "text",
-					"text": "Execute test function",
+					"text": "Use the tool",
 				},
 			},
-		}
+		},
+	}
 
-		taskHandler := server.NewDefaultBackgroundTaskHandler(logger, nil)
-		if agent != nil {
-			taskHandler.SetAgent(agent)
-		}
-		result, err := taskHandler.HandleTask(context.Background(), task, message)
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
 
-		assert.NoError(t, err)
-		assert.Equal(t, types.TaskStateCompleted, result.Status.State)
+	eventCount := 0
+	for range eventChan {
+		eventCount++
+	}
 
-		toolResultFound := false
-		for _, historyMsg := range result.History {
-			if historyMsg.Role == "tool" {
-				toolResultFound = true
-				assert.Len(t, historyMsg.Parts, 1)
-
-				part := historyMsg.Parts[0].(map[string]any)
-				assert.Equal(t, "data", part["kind"], "Tool result should use DataPart")
-
-				data := part["data"].(map[string]any)
-				assert.Equal(t, "call_test_function", data["tool_call_id"])
-				assert.Equal(t, "test_function", data["tool_name"])
-				assert.Equal(t, "test_result", data["result"])
-			}
-		}
-		assert.True(t, toolResultFound, "Tool result should be present in history")
-
-		finalContent := ""
-		for _, part := range result.Status.Message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, exists := partMap["text"]; exists {
-					if textStr, ok := text.(string); ok {
-						finalContent += textStr
-					}
-				}
-			}
-		}
-		assert.Contains(t, finalContent, "test_result")
-		assert.Contains(t, finalContent, "successfully")
-
-		assert.Equal(t, 2, callCount, "Should have made 2 LLM calls (tool call + final response)")
-	})
+	assert.Greater(t, eventCount, 0)
+	assert.GreaterOrEqual(t, callCount, 2, "Should make at least 2 LLM calls (tool + final)")
 }

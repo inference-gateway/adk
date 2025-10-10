@@ -6,10 +6,17 @@ import (
 	"fmt"
 	"log"
 
+	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
 	client "github.com/inference-gateway/adk/client"
 )
+
+// Config holds client configuration
+type Config struct {
+	Environment string `env:"ENVIRONMENT,default=development"`
+	ServerURL   string `env:"SERVER_URL,default=http://localhost:8080"`
+}
 
 // Static Agent Card A2A Client Example
 //
@@ -18,10 +25,21 @@ import (
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("📞 Starting Static Agent Card A2A Client...")
+	// Load configuration
+	ctx := context.Background()
+	var cfg Config
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
+	}
 
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
 	if err != nil {
 		log.Fatalf("failed to create logger: %v", err)
 	}
@@ -29,50 +47,46 @@ func main() {
 		_ = logger.Sync()
 	}()
 
+	logger.Info("client starting", zap.String("server_url", cfg.ServerURL))
+
 	// Create A2A client
-	a2aClient := client.NewClientWithLogger("http://localhost:8080", logger)
+	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
-	ctx := context.Background()
-
-	fmt.Println("\n🃏 Fetching agent card from server...")
-	fmt.Println("This demonstrates how WithAgentCardFromFile() loads configuration from agent-card.json")
+	logger.Info("fetching agent card from server")
+	logger.Info("this demonstrates how WithAgentCardFromFile() loads configuration from agent-card.json")
 
 	// Get the agent card to show the static configuration
 	agentCard, err := a2aClient.GetAgentCard(ctx)
 	if err != nil {
-		log.Fatalf("failed to get agent card: %v", err)
+		logger.Fatal("failed to get agent card", zap.Error(err))
 	}
 
 	// Pretty print the agent card
 	cardJSON, err := json.MarshalIndent(agentCard, "", "  ")
 	if err != nil {
-		log.Fatalf("failed to marshal agent card: %v", err)
+		logger.Fatal("failed to marshal agent card", zap.Error(err))
 	}
 
-	fmt.Println("\n📋 Agent Card Configuration (loaded from agent-card.json):")
+	fmt.Println("\nAgent Card Configuration (loaded from agent-card.json):")
 	fmt.Println(string(cardJSON))
 
-	fmt.Println("\n🔍 Key Points:")
-	fmt.Printf("✓ Agent Name: %s\n", agentCard.Name)
-	fmt.Printf("✓ Description: %s\n", agentCard.Description)
-	fmt.Printf("✓ Version: %s\n", agentCard.Version)
-	fmt.Printf("✓ Protocol Version: %s\n", agentCard.ProtocolVersion)
+	logger.Info("key agent details",
+		zap.String("name", agentCard.Name),
+		zap.String("description", agentCard.Description),
+		zap.String("version", agentCard.Version),
+		zap.String("protocol_version", agentCard.ProtocolVersion))
 
 	if agentCard.Capabilities.Streaming != nil {
-		fmt.Printf("✓ Streaming Enabled: %t\n", *agentCard.Capabilities.Streaming)
+		logger.Info("streaming capability", zap.Bool("enabled", *agentCard.Capabilities.Streaming))
 	}
 
 	if len(agentCard.Skills) > 0 {
-		fmt.Printf("✓ Skills Available: %d\n", len(agentCard.Skills))
+		logger.Info("available skills", zap.Int("count", len(agentCard.Skills)))
 		for i, skill := range agentCard.Skills {
 			fmt.Printf("  %d. %s: %s\n", i+1, skill.Name, skill.Description)
 		}
 	}
 
-	fmt.Println("\n💡 This configuration was loaded from agent-card.json using:")
-	fmt.Println("   WithAgentCardFromFile(cfg.A2A.AgentCardFile, map[string]any{")
-	fmt.Printf("       \"url\": fmt.Sprintf(\"http://localhost:%%s\", port),\n")
-	fmt.Println("   })")
-
-	fmt.Println("\n✅ Agent card demonstration completed!")
+	logger.Info("configuration loaded from agent-card.json using WithAgentCardFromFile()")
+	logger.Info("agent card demonstration completed")
 }

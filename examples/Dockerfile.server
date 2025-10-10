@@ -1,0 +1,45 @@
+ARG AGENT_NAME=""
+ARG AGENT_DESCRIPTION=""
+ARG AGENT_VERSION=""
+ARG EXAMPLE_PATH=""
+ARG COMPONENT="server"
+
+FROM golang:1.25-alpine AS builder
+
+ARG AGENT_NAME
+ARG AGENT_DESCRIPTION
+ARG AGENT_VERSION
+ARG EXAMPLE_PATH
+ARG COMPONENT
+
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application with ldflags
+RUN cd /build/${EXAMPLE_PATH}/${COMPONENT} && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s -X 'github.com/inference-gateway/adk/server.BuildAgentName=${AGENT_NAME}' -X 'github.com/inference-gateway/adk/server.BuildAgentDescription=${AGENT_DESCRIPTION}' -X 'github.com/inference-gateway/adk/server.BuildAgentVersion=${AGENT_VERSION}'" \
+    -a -installsuffix cgo -o $COMPONENT .
+
+# Copy the binary to the final stage
+FROM alpine:latest
+ARG EXAMPLE_PATH
+ARG COMPONENT
+ENV COMPONENT=${COMPONENT}
+RUN apk --no-cache add curl ca-certificates && \
+    addgroup -g 1001 a2a && \
+    adduser -D -u 1001 -G a2a agent
+WORKDIR /app
+COPY --from=builder /build/${EXAMPLE_PATH}/${COMPONENT}/${COMPONENT} .
+RUN chown -R agent:a2a /app
+USER agent
+EXPOSE 8080 8081 8443
+ENTRYPOINT ["/bin/sh", "-c", "./${COMPONENT}"]

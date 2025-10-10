@@ -5,31 +5,48 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
+	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
 	client "github.com/inference-gateway/adk/client"
 	types "github.com/inference-gateway/adk/types"
 )
 
+// Config holds client configuration
+type Config struct {
+	Environment string `env:"ENVIRONMENT,default=development"`
+	ServerURL   string `env:"SERVER_URL,default=http://localhost:8080"`
+}
+
 func main() {
-	// Get server URL from environment or use default
-	serverURL := os.Getenv("SERVER_URL")
-	if serverURL == "" {
-		serverURL = "http://localhost:8080"
+	// Load configuration
+	ctx := context.Background()
+	var cfg Config
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("Failed to create logger: %v", err)
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
 	}
-	defer logger.Sync()
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	logger.Info("client starting", zap.String("server_url", cfg.ServerURL))
 
 	// Create client
-	a2aClient := client.NewClientWithLogger(serverURL, logger)
+	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
 	// Create a simple task
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -39,14 +56,14 @@ func main() {
 	message := types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Hello, this is a test message. Please respond with a greeting.",
+			types.TextPart{
+				Kind: "text",
+				Text: "Hello, this is a test message. Please respond with a greeting.",
 			},
 		},
 	}
 
-	fmt.Println("Sending message to server...")
+	logger.Info("sending message to server")
 
 	// Send the message using SendTask
 	params := types.MessageSendParams{
@@ -74,10 +91,10 @@ func main() {
 		log.Fatalf("Failed to unmarshal task: %v", err)
 	}
 
-	fmt.Printf("Task created with ID: %s, initial state: %s\n", task.ID, task.Status.State)
+	logger.Info("task created", zap.String("task_id", task.ID), zap.String("state", string(task.Status.State)))
 
 	// Poll for task completion
-	fmt.Println("Polling for task completion...")
+	logger.Debug("polling for task completion")
 	for range 10 {
 		time.Sleep(500 * time.Millisecond)
 
@@ -106,25 +123,25 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("Task state: %s\n", updatedTask.Status.State)
+		logger.Debug("task state", zap.String("state", string(updatedTask.Status.State)))
 
 		if updatedTask.Status.State == types.TaskStateCompleted {
 			// Pretty print the completed task
 			responseJSON, err := json.MarshalIndent(updatedTask, "", "  ")
 			if err != nil {
-				log.Fatalf("Failed to marshal response: %v", err)
+				log.Fatalf("failed to marshal response: %v", err)
 			}
 
-			fmt.Println("\nCompleted task:")
+			logger.Info("task completed")
 			fmt.Println(string(responseJSON))
 			return
 		}
 
 		if updatedTask.Status.State == types.TaskStateFailed {
-			fmt.Println("Task failed!")
+			logger.Error("task failed")
 			return
 		}
 	}
 
-	fmt.Println("Task did not complete within timeout")
+	logger.Warn("task did not complete within timeout")
 }

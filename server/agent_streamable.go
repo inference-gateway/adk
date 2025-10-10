@@ -24,10 +24,27 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		tools = a.toolBox.GetTools()
 	}
 
+	var taskID *string
+	var contextID *string
+	if task, ok := ctx.Value(TaskContextKey).(*types.Task); ok && task != nil {
+		taskID = &task.ID
+		contextID = &task.ContextID
+	}
+
 	outputChan := make(chan cloudevents.Event, 100)
 
 	go func() {
 		defer close(outputChan)
+
+		statusEvent := cloudevents.NewEvent()
+		statusEvent.SetType(types.EventTaskStatusChanged)
+		if err := statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+			State: types.TaskStateWorking,
+		}); err != nil {
+			a.logger.Error("failed to set status event data", zap.Error(err))
+			return
+		}
+		outputChan <- statusEvent
 
 		currentMessages := make([]types.Message, len(messages))
 		copy(currentMessages, messages)
@@ -78,21 +95,28 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 					}
 
-					interruptedTask := &types.Task{
-						ID:        fmt.Sprintf("interrupted-%d", iteration),
-						ContextID: fmt.Sprintf("streaming-task-%d", iteration),
-						Status:    types.TaskStatus{State: types.TaskStateWorking},
+					cancelledStatusEvent := cloudevents.NewEvent()
+					cancelledStatusEvent.SetType(types.EventTaskStatusChanged)
+					if err := cancelledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+						State: types.TaskStateCanceled,
+					}); err != nil {
+						a.logger.Error("failed to set cancelled status event data", zap.Error(err))
+						return
 					}
+					select {
+					case outputChan <- cancelledStatusEvent:
+					case <-time.After(100 * time.Millisecond):
+					}
+
 					interruptMessage := types.NewStreamingStatusMessage(
 						fmt.Sprintf("task-interrupted-%d", iteration),
-						"interrupted",
-						map[string]any{
-							"reason": "context_cancelled",
-							"task":   interruptedTask,
-						},
+						string(types.TaskStateCanceled),
+						nil,
 					)
+					interruptMessage.TaskID = taskID
+					interruptMessage.ContextID = contextID
 					select {
-					case outputChan <- types.NewMessageEvent("adk.agent.task.interrupted", interruptMessage.MessageID, interruptMessage, nil):
+					case outputChan <- types.NewMessageEvent(types.EventTaskInterrupted, interruptMessage.MessageID, interruptMessage):
 					default:
 					}
 					return
@@ -101,16 +125,28 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					if streamErr != nil {
 						a.logger.Error("streaming failed", zap.Error(streamErr))
 
+						failedStatusEvent := cloudevents.NewEvent()
+						failedStatusEvent.SetType(types.EventTaskStatusChanged)
+						if err := failedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+							State: types.TaskStateFailed,
+						}); err != nil {
+							a.logger.Error("failed to set failed status event data", zap.Error(err))
+							return
+						}
+						select {
+						case outputChan <- failedStatusEvent:
+						default:
+						}
+
 						errorMessage := types.NewStreamingStatusMessage(
 							fmt.Sprintf("streaming-error-%d", iteration),
-							"failed",
-							map[string]any{
-								"error":     streamErr.Error(),
-								"iteration": iteration,
-							},
+							string(types.TaskStateFailed),
+							nil,
 						)
+						errorMessage.TaskID = taskID
+						errorMessage.ContextID = contextID
 						select {
-						case outputChan <- types.NewMessageEvent("adk.agent.stream.failed", errorMessage.MessageID, errorMessage, nil):
+						case outputChan <- types.NewMessageEvent(types.EventStreamFailed, errorMessage.MessageID, errorMessage):
 						default:
 						}
 						return
@@ -175,6 +211,8 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 							fmt.Sprintf("assistant-stream-%d", iteration),
 							make([]types.Part, 0),
 						)
+						assistantMessage.TaskID = taskID
+						assistantMessage.ContextID = contextID
 
 						if fullContent != "" {
 							assistantMessage.Parts = append(assistantMessage.Parts, map[string]any{
@@ -262,6 +300,21 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					zap.Int("iteration", iteration),
 					zap.Int("final_message_count", len(currentMessages)),
 					zap.Bool("has_assistant_message", assistantMessage != nil))
+
+				completedStatusEvent := cloudevents.NewEvent()
+				completedStatusEvent.SetType(types.EventTaskStatusChanged)
+				if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+					State:   types.TaskStateCompleted,
+					Message: assistantMessage,
+				}); err != nil {
+					a.logger.Error("failed to set completed status event data", zap.Error(err))
+					return
+				}
+				select {
+				case outputChan <- completedStatusEvent:
+				case <-time.After(100 * time.Millisecond):
+				}
+
 				return
 			}
 
@@ -273,6 +326,31 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		}
 
 		a.logger.Warn("max streaming iterations reached", zap.Int("max_iterations", a.config.MaxChatCompletionIterations))
+
+		canceledStatusEvent := cloudevents.NewEvent()
+		canceledStatusEvent.SetType(types.EventTaskStatusChanged)
+		if err := canceledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+			State: types.TaskStateCanceled,
+		}); err != nil {
+			a.logger.Error("failed to set canceled status event data", zap.Error(err))
+			return
+		}
+		select {
+		case outputChan <- canceledStatusEvent:
+		case <-time.After(100 * time.Millisecond):
+		}
+
+		interruptMessage := types.NewStreamingStatusMessage(
+			"max-iterations-reached",
+			string(types.TaskStateCanceled),
+			nil,
+		)
+		interruptMessage.TaskID = taskID
+		interruptMessage.ContextID = contextID
+		select {
+		case outputChan <- types.NewMessageEvent(types.EventTaskInterrupted, interruptMessage.MessageID, interruptMessage):
+		default:
+		}
 	}()
 
 	return outputChan, nil
@@ -280,136 +358,107 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 // executeToolCallsWithEvents executes tool calls and emits events, returning tool result messages
 func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- cloudevents.Event) []types.Message {
-	toolResultMessages := make([]types.Message, 0)
+	toolResultMessages := make([]types.Message, 0, len(toolCalls))
+
+	var taskID *string
+	var contextID *string
+	if task, ok := ctx.Value(TaskContextKey).(*types.Task); ok && task != nil {
+		taskID = &task.ID
+		contextID = &task.ContextID
+	}
 
 	for _, toolCall := range toolCalls {
 		if toolCall.Function.Name == "" {
 			continue
 		}
 
-		startEvent := types.NewStreamingStatusMessage(
-			fmt.Sprintf("tool-start-%s", toolCall.Id),
-			"started",
-			map[string]any{
-				"tool_name": toolCall.Function.Name,
-			},
-		)
-
+		toolStartMessage := types.NewStreamingStatusMessage(fmt.Sprintf("tool-start-%s", toolCall.Id), string(types.TaskStateWorking), nil)
+		toolStartMessage.TaskID = taskID
+		toolStartMessage.ContextID = contextID
 		select {
-		case outputChan <- types.NewMessageEvent("adk.agent.tool.started", startEvent.MessageID, startEvent, nil):
+		case outputChan <- types.NewMessageEvent(types.EventToolStarted, fmt.Sprintf("tool-start-%s", toolCall.Id), toolStartMessage):
 		case <-ctx.Done():
 			return toolResultMessages
 		}
 
 		var args map[string]any
-		var result string
-		var toolErr error
-
 		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 			a.logger.Error("failed to parse tool arguments", zap.String("tool", toolCall.Function.Name), zap.Error(err))
-			result = fmt.Sprintf("Error parsing tool arguments: %s", err.Error())
-			toolErr = err
 
-			failedEvent := types.NewStreamingStatusMessage(
-				fmt.Sprintf("tool-failed-%s", toolCall.Id),
-				"failed",
-				map[string]any{
-					"tool_name": toolCall.Function.Name,
-				},
-			)
-
+			toolFailedMessage := types.NewStreamingStatusMessage(fmt.Sprintf("tool-failed-%s", toolCall.Id), string(types.TaskStateFailed), nil)
+			toolFailedMessage.TaskID = taskID
+			toolFailedMessage.ContextID = contextID
 			select {
-			case outputChan <- types.NewMessageEvent("adk.agent.tool.failed", failedEvent.MessageID, failedEvent, nil):
+			case outputChan <- types.NewMessageEvent(types.EventToolFailed, fmt.Sprintf("tool-failed-%s", toolCall.Id), toolFailedMessage):
 			case <-ctx.Done():
 			}
-		} else {
-			if toolCall.Function.Name == "input_required" {
-				a.logger.Debug("input_required tool called in streaming mode",
-					zap.String("tool_call_id", toolCall.Id),
-					zap.String("message", toolCall.Function.Arguments))
 
-				result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			toolResultMsg := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, fmt.Sprintf("Error parsing tool arguments: %s", err.Error()), true)
+			toolResultMsg.TaskID = taskID
+			toolResultMsg.ContextID = contextID
+			toolResultMessages = append(toolResultMessages, *toolResultMsg)
+			continue
+		}
 
-				completedEvent := types.NewStreamingStatusMessage(
-					fmt.Sprintf("tool-completed-%s", toolCall.Id),
-					"completed",
-					map[string]any{
-						"tool_name": toolCall.Function.Name,
-					},
-				)
+		switch toolCall.Function.Name {
+		case types.ToolInputRequired:
+			a.logger.Debug("input_required tool called in streaming mode", zap.String("tool_call_id", toolCall.Id), zap.String("message", toolCall.Function.Arguments))
+			inputRequiredMessage := types.NewInputRequiredMessage(toolCall.Id, args["message"].(string))
+			inputRequiredMessage.TaskID = taskID
+			inputRequiredMessage.ContextID = contextID
 
-				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.tool.completed", completedEvent.MessageID, completedEvent, nil):
-				case <-ctx.Done():
-					return toolResultMessages
-				}
-
-				toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
-
-				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
-				case <-ctx.Done():
-					return toolResultMessages
-				}
-
-				toolResultMessages = append(toolResultMessages, *toolResultMessage)
-
-				inputMessage := args["message"].(string)
-				inputRequiredMessage := types.NewInputRequiredMessage(toolCall.Id, inputMessage)
-
-				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.input.required", inputRequiredMessage.MessageID, inputRequiredMessage, nil):
-				case <-ctx.Done():
-				}
-
-				toolResultMessages = append(toolResultMessages, *inputRequiredMessage)
-
+			toolCompletedMessage := types.NewStreamingStatusMessage(fmt.Sprintf("tool-completed-%s", toolCall.Id), string(types.TaskStateCompleted), nil)
+			toolCompletedMessage.TaskID = taskID
+			toolCompletedMessage.ContextID = contextID
+			select {
+			case outputChan <- types.NewMessageEvent(types.EventToolCompleted, fmt.Sprintf("tool-completed-%s", toolCall.Id), toolCompletedMessage):
+			case <-ctx.Done():
 				return toolResultMessages
 			}
 
-			result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			select {
+			case outputChan <- types.NewMessageEvent(types.EventInputRequired, inputRequiredMessage.MessageID, inputRequiredMessage):
+			case <-ctx.Done():
+			}
+
+			return append(toolResultMessages, *inputRequiredMessage)
+
+		default:
+			result, toolErr := a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+
 			if toolErr != nil {
 				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
 				result = fmt.Sprintf("Tool execution failed: %s", toolErr.Error())
 
-				failedEvent := types.NewStreamingStatusMessage(
-					fmt.Sprintf("tool-failed-%s", toolCall.Id),
-					"failed",
-					map[string]any{
-						"tool_name": toolCall.Function.Name,
-					},
-				)
-
+				toolFailedMsg := types.NewStreamingStatusMessage(fmt.Sprintf("tool-failed-%s", toolCall.Id), string(types.TaskStateFailed), nil)
+				toolFailedMsg.TaskID = taskID
+				toolFailedMsg.ContextID = contextID
 				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.tool.failed", failedEvent.MessageID, failedEvent, nil):
+				case outputChan <- types.NewMessageEvent(types.EventToolFailed, fmt.Sprintf("tool-failed-%s", toolCall.Id), toolFailedMsg):
 				case <-ctx.Done():
 				}
 			} else {
-				completedEvent := types.NewStreamingStatusMessage(
-					fmt.Sprintf("tool-completed-%s", toolCall.Id),
-					"completed",
-					map[string]any{
-						"tool_name": toolCall.Function.Name,
-					},
-				)
-
+				toolCompletedMsg := types.NewStreamingStatusMessage(fmt.Sprintf("tool-completed-%s", toolCall.Id), string(types.TaskStateCompleted), nil)
+				toolCompletedMsg.TaskID = taskID
+				toolCompletedMsg.ContextID = contextID
 				select {
-				case outputChan <- types.NewMessageEvent("adk.agent.tool.completed", completedEvent.MessageID, completedEvent, nil):
+				case outputChan <- types.NewMessageEvent(types.EventToolCompleted, fmt.Sprintf("tool-completed-%s", toolCall.Id), toolCompletedMsg):
 				case <-ctx.Done():
 					return toolResultMessages
 				}
 			}
+
+			toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
+			toolResultMessage.TaskID = taskID
+			toolResultMessage.ContextID = contextID
+			select {
+			case outputChan <- types.NewMessageEvent(types.EventToolResult, toolResultMessage.MessageID, toolResultMessage):
+			case <-ctx.Done():
+				return toolResultMessages
+			}
+
+			toolResultMessages = append(toolResultMessages, *toolResultMessage)
 		}
-
-		toolResultMessage := types.NewToolResultMessage(toolCall.Id, toolCall.Function.Name, result, toolErr != nil)
-
-		select {
-		case outputChan <- types.NewMessageEvent("adk.agent.tool.result", toolResultMessage.MessageID, toolResultMessage, nil):
-		case <-ctx.Done():
-			return toolResultMessages
-		}
-
-		toolResultMessages = append(toolResultMessages, *toolResultMessage)
 	}
 
 	return toolResultMessages

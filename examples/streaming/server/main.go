@@ -25,46 +25,29 @@ type MockAgent struct {
 	logger *zap.Logger
 }
 
-func (m *MockAgent) Run(ctx context.Context, messages []types.Message) (*server.AgentResponse, error) {
-	// Extract the last user message
-	userInput := "Hello!"
-	for _, msg := range messages {
-		if msg.Role == "user" {
-			for _, part := range msg.Parts {
-				if partMap, ok := part.(map[string]any); ok {
-					if text, ok := partMap["text"].(string); ok {
-						userInput = text
-						break
-					}
-				}
-			}
-		}
-	}
-
-	response := fmt.Sprintf("Mock AI response: I received your message '%s'. This is a mock response since no AI provider is configured.", userInput)
-
-	responseMessage := types.Message{
-		Role: "assistant",
-		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": response,
-			},
-		},
-	}
-
-	return &server.AgentResponse{
-		Response: &responseMessage,
-	}, nil
-}
-
 func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message) (<-chan cloudevents.Event, error) {
-	m.logger.Info("mock agent starting streaming")
+	m.logger.Debug("mock agent starting streaming")
 	eventChan := make(chan cloudevents.Event, 100)
+
+	// Extract task from context
+	var taskID string
+	var contextID string
+	if task, ok := ctx.Value(server.TaskContextKey).(*types.Task); ok && task != nil {
+		taskID = task.ID
+		contextID = task.ContextID
+	}
 
 	go func() {
 		defer close(eventChan)
-		defer m.logger.Info("mock agent finished streaming")
+		defer m.logger.Debug("mock agent finished streaming")
+
+		// Send initial status change event - task is now working
+		statusEvent := cloudevents.NewEvent()
+		statusEvent.SetType(types.EventTaskStatusChanged)
+		statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+			State: types.TaskStateWorking,
+		})
+		eventChan <- statusEvent
 
 		// Stream a mock response word by word
 		words := []string{
@@ -79,7 +62,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 		for i, word := range words {
 			select {
 			case <-ctx.Done():
-				m.logger.Info("mock agent streaming cancelled")
+				m.logger.Debug("mock agent streaming cancelled")
 				return
 			default:
 				// Build the delta (just the new token)
@@ -96,38 +79,40 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 				deltaMessage := types.Message{
 					Role: "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": delta,
+						types.TextPart{
+							Kind: "text",
+							Text: delta,
 						},
 					},
 				}
 
 				event := cloudevents.NewEvent()
-				event.SetType("adk.agent.delta")
+				event.SetType(types.EventDelta)
 				event.SetData(cloudevents.ApplicationJSON, deltaMessage)
 
-				m.logger.Info("sending delta", zap.String("delta", delta))
+				m.logger.Debug("sending delta", zap.String("delta", delta))
 				eventChan <- event
 				time.Sleep(200 * time.Millisecond)
 			}
 		}
 
 		// Send task completion event with final message
-		m.logger.Info("sending task completion event")
+		m.logger.Debug("sending task completion event")
 		finalMessage := types.Message{
 			Kind:      "message",
 			MessageID: fmt.Sprintf("mock-completion-%d", time.Now().UnixNano()),
 			Role:      "assistant",
+			TaskID:    &taskID,
+			ContextID: &contextID,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": fullText,
+				types.TextPart{
+					Kind: "text",
+					Text: fullText,
 				},
 			},
 		}
 
-		completeEvent := types.NewIterationCompletedEvent(1, "mock-streaming-task", &finalMessage)
+		completeEvent := types.NewIterationCompletedEvent(1, taskID, &finalMessage)
 		eventChan <- completeEvent
 	}()
 
@@ -152,17 +137,15 @@ func (h *MockTaskHandler) SetAgent(agent server.OpenAICompatibleAgent) {
 
 // HandleTask processes background tasks with mock responses
 func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
-	h.logger.Info("processing mock background task", zap.String("task_id", task.ID))
+	h.logger.Debug("processing mock background task", zap.String("task_id", task.ID))
 
 	// Extract user input
 	userInput := "Hello!"
 	if message != nil {
 		for _, part := range message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					userInput = text
-					break
-				}
+			if textPart, ok := part.(types.TextPart); ok {
+				userInput = textPart.Text
+				break
 			}
 		}
 	}
@@ -171,11 +154,15 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	response := fmt.Sprintf("Mock response: I received your message '%s'. This is a mock response since no AI provider is configured.", userInput)
 
 	responseMessage := types.Message{
-		Role: "assistant",
+		Kind:      "message",
+		MessageID: fmt.Sprintf("mock-response-%s", task.ID),
+		Role:      "assistant",
+		TaskID:    &task.ID,
+		ContextID: &task.ContextID,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": response,
+			types.TextPart{
+				Kind: "text",
+				Text: response,
 			},
 		},
 	}
@@ -187,59 +174,17 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	return task, nil
 }
 
-// HandleStreamingTask processes streaming tasks with mock responses
-func (h *MockTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
-	h.logger.Info("processing mock streaming task", zap.String("task_id", task.ID))
+// HandleStreamingTask processes streaming tasks by forwarding CloudEvents from the agent
+func (h *MockTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
+	h.logger.Debug("processing mock streaming task", zap.String("task_id", task.ID))
 
-	eventChan := make(chan server.StreamEvent, 100)
+	if h.agent == nil {
+		return nil, fmt.Errorf("no agent configured for streaming")
+	}
 
-	go func() {
-		defer close(eventChan)
-
-		// Send status update
-		eventChan <- &server.StatusStreamEvent{
-			Status: map[string]any{
-				"task_id": task.ID,
-				"state":   "working",
-			},
-		}
-
-		// Stream a mock response character by character
-		response := "This is a mock streaming response. Each character appears with a delay to simulate real-time streaming. No AI provider is configured, so this is a demonstration of the streaming capabilities."
-
-		for _, char := range response {
-			select {
-			case <-ctx.Done():
-				eventChan <- &server.ErrorStreamEvent{
-					ErrorMessage: "Task cancelled",
-				}
-				return
-			default:
-				eventChan <- &server.DeltaStreamEvent{
-					Data: string(char),
-				}
-				time.Sleep(20 * time.Millisecond)
-			}
-		}
-
-		// Send completion
-		task.Status.State = types.TaskStateCompleted
-		task.Status.Message = &types.Message{
-			Role: "assistant",
-			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": response,
-				},
-			},
-		}
-
-		eventChan <- &server.TaskCompleteStreamEvent{
-			Task: task,
-		}
-	}()
-
-	return eventChan, nil
+	// Forward CloudEvents directly from agent (no conversion)
+	// Flow: agent → handler → protocol handler → client
+	return h.agent.RunWithStream(ctx, []types.Message{*message})
 }
 
 // Streaming A2A Server Example
@@ -249,17 +194,6 @@ func (h *MockTaskHandler) HandleStreamingTask(ctx context.Context, task *types.T
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🚀 Starting Streaming A2A Server...")
-
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
-	}
-	defer func() {
-		_ = logger.Sync()
-	}()
-
 	// Create configuration with defaults
 	cfg := &config.Config{
 		Environment: "development",
@@ -285,11 +219,25 @@ func main() {
 	// Load configuration from environment variables
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		logger.Fatal("failed to load configuration", zap.Error(err))
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Log configuration info
-	logger.Info("configuration loaded",
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" || cfg.A2A.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	logger.Info("server starting",
 		zap.String("environment", cfg.Environment),
 		zap.String("agent_name", cfg.A2A.AgentName),
 		zap.String("port", cfg.A2A.ServerConfig.Port),
@@ -315,9 +263,9 @@ func main() {
 	// Build and start server
 	a2aServer, err := serverBuilder.
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.A2A.AgentName,
-			Description:     cfg.A2A.AgentDescription,
-			Version:         cfg.A2A.AgentVersion,
+			Name:            server.BuildAgentName,
+			Description:     server.BuildAgentDescription,
+			Version:         server.BuildAgentVersion,
 			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
 			ProtocolVersion: "3.0.0",
 			Capabilities: types.AgentCapabilities{
@@ -334,8 +282,6 @@ func main() {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
 
-	logger.Info("✅ server created")
-
 	// Start server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -346,14 +292,14 @@ func main() {
 		}
 	}()
 
-	logger.Info("🌐 server running on port " + cfg.A2A.ServerConfig.Port)
+	logger.Info("server running", zap.String("port", cfg.A2A.ServerConfig.Port))
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("🛑 shutting down...")
+	logger.Info("shutting down server")
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -361,7 +307,5 @@ func main() {
 
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
-	} else {
-		logger.Info("✅ goodbye!")
 	}
 }

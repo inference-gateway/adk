@@ -132,9 +132,9 @@ func main() {
 		taskMessage := types.Message{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{
-					"type": "text",
-					"text": message,
+				types.TextPart{
+					Kind: "text",
+					Text: message,
 				},
 			},
 		}

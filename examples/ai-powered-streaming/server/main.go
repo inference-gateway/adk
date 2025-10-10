@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
@@ -36,143 +37,67 @@ func (h *AIStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Tas
 		return nil, fmt.Errorf("no AI agent configured")
 	}
 
-	// Use the agent to process the message
-	response, err := h.agent.Run(ctx, []types.Message{*message})
+	taskCtx := context.WithValue(ctx, server.TaskContextKey, task)
+
+	streamChan, err := h.agent.RunWithStream(taskCtx, []types.Message{*message})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get AI response: %w", err)
 	}
 
-	// Add all messages from the agent response to history
-	task.History = append(task.History, response.AdditionalMessages...)
+	var fullResponse string
 
-	responseMessage := *response.Response
+	// Process all streaming events to completion
+	for cloudEvent := range streamChan {
+		switch cloudEvent.Type() {
+		case types.EventDelta:
+			// Extract delta from cloud event
+			var deltaMsg types.Message
+			if err := cloudEvent.DataAs(&deltaMsg); err == nil {
+				for _, part := range deltaMsg.Parts {
+					if textPart, ok := part.(types.TextPart); ok {
+						fullResponse += textPart.Text
+					}
+				}
+			}
+		case types.EventIterationCompleted:
+			// Task completion event from agent
+			h.logger.Info("AI agent completed iteration")
+		}
+	}
 
-	task.History = append(task.History, responseMessage)
+	// Create final response message
+	responseMessage := types.Message{
+		Kind:      "message",
+		MessageID: fmt.Sprintf("msg-%s", task.ID),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
+		Role:      "assistant",
+		Parts: []types.Part{
+			types.TextPart{
+				Kind: "text",
+				Text: fullResponse,
+			},
+		},
+	}
+
 	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = &responseMessage
+	task.History = append(task.History, responseMessage)
 
 	return task, nil
 }
 
 // HandleStreamingTask processes streaming tasks using the configured AI agent with real-time streaming
-func (h *AIStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
+// It forwards CloudEvents from the agent directly without conversion
+func (h *AIStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
 	h.logger.Info("processing AI streaming task", zap.String("task_id", task.ID))
 
 	if h.agent == nil {
-		// Return error event if no agent is configured
-		eventChan := make(chan server.StreamEvent, 1)
-		go func() {
-			defer close(eventChan)
-			eventChan <- &server.ErrorStreamEvent{
-				ErrorMessage: "No AI agent configured for streaming",
-			}
-		}()
-		return eventChan, nil
+		return nil, fmt.Errorf("no AI agent configured for streaming")
 	}
 
-	eventChan := make(chan server.StreamEvent, 100)
-
-	go func() {
-		defer close(eventChan)
-
-		// Send status update
-		eventChan <- &server.StatusStreamEvent{
-			Status: map[string]any{
-				"task_id": task.ID,
-				"state":   "working",
-			},
-		}
-
-		// Use the agent's streaming capability
-		streamChan, err := h.agent.RunWithStream(ctx, []types.Message{*message})
-		if err != nil {
-			h.logger.Error("failed to start AI streaming", zap.Error(err))
-			eventChan <- &server.ErrorStreamEvent{
-				ErrorMessage: fmt.Sprintf("Failed to start AI streaming: %v", err),
-			}
-			return
-		}
-
-		var fullResponse string
-
-		// Process streaming events from the AI agent
-		for cloudEvent := range streamChan {
-			select {
-			case <-ctx.Done():
-				eventChan <- &server.ErrorStreamEvent{
-					ErrorMessage: "Task cancelled",
-				}
-				return
-			default:
-				switch cloudEvent.Type() {
-				case "adk.agent.delta":
-					// Extract delta from cloud event
-					var deltaMsg types.Message
-					if err := cloudEvent.DataAs(&deltaMsg); err == nil {
-						for _, part := range deltaMsg.Parts {
-							if partMap, ok := part.(map[string]any); ok {
-								if text, ok := partMap["text"].(string); ok {
-									fullResponse += text
-									// Send delta event
-									eventChan <- &server.DeltaStreamEvent{
-										Data: text,
-									}
-								}
-							}
-						}
-					}
-				case "adk.agent.iteration.completed":
-					// Task completion event from agent
-					h.logger.Info("AI agent completed iteration")
-
-					// Create final response message
-					responseMessage := types.Message{
-						Role: "assistant",
-						Parts: []types.Part{
-							map[string]any{
-								"kind": "text",
-								"text": fullResponse,
-							},
-						},
-					}
-
-					// Update task
-					task.Status.State = types.TaskStateCompleted
-					task.Status.Message = &responseMessage
-					task.History = append(task.History, responseMessage)
-
-					// Send completion event
-					eventChan <- &server.TaskCompleteStreamEvent{
-						Task: task,
-					}
-					return
-				}
-			}
-		}
-
-		// Fallback completion if no completion event was received
-		if fullResponse != "" {
-			responseMessage := types.Message{
-				Role: "assistant",
-				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": fullResponse,
-					},
-				},
-			}
-
-			task.Status.State = types.TaskStateCompleted
-			task.Status.Message = &responseMessage
-			task.History = append(task.History, responseMessage)
-
-			eventChan <- &server.TaskCompleteStreamEvent{
-				Task: task,
-			}
-		}
-	}()
-
-	return eventChan, nil
+	// Forward CloudEvents directly from agent
+	return h.agent.RunWithStream(ctx, []types.Message{*message})
 }
 
 // SetAgent sets the OpenAI-compatible agent
@@ -201,17 +126,6 @@ func (h *AIStreamingTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 //
 // To run: go run main.go
 func main() {
-	fmt.Println("🤖⚡ Starting AI-Powered Streaming A2A Server...")
-
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
-	}
-	defer func() {
-		_ = logger.Sync()
-	}()
-
 	// Create configuration with defaults
 	cfg := &config.Config{
 		Environment: "development",
@@ -237,11 +151,26 @@ func main() {
 	// Load configuration from environment variables
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
-		logger.Fatal("failed to load configuration", zap.Error(err))
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" || cfg.A2A.Debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
 	// Log configuration info
-	logger.Info("configuration loaded",
+	logger.Info("server starting",
 		zap.String("environment", cfg.Environment),
 		zap.String("agent_name", cfg.A2A.AgentName),
 		zap.String("port", cfg.A2A.ServerConfig.Port),
@@ -316,10 +245,6 @@ func main() {
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	logger.Info("✅ AI agent created with streaming capabilities",
-		zap.String("provider", cfg.A2A.AgentConfig.Provider),
-		zap.String("model", cfg.A2A.AgentConfig.Model))
-
 	// Create task handler with AI streaming capabilities
 	taskHandler := NewAIStreamingTaskHandler(logger)
 	taskHandler.SetAgent(agent)
@@ -362,8 +287,6 @@ func main() {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
 
-	logger.Info("✅ server created with AI streaming capabilities")
-
 	// Start server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -374,16 +297,14 @@ func main() {
 		}
 	}()
 
-	logger.Info("🌐 server running on port "+cfg.A2A.ServerConfig.Port,
-		zap.Bool("streaming_enabled", cfg.A2A.CapabilitiesConfig.Streaming),
-		zap.String("ai_provider", cfg.A2A.AgentConfig.Provider))
+	logger.Info("server running", zap.String("port", cfg.A2A.ServerConfig.Port))
 
 	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("🛑 shutting down...")
+	logger.Info("shutting down server")
 
 	// Graceful shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -391,7 +312,5 @@ func main() {
 
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
-	} else {
-		logger.Info("✅ goodbye!")
 	}
 }

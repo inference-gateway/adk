@@ -31,9 +31,9 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 						MessageID: "test-msg",
 						Role:      "user",
 						Parts: []types.Part{
-							map[string]any{
-								"kind": "text",
-								"text": "Hello from task",
+							types.TextPart{
+								Kind: "text",
+								Text: "Hello from task",
 							},
 						},
 					},
@@ -129,9 +129,9 @@ func TestDefaultBackgroundTaskHandler_InputPausing(t *testing.T) {
 				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Test message",
+					types.TextPart{
+						Kind: "text",
+						Text: "Test message",
 					},
 				},
 			}
@@ -195,46 +195,39 @@ func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Test streaming message",
+					types.TextPart{
+						Kind: "text",
+						Text: "Test streaming message",
 					},
 				},
 			}
 
 			eventsChan, err := taskHandler.HandleStreamingTask(ctx, tt.task, message)
 
-			assert.NoError(t, err)
-			assert.NotNil(t, eventsChan)
-
-			var events []server.StreamEvent
-			for event := range eventsChan {
-				events = append(events, event)
-			}
-
 			if tt.expectError {
-				hasErrorEvent := false
-				for _, event := range events {
-					if event.GetEventType() == "error" {
-						hasErrorEvent = true
-						break
-					}
-				}
-				assert.True(t, hasErrorEvent, "Expected an error event")
+				assert.Error(t, err)
+				assert.Nil(t, eventsChan)
 			} else {
-				hasCompleteEvent := false
-				for _, event := range events {
-					if event.GetEventType() == "task_complete" {
-						hasCompleteEvent = true
-						if tt.expectInputReq {
-							if taskData, ok := event.GetData().(*types.Task); ok {
-								assert.Equal(t, types.TaskStateInputRequired, taskData.Status.State)
-							}
-						}
-						break
+				assert.NoError(t, err)
+				assert.NotNil(t, eventsChan)
+
+				hasInputRequiredEvent := false
+				hasIterationCompletedEvent := false
+
+				for event := range eventsChan {
+					if event.Type() == types.EventInputRequired {
+						hasInputRequiredEvent = true
+					}
+					if event.Type() == types.EventIterationCompleted {
+						hasIterationCompletedEvent = true
 					}
 				}
-				assert.True(t, hasCompleteEvent, "Expected a task completion event")
+
+				if tt.expectInputReq {
+					assert.True(t, hasInputRequiredEvent, "Expected an input required event")
+				} else {
+					assert.True(t, hasIterationCompletedEvent, "Expected an iteration completed event")
+				}
 			}
 		})
 	}
@@ -244,23 +237,6 @@ func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	mockAgent := &mocks.FakeOpenAICompatibleAgent{}
 
-	inputRequiredResponse := &server.AgentResponse{
-		Response: &types.Message{
-			Kind:      "input_required",
-			MessageID: "input-req-123",
-			Role:      "assistant",
-			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "I need more information from you to continue.",
-				},
-			},
-		},
-		AdditionalMessages: []types.Message{},
-	}
-
-	mockAgent.RunReturns(inputRequiredResponse, nil)
-
 	streamChan := make(chan cloudevents.Event, 1)
 
 	inputMessage := &types.Message{
@@ -268,14 +244,14 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 		MessageID: "stream-input-req-123",
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "I need more information from you to continue.",
+			types.TextPart{
+				Kind: "text",
+				Text: "I need more information from you to continue.",
 			},
 		},
 	}
 
-	event := types.NewMessageEvent("adk.agent.input.required", "stream-input-req-123", inputMessage, nil)
+	event := types.NewMessageEvent("adk.agent.input.required", "stream-input-req-123", inputMessage)
 	streamChan <- event
 	close(streamChan)
 
@@ -311,9 +287,9 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 					MessageID: "msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Previous message from conversation",
+						types.TextPart{
+							Kind: "text",
+							Text: "Previous message from conversation",
 						},
 					},
 				},
@@ -341,9 +317,9 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 					MessageID: "msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "First message",
+						types.TextPart{
+							Kind: "text",
+							Text: "First message",
 						},
 					},
 				},
@@ -352,9 +328,9 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 					MessageID: "msg-2",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Assistant response",
+						types.TextPart{
+							Kind: "text",
+							Text: "Assistant response",
 						},
 					},
 				},
@@ -389,9 +365,9 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 				Role:      "user",
 				ContextID: tt.contextID,
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Test message for context history",
+					types.TextPart{
+						Kind: "text",
+						Text: "Test message for context history",
 					},
 				},
 			}
@@ -459,9 +435,9 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 			inputMessage: types.Message{
 				Role: "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello without kind and messageId",
+					types.TextPart{
+						Kind: "text",
+						Text: "Hello without kind and messageId",
 					},
 				},
 			},
@@ -475,9 +451,9 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 				MessageID: "",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello with empty kind and messageId",
+					types.TextPart{
+						Kind: "text",
+						Text: "Hello with empty kind and messageId",
 					},
 				},
 			},
@@ -491,9 +467,9 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 				MessageID: "existing_message_id",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello with existing kind and messageId",
+					types.TextPart{
+						Kind: "text",
+						Text: "Hello with existing kind and messageId",
 					},
 				},
 			},
@@ -507,9 +483,9 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 				Kind: "custom_kind",
 				Role: "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello with custom kind but no messageId",
+					types.TextPart{
+						Kind: "text",
+						Text: "Hello with custom kind but no messageId",
 					},
 				},
 			},
@@ -522,9 +498,9 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 				MessageID: "custom_message_id",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello with custom messageId but no kind",
+					types.TextPart{
+						Kind: "text",
+						Text: "Hello with custom messageId but no kind",
 					},
 				},
 			},

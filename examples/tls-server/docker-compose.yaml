@@ -22,11 +22,13 @@ services:
   tls-server:
     build:
       context: ../..
-      dockerfile: examples/tls-server/server/Dockerfile
+      dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: "tls-server"
         AGENT_DESCRIPTION: "TLS-enabled A2A server demonstrating secure communication"
         AGENT_VERSION: "0.1.0"
+        EXAMPLE_PATH: examples/tls-server
+        COMPONENT: server
     ports:
       - "8443:8443"
     environment:
@@ -46,7 +48,11 @@ services:
     networks:
       - tls-network
     healthcheck:
-      test: ["CMD", "sh", "-c", "wget --no-check-certificate -q --spider https://localhost:8443/health || exit 1"]
+      test:
+        - CMD
+        - sh
+        - -c
+        - "wget --no-check-certificate -q --spider https://localhost:8443/health || exit 1"
       interval: 10s
       timeout: 5s
       retries: 3
@@ -55,7 +61,10 @@ services:
   tls-client:
     build:
       context: ../..
-      dockerfile: examples/tls-server/client/Dockerfile
+      dockerfile: examples/Dockerfile.client
+      args:
+        EXAMPLE_PATH: examples/tls-server
+        COMPONENT: client
     environment:
       ENVIRONMENT: development
       A2A_SERVER_URL: "https://tls-server:8443"
@@ -67,6 +76,19 @@ services:
     networks:
       - tls-network
     restart: "no"
+
+  a2a-debugger:
+    image: ghcr.io/inference-gateway/a2a-debugger:latest
+    pull_policy: always
+    entrypoint:
+      - /a2a
+      - --server-url
+      - https://tls-server:8443
+      - --skip-tls-verify
+    networks:
+      - tls-network
+    profiles:
+      - manual
 
 networks:
   tls-network:

@@ -21,6 +21,7 @@ import (
 
 // Config holds client configuration
 type Config struct {
+	Environment  string `env:"ENVIRONMENT,default=development"`
 	ServerURL    string `env:"SERVER_URL,default=http://localhost:8080" description:"A2A server URL"`
 	ArtifactsURL string `env:"ARTIFACTS_URL,default=http://localhost:8081" description:"Artifacts server URL"`
 	DownloadsDir string `env:"DOWNLOADS_DIR,default=downloads" description:"Directory to save downloaded artifacts"`
@@ -32,15 +33,25 @@ func main() {
 	var cfg Config
 
 	if err := envconfig.Process(ctx, &cfg); err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Initialize logger
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("Failed to create logger: %v", err)
+	// Initialize logger based on environment
+	var logger *zap.Logger
+	var err error
+	if cfg.Environment == "development" || cfg.Environment == "dev" {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
 	}
-	defer logger.Sync()
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	logger.Info("client starting", zap.String("server_url", cfg.ServerURL))
 
 	fmt.Printf("🔗 Connecting to A2A server: %s\n", cfg.ServerURL)
 	fmt.Printf("📁 Artifacts server: %s\n", cfg.ArtifactsURL)
@@ -139,10 +150,8 @@ func main() {
 	if completedTask.Status.Message != nil {
 		fmt.Println("\n📄 Response from server:")
 		for _, part := range completedTask.Status.Message.Parts {
-			if partMap, ok := part.(map[string]any); ok {
-				if text, ok := partMap["text"].(string); ok {
-					fmt.Printf("   %s\n", text)
-				}
+			if textPart, ok := part.(types.TextPart); ok {
+				fmt.Printf("   %s\n", textPart.Text)
 			}
 		}
 	}
@@ -212,9 +221,9 @@ func createMessageWithFileUpload() types.Message {
 		return types.Message{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations. This will be stored in MinIO cloud storage.",
+				types.TextPart{
+					Kind: "text",
+					Text: "Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations. This will be stored in MinIO cloud storage.",
 				},
 			},
 		}
@@ -237,17 +246,17 @@ func createMessageWithFileUpload() types.Message {
 	return types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics. The report will be stored in MinIO cloud storage for scalable access.",
+			types.TextPart{
+				Kind: "text",
+				Text: "Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics. The report will be stored in MinIO cloud storage for scalable access.",
 			},
-			map[string]any{
-				"kind": "file",
-				"file": map[string]any{
+			types.FilePart{
+				Kind: "file",
+				File: map[string]any{
 					"bytes":    encodedContent,
 					"mimeType": mimeType,
+					"name":     filename,
 				},
-				"filename": filename,
 			},
 		},
 	}

@@ -3,6 +3,8 @@ services:
   gateway:
     image: ghcr.io/inference-gateway/inference-gateway:latest
     pull_policy: always
+    ports:
+      - 8080:8080
     environment:
       ENVIRONMENT: ${ENVIRONMENT}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
@@ -18,7 +20,10 @@ services:
   server:
     build:
       context: ../..
-      dockerfile: examples/artifacts-with-default-handlers/server/Dockerfile
+      dockerfile: examples/Dockerfile.server
+      args:
+        EXAMPLE_PATH: examples/artifacts-with-default-handlers
+        COMPONENT: server
     volumes:
       - ./server/artifacts:/app/artifacts
     environment:
@@ -48,7 +53,10 @@ services:
   client:
     build:
       context: ../..
-      dockerfile: examples/artifacts-with-default-handlers/client/Dockerfile
+      dockerfile: examples/Dockerfile.client
+      args:
+        EXAMPLE_PATH: examples/artifacts-with-default-handlers
+        COMPONENT: client
     volumes:
       - ./client/downloads:/app/downloads
       - ./client/uploads:/app/uploads
