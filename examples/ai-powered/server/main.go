@@ -68,7 +68,11 @@ func (h *AITaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 
 	// Create final response message
 	responseMessage := types.Message{
-		Role: "assistant",
+		Kind:      "message",
+		MessageID: fmt.Sprintf("msg-%s", task.ID),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
+		Role:      "assistant",
 		Parts: []types.Part{
 			map[string]any{
 				"kind": "text",

@@ -182,6 +182,8 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	responseMessage := types.Message{
 		Kind:      "message",
 		MessageID: uuid.New().String(),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
 			map[string]any{

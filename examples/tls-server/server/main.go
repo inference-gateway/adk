@@ -52,10 +52,14 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 
 	// Create response message
 	responseMessage := types.Message{
-		Role: "assistant",
+		Kind:      "message",
+		MessageID: fmt.Sprintf("msg-%s", task.ID),
+		ContextID: &task.ContextID,
+		TaskID:    &task.ID,
+		Role:      "assistant",
 		Parts: []types.Part{
 			map[string]any{
-				"type": "text",
+				"kind": "text",
 				"text": responseText,
 			},
 		},
