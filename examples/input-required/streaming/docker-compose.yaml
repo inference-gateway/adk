@@ -1,0 +1,74 @@
+services:
+  # Streaming input-required A2A server
+  input-required-streaming-server:
+    build:
+      context: ../../
+      dockerfile: Dockerfile.server
+      args:
+        - SERVER_PATH=./input-required/streaming/server
+        - AGENT_NAME=input-required-streaming-agent
+        - AGENT_DESCRIPTION=Demonstrates input-required flow with real-time streaming
+        - AGENT_VERSION=1.0.0
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=development
+      - A2A_DEBUG=true
+      - A2A_SERVER_PORT=8080
+      - A2A_AGENT_NAME=input-required-streaming-agent
+      - A2A_AGENT_DESCRIPTION=Demonstrates input-required flow with real-time streaming
+      - A2A_AGENT_VERSION=1.0.0
+      - A2A_CAPABILITIES_STREAMING=true
+      # Uncomment and set to enable AI (requires API key)
+      # - A2A_AGENT_CLIENT_PROVIDER=openai
+      # - A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
+      # - A2A_AGENT_CLIENT_BASE_URL=http://inference-gateway:8080/v1
+    depends_on:
+      - inference-gateway
+    networks:
+      - adk-network
+
+  # Client for testing
+  input-required-streaming-client:
+    build:
+      context: ../../
+      dockerfile: Dockerfile.client
+      args:
+        - CLIENT_PATH=./input-required/streaming/client
+    environment:
+      - A2A_SERVER_URL=http://input-required-streaming-server:8080
+    depends_on:
+      - input-required-streaming-server
+    networks:
+      - adk-network
+    stdin_open: true
+    tty: true
+
+  # Inference Gateway for AI capabilities
+  inference-gateway:
+    image: ghcr.io/inference-gateway/gateway:latest
+    ports:
+      - "8081:8080"
+    environment:
+      # Add your API keys here
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LOG_LEVEL=info
+    networks:
+      - adk-network
+
+  # A2A Debugger for task monitoring
+  a2a-debugger:
+    image: ghcr.io/inference-gateway/adk-debugger:latest
+    environment:
+      - A2A_SERVER_URL=http://input-required-streaming-server:8080
+    depends_on:
+      - input-required-streaming-server
+    networks:
+      - adk-network
+    profiles:
+      - debug
+
+networks:
+  adk-network:
+    driver: bridge

@@ -28,6 +28,7 @@ examples/
 ├── ai-powered/           # Server with LLM integration
 ├── ai-powered-streaming/ # AI with real-time streaming
 ├── streaming/            # Real-time streaming responses
+├── input-required/       # Input-required flow (non-streaming and streaming)
 ├── artifacts-filesystem/ # Artifact storage using local filesystem
 ├── artifacts-minio/      # Artifact storage using MinIO (S3-compatible)
 ├── queue-storage/        # Queue storage backends (in-memory and Redis)
@@ -112,6 +113,16 @@ AI-powered streaming with LLM integration.
 - Streaming LLM integration
 - Event-driven architecture
 
+#### `input-required/`
+
+Demonstrates input-required flow where agents pause to request additional information.
+
+- **Non-streaming**: Traditional request-response with input pausing
+- **Streaming**: Real-time streaming that can pause for user input
+- Task state management and conversation continuity
+- Built-in `input_required` tool usage
+- Interactive conversation examples
+
 #### `artifacts-filesystem/`
 
 Demonstrates artifact creation and download using local filesystem storage.
@@ -176,13 +187,14 @@ See each example's README for specific configuration details.
 1. **`minimal/`** - Understand basic A2A protocol and custom task handlers
 2. **`default-handlers/`** - Learn built-in handlers for rapid development
 3. **`static-agent-card/`** - Externalize agent configuration to JSON files
-4. **`artifacts-filesystem/`** - Add file generation and download capabilities
-5. **`ai-powered/`** - Add LLM integration for intelligent responses
-6. **`streaming/`** - Implement real-time streaming capabilities
-7. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
-8. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
-9. **`queue-storage/`** - Learn different queue storage backends for scaling
-10. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
+4. **`input-required/`** - Learn input-required flow for interactive conversations
+5. **`artifacts-filesystem/`** - Add file generation and download capabilities
+6. **`ai-powered/`** - Add LLM integration for intelligent responses
+7. **`streaming/`** - Implement real-time streaming capabilities
+8. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
+9. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
+10. **`queue-storage/`** - Learn different queue storage backends for scaling
+11. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 
 ---
 
