@@ -14,15 +14,22 @@ This example demonstrates the input-required flow in traditional request-respons
 
 ### Using Docker Compose (Recommended)
 
+Start the server and inference gateway:
+
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 This will start:
 
 - **Server**: A2A server with input-required capabilities
-- **Client**: Interactive client for testing
 - **Inference Gateway**: For AI capabilities (optional)
+
+To run the interactive client (in a separate terminal):
+
+```bash
+docker compose run --rm --build client
+```
 
 ### Running Locally
 
@@ -152,19 +159,40 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 The client handles the complete input-required flow:
 
 ```go
-func demonstrateInputRequiredFlow(a2aClient *client.A2AClient, initialMessage string, logger *zap.Logger) error {
-    // Send initial message
-    task, err := a2aClient.SendMessage(ctx, params)
+func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage string, logger *zap.Logger) error {
+    // Create message from user input
+    message := types.Message{
+        Role:      "user",
+        Parts:     []types.Part{types.NewTextPart(initialMessage)},
+    }
 
-    // Poll for completion or input required
+    // Send initial message
+    params := types.MessageSendParams{Message: message}
+    response, err := a2aClient.SendTask(ctx, params)
+
+    // Extract task ID from response
+    var taskResult struct {
+        ID string `json:"id"`
+    }
+    json.Unmarshal(response.Result.(json.RawMessage), &taskResult)
+    taskID := taskResult.ID
+
+    // Manual polling loop
     for {
-        currentTask, err := a2aClient.PollTaskUntilCompletion(ctx, taskID, timeout)
+        time.Sleep(500 * time.Millisecond)
+
+        // Get task status
+        taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{ID: taskID})
+
+        var currentTask types.Task
+        json.Unmarshal(taskResponse.Result.(json.RawMessage), &currentTask)
 
         switch currentTask.Status.State {
         case types.TaskStateInputRequired:
-            // Get user input and continue conversation
-            followUpMessage := getUserInput()
-            continuedTask, err := a2aClient.SendMessage(ctx, followUpParams)
+            // Get user input and send follow-up
+            followUpResponse, err := a2aClient.SendTask(ctx, followUpParams)
+            json.Unmarshal(followUpResponse.Result.(json.RawMessage), &taskResult)
+            taskID = taskResult.ID
 
         case types.TaskStateCompleted:
             // Display final response

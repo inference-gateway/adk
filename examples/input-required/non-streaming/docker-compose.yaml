@@ -4,7 +4,7 @@ services:
     image: ghcr.io/inference-gateway/inference-gateway:latest
     pull_policy: always
     ports:
-      - 8081:8080
+      - 8080:8080
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -19,12 +19,12 @@ services:
 
   server:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: input-required-demo-agent
         AGENT_DESCRIPTION: Demonstrates input-required flow in non-streaming mode
-        AGENT_VERSION: 1.0.0
+        AGENT_VERSION: 0.1.0
         EXAMPLE_PATH: examples/input-required/non-streaming
         COMPONENT: server
     depends_on:
@@ -54,7 +54,7 @@ services:
 
   client:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: examples/Dockerfile.client
       args:
         EXAMPLE_PATH: examples/input-required/non-streaming
@@ -66,6 +66,10 @@ services:
       SERVER_URL: http://server:8080
     networks:
       - a2a-network
+    stdin_open: true
+    tty: true
+    profiles:
+      - manual
 
   a2a-debugger:
     image: ghcr.io/inference-gateway/a2a-debugger:latest

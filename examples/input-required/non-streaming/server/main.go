@@ -6,11 +6,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"github.com/inference-gateway/adk/server"
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
+
+	config "github.com/inference-gateway/adk/examples/input-required/non-streaming/server/config"
+	server "github.com/inference-gateway/adk/server"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // InputRequiredTaskHandler demonstrates handling tasks that require user input
@@ -162,6 +165,52 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 
 	// Add the incoming message to history
 	task.History = append(task.History, *message)
+
+	// Check if this is a follow-up to a previous input-required state
+	// by looking at the conversation history
+	previousContext := getPreviousContext(task.History)
+	h.logger.Info("previous context", zap.String("context", previousContext))
+
+	// If this looks like a follow-up response (short message without keywords)
+	if previousContext != "" && !contains(messageText, "weather") && !contains(messageText, "calculate") && !contains(messageText, "hello") && len(messageText) < 50 {
+		switch previousContext {
+		case "weather":
+			// User provided location for weather query
+			responseMessage := &types.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("response-%s", task.ID),
+				Role:      "assistant",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": fmt.Sprintf("The weather in %s is sunny and 72°F! (This is a demo response - no real weather data is fetched)", messageText),
+					},
+				},
+			}
+			task.Status.State = types.TaskStateCompleted
+			task.Status.Message = responseMessage
+			task.History = append(task.History, *responseMessage)
+			return task, nil
+
+		case "calculate":
+			// User provided calculation
+			responseMessage := &types.Message{
+				Kind:      "message",
+				MessageID: fmt.Sprintf("response-%s", task.ID),
+				Role:      "assistant",
+				Parts: []types.Part{
+					map[string]any{
+						"kind": "text",
+						"text": fmt.Sprintf("Based on your input '%s', here's the result! (This is a demo response)", messageText),
+					},
+				},
+			}
+			task.Status.State = types.TaskStateCompleted
+			task.Status.Message = responseMessage
+			task.History = append(task.History, *responseMessage)
+			return task, nil
+		}
+	}
 
 	// Simulate different scenarios based on message content
 	switch {
@@ -340,43 +389,67 @@ func findInLower(haystack, needle string) int {
 	return -1
 }
 
+// getPreviousContext analyzes the conversation history to determine
+// what kind of input was previously requested
+func getPreviousContext(history []types.Message) string {
+	// Look backwards through history for input_required messages
+	for i := len(history) - 1; i >= 0; i-- {
+		msg := history[i]
+		if msg.Kind == "input_required" {
+			text := getMessageText(&msg)
+			textLower := toLower(text)
+
+			// Determine what was being asked about
+			if contains(textLower, "weather") || contains(textLower, "location") {
+				return "weather"
+			}
+			if contains(textLower, "calculat") || contains(textLower, "number") {
+				return "calculate"
+			}
+		}
+	}
+	return ""
+}
+
 func main() {
 	// Initialize logger
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
-	// Load configuration
-	cfg := config.LoadConfig()
+	// Load configuration from environment
+	cfg := &config.Config{}
+	ctx := context.Background()
+	if err := envconfig.Process(ctx, cfg); err != nil {
+		logger.Fatal("failed to load configuration", zap.Error(err))
+	}
 
 	logger.Info("starting input-required non-streaming server",
-		zap.String("port", fmt.Sprintf("%d", cfg.A2A.ServerConfig.Port)),
-		zap.Bool("ai_enabled", cfg.A2A.AgentConfig.ClientConfig.Provider != ""))
+		zap.String("port", cfg.A2A.ServerConfig.Port),
+		zap.Bool("ai_enabled", cfg.A2A.AgentConfig.Provider != ""))
 
 	// Create task handler
 	taskHandler := NewInputRequiredTaskHandler(logger)
 
-	// Create server builder
-	serverBuilder := server.NewA2AServerBuilder(logger).
-		WithConfig(&cfg.A2A).
-		WithTaskHandler(taskHandler)
-
 	// Add AI agent if configured
-	if cfg.A2A.AgentConfig.ClientConfig.Provider != "" {
+	if cfg.A2A.AgentConfig.Provider != "" {
 		logger.Info("configuring AI agent",
-			zap.String("provider", cfg.A2A.AgentConfig.ClientConfig.Provider),
-			zap.String("model", cfg.A2A.AgentConfig.ClientConfig.Model))
+			zap.String("provider", cfg.A2A.AgentConfig.Provider),
+			zap.String("model", cfg.A2A.AgentConfig.Model))
 
 		// Create LLM client
-		llmClient, err := server.NewLLMClient(&cfg.A2A.AgentConfig.ClientConfig, logger)
+		llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
 		if err != nil {
 			logger.Fatal("failed to create LLM client", zap.Error(err))
 		}
 
-		// Create agent with default toolbox (includes input_required tool)
+		// Create default toolbox (includes input_required tool)
+		toolBox := server.NewDefaultToolBox()
+
+		// Create agent with default toolbox
 		agent, err := server.NewAgentBuilder(logger).
 			WithConfig(&cfg.A2A.AgentConfig).
 			WithLLMClient(llmClient).
-			WithSystemPrompt(`You are a helpful assistant that demonstrates the input-required flow. 
+			WithSystemPrompt(`You are a helpful assistant that demonstrates the input-required flow.
 
 When users ask for information that requires additional details (like weather without location, calculations without numbers, or unclear requests), use the input_required tool to ask for the missing information.
 
@@ -386,7 +459,7 @@ Examples:
 - If the request is unclear or ambiguous, use input_required to ask for clarification
 
 Be specific about what information you need and why it's needed to provide a complete answer.`).
-			WithDefaultToolBox().
+			WithToolBox(toolBox).
 			Build()
 
 		if err != nil {
@@ -399,7 +472,24 @@ Be specific about what information you need and why it's needed to provide a com
 	}
 
 	// Build and start server
-	a2aServer, err := serverBuilder.Build()
+	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
+		WithBackgroundTaskHandler(taskHandler).
+		WithAgentCard(types.AgentCard{
+			Name:            cfg.A2A.AgentName,
+			Description:     cfg.A2A.AgentDescription,
+			Version:         cfg.A2A.AgentVersion,
+			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			ProtocolVersion: "0.3.0",
+			Capabilities: types.AgentCapabilities{
+				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
+				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+			Skills:             []types.AgentSkill{},
+		}).
+		Build()
 	if err != nil {
 		logger.Fatal("failed to build server", zap.Error(err))
 	}
@@ -410,14 +500,14 @@ Be specific about what information you need and why it's needed to provide a com
 
 	// Start server in goroutine
 	go func() {
-		if err := a2aServer.Start(); err != nil {
+		if err := a2aServer.Start(ctx); err != nil {
 			logger.Error("server error", zap.Error(err))
 			cancel()
 		}
 	}()
 
 	logger.Info("server started successfully",
-		zap.String("address", fmt.Sprintf(":%d", cfg.A2A.ServerConfig.Port)))
+		zap.String("address", fmt.Sprintf(":%s", cfg.A2A.ServerConfig.Port)))
 
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
@@ -431,7 +521,10 @@ Be specific about what information you need and why it's needed to provide a com
 	}
 
 	// Graceful shutdown
-	if err := a2aServer.Stop(); err != nil {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("error during server shutdown", zap.Error(err))
 	}
 

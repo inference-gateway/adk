@@ -5,22 +5,39 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/inference-gateway/adk/client"
-	"github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
+
+	client "github.com/inference-gateway/adk/client"
+	types "github.com/inference-gateway/adk/types"
 )
 
+// Config holds client configuration
+type Config struct {
+	ServerURL string `env:"SERVER_URL,default=http://localhost:8080"`
+}
+
 func main() {
+	// Load configuration
+	ctx := context.Background()
+	var cfg Config
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
+	}
+
 	// Initialize logger
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
+	logger.Info("client starting", zap.String("server_url", cfg.ServerURL))
+
 	// Create A2A client
-	a2aClient := client.NewClientWithLogger("http://localhost:8080", logger)
+	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
 	logger.Info("Input-Required Non-Streaming Demo Client")
 	logger.Info("This client demonstrates the input-required flow where the server pauses tasks to request additional information from the user.")
@@ -91,7 +108,8 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 
 	// Extract task ID from response
 	var taskResult struct {
-		ID string `json:"id"`
+		ID        string `json:"id"`
+		ContextID string `json:"contextId"`
 	}
 	resultBytes, ok := response.Result.(json.RawMessage)
 	if !ok {
@@ -102,9 +120,11 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 	}
 
 	fmt.Printf("🆔 Task ID: %s\n", taskResult.ID)
+	fmt.Printf("🔗 Context ID: %s\n", taskResult.ContextID)
 
 	// Monitor task until completion or input required
 	taskID := taskResult.ID
+	contextID := taskResult.ContextID
 	for {
 		// Wait a moment for task processing
 		time.Sleep(500 * time.Millisecond)
@@ -157,9 +177,10 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 				continue
 			}
 
-			// Create follow-up message
+			// Create follow-up message with the same context ID
 			followUpMessage := types.Message{
 				MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
+				ContextID: &contextID,
 				Role:      "user",
 				Parts: []types.Part{
 					types.NewTextPart(userResponse),
@@ -167,7 +188,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 			}
 
 			// Send follow-up message to continue the task
-			fmt.Printf("📤 Sending follow-up: %s\n", userResponse)
+			fmt.Printf("📤 Sending follow-up: %s (context: %s)\n", userResponse, contextID)
 
 			followUpParams := types.MessageSendParams{
 				Message: followUpMessage,
