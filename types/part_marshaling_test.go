@@ -174,7 +174,6 @@ func TestCreateDataPart(t *testing.T) {
 	assert.Equal(t, data, part.Data)
 	assert.Nil(t, part.Metadata)
 
-	// Test with metadata
 	metadata := map[string]any{"source": "test"}
 	partWithMeta := CreateDataPart(data, metadata)
 	assert.Equal(t, "data", partWithMeta.Kind)
@@ -189,7 +188,6 @@ func TestCreateFilePart(t *testing.T) {
 	assert.Equal(t, file, part.File)
 	assert.Nil(t, part.Metadata)
 
-	// Test with metadata
 	metadata := map[string]any{"uploaded": true}
 	partWithMeta := CreateFilePart(file, metadata)
 	assert.Equal(t, "file", partWithMeta.Kind)
