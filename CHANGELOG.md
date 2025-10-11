@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.0](https://github.com/inference-gateway/adk/compare/v0.13.1...v0.14.0) (2025-10-11)
+
+### ✨ Features
+
+* Add the callbacks ready to be used by the agent ([#94](https://github.com/inference-gateway/adk/issues/94)) ([84632f3](https://github.com/inference-gateway/adk/commit/84632f3d49dad33e4e6271ae5ef2dfe076faad44))
+* **types:** Refactor Part deserialization to use concrete types ([#104](https://github.com/inference-gateway/adk/issues/104)) ([22d192e](https://github.com/inference-gateway/adk/commit/22d192e0bc90d7193b2567f11839b2c6a734af7d)), closes [#102](https://github.com/inference-gateway/adk/issues/102)
+
+### ♻️ Improvements
+
+* Consolidate the logic of the agent and remove redundancy ([#93](https://github.com/inference-gateway/adk/issues/93)) ([54e5e71](https://github.com/inference-gateway/adk/commit/54e5e71690596239a673e64a509edd35d4a5f0ad))
+* **docker-compose:** Remove port mappings for server service to avoid confusion ([3df7b08](https://github.com/inference-gateway/adk/commit/3df7b083091b4b826d41728015246fbfcf386e32))
+* **server:** Remove handler duplication between A2AServerImpl and DefaultA2AProtocolHandler ([#101](https://github.com/inference-gateway/adk/issues/101)) ([75b9c20](https://github.com/inference-gateway/adk/commit/75b9c207ef2fccc76bc8a42ea38e676e41b22509))
+
+### 🐛 Bug Fixes
+
+* Improve validation logic for task handler configuration ([#98](https://github.com/inference-gateway/adk/issues/98)) ([34d6354](https://github.com/inference-gateway/adk/commit/34d6354839d87d1dd63d949f30631d4756cd2e98))
+
+### 👷 CI
+
+* Add Prettier setup and formatting steps for Go and markdown files ([#105](https://github.com/inference-gateway/adk/issues/105)) ([f2a1994](https://github.com/inference-gateway/adk/commit/f2a199403a91d62b0706c88cdc73cfc35ff202de))
+
+### 📚 Documentation
+
+* **examples:** Add input-required flow examples ([#96](https://github.com/inference-gateway/adk/issues/96)) ([17764f3](https://github.com/inference-gateway/adk/commit/17764f36bd2e4b758cf49fbfb9cde2d0985c78c4))
+
+### 🔧 Miscellaneous
+
+* **deps:** Update claude-code to 2.0.8 and install gh cli version 2.81.0 in flox environment ([4d6e41a](https://github.com/inference-gateway/adk/commit/4d6e41a64bf0249d4690d816db6c44ff6d41e981))
+
 ## [0.13.1](https://github.com/inference-gateway/adk/compare/v0.13.0...v0.13.1) (2025-10-05)
 
 ### ♻️ Improvements
