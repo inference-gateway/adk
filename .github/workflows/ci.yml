@@ -39,6 +39,15 @@ jobs:
         with:
           node-version: 'lts/*'
 
+      - name: Install prettier
+        run: npm install -g prettier
+
+      - name: Format Go files
+        run: find . -name '*.go' -exec gofmt -w {} \;
+
+      - name: Format markdown files
+        run: find . -name '*.md' -exec prettier -w {} \;
+
       - name: Tidy Go modules
         run: find . -name 'go.mod' -execdir go mod tidy \;
 
