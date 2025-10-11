@@ -10,10 +10,12 @@ import (
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/inference-gateway/adk/server"
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
+
+	config "github.com/inference-gateway/adk/examples/input-required/streaming/server/config"
+	server "github.com/inference-gateway/adk/server"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // StreamingInputRequiredTaskHandler demonstrates streaming with input-required flow
@@ -208,9 +210,9 @@ func (h *StreamingInputRequiredTaskHandler) sendStreamingText(outputChan chan<- 
 			MessageID: fmt.Sprintf("delta-%s-%d", taskID, time.Now().UnixNano()),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": chunk,
+				types.TextPart{
+					Kind: "text",
+					Text: chunk,
 				},
 			},
 		}
@@ -253,9 +255,9 @@ func (h *StreamingInputRequiredTaskHandler) sendInputRequiredEvent(outputChan ch
 		MessageID: fmt.Sprintf("input-required-%s-%d", taskID, time.Now().UnixNano()),
 		Role:      "assistant",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": message,
+			types.TextPart{
+				Kind: "text",
+				Text: message,
 			},
 		},
 	}
@@ -306,6 +308,11 @@ func (h *StreamingInputRequiredTaskHandler) sendErrorEvent(outputChan chan<- clo
 // Helper functions (same as non-streaming version)
 func getMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
+		// Handle typed TextPart (when created locally)
+		if textPart, ok := part.(types.TextPart); ok {
+			return textPart.Text
+		}
+		// Handle map-based parts (when deserialized from JSON)
 		if partMap, ok := part.(map[string]any); ok {
 			if kind, exists := partMap["kind"]; exists && kind == "text" {
 				if text, exists := partMap["text"].(string); exists {
@@ -360,41 +367,40 @@ func main() {
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
-	// Load configuration
-	cfg := config.LoadConfig()
+	// Load configuration from environment
+	cfg := &config.Config{}
+	ctx := context.Background()
+	if err := envconfig.Process(ctx, cfg); err != nil {
+		logger.Fatal("failed to load configuration", zap.Error(err))
+	}
 
 	logger.Info("starting input-required streaming server",
-		zap.String("port", fmt.Sprintf("%d", cfg.A2A.ServerConfig.Port)),
-		zap.Bool("ai_enabled", cfg.A2A.AgentConfig.ClientConfig.Provider != ""))
-
-	// Enable streaming capability
-	cfg.A2A.Capabilities.Streaming = true
+		zap.String("port", cfg.A2A.ServerConfig.Port),
+		zap.Bool("ai_enabled", cfg.A2A.AgentConfig.Provider != ""))
 
 	// Create task handler
 	taskHandler := NewStreamingInputRequiredTaskHandler(logger)
 
-	// Create server builder
-	serverBuilder := server.NewA2AServerBuilder(logger).
-		WithConfig(&cfg.A2A).
-		WithStreamableTaskHandler(taskHandler)
-
 	// Add AI agent if configured
-	if cfg.A2A.AgentConfig.ClientConfig.Provider != "" {
+	if cfg.A2A.AgentConfig.Provider != "" {
 		logger.Info("configuring AI agent for streaming",
-			zap.String("provider", cfg.A2A.AgentConfig.ClientConfig.Provider),
-			zap.String("model", cfg.A2A.AgentConfig.ClientConfig.Model))
+			zap.String("provider", cfg.A2A.AgentConfig.Provider),
+			zap.String("model", cfg.A2A.AgentConfig.Model))
 
 		// Create LLM client
-		llmClient, err := server.NewLLMClient(&cfg.A2A.AgentConfig.ClientConfig, logger)
+		llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
 		if err != nil {
 			logger.Fatal("failed to create LLM client", zap.Error(err))
 		}
 
-		// Create agent with default toolbox (includes input_required tool)
+		// Create default toolbox (includes input_required tool)
+		toolBox := server.NewDefaultToolBox()
+
+		// Create agent with default toolbox
 		agent, err := server.NewAgentBuilder(logger).
 			WithConfig(&cfg.A2A.AgentConfig).
 			WithLLMClient(llmClient).
-			WithSystemPrompt(`You are a helpful assistant that demonstrates the input-required flow with real-time streaming. 
+			WithSystemPrompt(`You are a helpful assistant that demonstrates the input-required flow with real-time streaming.
 
 When users ask for information that requires additional details (like weather without location, calculations without numbers, or unclear requests), use the input_required tool to ask for the missing information.
 
@@ -404,7 +410,7 @@ Examples:
 - If the request is unclear or ambiguous, use input_required to ask for clarification
 
 Be specific about what information you need and why it's needed to provide a complete answer. Your responses will be streamed in real-time to provide a better user experience.`).
-			WithDefaultToolBox().
+			WithToolBox(toolBox).
 			Build()
 
 		if err != nil {
@@ -417,7 +423,24 @@ Be specific about what information you need and why it's needed to provide a com
 	}
 
 	// Build and start server
-	a2aServer, err := serverBuilder.Build()
+	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
+		WithStreamingTaskHandler(taskHandler).
+		WithAgentCard(types.AgentCard{
+			Name:            cfg.A2A.AgentName,
+			Description:     cfg.A2A.AgentDescription,
+			Version:         cfg.A2A.AgentVersion,
+			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			ProtocolVersion: "0.3.0",
+			Capabilities: types.AgentCapabilities{
+				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
+				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+			},
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+			Skills:             []types.AgentSkill{},
+		}).
+		Build()
 	if err != nil {
 		logger.Fatal("failed to build server", zap.Error(err))
 	}
@@ -428,14 +451,14 @@ Be specific about what information you need and why it's needed to provide a com
 
 	// Start server in goroutine
 	go func() {
-		if err := a2aServer.Start(); err != nil {
+		if err := a2aServer.Start(ctx); err != nil {
 			logger.Error("server error", zap.Error(err))
 			cancel()
 		}
 	}()
 
 	logger.Info("streaming server started successfully",
-		zap.String("address", fmt.Sprintf(":%d", cfg.A2A.ServerConfig.Port)))
+		zap.String("address", fmt.Sprintf(":%s", cfg.A2A.ServerConfig.Port)))
 
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
@@ -449,7 +472,10 @@ Be specific about what information you need and why it's needed to provide a com
 	}
 
 	// Graceful shutdown
-	if err := a2aServer.Stop(); err != nil {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("error during server shutdown", zap.Error(err))
 	}
 
