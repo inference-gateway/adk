@@ -7,7 +7,6 @@ import (
 
 // UnmarshalPart unmarshals a single Part from JSON with proper type handling
 func UnmarshalPart(data []byte) (Part, error) {
-	// First, unmarshal into a temporary struct to get the kind field
 	var temp struct {
 		Kind string `json:"kind"`
 	}
@@ -16,7 +15,6 @@ func UnmarshalPart(data []byte) (Part, error) {
 		return nil, fmt.Errorf("failed to unmarshal part kind: %w", err)
 	}
 
-	// Based on the kind, unmarshal into the appropriate concrete type
 	switch temp.Kind {
 	case "text":
 		var textPart TextPart
@@ -40,7 +38,6 @@ func UnmarshalPart(data []byte) (Part, error) {
 		return filePart, nil
 
 	default:
-		// Fall back to map[string]any for unknown or unsupported kinds
 		var mapPart map[string]any
 		if err := json.Unmarshal(data, &mapPart); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal as map[string]any: %w", err)

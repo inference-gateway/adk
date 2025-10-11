@@ -466,7 +466,6 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 					assert.Equal(t, expectedPart.File, resultPart.File)
 					assert.Equal(t, expectedPart.Metadata, resultPart.Metadata)
 				case map[string]any:
-					// Fallback for backward compatibility
 					resultPartMap, ok := result.Parts[i].(map[string]any)
 					require.True(t, ok, "Expected result part to be map[string]any")
 					assert.Equal(t, expectedPart["kind"], resultPartMap["kind"])
@@ -659,7 +658,6 @@ func TestOptimizedMessageConverter_RoundTrip(t *testing.T) {
 	assert.Equal(t, originalMessage.Role, convertedMessage.Role)
 	assert.Len(t, convertedMessage.Parts, 1)
 
-	// After conversion, the message should now contain a concrete TextPart instead of map[string]any
 	convertedPart, ok := convertedMessage.Parts[0].(types.TextPart)
 	require.True(t, ok, "Expected converted part to be TextPart")
 	assert.Equal(t, "text", convertedPart.Kind)

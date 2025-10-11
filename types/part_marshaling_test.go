@@ -118,19 +118,16 @@ func TestUnmarshalParts(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, parts, 3)
 
-	// Check TextPart
 	textPart, ok := parts[0].(TextPart)
 	require.True(t, ok)
 	assert.Equal(t, "text", textPart.Kind)
 	assert.Equal(t, "Hello", textPart.Text)
 
-	// Check DataPart
 	dataPart, ok := parts[1].(DataPart)
 	require.True(t, ok)
 	assert.Equal(t, "data", dataPart.Kind)
 	assert.Equal(t, map[string]any{"key": "value"}, dataPart.Data)
 
-	// Check FilePart
 	filePart, ok := parts[2].(FilePart)
 	require.True(t, ok)
 	assert.Equal(t, "file", filePart.Kind)
@@ -207,15 +204,12 @@ func TestPartMarshalingRoundTrip(t *testing.T) {
 		FilePart{Kind: "file", File: map[string]any{"name": "test.txt", "bytes": "dGVzdA=="}, Metadata: map[string]any{"size": 4}},
 	}
 
-	// Marshal
 	marshaled, err := MarshalParts(original)
 	require.NoError(t, err)
 
-	// Unmarshal
 	unmarshaled, err := UnmarshalParts(marshaled)
 	require.NoError(t, err)
 
-	// Compare
 	require.Len(t, unmarshaled, 3)
 
 	textPart, ok := unmarshaled[0].(TextPart)
