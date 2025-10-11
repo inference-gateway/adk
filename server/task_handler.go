@@ -339,14 +339,18 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 	return sth.agent.RunWithStream(toolCtx, messages)
 }
 
+// A2AProtocolHandlerDeps provides dependencies for the protocol handler
+type A2AProtocolHandlerDeps interface {
+	GetStreamingTaskHandler() StreamableTaskHandler
+}
+
 // DefaultA2AProtocolHandler implements the A2AProtocolHandler interface
 type DefaultA2AProtocolHandler struct {
-	logger                *zap.Logger
-	storage               Storage
-	taskManager           TaskManager
-	responseSender        ResponseSender
-	backgroundTaskHandler TaskHandler
-	streamingTaskHandler  StreamableTaskHandler
+	logger         *zap.Logger
+	storage        Storage
+	taskManager    TaskManager
+	responseSender ResponseSender
+	server         A2AProtocolHandlerDeps
 }
 
 // NewDefaultA2AProtocolHandler creates a new default A2A protocol handler
@@ -355,16 +359,14 @@ func NewDefaultA2AProtocolHandler(
 	storage Storage,
 	taskManager TaskManager,
 	responseSender ResponseSender,
-	backgroundTaskHandler TaskHandler,
-	streamingTaskHandler StreamableTaskHandler,
+	server A2AProtocolHandlerDeps,
 ) *DefaultA2AProtocolHandler {
 	return &DefaultA2AProtocolHandler{
-		logger:                logger,
-		storage:               storage,
-		taskManager:           taskManager,
-		responseSender:        responseSender,
-		backgroundTaskHandler: backgroundTaskHandler,
-		streamingTaskHandler:  streamingTaskHandler,
+		logger:         logger,
+		storage:        storage,
+		taskManager:    taskManager,
+		responseSender: responseSender,
+		server:         server,
 	}
 }
 
@@ -607,7 +609,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		}
 	}
 
-	eventsChan, err := h.streamingTaskHandler.HandleStreamingTask(ctx, task, message)
+	eventsChan, err := h.server.GetStreamingTaskHandler().HandleStreamingTask(ctx, task, message)
 	if err != nil {
 		h.logger.Error("failed to start streaming task",
 			zap.Error(err),

@@ -164,8 +164,7 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		server.storage,
 		server.taskManager,
 		server.responseSender,
-		server.backgroundTaskHandler,
-		server.streamingTaskHandler,
+		server,
 	)
 
 	return server
@@ -244,8 +243,7 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 		server.storage,
 		server.taskManager,
 		server.responseSender,
-		server.backgroundTaskHandler,
-		server.streamingTaskHandler,
+		server,
 	)
 
 	return server
