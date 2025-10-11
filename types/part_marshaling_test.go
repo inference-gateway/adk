@@ -159,7 +159,6 @@ func TestCreateTextPart(t *testing.T) {
 	assert.Equal(t, "Hello, world!", part.Text)
 	assert.Nil(t, part.Metadata)
 
-	// Test with metadata
 	metadata := map[string]any{"key": "value"}
 	partWithMeta := CreateTextPart("Hello", metadata)
 	assert.Equal(t, "text", partWithMeta.Kind)
@@ -226,7 +225,7 @@ func TestPartMarshalingRoundTrip(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "file", filePart.Kind)
 	assert.Equal(t, map[string]any{"name": "test.txt", "bytes": "dGVzdA=="}, filePart.File)
-	assert.Equal(t, map[string]any{"size": float64(4)}, filePart.Metadata) // JSON numbers are float64
+	assert.Equal(t, map[string]any{"size": float64(4)}, filePart.Metadata)
 }
 
 func TestMessageUnmarshalJSON(t *testing.T) {
