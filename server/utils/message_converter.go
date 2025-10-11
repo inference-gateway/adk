@@ -326,57 +326,36 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 			toolData["tool_name"] = ""
 		}
 
-		message.Parts = append(message.Parts, map[string]any{
-			"kind": string(types.MessagePartKindData),
-			"data": toolData,
-		})
+		message.Parts = append(message.Parts, types.CreateDataPart(toolData))
 
 	case "assistant":
 		hasToolCalls := response.ToolCalls != nil && len(*response.ToolCalls) > 0
 
 		if response.Content != "" {
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindText),
-				"text": response.Content,
-			})
+			message.Parts = append(message.Parts, types.CreateTextPart(response.Content))
 		}
 
 		if hasToolCalls {
 			toolCallData := map[string]any{
 				"tool_calls": *response.ToolCalls,
 			}
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindData),
-				"data": toolCallData,
-			})
+			message.Parts = append(message.Parts, types.CreateDataPart(toolCallData))
 		}
 
 		if response.ReasoningContent != nil && *response.ReasoningContent != "" {
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindText),
-				"text": *response.ReasoningContent,
-			})
+			message.Parts = append(message.Parts, types.CreateTextPart(*response.ReasoningContent))
 		} else if response.Reasoning != nil && *response.Reasoning != "" {
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindText),
-				"text": *response.Reasoning,
-			})
+			message.Parts = append(message.Parts, types.CreateTextPart(*response.Reasoning))
 		}
 
 	default:
 		if response.Content != "" {
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindText),
-				"text": response.Content,
-			})
+			message.Parts = append(message.Parts, types.CreateTextPart(response.Content))
 		}
 	}
 
 	if len(message.Parts) == 0 {
-		message.Parts = append(message.Parts, map[string]any{
-			"kind": string(types.MessagePartKindText),
-			"text": "",
-		})
+		message.Parts = append(message.Parts, types.CreateTextPart(""))
 	}
 
 	hasReasoning := (response.ReasoningContent != nil && *response.ReasoningContent != "") ||

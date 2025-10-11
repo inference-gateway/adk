@@ -138,6 +138,15 @@ func main() {
 					for _, part := range task.Status.Message.Parts {
 						if textPart, ok := part.(types.TextPart); ok {
 							fmt.Printf("\nResponse: %s\n", textPart.Text)
+						} else if partMap, ok := part.(map[string]any); ok {
+							// Fallback for map-based parts (backward compatibility)
+							if kind, hasKind := partMap["kind"]; hasKind && kind == "text" {
+								if text, exists := partMap["text"]; exists {
+									if textStr, ok := text.(string); ok {
+										fmt.Printf("\nResponse: %s\n", textStr)
+									}
+								}
+							}
 						}
 					}
 				}
