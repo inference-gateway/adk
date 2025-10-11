@@ -335,7 +335,6 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
 	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
 
-	// Get CloudEvents directly from agent and forward them
 	return sth.agent.RunWithStream(toolCtx, messages)
 }
 
