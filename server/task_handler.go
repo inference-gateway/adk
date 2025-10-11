@@ -637,6 +637,20 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				h.logger.Debug("accumulated delta text",
 					zap.String("task_id", task.ID),
 					zap.Int("total_length", len(accumulatedText)))
+
+				task.Status.Message = &deltaMessage
+				task.Status.State = types.TaskStateWorking
+
+				deltaResponse := types.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  *task,
+				}
+
+				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
+					h.logger.Error("failed to write delta", zap.Error(err))
+					return
+				}
 			}
 
 		case types.EventIterationCompleted:
