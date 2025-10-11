@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -19,7 +20,7 @@ func main() {
 	defer logger.Sync()
 
 	// Create A2A client
-	a2aClient := client.NewA2AClient("http://localhost:8080", logger)
+	a2aClient := client.NewClientWithLogger("http://localhost:8080", logger)
 
 	logger.Info("Input-Required Non-Streaming Demo Client")
 	logger.Info("This client demonstrates the input-required flow where the server pauses tasks to request additional information from the user.")
@@ -63,19 +64,15 @@ func main() {
 }
 
 // demonstrateInputRequiredFlow shows a complete input-required conversation
-func demonstrateInputRequiredFlow(a2aClient *client.A2AClient, initialMessage string, logger *zap.Logger) error {
+func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage string, logger *zap.Logger) error {
 	ctx := context.Background()
 
 	// Create initial message
 	message := types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": initialMessage,
-			},
+			types.NewTextPart(initialMessage),
 		},
 	}
 
@@ -83,31 +80,52 @@ func demonstrateInputRequiredFlow(a2aClient *client.A2AClient, initialMessage st
 	fmt.Printf("📤 Sending: %s\n", initialMessage)
 
 	params := types.MessageSendParams{
-		ContextID: fmt.Sprintf("demo-context-%d", time.Now().UnixNano()),
-		Message:   message,
+		Message: message,
 	}
 
 	// Send message and get task
-	task, err := a2aClient.SendMessage(ctx, params)
+	response, err := a2aClient.SendTask(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 
-	fmt.Printf("🆔 Task ID: %s\n", task.ID)
+	// Extract task ID from response
+	var taskResult struct {
+		ID string `json:"id"`
+	}
+	resultBytes, ok := response.Result.(json.RawMessage)
+	if !ok {
+		return fmt.Errorf("failed to parse result as json.RawMessage")
+	}
+	if err := json.Unmarshal(resultBytes, &taskResult); err != nil {
+		return fmt.Errorf("failed to parse task ID: %w", err)
+	}
+
+	fmt.Printf("🆔 Task ID: %s\n", taskResult.ID)
 
 	// Monitor task until completion or input required
-	currentTask := task
+	taskID := taskResult.ID
 	for {
 		// Wait a moment for task processing
 		time.Sleep(500 * time.Millisecond)
 
 		// Poll for task updates
-		polledTask, err := a2aClient.PollTaskUntilCompletion(ctx, currentTask.ID, 30*time.Second)
+		taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{
+			ID: taskID,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to poll task: %w", err)
 		}
 
-		currentTask = polledTask
+		var currentTask types.Task
+		taskResultBytes, ok := taskResponse.Result.(json.RawMessage)
+		if !ok {
+			return fmt.Errorf("failed to parse task result as json.RawMessage")
+		}
+		if err := json.Unmarshal(taskResultBytes, &currentTask); err != nil {
+			return fmt.Errorf("failed to parse task: %w", err)
+		}
+
 		fmt.Printf("📊 Task Status: %s\n", currentTask.Status.State)
 
 		switch currentTask.Status.State {
@@ -141,14 +159,10 @@ func demonstrateInputRequiredFlow(a2aClient *client.A2AClient, initialMessage st
 
 			// Create follow-up message
 			followUpMessage := types.Message{
-				Kind:      "message",
 				MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": userResponse,
-					},
+					types.NewTextPart(userResponse),
 				},
 			}
 
@@ -156,17 +170,28 @@ func demonstrateInputRequiredFlow(a2aClient *client.A2AClient, initialMessage st
 			fmt.Printf("📤 Sending follow-up: %s\n", userResponse)
 
 			followUpParams := types.MessageSendParams{
-				ContextID: currentTask.ContextID,
-				Message:   followUpMessage,
+				Message: followUpMessage,
 			}
 
-			continuedTask, err := a2aClient.SendMessage(ctx, followUpParams)
+			continuedResponse, err := a2aClient.SendTask(ctx, followUpParams)
 			if err != nil {
 				return fmt.Errorf("failed to send follow-up message: %w", err)
 			}
 
-			currentTask = continuedTask
-			fmt.Printf("🔄 Continuing with Task ID: %s\n", currentTask.ID)
+			// Extract new task ID
+			var continuedTaskResult struct {
+				ID string `json:"id"`
+			}
+			continuedResultBytes, ok := continuedResponse.Result.(json.RawMessage)
+			if !ok {
+				return fmt.Errorf("failed to parse continued result as json.RawMessage")
+			}
+			if err := json.Unmarshal(continuedResultBytes, &continuedTaskResult); err != nil {
+				return fmt.Errorf("failed to parse continued task ID: %w", err)
+			}
+
+			taskID = continuedTaskResult.ID
+			fmt.Printf("🔄 Continuing with Task ID: %s\n", taskID)
 
 		case types.TaskStateFailed:
 			// Task failed
@@ -204,6 +229,8 @@ func extractMessageText(message *types.Message) string {
 					return text
 				}
 			}
+		} else if textPart, ok := part.(types.TextPart); ok {
+			return textPart.Text
 		}
 	}
 	return "(no text content)"

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -19,7 +20,7 @@ func main() {
 	defer logger.Sync()
 
 	// Create A2A client
-	a2aClient := client.NewA2AClient("http://localhost:8080", logger)
+	a2aClient := client.NewClientWithLogger("http://localhost:8080", logger)
 
 	logger.Info("Input-Required Streaming Demo Client")
 	logger.Info("This client demonstrates the input-required flow with real-time streaming where the server pauses tasks to request additional information from the user.")
@@ -64,19 +65,15 @@ func main() {
 }
 
 // demonstrateStreamingInputRequiredFlow shows a complete streaming input-required conversation
-func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialMessage string, logger *zap.Logger) error {
+func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMessage string, logger *zap.Logger) error {
 	ctx := context.Background()
 
 	// Create initial message
 	message := types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": initialMessage,
-			},
+			types.NewTextPart(initialMessage),
 		},
 	}
 
@@ -84,19 +81,20 @@ func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialM
 	fmt.Printf("📤 Sending: %s\n", initialMessage)
 	fmt.Print("📥 Streaming response: ")
 
-	params := types.MessageStreamParams{
-		ContextID: fmt.Sprintf("demo-context-%d", time.Now().UnixNano()),
-		Message:   message,
+	params := types.MessageSendParams{
+		Message: message,
+		Configuration: &types.MessageSendConfiguration{
+			Blocking:            boolPtr(false),
+			AcceptedOutputModes: []string{"text/plain"},
+		},
 	}
 
 	// Start streaming
-	eventChan, err := a2aClient.SendMessageStreaming(ctx, params)
+	eventChan, err := a2aClient.SendTaskStreaming(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to start streaming: %w", err)
 	}
 
-	var currentTaskID string
-	var currentContextID string
 	var streamingText strings.Builder
 	var inputRequiredMessage string
 	var taskCompleted bool
@@ -104,60 +102,54 @@ func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialM
 
 	// Process streaming events
 	for event := range eventChan {
-		logger.Debug("received streaming event", zap.String("type", event.Type()))
+		logger.Debug("received streaming event")
 
-		switch event.Type() {
-		case types.EventDelta:
-			// Real-time text streaming
-			var msg types.Message
-			if err := event.DataAs(&msg); err == nil {
-				text := extractMessageText(&msg)
+		// Parse the event result
+		if event.Result == nil {
+			continue
+		}
+
+		resultBytes, _ := json.Marshal(event.Result)
+		var statusUpdate types.TaskStatusUpdateEvent
+		if err := json.Unmarshal(resultBytes, &statusUpdate); err != nil {
+			logger.Debug("failed to parse event", zap.Error(err))
+			continue
+		}
+
+		// Handle different task states
+		switch statusUpdate.Status.State {
+		case types.TaskStateWorking:
+			logger.Info("task started")
+
+		case types.TaskStateCompleted:
+			logger.Info("task completed")
+			taskCompleted = true
+			// Extract final message
+			if statusUpdate.Status.Message != nil && len(statusUpdate.Status.Message.Parts) > 0 {
+				text := extractMessageText(statusUpdate.Status.Message)
 				fmt.Print(text)
 				streamingText.WriteString(text)
 			}
 
-		case types.EventInputRequired:
-			// Input required from user
-			var msg types.Message
-			if err := event.DataAs(&msg); err == nil {
-				inputRequiredMessage = extractMessageText(&msg)
-				taskInputRequired = true
-				if msg.TaskID != nil {
-					currentTaskID = *msg.TaskID
-				}
-				if msg.ContextID != nil {
-					currentContextID = *msg.ContextID
-				}
+		case types.TaskStateInputRequired:
+			logger.Info("input required")
+			taskInputRequired = true
+			if statusUpdate.Status.Message != nil {
+				inputRequiredMessage = extractMessageText(statusUpdate.Status.Message)
 			}
 
-		case types.EventTaskStatusChanged:
-			// Task status update
-			var status types.TaskStatus
-			if err := event.DataAs(&status); err == nil {
-				switch status.State {
-				case types.TaskStateCompleted:
-					taskCompleted = true
-				case types.TaskStateInputRequired:
-					taskInputRequired = true
-				case types.TaskStateFailed:
-					fmt.Print("\n❌ Task failed")
-					return nil
-				}
-			}
-
-		case types.EventIterationCompleted:
-			// Iteration completed - could be end of stream or input required
-			var msg types.Message
-			if err := event.DataAs(&msg); err == nil {
-				if msg.Kind == "input_required" {
-					inputRequiredMessage = extractMessageText(&msg)
-					taskInputRequired = true
-				}
-			}
-
-		case types.EventStreamFailed:
-			fmt.Print("\n❌ Stream failed")
+		case types.TaskStateFailed:
+			logger.Error("task failed")
+			fmt.Print("\n❌ Task failed")
 			return nil
+
+		case types.TaskStateCanceled:
+			logger.Info("task canceled")
+			fmt.Print("\n🚫 Task canceled")
+			return nil
+
+		default:
+			logger.Debug("unknown state", zap.String("state", string(statusUpdate.Status.State)))
 		}
 	}
 
@@ -185,14 +177,10 @@ func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialM
 
 		// Create follow-up message
 		followUpMessage := types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": userResponse,
-				},
+				types.NewTextPart(userResponse),
 			},
 		}
 
@@ -200,47 +188,48 @@ func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialM
 		fmt.Printf("📤 Sending follow-up: %s\n", userResponse)
 		fmt.Print("📥 Continued streaming: ")
 
-		// Use same context ID to continue the conversation
-		contextID := currentContextID
-		if contextID == "" {
-			contextID = params.ContextID
-		}
-
-		followUpParams := types.MessageStreamParams{
-			ContextID: contextID,
-			Message:   followUpMessage,
+		followUpParams := types.MessageSendParams{
+			Message: followUpMessage,
+			Configuration: &types.MessageSendConfiguration{
+				Blocking:            boolPtr(false),
+				AcceptedOutputModes: []string{"text/plain"},
+			},
 		}
 
 		// Continue streaming
-		continuedEventChan, err := a2aClient.SendMessageStreaming(ctx, followUpParams)
+		continuedEventChan, err := a2aClient.SendTaskStreaming(ctx, followUpParams)
 		if err != nil {
 			return fmt.Errorf("failed to continue streaming: %w", err)
 		}
 
 		// Process continued streaming events
 		for event := range continuedEventChan {
-			switch event.Type() {
-			case types.EventDelta:
-				var msg types.Message
-				if err := event.DataAs(&msg); err == nil {
-					text := extractMessageText(&msg)
+			// Parse the event result
+			if event.Result == nil {
+				continue
+			}
+
+			resultBytes, _ := json.Marshal(event.Result)
+			var statusUpdate types.TaskStatusUpdateEvent
+			if err := json.Unmarshal(resultBytes, &statusUpdate); err != nil {
+				logger.Debug("failed to parse continued event", zap.Error(err))
+				continue
+			}
+
+			// Handle different task states
+			switch statusUpdate.Status.State {
+			case types.TaskStateCompleted:
+				logger.Info("continued task completed")
+				// Extract final message
+				if statusUpdate.Status.Message != nil && len(statusUpdate.Status.Message.Parts) > 0 {
+					text := extractMessageText(statusUpdate.Status.Message)
 					fmt.Print(text)
 				}
-
-			case types.EventTaskStatusChanged:
-				var status types.TaskStatus
-				if err := event.DataAs(&status); err == nil {
-					if status.State == types.TaskStateCompleted {
-						fmt.Printf("\n✅ Conversation complete!\n\n")
-						return nil
-					} else if status.State == types.TaskStateFailed {
-						fmt.Printf("\n❌ Task failed\n\n")
-						return nil
-					}
-				}
-
-			case types.EventStreamFailed:
-				fmt.Printf("\n❌ Stream failed\n\n")
+				fmt.Printf("\n✅ Conversation complete!\n\n")
+				return nil
+			case types.TaskStateFailed:
+				logger.Error("continued task failed")
+				fmt.Printf("\n❌ Task failed\n\n")
 				return nil
 			}
 		}
@@ -262,7 +251,14 @@ func extractMessageText(message *types.Message) string {
 					return text
 				}
 			}
+		} else if textPart, ok := part.(types.TextPart); ok {
+			return textPart.Text
 		}
 	}
 	return "(no text content)"
+}
+
+// boolPtr returns a pointer to a boolean value
+func boolPtr(b bool) *bool {
+	return &b
 }
