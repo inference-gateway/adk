@@ -81,7 +81,6 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 				zap.String("message_id", msg.MessageID))
 
 		case map[string]any:
-			// Fallback for backward compatibility
 			if err := c.processMapPart(p, role, &content, &toolCallId, &toolCalls); err != nil {
 				c.logger.Warn("failed to process map part",
 					zap.String("message_id", msg.MessageID),
