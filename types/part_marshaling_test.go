@@ -228,3 +228,97 @@ func TestPartMarshalingRoundTrip(t *testing.T) {
 	assert.Equal(t, map[string]any{"name": "test.txt", "bytes": "dGVzdA=="}, filePart.File)
 	assert.Equal(t, map[string]any{"size": float64(4)}, filePart.Metadata) // JSON numbers are float64
 }
+
+func TestMessageUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		jsonData string
+		validate func(t *testing.T, msg Message)
+	}{
+		{
+			name: "message with text parts",
+			jsonData: `{
+				"kind": "message",
+				"messageId": "msg-123",
+				"role": "user",
+				"parts": [
+					{"kind": "text", "text": "Hello"},
+					{"kind": "text", "text": "World"}
+				]
+			}`,
+			validate: func(t *testing.T, msg Message) {
+				assert.Equal(t, "message", msg.Kind)
+				assert.Equal(t, "msg-123", msg.MessageID)
+				assert.Equal(t, "user", msg.Role)
+				require.Len(t, msg.Parts, 2)
+
+				textPart1, ok := msg.Parts[0].(TextPart)
+				require.True(t, ok, "First part should be TextPart")
+				assert.Equal(t, "Hello", textPart1.Text)
+
+				textPart2, ok := msg.Parts[1].(TextPart)
+				require.True(t, ok, "Second part should be TextPart")
+				assert.Equal(t, "World", textPart2.Text)
+			},
+		},
+		{
+			name: "message with mixed part types",
+			jsonData: `{
+				"kind": "message",
+				"messageId": "msg-456",
+				"role": "assistant",
+				"parts": [
+					{"kind": "text", "text": "Response"},
+					{"kind": "data", "data": {"result": "success"}},
+					{"kind": "file", "file": {"name": "test.txt"}}
+				]
+			}`,
+			validate: func(t *testing.T, msg Message) {
+				assert.Equal(t, "assistant", msg.Role)
+				require.Len(t, msg.Parts, 3)
+
+				_, ok := msg.Parts[0].(TextPart)
+				assert.True(t, ok, "First part should be TextPart")
+
+				_, ok = msg.Parts[1].(DataPart)
+				assert.True(t, ok, "Second part should be DataPart")
+
+				_, ok = msg.Parts[2].(FilePart)
+				assert.True(t, ok, "Third part should be FilePart")
+			},
+		},
+		{
+			name: "message round-trip with typed parts",
+			jsonData: `{
+				"kind": "message",
+				"messageId": "msg-789",
+				"role": "user",
+				"parts": [
+					{"kind": "text", "text": "Test message", "metadata": {"key": "value"}}
+				]
+			}`,
+			validate: func(t *testing.T, msg Message) {
+				marshaled, err := json.Marshal(msg)
+				require.NoError(t, err)
+
+				var msg2 Message
+				err = json.Unmarshal(marshaled, &msg2)
+				require.NoError(t, err)
+
+				textPart, ok := msg2.Parts[0].(TextPart)
+				require.True(t, ok, "Part should remain TextPart after round-trip")
+				assert.Equal(t, "Test message", textPart.Text)
+				assert.Equal(t, map[string]any{"key": "value"}, textPart.Metadata)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var msg Message
+			err := json.Unmarshal([]byte(tt.jsonData), &msg)
+			require.NoError(t, err)
+			tt.validate(t, msg)
+		})
+	}
+}

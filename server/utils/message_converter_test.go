@@ -10,9 +10,9 @@ import (
 	zap "go.uber.org/zap"
 )
 
-func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
+func TestMessageConverter_ConvertToSDK(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	tests := []struct {
 		name           string
@@ -175,9 +175,9 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-7",
 					Role:      "user",
 					Parts: []types.Part{
-						types.OptimizedMessagePart{
-							Kind: types.MessagePartKindText,
-							Text: stringPtr("Strongly typed message"),
+						types.TextPart{
+							Kind: "text",
+							Text: "Strongly typed message",
 						},
 					},
 				},
@@ -202,12 +202,12 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 							"kind": "text",
 							"text": "Please analyze this file: ",
 						},
-						types.OptimizedMessagePart{
-							Kind: types.MessagePartKindFile,
-							File: &types.FileData{
-								Name:     stringPtr("test.txt"),
-								MIMEType: stringPtr("text/plain"),
-								Bytes:    stringPtr("base64encodedcontent"),
+						types.FilePart{
+							Kind: "file",
+							File: map[string]any{
+								"name":     "test.txt",
+								"mimeType": "text/plain",
+								"bytes":    "base64encodedcontent",
 							},
 						},
 					},
@@ -281,9 +281,9 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
+func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	tests := []struct {
 		name           string
@@ -486,9 +486,9 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
+func TestMessageConverter_ValidateMessagePart(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	tests := []struct {
 		name        string
@@ -498,27 +498,27 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 	}{
 		{
 			name: "valid strongly-typed text part",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindText,
-				Text: stringPtr("Valid text"),
+			input: types.TextPart{
+				Kind: "text",
+				Text: "Valid text",
 			},
 			expectError: false,
 		},
 		{
 			name: "valid strongly-typed file part",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindFile,
-				File: &types.FileData{
-					Name:     stringPtr("test.txt"),
-					MIMEType: stringPtr("text/plain"),
+			input: types.FilePart{
+				Kind: "file",
+				File: map[string]any{
+					"name":     "test.txt",
+					"mimeType": "text/plain",
 				},
 			},
 			expectError: false,
 		},
 		{
 			name: "valid strongly-typed data part",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindData,
+			input: types.DataPart{
+				Kind: "data",
 				Data: map[string]any{
 					"key": "value",
 				},
@@ -527,17 +527,17 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "invalid strongly-typed text part (missing text)",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindText,
-				Text: nil,
+			input: types.TextPart{
+				Kind: "text",
+				Text: "",
 			},
 			expectError: true,
 			errorMsg:    "text part missing text field",
 		},
 		{
 			name: "invalid strongly-typed file part (missing file)",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindFile,
+			input: types.FilePart{
+				Kind: "file",
 				File: nil,
 			},
 			expectError: true,
@@ -545,8 +545,8 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "invalid strongly-typed data part (missing data)",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindData,
+			input: types.DataPart{
+				Kind: "data",
 				Data: nil,
 			},
 			expectError: true,
@@ -631,9 +631,9 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_RoundTrip(t *testing.T) {
+func TestMessageConverter_RoundTrip(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	originalMessage := types.Message{
 		Kind:      "message",
@@ -664,9 +664,9 @@ func TestOptimizedMessageConverter_RoundTrip(t *testing.T) {
 	assert.Equal(t, "Round trip test message", convertedPart.Text)
 }
 
-func TestOptimizedMessageConverter_PerformanceWithManyMessages(t *testing.T) {
+func TestMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	messages := make([]types.Message, 1000)
 	for i := 0; i < 1000; i++ {
@@ -693,9 +693,9 @@ func TestOptimizedMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
+func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	tests := []struct {
 		name              string
@@ -801,9 +801,9 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
+func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	messages := []types.Message{
 		{

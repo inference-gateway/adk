@@ -31,23 +31,6 @@ func (k MessagePartKind) IsValid() bool {
 	}
 }
 
-// OptimizedMessagePart provides strongly-typed message parts
-type OptimizedMessagePart struct {
-	Kind     MessagePartKind `json:"kind"`
-	Text     *string         `json:"text,omitempty"`
-	File     *FileData       `json:"file,omitempty"`
-	Data     map[string]any  `json:"data,omitempty"`
-	Metadata map[string]any  `json:"metadata,omitempty"`
-}
-
-// FileData represents file information with proper typing
-type FileData struct {
-	Name     *string `json:"name,omitempty"`
-	MIMEType *string `json:"mimeType,omitempty"`
-	Bytes    *string `json:"bytes,omitempty"`
-	URI      *string `json:"uri,omitempty"`
-}
-
 // Health status constants
 const (
 	HealthStatusHealthy   = "healthy"

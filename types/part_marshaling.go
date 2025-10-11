@@ -5,6 +5,48 @@ import (
 	"fmt"
 )
 
+// MessageWithTypedParts is a wrapper for Message that ensures Parts are properly unmarshaled
+type messageUnmarshalHelper struct {
+	ContextID        *string           `json:"contextId,omitempty"`
+	Extensions       []string          `json:"extensions,omitempty"`
+	Kind             string            `json:"kind"`
+	MessageID        string            `json:"messageId"`
+	Metadata         map[string]any    `json:"metadata,omitempty"`
+	Parts            []json.RawMessage `json:"parts"`
+	ReferenceTaskIds []string          `json:"referenceTaskIds,omitempty"`
+	Role             string            `json:"role"`
+	TaskID           *string           `json:"taskId,omitempty"`
+}
+
+// UnmarshalJSON custom unmarshaler for Message that properly handles typed Parts
+func (m *Message) UnmarshalJSON(data []byte) error {
+	var helper messageUnmarshalHelper
+	if err := json.Unmarshal(data, &helper); err != nil {
+		return err
+	}
+
+	parts := make([]Part, len(helper.Parts))
+	for i, rawPart := range helper.Parts {
+		part, err := UnmarshalPart(rawPart)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal part at index %d: %w", i, err)
+		}
+		parts[i] = part
+	}
+
+	m.ContextID = helper.ContextID
+	m.Extensions = helper.Extensions
+	m.Kind = helper.Kind
+	m.MessageID = helper.MessageID
+	m.Metadata = helper.Metadata
+	m.Parts = parts
+	m.ReferenceTaskIds = helper.ReferenceTaskIds
+	m.Role = helper.Role
+	m.TaskID = helper.TaskID
+
+	return nil
+}
+
 // UnmarshalPart unmarshals a single Part from JSON with proper type handling
 func UnmarshalPart(data []byte) (Part, error) {
 	var temp struct {
