@@ -49,6 +49,14 @@ jobs:
         run: |
           curl -s https://taskfile.dev/install.sh | sh -s -- -b /usr/local/bin v3.45.4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 'lts/*'
+
+      - name: Install prettier
+        run: npm install -g prettier
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@beta
