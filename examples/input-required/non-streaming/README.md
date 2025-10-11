@@ -69,6 +69,30 @@ When AI is configured, the agent uses the built-in `input_required` tool:
 
 ### Enable AI
 
+**Option 1: Using .env file (Recommended)**
+
+1. Copy the example environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and configure your API key and agent settings:
+
+   ```bash
+   # Add your API key
+   OPENAI_API_KEY=your-openai-api-key-here
+   DEEPSEEK_API_KEY=your-deepseek-api-key-here
+
+   # Configure the agent
+   A2A_AGENT_CLIENT_PROVIDER=openai
+   A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
+   ```
+
+3. The docker-compose.yaml will automatically load these values
+
+**Option 2: Edit docker-compose.yaml directly**
+
 Uncomment these lines in `docker-compose.yaml`:
 
 ```yaml
