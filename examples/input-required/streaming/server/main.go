@@ -318,8 +318,8 @@ func getMessageText(message *types.Message) string {
 }
 
 func contains(text, substr string) bool {
-	return len(text) >= len(substr) && 
-		   findInLower(toLower(text), toLower(substr)) >= 0
+	return len(text) >= len(substr) &&
+		findInLower(toLower(text), toLower(substr)) >= 0
 }
 
 func hasNumbers(text string) bool {

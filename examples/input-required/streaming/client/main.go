@@ -83,7 +83,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialM
 	// Send initial message with streaming
 	fmt.Printf("📤 Sending: %s\n", initialMessage)
 	fmt.Print("📥 Streaming response: ")
-	
+
 	params := types.MessageStreamParams{
 		ContextID: fmt.Sprintf("demo-context-%d", time.Now().UnixNano()),
 		Message:   message,

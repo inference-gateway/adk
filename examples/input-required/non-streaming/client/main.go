@@ -81,7 +81,7 @@ func demonstrateInputRequiredFlow(a2aClient *client.A2AClient, initialMessage st
 
 	// Send initial message
 	fmt.Printf("📤 Sending: %s\n", initialMessage)
-	
+
 	params := types.MessageSendParams{
 		ContextID: fmt.Sprintf("demo-context-%d", time.Now().UnixNano()),
 		Message:   message,
@@ -154,7 +154,7 @@ func demonstrateInputRequiredFlow(a2aClient *client.A2AClient, initialMessage st
 
 			// Send follow-up message to continue the task
 			fmt.Printf("📤 Sending follow-up: %s\n", userResponse)
-			
+
 			followUpParams := types.MessageSendParams{
 				ContextID: currentTask.ContextID,
 				Message:   followUpMessage,

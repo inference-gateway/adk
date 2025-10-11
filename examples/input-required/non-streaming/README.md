@@ -19,6 +19,7 @@ docker-compose up --build
 ```
 
 This will start:
+
 - **Server**: A2A server with input-required capabilities
 - **Client**: Interactive client for testing
 - **Inference Gateway**: For AI capabilities (optional)
@@ -80,10 +81,10 @@ inference-gateway:
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `A2A_SERVER_PORT` | Server port | `8080` |
-| `A2A_DEBUG` | Debug logging | `true` |
+| Variable                     | Description       | Default |
+| ---------------------------- | ----------------- | ------- |
+| `A2A_SERVER_PORT`            | Server port       | `8080`  |
+| `A2A_DEBUG`                  | Debug logging     | `true`  |
 | `A2A_CAPABILITIES_STREAMING` | Streaming support | `false` |
 
 ## Example Interactions
@@ -154,17 +155,17 @@ The client handles the complete input-required flow:
 func demonstrateInputRequiredFlow(a2aClient *client.A2AClient, initialMessage string, logger *zap.Logger) error {
     // Send initial message
     task, err := a2aClient.SendMessage(ctx, params)
-    
+
     // Poll for completion or input required
     for {
         currentTask, err := a2aClient.PollTaskUntilCompletion(ctx, taskID, timeout)
-        
+
         switch currentTask.Status.State {
         case types.TaskStateInputRequired:
             // Get user input and continue conversation
             followUpMessage := getUserInput()
             continuedTask, err := a2aClient.SendMessage(ctx, followUpParams)
-            
+
         case types.TaskStateCompleted:
             // Display final response
             return nil

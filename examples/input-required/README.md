@@ -66,6 +66,7 @@ input-required/
 ### Built-in Tool
 
 The ADK includes a built-in `input_required` tool that:
+
 - Takes a `message` parameter explaining what information is needed
 - Automatically pauses the task execution
 - Sets the task state to `TaskStateInputRequired`
@@ -86,12 +87,14 @@ During input-required flow, tasks transition through these states:
 ### Non-Streaming (`non-streaming/`)
 
 Traditional request-response mode where:
+
 - Client sends a message and waits for response
 - Server processes and may request input
 - Client handles input-required state and continues conversation
 - Final response is returned when complete
 
 **Use cases:**
+
 - Form-based applications
 - Batch processing workflows
 - Traditional chat interfaces
@@ -99,12 +102,14 @@ Traditional request-response mode where:
 ### Streaming (`streaming/`)
 
 Real-time streaming mode where:
+
 - Server streams response chunks as they're generated
 - Stream can pause mid-response to request input
 - Client displays real-time updates and handles input requests
 - Stream continues after user provides additional information
 
 **Use cases:**
+
 - Real-time chat applications
 - Interactive code generation
 - Live content creation
@@ -216,13 +221,13 @@ Agent: "I'd be glad to help with your homework! What subject are you working on 
 
 Both examples use environment variables with the `A2A_` prefix:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `A2A_SERVER_PORT` | Server port | `8080` |
-| `A2A_DEBUG` | Enable debug logging | `false` |
-| `A2A_CAPABILITIES_STREAMING` | Enable streaming | `true` (streaming), `false` (non-streaming) |
-| `A2A_AGENT_CLIENT_PROVIDER` | AI provider (`openai`, `anthropic`) | _(none)_ |
-| `A2A_AGENT_CLIENT_MODEL` | AI model name | _(required if provider set)_ |
+| Variable                     | Description                         | Default                                     |
+| ---------------------------- | ----------------------------------- | ------------------------------------------- |
+| `A2A_SERVER_PORT`            | Server port                         | `8080`                                      |
+| `A2A_DEBUG`                  | Enable debug logging                | `false`                                     |
+| `A2A_CAPABILITIES_STREAMING` | Enable streaming                    | `true` (streaming), `false` (non-streaming) |
+| `A2A_AGENT_CLIENT_PROVIDER`  | AI provider (`openai`, `anthropic`) | _(none)_                                    |
+| `A2A_AGENT_CLIENT_MODEL`     | AI model name                       | _(required if provider set)_                |
 
 ### AI Configuration
 
@@ -341,7 +346,7 @@ docker compose logs input-required-server
 ### Explore Related Examples
 
 - **`ai-powered/`** - Learn AI integration basics
-- **`streaming/`** - Understand streaming fundamentals  
+- **`streaming/`** - Understand streaming fundamentals
 - **`default-handlers/`** - Use built-in task handlers
 
 ### Advanced Scenarios

@@ -19,6 +19,7 @@ docker-compose up --build
 ```
 
 This will start:
+
 - **Server**: A2A streaming server with input-required capabilities
 - **Client**: Interactive streaming client
 - **Inference Gateway**: For AI capabilities (optional)
@@ -84,11 +85,11 @@ inference-gateway:
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `A2A_SERVER_PORT` | Server port | `8080` |
-| `A2A_DEBUG` | Debug logging | `true` |
-| `A2A_CAPABILITIES_STREAMING` | Streaming support | `true` |
+| Variable                     | Description       | Default |
+| ---------------------------- | ----------------- | ------- |
+| `A2A_SERVER_PORT`            | Server port       | `8080`  |
+| `A2A_DEBUG`                  | Debug logging     | `true`  |
+| `A2A_CAPABILITIES_STREAMING` | Streaming support | `true`  |
 
 ## Example Interactions
 
@@ -97,7 +98,7 @@ inference-gateway:
 ```
 💬 Your message: What's the weather?
 📤 Sending: What's the weather?
-📥 Streaming response: I'd be happy to help you with the weather! 
+📥 Streaming response: I'd be happy to help you with the weather!
 ❓ Input Required: Could you please specify which location you'd like the weather for?
 💬 Your response: New York
 📤 Sending follow-up: New York
@@ -110,7 +111,7 @@ inference-gateway:
 ```
 💬 Your message: Calculate something
 📤 Sending: Calculate something
-📥 Streaming response: I can help you with calculations! 
+📥 Streaming response: I can help you with calculations!
 ❓ Input Required: Could you please provide the specific numbers or equation you'd like me to calculate?
 💬 Your response: 25 * 8
 📤 Sending follow-up: 25 * 8
@@ -136,10 +137,10 @@ The server handles streaming with input-required pausing:
 ```go
 func (h *StreamingInputRequiredTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
     outputChan := make(chan cloudevents.Event, 100)
-    
+
     go func() {
         defer close(outputChan)
-        
+
         if h.agent != nil {
             // AI agent handles streaming automatically
             h.processWithAgentStreaming(ctx, task, message, outputChan)
@@ -148,7 +149,7 @@ func (h *StreamingInputRequiredTaskHandler) HandleStreamingTask(ctx context.Cont
             h.processWithoutAgentStreaming(ctx, task, message, outputChan)
         }
     }()
-    
+
     return outputChan, nil
 }
 ```
@@ -186,7 +187,7 @@ The client handles real-time events and input collection:
 func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialMessage string, logger *zap.Logger) error {
     // Start streaming
     eventChan, err := a2aClient.SendMessageStreaming(ctx, params)
-    
+
     // Process events in real-time
     for event := range eventChan {
         switch event.Type() {
@@ -197,7 +198,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialM
                 text := extractMessageText(&msg)
                 fmt.Print(text) // Real-time display
             }
-            
+
         case types.EventInputRequired:
             // Handle input required
             var msg types.Message
@@ -217,7 +218,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialM
 Unlike traditional input-required flows, streaming can pause mid-response:
 
 ```
-📥 Streaming response: I can help you with the weather in 
+📥 Streaming response: I can help you with the weather in
 ❓ Input Required: Could you please specify which city?
 💬 Your response: Boston
 📥 Continued streaming: Boston. The current weather is sunny and 68°F!
