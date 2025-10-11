@@ -138,7 +138,6 @@ func main() {
 					for _, part := range task.Status.Message.Parts {
 						if textPart, ok := part.(types.TextPart); ok {
 							fmt.Printf("\nResponse: %s\n", textPart.Text)
-                         }
 						}
 					}
 				}
