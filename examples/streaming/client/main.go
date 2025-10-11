@@ -88,82 +88,56 @@ func main() {
 	var eventCount int
 	var finalResponse string
 
-	// Process streaming events (expect 2: working → completed)
+	// Process streaming events (delta updates + status changes)
 	for event := range eventChan {
 		eventCount++
 
-		// Parse status update
 		if event.Result == nil {
 			continue
 		}
 
 		resultBytes, _ := json.Marshal(event.Result)
-		var statusUpdate types.TaskStatusUpdateEvent
-		if err := json.Unmarshal(resultBytes, &statusUpdate); err != nil {
-			logger.Debug("failed to parse event", zap.Int("event", eventCount), zap.Error(err))
+
+		// Try to parse as Task (for delta events)
+		var task types.Task
+		if err := json.Unmarshal(resultBytes, &task); err == nil && task.Kind == "task" {
+			// Handle delta message
+			if task.Status.Message != nil && len(task.Status.Message.Parts) > 0 {
+				for _, part := range task.Status.Message.Parts {
+					if textPart, ok := part.(types.TextPart); ok {
+						fmt.Print(textPart.Text)
+						finalResponse += textPart.Text
+					}
+				}
+			}
 			continue
 		}
 
-		// Handle different task states
-		switch statusUpdate.Status.State {
-		case types.TaskStateWorking:
-			logger.Info("task started", zap.Int("event", eventCount))
+		// Try to parse as TaskStatusUpdateEvent (for status changes)
+		var statusUpdate types.TaskStatusUpdateEvent
+		if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && statusUpdate.Kind == "status-update" {
+			// Handle different task states
+			switch statusUpdate.Status.State {
+			case types.TaskStateWorking:
+				logger.Info("task started", zap.Int("event", eventCount))
 
-		case types.TaskStateCompleted:
-			logger.Info("task completed", zap.Int("event", eventCount))
-			// Extract final message
-			if statusUpdate.Status.Message != nil && len(statusUpdate.Status.Message.Parts) > 0 {
-				if textPart, ok := statusUpdate.Status.Message.Parts[0].(types.TextPart); ok {
-					finalResponse = textPart.Text
-				}
+			case types.TaskStateCompleted:
+				logger.Info("task completed", zap.Int("event", eventCount))
+
+			case types.TaskStateFailed:
+				logger.Error("task failed", zap.Int("event", eventCount))
+
+			case types.TaskStateCanceled:
+				logger.Info("task canceled", zap.Int("event", eventCount))
 			}
-
-		case types.TaskStateFailed:
-			logger.Error("task failed", zap.Int("event", eventCount))
-
-		case types.TaskStateCanceled:
-			logger.Info("task canceled", zap.Int("event", eventCount))
-
-		default:
-			logger.Debug("unknown state",
-				zap.Int("event", eventCount),
-				zap.String("state", string(statusUpdate.Status.State)))
+			continue
 		}
+
+		logger.Debug("unknown event type", zap.Int("event", eventCount))
 	}
 
 	logger.Info("streaming completed", zap.Int("total_events", eventCount))
-	if finalResponse != "" {
-		fmt.Printf("\nResponse:\n%s\n", finalResponse)
-	}
-
-	// Also test regular (non-streaming) message for comparison
-	logger.Info("testing regular message")
-
-	regularMessage := types.Message{
-		Role: "user",
-		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: "What is the capital of France?",
-			},
-		},
-	}
-
-	regularParams := types.MessageSendParams{
-		Message: regularMessage,
-	}
-
-	response, err := a2aClient.SendTask(ctx, regularParams)
-	if err != nil {
-		logger.Error("failed to send regular message", zap.Error(err))
-		return
-	}
-
-	// Display the response
-	if response.Result != nil {
-		responseJSON, _ := json.MarshalIndent(response.Result, "", "  ")
-		fmt.Printf("\nRegular response:\n%s\n", string(responseJSON))
-	}
+	fmt.Printf("\n\nFinal streamed response:\n%s\n", finalResponse)
 }
 
 // boolPtr returns a pointer to a boolean value
