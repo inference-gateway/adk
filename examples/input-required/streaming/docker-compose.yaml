@@ -19,7 +19,7 @@ services:
 
   server:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: examples/Dockerfile.server
       args:
         AGENT_NAME: input-required-streaming-agent
@@ -54,7 +54,7 @@ services:
 
   client:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: examples/Dockerfile.client
       args:
         EXAMPLE_PATH: examples/input-required/streaming
@@ -66,6 +66,10 @@ services:
       SERVER_URL: http://server:8080
     networks:
       - a2a-network
+    stdin_open: true
+    tty: true
+    profiles:
+      - manual
 
   a2a-debugger:
     image: ghcr.io/inference-gateway/a2a-debugger:latest

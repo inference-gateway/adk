@@ -5,24 +5,39 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/inference-gateway/adk/client"
-	"github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
+	envconfig "github.com/sethvargo/go-envconfig"
+	zap "go.uber.org/zap"
+
+	client "github.com/inference-gateway/adk/client"
+	types "github.com/inference-gateway/adk/types"
 )
 
+// Config holds client configuration
+type Config struct {
+	ServerURL string `env:"SERVER_URL,default=http://localhost:8080"`
+}
+
 func main() {
+	// Load configuration
+	ctx := context.Background()
+	var cfg Config
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
+	}
+
 	// Initialize logger
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
 	// Create A2A client
-	a2aClient := client.NewClientWithLogger("http://localhost:8080", logger)
+	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
 
-	logger.Info("Input-Required Streaming Demo Client")
+	logger.Info("Input-Required Streaming Demo Client", zap.String("server_url", cfg.ServerURL))
 	logger.Info("This client demonstrates the input-required flow with real-time streaming where the server pauses tasks to request additional information from the user.")
 	fmt.Println()
 	fmt.Println("🔄 Input-Required Streaming Demo")

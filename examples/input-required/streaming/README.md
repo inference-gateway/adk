@@ -14,15 +14,22 @@ This example demonstrates the input-required flow with real-time streaming, wher
 
 ### Using Docker Compose (Recommended)
 
+Start the server and inference gateway:
+
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 This will start:
 
 - **Server**: A2A streaming server with input-required capabilities
-- **Client**: Interactive streaming client
 - **Inference Gateway**: For AI capabilities (optional)
+
+To run the interactive client (in a separate terminal):
+
+```bash
+docker compose run --rm --build client
+```
 
 ### Running Locally
 
