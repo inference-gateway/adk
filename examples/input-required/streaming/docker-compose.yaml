@@ -24,7 +24,7 @@ services:
       args:
         AGENT_NAME: input-required-streaming-agent
         AGENT_DESCRIPTION: Demonstrates input-required flow with real-time streaming
-        AGENT_VERSION: 1.0.0
+        AGENT_VERSION: 0.1.0
         EXAMPLE_PATH: examples/input-required/streaming
         COMPONENT: server
     depends_on:
