@@ -78,9 +78,9 @@ func (h *InputRequiredTaskHandler) processWithAgent(ctx context.Context, task *t
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": fmt.Sprintf("Failed to process task: %v", err),
+				types.TextPart{
+					Kind: "text",
+					Text: fmt.Sprintf("Failed to process task: %v", err),
 				},
 			},
 		}
@@ -143,9 +143,9 @@ func (h *InputRequiredTaskHandler) processWithAgent(ctx context.Context, task *t
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "No response received from agent",
+				types.TextPart{
+					Kind: "text",
+					Text: "No response received from agent",
 				},
 			},
 		}
@@ -181,9 +181,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 				MessageID: fmt.Sprintf("response-%s", task.ID),
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": fmt.Sprintf("The weather in %s is sunny and 72°F! (This is a demo response - no real weather data is fetched)", messageText),
+					types.TextPart{
+						Kind: "text",
+						Text: fmt.Sprintf("The weather in %s is sunny and 72°F! (This is a demo response - no real weather data is fetched)", messageText),
 					},
 				},
 			}
@@ -199,9 +199,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 				MessageID: fmt.Sprintf("response-%s", task.ID),
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": fmt.Sprintf("Based on your input '%s', here's the result! (This is a demo response)", messageText),
+					types.TextPart{
+						Kind: "text",
+						Text: fmt.Sprintf("Based on your input '%s', here's the result! (This is a demo response)", messageText),
 					},
 				},
 			}
@@ -222,9 +222,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 				MessageID: fmt.Sprintf("input-required-%s", task.ID),
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "I'd be happy to help you with the weather! Could you please specify which location you'd like the weather for?",
+					types.TextPart{
+						Kind: "text",
+						Text: "I'd be happy to help you with the weather! Could you please specify which location you'd like the weather for?",
 					},
 				},
 			}
@@ -243,9 +243,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 			MessageID: fmt.Sprintf("response-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "The weather is sunny and 72°F! (This is a demo response - no real weather data is fetched)",
+				types.TextPart{
+					Kind: "text",
+					Text: "The weather is sunny and 72°F! (This is a demo response - no real weather data is fetched)",
 				},
 			},
 		}
@@ -262,9 +262,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 				MessageID: fmt.Sprintf("input-required-%s", task.ID),
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "I can help you with calculations! Could you please provide the specific numbers or equation you'd like me to calculate?",
+					types.TextPart{
+						Kind: "text",
+						Text: "I can help you with calculations! Could you please provide the specific numbers or equation you'd like me to calculate?",
 					},
 				},
 			}
@@ -283,9 +283,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 			MessageID: fmt.Sprintf("response-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Based on your calculation request, I can help you with that math problem! (This is a demo response)",
+				types.TextPart{
+					Kind: "text",
+					Text: "Based on your calculation request, I can help you with that math problem! (This is a demo response)",
 				},
 			},
 		}
@@ -301,9 +301,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 			MessageID: fmt.Sprintf("response-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Hello! I'm an assistant that demonstrates the input-required flow. Try asking me about the weather or a calculation to see how I request additional information when needed!",
+				types.TextPart{
+					Kind: "text",
+					Text: "Hello! I'm an assistant that demonstrates the input-required flow. Try asking me about the weather or a calculation to see how I request additional information when needed!",
 				},
 			},
 		}
@@ -319,9 +319,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 			MessageID: fmt.Sprintf("input-required-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "I'd be happy to help! Could you please provide more details about what you'd like me to do? For example, you could ask about the weather or request a calculation.",
+				types.TextPart{
+					Kind: "text",
+					Text: "I'd be happy to help! Could you please provide more details about what you'd like me to do? For example, you could ask about the weather or request a calculation.",
 				},
 			},
 		}
@@ -339,12 +339,8 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 // Helper functions
 func getMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
-		if partMap, ok := part.(map[string]any); ok {
-			if kind, exists := partMap["kind"]; exists && kind == "text" {
-				if text, exists := partMap["text"].(string); exists {
-					return text
-				}
-			}
+		if textPart, ok := part.(types.TextPart); ok {
+			return textPart.Text
 		}
 	}
 	return ""

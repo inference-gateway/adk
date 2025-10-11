@@ -244,13 +244,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 // extractMessageText extracts text content from a message
 func extractMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
-		if partMap, ok := part.(map[string]any); ok {
-			if kind, exists := partMap["kind"]; exists && kind == "text" {
-				if text, exists := partMap["text"].(string); exists {
-					return text
-				}
-			}
-		} else if textPart, ok := part.(types.TextPart); ok {
+		if textPart, ok := part.(types.TextPart); ok {
 			return textPart.Text
 		}
 	}
