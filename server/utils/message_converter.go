@@ -21,20 +21,20 @@ type MessageConverter interface {
 	ValidateMessagePart(part types.Part) error
 }
 
-// OptimizedMessageConverter provides efficient conversion with type safety
-type OptimizedMessageConverter struct {
+// messageConverter provides efficient conversion with type safety
+type messageConverter struct {
 	logger *zap.Logger
 }
 
-// NewOptimizedMessageConverter creates a new optimized message converter
-func NewOptimizedMessageConverter(logger *zap.Logger) *OptimizedMessageConverter {
-	return &OptimizedMessageConverter{
+// NewMessageConverter creates a new message converter
+func NewMessageConverter(logger *zap.Logger) MessageConverter {
+	return &messageConverter{
 		logger: logger,
 	}
 }
 
 // ConvertToSDK converts A2A messages to SDK format with validation
-func (c *OptimizedMessageConverter) ConvertToSDK(messages []types.Message) ([]sdk.Message, error) {
+func (c *messageConverter) ConvertToSDK(messages []types.Message) ([]sdk.Message, error) {
 	result := make([]sdk.Message, 0, len(messages))
 
 	for i, msg := range messages {
@@ -54,7 +54,7 @@ func (c *OptimizedMessageConverter) ConvertToSDK(messages []types.Message) ([]sd
 }
 
 // convertSingleMessage converts a single A2A message to SDK format
-func (c *OptimizedMessageConverter) convertSingleMessage(msg types.Message) (sdk.Message, error) {
+func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message, error) {
 	role := msg.Role
 	if role == "" {
 		role = "user"
@@ -65,53 +65,32 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg types.Message) (sdk
 	var toolCalls *[]sdk.ChatCompletionMessageToolCall
 
 	for _, part := range msg.Parts {
-		if typedPart, ok := part.(types.OptimizedMessagePart); ok {
-			switch typedPart.Kind {
-			case types.MessagePartKindText:
-				if typedPart.Text != nil {
-					content += *typedPart.Text
-				}
-			case types.MessagePartKindData:
-				if typedPart.Data != nil {
-					if err := c.processDataPart(typedPart.Data, role, &content, &toolCallId, &toolCalls); err != nil {
-						c.logger.Warn("failed to process typed data part",
-							zap.String("message_id", msg.MessageID),
-							zap.Error(err))
-					}
-				}
-			case types.MessagePartKindFile:
-				if typedPart.File != nil {
-					c.logger.Debug("file part detected in message",
-						zap.String("message_id", msg.MessageID))
-				}
+		switch p := part.(type) {
+		case types.TextPart:
+			content += p.Text
+
+		case types.DataPart:
+			if err := c.processDataPart(p.Data, role, &content, &toolCallId, &toolCalls); err != nil {
+				c.logger.Warn("failed to process DataPart",
+					zap.String("message_id", msg.MessageID),
+					zap.Error(err))
 			}
-		} else if partMap, ok := part.(map[string]any); ok {
-			c.logger.Debug("using fallback map processing for message part",
+
+		case types.FilePart:
+			c.logger.Debug("file part detected in message",
 				zap.String("message_id", msg.MessageID))
 
-			kind, hasKind := partMap["kind"]
-			if !hasKind {
-				continue
+		case map[string]any:
+			if err := c.processMapPart(p, role, &content, &toolCallId, &toolCalls); err != nil {
+				c.logger.Warn("failed to process map part",
+					zap.String("message_id", msg.MessageID),
+					zap.Error(err))
 			}
 
-			switch kind {
-			case "text":
-				if text, exists := partMap["text"]; exists {
-					if textStr, ok := text.(string); ok {
-						content += textStr
-					}
-				}
-			case "data":
-				if data, exists := partMap["data"]; exists {
-					if dataMap, ok := data.(map[string]any); ok {
-						if err := c.processDataPart(dataMap, role, &content, &toolCallId, &toolCalls); err != nil {
-							c.logger.Warn("failed to process map data part",
-								zap.String("message_id", msg.MessageID),
-								zap.Error(err))
-						}
-					}
-				}
-			}
+		default:
+			c.logger.Warn("unsupported part type",
+				zap.String("message_id", msg.MessageID),
+				zap.String("type", fmt.Sprintf("%T", part)))
 		}
 	}
 
@@ -138,7 +117,7 @@ func (c *OptimizedMessageConverter) convertSingleMessage(msg types.Message) (sdk
 }
 
 // processDataPart handles the extraction of data from data parts for both typed and map formats
-func (c *OptimizedMessageConverter) processDataPart(
+func (c *messageConverter) processDataPart(
 	data map[string]any,
 	role string,
 	content *string,
@@ -204,8 +183,40 @@ func (c *OptimizedMessageConverter) processDataPart(
 	return nil
 }
 
+// processMapPart handles map[string]any fallback (for backward compatibility)
+func (c *messageConverter) processMapPart(
+	partMap map[string]any,
+	role string,
+	content *string,
+	toolCallId **string,
+	toolCalls **[]sdk.ChatCompletionMessageToolCall,
+) error {
+	kind, hasKind := partMap["kind"]
+	if !hasKind {
+		return nil
+	}
+
+	switch kind {
+	case "text":
+		if text, exists := partMap["text"]; exists {
+			if textStr, ok := text.(string); ok {
+				*content += textStr
+			}
+		}
+
+	case "data":
+		if data, exists := partMap["data"]; exists {
+			if dataMap, ok := data.(map[string]any); ok {
+				return c.processDataPart(dataMap, role, content, toolCallId, toolCalls)
+			}
+		}
+	}
+
+	return nil
+}
+
 // extractSingleToolCall extracts a single tool call from data part
-func (c *OptimizedMessageConverter) extractSingleToolCall(
+func (c *messageConverter) extractSingleToolCall(
 	toolCallData any,
 	toolCalls **[]sdk.ChatCompletionMessageToolCall,
 ) error {
@@ -234,7 +245,7 @@ func (c *OptimizedMessageConverter) extractSingleToolCall(
 }
 
 // extractToolCallsArray extracts tool calls from an array in data part
-func (c *OptimizedMessageConverter) extractToolCallsArray(
+func (c *messageConverter) extractToolCallsArray(
 	toolCallsData any,
 	toolCalls **[]sdk.ChatCompletionMessageToolCall,
 ) error {
@@ -264,7 +275,7 @@ func (c *OptimizedMessageConverter) extractToolCallsArray(
 }
 
 // mapToToolCall converts a map to sdk.ChatCompletionMessageToolCall
-func (c *OptimizedMessageConverter) mapToToolCall(toolCallMap map[string]any) (sdk.ChatCompletionMessageToolCall, error) {
+func (c *messageConverter) mapToToolCall(toolCallMap map[string]any) (sdk.ChatCompletionMessageToolCall, error) {
 	var toolCall sdk.ChatCompletionMessageToolCall
 
 	if id, exists := toolCallMap["id"]; exists {
@@ -299,7 +310,7 @@ func (c *OptimizedMessageConverter) mapToToolCall(toolCallMap map[string]any) (s
 }
 
 // ConvertFromSDK converts SDK message response back to A2A format
-func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types.Message, error) {
+func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message, error) {
 	role := string(response.Role)
 	messageID := fmt.Sprintf("%s-%d", role, time.Now().UnixNano())
 
@@ -326,57 +337,36 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 			toolData["tool_name"] = ""
 		}
 
-		message.Parts = append(message.Parts, map[string]any{
-			"kind": string(types.MessagePartKindData),
-			"data": toolData,
-		})
+		message.Parts = append(message.Parts, types.CreateDataPart(toolData))
 
 	case "assistant":
 		hasToolCalls := response.ToolCalls != nil && len(*response.ToolCalls) > 0
 
 		if response.Content != "" {
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindText),
-				"text": response.Content,
-			})
+			message.Parts = append(message.Parts, types.CreateTextPart(response.Content))
 		}
 
 		if hasToolCalls {
 			toolCallData := map[string]any{
 				"tool_calls": *response.ToolCalls,
 			}
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindData),
-				"data": toolCallData,
-			})
+			message.Parts = append(message.Parts, types.CreateDataPart(toolCallData))
 		}
 
 		if response.ReasoningContent != nil && *response.ReasoningContent != "" {
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindText),
-				"text": *response.ReasoningContent,
-			})
+			message.Parts = append(message.Parts, types.CreateTextPart(*response.ReasoningContent))
 		} else if response.Reasoning != nil && *response.Reasoning != "" {
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindText),
-				"text": *response.Reasoning,
-			})
+			message.Parts = append(message.Parts, types.CreateTextPart(*response.Reasoning))
 		}
 
 	default:
 		if response.Content != "" {
-			message.Parts = append(message.Parts, map[string]any{
-				"kind": string(types.MessagePartKindText),
-				"text": response.Content,
-			})
+			message.Parts = append(message.Parts, types.CreateTextPart(response.Content))
 		}
 	}
 
 	if len(message.Parts) == 0 {
-		message.Parts = append(message.Parts, map[string]any{
-			"kind": string(types.MessagePartKindText),
-			"text": "",
-		})
+		message.Parts = append(message.Parts, types.CreateTextPart(""))
 	}
 
 	hasReasoning := (response.ReasoningContent != nil && *response.ReasoningContent != "") ||
@@ -393,31 +383,28 @@ func (c *OptimizedMessageConverter) ConvertFromSDK(response sdk.Message) (*types
 }
 
 // ValidateMessagePart validates message part structure and type
-func (c *OptimizedMessageConverter) ValidateMessagePart(part types.Part) error {
-	if typedPart, ok := part.(types.OptimizedMessagePart); ok {
-		if !typedPart.Kind.IsValid() {
-			return fmt.Errorf("invalid message part kind: %s", typedPart.Kind)
-		}
-
-		switch typedPart.Kind {
-		case types.MessagePartKindText:
-			if typedPart.Text == nil {
-				return fmt.Errorf("text part missing text field")
-			}
-		case types.MessagePartKindFile:
-			if typedPart.File == nil {
-				return fmt.Errorf("file part missing file field")
-			}
-		case types.MessagePartKindData:
-			if typedPart.Data == nil {
-				return fmt.Errorf("data part missing data field")
-			}
+func (c *messageConverter) ValidateMessagePart(part types.Part) error {
+	switch p := part.(type) {
+	case types.TextPart:
+		if p.Text == "" {
+			return fmt.Errorf("text part missing text field")
 		}
 		return nil
-	}
 
-	if partMap, ok := part.(map[string]any); ok {
-		kind, hasKind := partMap["kind"]
+	case types.DataPart:
+		if p.Data == nil {
+			return fmt.Errorf("data part missing data field")
+		}
+		return nil
+
+	case types.FilePart:
+		if p.File == nil {
+			return fmt.Errorf("file part missing file field")
+		}
+		return nil
+
+	case map[string]any:
+		kind, hasKind := p["kind"]
 		if !hasKind {
 			return fmt.Errorf("message part missing kind field")
 		}
@@ -433,7 +420,8 @@ func (c *OptimizedMessageConverter) ValidateMessagePart(part types.Part) error {
 		}
 
 		return nil
-	}
 
-	return fmt.Errorf("unsupported message part type")
+	default:
+		return fmt.Errorf("unsupported message part type: %T", part)
+	}
 }

@@ -10,9 +10,9 @@ import (
 	zap "go.uber.org/zap"
 )
 
-func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
+func TestMessageConverter_ConvertToSDK(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	tests := []struct {
 		name           string
@@ -175,9 +175,9 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-7",
 					Role:      "user",
 					Parts: []types.Part{
-						types.OptimizedMessagePart{
-							Kind: types.MessagePartKindText,
-							Text: stringPtr("Strongly typed message"),
+						types.TextPart{
+							Kind: "text",
+							Text: "Strongly typed message",
 						},
 					},
 				},
@@ -202,12 +202,12 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 							"kind": "text",
 							"text": "Please analyze this file: ",
 						},
-						types.OptimizedMessagePart{
-							Kind: types.MessagePartKindFile,
-							File: &types.FileData{
-								Name:     stringPtr("test.txt"),
-								MIMEType: stringPtr("text/plain"),
-								Bytes:    stringPtr("base64encodedcontent"),
+						types.FilePart{
+							Kind: "file",
+							File: map[string]any{
+								"name":     "test.txt",
+								"mimeType": "text/plain",
+								"bytes":    "base64encodedcontent",
 							},
 						},
 					},
@@ -281,9 +281,9 @@ func TestOptimizedMessageConverter_ConvertToSDK(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
+func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	tests := []struct {
 		name           string
@@ -301,9 +301,9 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello from SDK",
+					types.TextPart{
+						Kind: "text",
+						Text: "Hello from SDK",
 					},
 				},
 			},
@@ -319,9 +319,9 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Response from assistant",
+					types.TextPart{
+						Kind: "text",
+						Text: "Response from assistant",
 					},
 				},
 			},
@@ -337,9 +337,9 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "system",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "System instructions",
+					types.TextPart{
+						Kind: "text",
+						Text: "System instructions",
 					},
 				},
 			},
@@ -356,9 +356,9 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "tool",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "data",
-						"data": map[string]any{
+					types.DataPart{
+						Kind: "data",
+						Data: map[string]any{
 							"tool_call_id": "call_123",
 							"tool_name":    "",
 							"result":       "Tool response",
@@ -388,13 +388,13 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "I'll help you with that",
+					types.TextPart{
+						Kind: "text",
+						Text: "I'll help you with that",
 					},
-					map[string]any{
-						"kind": "data",
-						"data": map[string]any{
+					types.DataPart{
+						Kind: "data",
+						Data: map[string]any{
 							"tool_calls": []sdk.ChatCompletionMessageToolCall{
 								{
 									Id:   "call_123",
@@ -421,9 +421,9 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "",
+					types.TextPart{
+						Kind: "text",
+						Text: "",
 					},
 				},
 			},
@@ -446,28 +446,49 @@ func TestOptimizedMessageConverter_ConvertFromSDK(t *testing.T) {
 			assert.Equal(t, len(tt.expectedOutput.Parts), len(result.Parts))
 
 			for i, expectedPart := range tt.expectedOutput.Parts {
-				if partMap, ok := expectedPart.(map[string]any); ok {
+				switch expectedPart := expectedPart.(type) {
+				case types.TextPart:
+					resultPart, ok := result.Parts[i].(types.TextPart)
+					require.True(t, ok, "Expected result part to be TextPart")
+					assert.Equal(t, expectedPart.Kind, resultPart.Kind)
+					assert.Equal(t, expectedPart.Text, resultPart.Text)
+					assert.Equal(t, expectedPart.Metadata, resultPart.Metadata)
+				case types.DataPart:
+					resultPart, ok := result.Parts[i].(types.DataPart)
+					require.True(t, ok, "Expected result part to be DataPart")
+					assert.Equal(t, expectedPart.Kind, resultPart.Kind)
+					assert.Equal(t, expectedPart.Data, resultPart.Data)
+					assert.Equal(t, expectedPart.Metadata, resultPart.Metadata)
+				case types.FilePart:
+					resultPart, ok := result.Parts[i].(types.FilePart)
+					require.True(t, ok, "Expected result part to be FilePart")
+					assert.Equal(t, expectedPart.Kind, resultPart.Kind)
+					assert.Equal(t, expectedPart.File, resultPart.File)
+					assert.Equal(t, expectedPart.Metadata, resultPart.Metadata)
+				case map[string]any:
 					resultPartMap, ok := result.Parts[i].(map[string]any)
 					require.True(t, ok, "Expected result part to be map[string]any")
-					assert.Equal(t, partMap["kind"], resultPartMap["kind"])
+					assert.Equal(t, expectedPart["kind"], resultPartMap["kind"])
 
-					switch partMap["kind"] {
+					switch expectedPart["kind"] {
 					case "text":
-						assert.Equal(t, partMap["text"], resultPartMap["text"])
+						assert.Equal(t, expectedPart["text"], resultPartMap["text"])
 					case "data":
-						expectedData := partMap["data"].(map[string]any)
+						expectedData := expectedPart["data"].(map[string]any)
 						resultData := resultPartMap["data"].(map[string]any)
 						assert.Equal(t, expectedData, resultData)
 					}
+				default:
+					t.Errorf("Unexpected part type: %T", expectedPart)
 				}
 			}
 		})
 	}
 }
 
-func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
+func TestMessageConverter_ValidateMessagePart(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	tests := []struct {
 		name        string
@@ -477,27 +498,27 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 	}{
 		{
 			name: "valid strongly-typed text part",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindText,
-				Text: stringPtr("Valid text"),
+			input: types.TextPart{
+				Kind: "text",
+				Text: "Valid text",
 			},
 			expectError: false,
 		},
 		{
 			name: "valid strongly-typed file part",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindFile,
-				File: &types.FileData{
-					Name:     stringPtr("test.txt"),
-					MIMEType: stringPtr("text/plain"),
+			input: types.FilePart{
+				Kind: "file",
+				File: map[string]any{
+					"name":     "test.txt",
+					"mimeType": "text/plain",
 				},
 			},
 			expectError: false,
 		},
 		{
 			name: "valid strongly-typed data part",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindData,
+			input: types.DataPart{
+				Kind: "data",
 				Data: map[string]any{
 					"key": "value",
 				},
@@ -506,17 +527,17 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "invalid strongly-typed text part (missing text)",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindText,
-				Text: nil,
+			input: types.TextPart{
+				Kind: "text",
+				Text: "",
 			},
 			expectError: true,
 			errorMsg:    "text part missing text field",
 		},
 		{
 			name: "invalid strongly-typed file part (missing file)",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindFile,
+			input: types.FilePart{
+				Kind: "file",
 				File: nil,
 			},
 			expectError: true,
@@ -524,8 +545,8 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name: "invalid strongly-typed data part (missing data)",
-			input: types.OptimizedMessagePart{
-				Kind: types.MessagePartKindData,
+			input: types.DataPart{
+				Kind: "data",
 				Data: nil,
 			},
 			expectError: true,
@@ -610,9 +631,9 @@ func TestOptimizedMessageConverter_ValidateMessagePart(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_RoundTrip(t *testing.T) {
+func TestMessageConverter_RoundTrip(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	originalMessage := types.Message{
 		Kind:      "message",
@@ -637,15 +658,15 @@ func TestOptimizedMessageConverter_RoundTrip(t *testing.T) {
 	assert.Equal(t, originalMessage.Role, convertedMessage.Role)
 	assert.Len(t, convertedMessage.Parts, 1)
 
-	originalPart := originalMessage.Parts[0].(map[string]any)
-	convertedPart := convertedMessage.Parts[0].(map[string]any)
-	assert.Equal(t, originalPart["kind"], convertedPart["kind"])
-	assert.Equal(t, originalPart["text"], convertedPart["text"])
+	convertedPart, ok := convertedMessage.Parts[0].(types.TextPart)
+	require.True(t, ok, "Expected converted part to be TextPart")
+	assert.Equal(t, "text", convertedPart.Kind)
+	assert.Equal(t, "Round trip test message", convertedPart.Text)
 }
 
-func TestOptimizedMessageConverter_PerformanceWithManyMessages(t *testing.T) {
+func TestMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	messages := make([]types.Message, 1000)
 	for i := 0; i < 1000; i++ {
@@ -672,9 +693,9 @@ func TestOptimizedMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
+func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	tests := []struct {
 		name              string
@@ -780,9 +801,9 @@ func TestOptimizedMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 	}
 }
 
-func TestOptimizedMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
+func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	messages := []types.Message{
 		{
