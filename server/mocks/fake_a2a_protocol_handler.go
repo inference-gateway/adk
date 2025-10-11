@@ -16,11 +16,12 @@ type FakeA2AProtocolHandler struct {
 		arg1 *gin.Context
 		arg2 types.JSONRPCRequest
 	}
-	HandleMessageStreamStub        func(*gin.Context, types.JSONRPCRequest)
+	HandleMessageStreamStub        func(*gin.Context, types.JSONRPCRequest, server.StreamableTaskHandler)
 	handleMessageStreamMutex       sync.RWMutex
 	handleMessageStreamArgsForCall []struct {
 		arg1 *gin.Context
 		arg2 types.JSONRPCRequest
+		arg3 server.StreamableTaskHandler
 	}
 	HandleTaskCancelStub        func(*gin.Context, types.JSONRPCRequest)
 	handleTaskCancelMutex       sync.RWMutex
@@ -101,17 +102,18 @@ func (fake *FakeA2AProtocolHandler) HandleMessageSendArgsForCall(i int) (*gin.Co
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeA2AProtocolHandler) HandleMessageStream(arg1 *gin.Context, arg2 types.JSONRPCRequest) {
+func (fake *FakeA2AProtocolHandler) HandleMessageStream(arg1 *gin.Context, arg2 types.JSONRPCRequest, arg3 server.StreamableTaskHandler) {
 	fake.handleMessageStreamMutex.Lock()
 	fake.handleMessageStreamArgsForCall = append(fake.handleMessageStreamArgsForCall, struct {
 		arg1 *gin.Context
 		arg2 types.JSONRPCRequest
-	}{arg1, arg2})
+		arg3 server.StreamableTaskHandler
+	}{arg1, arg2, arg3})
 	stub := fake.HandleMessageStreamStub
-	fake.recordInvocation("HandleMessageStream", []interface{}{arg1, arg2})
+	fake.recordInvocation("HandleMessageStream", []interface{}{arg1, arg2, arg3})
 	fake.handleMessageStreamMutex.Unlock()
 	if stub != nil {
-		fake.HandleMessageStreamStub(arg1, arg2)
+		fake.HandleMessageStreamStub(arg1, arg2, arg3)
 	}
 }
 
@@ -121,17 +123,17 @@ func (fake *FakeA2AProtocolHandler) HandleMessageStreamCallCount() int {
 	return len(fake.handleMessageStreamArgsForCall)
 }
 
-func (fake *FakeA2AProtocolHandler) HandleMessageStreamCalls(stub func(*gin.Context, types.JSONRPCRequest)) {
+func (fake *FakeA2AProtocolHandler) HandleMessageStreamCalls(stub func(*gin.Context, types.JSONRPCRequest, server.StreamableTaskHandler)) {
 	fake.handleMessageStreamMutex.Lock()
 	defer fake.handleMessageStreamMutex.Unlock()
 	fake.HandleMessageStreamStub = stub
 }
 
-func (fake *FakeA2AProtocolHandler) HandleMessageStreamArgsForCall(i int) (*gin.Context, types.JSONRPCRequest) {
+func (fake *FakeA2AProtocolHandler) HandleMessageStreamArgsForCall(i int) (*gin.Context, types.JSONRPCRequest, server.StreamableTaskHandler) {
 	fake.handleMessageStreamMutex.RLock()
 	defer fake.handleMessageStreamMutex.RUnlock()
 	argsForCall := fake.handleMessageStreamArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeA2AProtocolHandler) HandleTaskCancel(arg1 *gin.Context, arg2 types.JSONRPCRequest) {

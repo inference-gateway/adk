@@ -515,8 +515,6 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 			mockTaskManager := &mocks.FakeTaskManager{}
 			mockStorage := &mocks.FakeStorage{}
 			mockResponseSender := &mocks.FakeResponseSender{}
-			mockTaskHandler := &mocks.FakeTaskHandler{}
-			mockStreamingTaskHandler := &mocks.FakeStreamableTaskHandler{}
 
 			mockTaskManager.GetConversationHistoryReturns([]types.Message{})
 
@@ -535,8 +533,6 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 				mockStorage,
 				mockTaskManager,
 				mockResponseSender,
-				mockTaskHandler,
-				mockStreamingTaskHandler,
 			)
 
 			contextID := "test-context"

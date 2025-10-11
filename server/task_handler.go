@@ -26,7 +26,7 @@ type A2AProtocolHandler interface {
 	HandleMessageSend(c *gin.Context, req types.JSONRPCRequest)
 
 	// HandleMessageStream processes message/stream requests
-	HandleMessageStream(c *gin.Context, req types.JSONRPCRequest)
+	HandleMessageStream(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler)
 
 	// HandleTaskGet processes tasks/get requests
 	HandleTaskGet(c *gin.Context, req types.JSONRPCRequest)
@@ -341,12 +341,10 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 
 // DefaultA2AProtocolHandler implements the A2AProtocolHandler interface
 type DefaultA2AProtocolHandler struct {
-	logger                *zap.Logger
-	storage               Storage
-	taskManager           TaskManager
-	responseSender        ResponseSender
-	backgroundTaskHandler TaskHandler
-	streamingTaskHandler  StreamableTaskHandler
+	logger         *zap.Logger
+	storage        Storage
+	taskManager    TaskManager
+	responseSender ResponseSender
 }
 
 // NewDefaultA2AProtocolHandler creates a new default A2A protocol handler
@@ -355,16 +353,12 @@ func NewDefaultA2AProtocolHandler(
 	storage Storage,
 	taskManager TaskManager,
 	responseSender ResponseSender,
-	backgroundTaskHandler TaskHandler,
-	streamingTaskHandler StreamableTaskHandler,
 ) *DefaultA2AProtocolHandler {
 	return &DefaultA2AProtocolHandler{
-		logger:                logger,
-		storage:               storage,
-		taskManager:           taskManager,
-		responseSender:        responseSender,
-		backgroundTaskHandler: backgroundTaskHandler,
-		streamingTaskHandler:  streamingTaskHandler,
+		logger:         logger,
+		storage:        storage,
+		taskManager:    taskManager,
+		responseSender: responseSender,
 	}
 }
 
@@ -545,7 +539,7 @@ func (h *DefaultA2AProtocolHandler) writeStreamingErrorResponse(c *gin.Context, 
 }
 
 // HandleMessageStream processes message/stream requests
-func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req types.JSONRPCRequest) {
+func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler) {
 	var params types.MessageSendParams
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
@@ -607,7 +601,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		}
 	}
 
-	eventsChan, err := h.streamingTaskHandler.HandleStreamingTask(ctx, task, message)
+	eventsChan, err := streamingHandler.HandleStreamingTask(ctx, task, message)
 	if err != nil {
 		h.logger.Error("failed to start streaming task",
 			zap.Error(err),

@@ -164,8 +164,6 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 		server.storage,
 		server.taskManager,
 		server.responseSender,
-		server.backgroundTaskHandler,
-		server.streamingTaskHandler,
 	)
 
 	return server
@@ -244,8 +242,6 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 		server.storage,
 		server.taskManager,
 		server.responseSender,
-		server.backgroundTaskHandler,
-		server.streamingTaskHandler,
 	)
 
 	return server
@@ -695,7 +691,7 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 	case "message/send":
 		s.protocolHandler.HandleMessageSend(c, req)
 	case "message/stream":
-		s.protocolHandler.HandleMessageStream(c, req)
+		s.protocolHandler.HandleMessageStream(c, req, s.streamingTaskHandler)
 	case "tasks/get":
 		s.protocolHandler.HandleTaskGet(c, req)
 	case "tasks/list":
