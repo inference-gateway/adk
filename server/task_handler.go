@@ -691,6 +691,47 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				}
 			}
 
+		case types.EventInputRequired:
+			var inputMessage types.Message
+			if err := event.DataAs(&inputMessage); err == nil {
+				task.History = append(task.History, inputMessage)
+				task.Status.State = types.TaskStateInputRequired
+				task.Status.Message = &inputMessage
+
+				h.logger.Info("streaming task paused for user input",
+					zap.String("task_id", task.ID),
+					zap.String("context_id", task.ContextID))
+
+				statusUpdate := types.TaskStatusUpdateEvent{
+					Kind:      "status-update",
+					TaskID:    task.ID,
+					ContextID: task.ContextID,
+					Status: types.TaskStatus{
+						State:   types.TaskStateInputRequired,
+						Message: &inputMessage,
+					},
+					Final: false,
+				}
+
+				statusResponse := types.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  statusUpdate,
+				}
+
+				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
+					h.logger.Error("failed to write input-required status", zap.Error(err))
+					return
+				}
+
+				if err := h.taskManager.UpdateTask(task); err != nil {
+					h.logger.Error("failed to save input-required task",
+						zap.String("task_id", task.ID),
+						zap.Error(err))
+				}
+				return
+			}
+
 		case types.EventTaskInterrupted:
 			var interruptMessage types.Message
 			if err := event.DataAs(&interruptMessage); err == nil {

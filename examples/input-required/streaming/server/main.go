@@ -144,6 +144,35 @@ func (h *StreamingInputRequiredTaskHandler) processWithoutAgentStreaming(ctx con
 	h.sendStreamingStatus(outputChan, task.ID, "Analyzing your request...")
 	time.Sleep(500 * time.Millisecond)
 
+	// Check if this is a follow-up to a previous input-required state
+	previousContext := getPreviousContext(task.History)
+	h.logger.Info("previous context", zap.String("context", previousContext))
+
+	// If this looks like a follow-up response (short message without keywords)
+	if previousContext != "" && !contains(messageText, "weather") && !contains(messageText, "calculate") && !contains(messageText, "hello") && len(messageText) < 50 {
+		switch previousContext {
+		case "weather":
+			// User provided location for weather query
+			h.sendStreamingText(outputChan, task.ID, fmt.Sprintf("Great! Let me check the weather for %s... ", messageText))
+			time.Sleep(800 * time.Millisecond)
+			h.sendStreamingText(outputChan, task.ID, "The weather is sunny and 72°F! ")
+			time.Sleep(300 * time.Millisecond)
+			h.sendStreamingText(outputChan, task.ID, "Perfect day for outdoor activities!")
+			h.sendTaskStatusEvent(outputChan, task.ID, types.TaskStateCompleted)
+			return
+
+		case "calculate":
+			// User provided numbers for calculation
+			h.sendStreamingText(outputChan, task.ID, "Let me calculate that for you... ")
+			time.Sleep(500 * time.Millisecond)
+			h.sendStreamingText(outputChan, task.ID, "The result is 42! ")
+			time.Sleep(300 * time.Millisecond)
+			h.sendStreamingText(outputChan, task.ID, "(Mock calculation)")
+			h.sendTaskStatusEvent(outputChan, task.ID, types.TaskStateCompleted)
+			return
+		}
+	}
+
 	// Determine response based on message content
 	switch {
 	case contains(messageText, "weather"):
@@ -327,6 +356,28 @@ func getMessageText(message *types.Message) string {
 func contains(text, substr string) bool {
 	return len(text) >= len(substr) &&
 		findInLower(toLower(text), toLower(substr)) >= 0
+}
+
+// getPreviousContext analyzes the conversation history to determine
+// what kind of input was previously requested
+func getPreviousContext(history []types.Message) string {
+	// Look backwards through history for input_required messages
+	for i := len(history) - 1; i >= 0; i-- {
+		msg := history[i]
+		if msg.Kind == "input_required" {
+			text := getMessageText(&msg)
+			textLower := toLower(text)
+
+			// Determine what was being asked about
+			if contains(textLower, "weather") || contains(textLower, "location") {
+				return "weather"
+			}
+			if contains(textLower, "calculat") || contains(textLower, "number") {
+				return "calculate"
+			}
+		}
+	}
+	return ""
 }
 
 func hasNumbers(text string) bool {
