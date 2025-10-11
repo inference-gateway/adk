@@ -339,8 +339,17 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 // Helper functions
 func getMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
+		// Handle typed TextPart (when created locally)
 		if textPart, ok := part.(types.TextPart); ok {
 			return textPart.Text
+		}
+		// Handle map-based parts (when deserialized from JSON)
+		if partMap, ok := part.(map[string]any); ok {
+			if kind, exists := partMap["kind"]; exists && kind == "text" {
+				if text, exists := partMap["text"].(string); exists {
+					return text
+				}
+			}
 		}
 	}
 	return ""
