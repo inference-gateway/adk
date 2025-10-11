@@ -10,7 +10,7 @@ import (
 
 func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	messages := []types.Message{
 		{
@@ -59,7 +59,7 @@ func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 
 func BenchmarkMessageConverter_ConvertFromSDK(b *testing.B) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	// Create test SDK message
 	sdkMessage := sdk.Message{
@@ -78,7 +78,7 @@ func BenchmarkMessageConverter_ConvertFromSDK(b *testing.B) {
 
 func BenchmarkMessageConverter_ConvertToSDK_StronglyTyped(b *testing.B) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	messages := []types.Message{
 		{
@@ -86,9 +86,9 @@ func BenchmarkMessageConverter_ConvertToSDK_StronglyTyped(b *testing.B) {
 			MessageID: "bench-typed-msg-1",
 			Role:      "user",
 			Parts: []types.Part{
-				types.OptimizedMessagePart{
-					Kind: types.MessagePartKindText,
-					Text: stringPtr("This is a strongly-typed benchmark test message."),
+				types.TextPart{
+					Kind: "text",
+					Text: "This is a strongly-typed benchmark test message.",
 				},
 			},
 		},
@@ -97,9 +97,9 @@ func BenchmarkMessageConverter_ConvertToSDK_StronglyTyped(b *testing.B) {
 			MessageID: "bench-typed-msg-2",
 			Role:      "assistant",
 			Parts: []types.Part{
-				types.OptimizedMessagePart{
-					Kind: types.MessagePartKindText,
-					Text: stringPtr("This is a strongly-typed response message."),
+				types.TextPart{
+					Kind: "text",
+					Text: "This is a strongly-typed response message.",
 				},
 			},
 		},
@@ -116,7 +116,7 @@ func BenchmarkMessageConverter_ConvertToSDK_StronglyTyped(b *testing.B) {
 
 func BenchmarkMessageConverter_ConvertToSDK_LargeMessages(b *testing.B) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	largeContent := ""
 	for i := 0; i < 1000; i++ {
@@ -148,7 +148,7 @@ func BenchmarkMessageConverter_ConvertToSDK_LargeMessages(b *testing.B) {
 
 func BenchmarkMessageConverter_ConvertToSDK_ManyMessages(b *testing.B) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	messages := make([]types.Message, 100)
 	for i := 0; i < 100; i++ {
@@ -176,7 +176,7 @@ func BenchmarkMessageConverter_ConvertToSDK_ManyMessages(b *testing.B) {
 
 func BenchmarkMessageConverter_ValidateMessagePart(b *testing.B) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
 	part := map[string]any{
 		"kind": "text",
@@ -194,11 +194,11 @@ func BenchmarkMessageConverter_ValidateMessagePart(b *testing.B) {
 
 func BenchmarkMessageConverter_ValidateMessagePart_StronglyTyped(b *testing.B) {
 	logger := zap.NewNop()
-	converter := NewOptimizedMessageConverter(logger)
+	converter := NewMessageConverter(logger)
 
-	part := types.OptimizedMessagePart{
-		Kind: types.MessagePartKindText,
-		Text: stringPtr("This is a strongly-typed test message part for validation benchmarking."),
+	part := types.TextPart{
+		Kind: "text",
+		Text: "This is a strongly-typed test message part for validation benchmarking.",
 	}
 
 	b.ResetTimer()

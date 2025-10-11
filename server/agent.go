@@ -41,7 +41,7 @@ func NewOpenAICompatibleAgent(logger *zap.Logger) *OpenAICompatibleAgentImpl {
 	}
 	return &OpenAICompatibleAgentImpl{
 		logger:    logger,
-		converter: utils.NewOptimizedMessageConverter(logger),
+		converter: utils.NewMessageConverter(logger),
 		config:    defaultConfig,
 	}
 }
@@ -50,7 +50,7 @@ func NewOpenAICompatibleAgent(logger *zap.Logger) *OpenAICompatibleAgentImpl {
 func NewOpenAICompatibleAgentWithConfig(logger *zap.Logger, cfg *config.AgentConfig) *OpenAICompatibleAgentImpl {
 	return &OpenAICompatibleAgentImpl{
 		logger:    logger,
-		converter: utils.NewOptimizedMessageConverter(logger),
+		converter: utils.NewMessageConverter(logger),
 		config:    cfg,
 	}
 }
