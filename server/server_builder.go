@@ -327,12 +327,16 @@ func (b *A2AServerBuilderImpl) validateTaskHandlerConfiguration() error {
 		streamingEnabled = *b.agentCard.Capabilities.Streaming
 	}
 
-	if b.pollingTaskHandler == nil {
-		return fmt.Errorf("background task handler must be configured - use WithBackgroundTaskHandler() for custom handler or WithDefaultBackgroundTaskHandler() for a ready-to-use default handler")
+	if b.pollingTaskHandler == nil && b.streamingTaskHandler == nil {
+		return fmt.Errorf("at least one task handler must be configured - use WithBackgroundTaskHandler() and/or WithStreamingTaskHandler(), or use WithDefaultTaskHandlers() for both")
 	}
 
 	if streamingEnabled && b.streamingTaskHandler == nil {
 		return fmt.Errorf("streaming task handler must be configured when streaming is enabled in agent capabilities - use WithStreamingTaskHandler() for custom handler or WithDefaultStreamingTaskHandler() for a ready-to-use default handler")
+	}
+
+	if !streamingEnabled && b.pollingTaskHandler == nil {
+		return fmt.Errorf("background task handler must be configured when streaming is not enabled - use WithBackgroundTaskHandler() for custom handler or WithDefaultBackgroundTaskHandler() for a ready-to-use default handler")
 	}
 
 	return nil

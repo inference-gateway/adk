@@ -428,7 +428,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			Build()
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "background task handler must be configured")
+		assert.Contains(t, err.Error(), "at least one task handler must be configured")
 	})
 
 	t.Run("fails when streaming enabled but no streaming task handler configured", func(t *testing.T) {
