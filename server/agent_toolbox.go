@@ -236,18 +236,16 @@ func JSONTool(result any) (string, error) {
 
 // executeCreateArtifact implements the create_artifact tool functionality
 func executeCreateArtifact(ctx context.Context, args map[string]any) (string, error) {
-	// Get TaskManager and ArtifactHelper from context
-	taskManager, ok := ctx.Value("taskManager").(TaskManager)
+	task, ok := ctx.Value(TaskContextKey).(*types.Task)
 	if !ok {
-		return "", fmt.Errorf("task manager not found in context")
+		return "", fmt.Errorf("task not found in context")
 	}
 
-	artifactHelper, ok := ctx.Value("artifactHelper").(*ArtifactHelper)
+	artifactHelper, ok := ctx.Value(ArtifactHelperContextKey).(*ArtifactHelper)
 	if !ok {
 		return "", fmt.Errorf("artifact helper not found in context")
 	}
 
-	// Extract arguments
 	content, ok := args["content"].(string)
 	if !ok || content == "" {
 		return "", fmt.Errorf("content is required and must be a non-empty string")
@@ -258,22 +256,17 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 		return "", fmt.Errorf("type must be 'url'")
 	}
 
-	// Get optional parameters
 	name, _ := args["name"].(string)
 	filename, _ := args["filename"].(string)
 
-	// Auto-generate name if not provided
 	if name == "" {
 		name = "Generated Content"
 	}
 
-	// Auto-detect filename if not provided
 	if filename == "" {
-		// Try to detect file type from content
 		filename = detectFilename(content)
 	}
 
-	// Create artifact using the helper
 	data := []byte(content)
 	mimeType := artifactHelper.GetMimeTypeFromExtension(filename)
 
@@ -285,27 +278,8 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 		mimeType,
 	)
 
-	// Get current task from context
-	taskID, ok := ctx.Value("taskID").(string)
-	if !ok {
-		return "", fmt.Errorf("task ID not found in context")
-	}
-
-	task, found := taskManager.GetTask(taskID)
-	if !found {
-		return "", fmt.Errorf("task not found: %s", taskID)
-	}
-
-	// Add artifact to task
 	artifactHelper.AddArtifactToTask(task, artifact)
 
-	// Update task in storage
-	err := taskManager.UpdateTask(task)
-	if err != nil {
-		return "", fmt.Errorf("failed to update task with artifact: %w", err)
-	}
-
-	// Extract URL from artifact
 	if len(artifact.Parts) > 0 {
 		if filePart, ok := artifact.Parts[0].(types.FilePart); ok {
 			if fileWithURI, ok := filePart.File.(types.FileWithUri); ok {
@@ -330,10 +304,8 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 
 // detectFilename attempts to detect appropriate filename from content
 func detectFilename(content string) string {
-	// Clean content for analysis
 	trimmed := strings.TrimSpace(content)
 
-	// JSON detection
 	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
 		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
 		var js json.RawMessage
@@ -342,19 +314,16 @@ func detectFilename(content string) string {
 		}
 	}
 
-	// HTML detection
 	if strings.Contains(strings.ToLower(trimmed), "<html") ||
 		strings.Contains(strings.ToLower(trimmed), "<!doctype html") {
 		return "content.html"
 	}
 
-	// XML detection
 	if strings.HasPrefix(trimmed, "<?xml") ||
 		(strings.HasPrefix(trimmed, "<") && strings.Contains(trimmed, "xmlns")) {
 		return "content.xml"
 	}
 
-	// CSS detection
 	if strings.Contains(trimmed, "{") && strings.Contains(trimmed, "}") &&
 		(strings.Contains(trimmed, "color:") || strings.Contains(trimmed, "font-") ||
 			strings.Contains(trimmed, "margin:") || strings.Contains(trimmed, "padding:")) {
@@ -383,6 +352,5 @@ func detectFilename(content string) string {
 		}
 	}
 
-	// Default to text file
 	return "content.txt"
 }

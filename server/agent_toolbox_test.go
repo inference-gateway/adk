@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
 )
 
@@ -117,7 +118,6 @@ func TestNewToolBox_CreatesEmptyToolBox(t *testing.T) {
 func TestNewDefaultToolBoxWithCreateArtifact_Disabled(t *testing.T) {
 	toolBox := NewDefaultToolBoxWithCreateArtifact(false)
 
-	// Should only have input_required tool
 	if toolBox.HasTool("create_artifact") {
 		t.Error("Expected create_artifact tool to be disabled when CreateArtifact is false")
 	}
@@ -135,7 +135,6 @@ func TestNewDefaultToolBoxWithCreateArtifact_Disabled(t *testing.T) {
 func TestNewDefaultToolBoxWithCreateArtifact_Enabled(t *testing.T) {
 	toolBox := NewDefaultToolBoxWithCreateArtifact(true)
 
-	// Should have both tools
 	if !toolBox.HasTool("create_artifact") {
 		t.Error("Expected create_artifact tool to be enabled when CreateArtifact is true")
 	}
@@ -153,7 +152,6 @@ func TestNewDefaultToolBoxWithCreateArtifact_Enabled(t *testing.T) {
 func TestNewDefaultToolBox_DefaultBehavior(t *testing.T) {
 	toolBox := NewDefaultToolBox()
 
-	// Should only have input_required tool by default
 	if toolBox.HasTool("create_artifact") {
 		t.Error("Expected create_artifact tool to be disabled by default")
 	}
@@ -194,7 +192,6 @@ func TestCreateArtifactTool_GetTools(t *testing.T) {
 		return
 	}
 
-	// Check parameters structure
 	params := map[string]any(*createArtifactTool.Parameters)
 	properties, ok := params["properties"].(map[string]any)
 	if !ok {
@@ -202,17 +199,14 @@ func TestCreateArtifactTool_GetTools(t *testing.T) {
 		return
 	}
 
-	// Check required content parameter
 	if _, exists := properties["content"]; !exists {
 		t.Error("Expected create_artifact tool to have content parameter")
 	}
 
-	// Check required type parameter
 	if _, exists := properties["type"]; !exists {
 		t.Error("Expected create_artifact tool to have type parameter")
 	}
 
-	// Check optional parameters
 	if _, exists := properties["name"]; !exists {
 		t.Error("Expected create_artifact tool to have name parameter")
 	}
@@ -221,7 +215,6 @@ func TestCreateArtifactTool_GetTools(t *testing.T) {
 		t.Error("Expected create_artifact tool to have filename parameter")
 	}
 
-	// Check required fields
 	required, ok := params["required"].([]string)
 	if !ok {
 		t.Error("Expected parameters to have required array")
@@ -253,26 +246,25 @@ func TestExecuteCreateArtifact_MissingContext(t *testing.T) {
 	result, err := executeCreateArtifact(ctx, args)
 
 	if err == nil {
-		t.Error("Expected error when task manager not found in context")
+		t.Error("Expected error when task not found in context")
 	}
 
 	if result != "" {
 		t.Errorf("Expected empty result on error, got: %s", result)
 	}
 
-	expectedError := "task manager not found in context"
+	expectedError := "task not found in context"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
 	}
 }
 
 func TestExecuteCreateArtifact_MissingContent(t *testing.T) {
-	// Create mock task manager and artifact helper
-	taskManager := &DefaultTaskManager{}
+	task := &types.Task{ID: "test-task"}
 	artifactHelper := NewArtifactHelper()
 
-	ctx := context.WithValue(context.Background(), "taskManager", taskManager)
-	ctx = context.WithValue(ctx, "artifactHelper", artifactHelper)
+	ctx := context.WithValue(context.Background(), TaskContextKey, task)
+	ctx = context.WithValue(ctx, ArtifactHelperContextKey, artifactHelper)
 
 	args := map[string]any{
 		"type": "url",
@@ -295,12 +287,11 @@ func TestExecuteCreateArtifact_MissingContent(t *testing.T) {
 }
 
 func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
-	// Create mock task manager and artifact helper
-	taskManager := &DefaultTaskManager{}
+	task := &types.Task{ID: "test-task"}
 	artifactHelper := NewArtifactHelper()
 
-	ctx := context.WithValue(context.Background(), "taskManager", taskManager)
-	ctx = context.WithValue(ctx, "artifactHelper", artifactHelper)
+	ctx := context.WithValue(context.Background(), TaskContextKey, task)
+	ctx = context.WithValue(ctx, ArtifactHelperContextKey, artifactHelper)
 
 	args := map[string]any{
 		"content": "test content",
@@ -422,12 +413,9 @@ func TestDetectFilename(t *testing.T) {
 }
 
 func TestDefaultToolBox_BackwardCompatibility(t *testing.T) {
-	// Test that the existing NewDefaultToolBox function still works
-	// and behaves the same as before (only input_required tool)
 	defaultToolBox := NewDefaultToolBox()
 	disabledToolBox := NewDefaultToolBoxWithCreateArtifact(false)
 
-	// Both should have the same number of tools
 	defaultNames := defaultToolBox.GetToolNames()
 	disabledNames := disabledToolBox.GetToolNames()
 
@@ -435,12 +423,10 @@ func TestDefaultToolBox_BackwardCompatibility(t *testing.T) {
 		t.Errorf("Expected same behavior: default toolbox has %d tools, disabled has %d", len(defaultNames), len(disabledNames))
 	}
 
-	// Both should have input_required tool
 	if !defaultToolBox.HasTool("input_required") || !disabledToolBox.HasTool("input_required") {
 		t.Error("Expected both toolboxes to have input_required tool")
 	}
 
-	// Neither should have create_artifact tool
 	if defaultToolBox.HasTool("create_artifact") || disabledToolBox.HasTool("create_artifact") {
 		t.Error("Expected neither toolbox to have create_artifact tool when disabled")
 	}
