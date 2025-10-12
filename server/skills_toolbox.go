@@ -25,7 +25,7 @@ func NewSkillsToolBox(registry *skills.SkillsRegistry) *SkillsToolBox {
 func (stb *SkillsToolBox) GetTools() []sdk.ChatCompletionTool {
 	// Get base tools
 	tools := stb.base.GetTools()
-	
+
 	// Add skills tools
 	for _, skill := range stb.registry.GetSkills() {
 		description := skill.GetDescription()
@@ -40,7 +40,7 @@ func (stb *SkillsToolBox) GetTools() []sdk.ChatCompletionTool {
 			},
 		})
 	}
-	
+
 	return tools
 }
 
@@ -50,7 +50,7 @@ func (stb *SkillsToolBox) ExecuteTool(ctx context.Context, toolName string, argu
 	if stb.registry.HasSkill(toolName) {
 		return stb.registry.ExecuteSkill(ctx, toolName, arguments)
 	}
-	
+
 	// Fall back to base toolbox
 	return stb.base.ExecuteTool(ctx, toolName, arguments)
 }

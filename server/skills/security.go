@@ -63,7 +63,7 @@ func (sv *SecurityValidator) ValidateFilePath(filePath string) error {
 			if err != nil {
 				continue
 			}
-			
+
 			// Check if the file path is within the sandbox
 			rel, err := filepath.Rel(cleanSandbox, cleanPath)
 			if err == nil && !strings.HasPrefix(rel, "..") {
@@ -71,7 +71,7 @@ func (sv *SecurityValidator) ValidateFilePath(filePath string) error {
 				break
 			}
 		}
-		
+
 		if !allowed {
 			return fmt.Errorf("file path outside allowed sandbox directories")
 		}
@@ -96,7 +96,7 @@ func (sv *SecurityValidator) ValidateFileSize(filePath string) error {
 	}
 
 	if info.Size() > sv.config.MaxFileSize {
-		return fmt.Errorf("file size (%d bytes) exceeds maximum allowed size (%d bytes)", 
+		return fmt.Errorf("file size (%d bytes) exceeds maximum allowed size (%d bytes)",
 			info.Size(), sv.config.MaxFileSize)
 	}
 
@@ -119,7 +119,7 @@ func (sv *SecurityValidator) ValidateURL(rawURL string, whitelistedDomains []str
 	if len(whitelistedDomains) > 0 {
 		allowed := false
 		hostname := strings.ToLower(parsedURL.Hostname())
-		
+
 		for _, domain := range whitelistedDomains {
 			domainLower := strings.ToLower(domain)
 			// Exact match or subdomain match
@@ -128,7 +128,7 @@ func (sv *SecurityValidator) ValidateURL(rawURL string, whitelistedDomains []str
 				break
 			}
 		}
-		
+
 		if !allowed {
 			return fmt.Errorf("domain %s not in whitelist", hostname)
 		}
@@ -144,7 +144,7 @@ func (sv *SecurityValidator) ValidateContentSize(size int64, maxSize int64) erro
 	}
 
 	if size > maxSize {
-		return fmt.Errorf("content size (%d bytes) exceeds maximum allowed size (%d bytes)", 
+		return fmt.Errorf("content size (%d bytes) exceeds maximum allowed size (%d bytes)",
 			size, maxSize)
 	}
 
@@ -205,7 +205,7 @@ func CreateBackupPath(originalPath string) string {
 	base := filepath.Base(originalPath)
 	ext := filepath.Ext(base)
 	name := strings.TrimSuffix(base, ext)
-	
+
 	backupName := fmt.Sprintf("%s_backup_%s%s", name, timestamp, ext)
 	return filepath.Join(dir, backupName)
 }
@@ -218,7 +218,7 @@ func CreateBackup(originalPath string) (string, error) {
 	}
 
 	backupPath := CreateBackupPath(originalPath)
-	
+
 	// Copy file content
 	content, err := os.ReadFile(originalPath)
 	if err != nil {

@@ -217,15 +217,15 @@ func (wfs *WebFetchSkill) Execute(ctx context.Context, arguments map[string]any)
 		if cached := wfs.getFromCache(urlStr); cached != nil {
 			cached.Cached = true
 			cached.FetchTime = time.Since(startTime).String()
-			
+
 			jsonData, err := json.Marshal(cached)
 			if err != nil {
 				return "", fmt.Errorf("failed to marshal cached result: %w", err)
 			}
-			
-			wfs.logger.Info("returned cached web fetch result", 
+
+			wfs.logger.Info("returned cached web fetch result",
 				zap.String("url", urlStr))
-			
+
 			return string(jsonData), nil
 		}
 	}
@@ -233,7 +233,7 @@ func (wfs *WebFetchSkill) Execute(ctx context.Context, arguments map[string]any)
 	// Perform the fetch
 	result, err := wfs.performFetch(ctx, urlStr, method, customHeaders, body, followRedirects)
 	if err != nil {
-		wfs.logger.Error("failed to fetch web content", 
+		wfs.logger.Error("failed to fetch web content",
 			zap.String("url", urlStr),
 			zap.String("method", method),
 			zap.Error(err))
@@ -253,7 +253,7 @@ func (wfs *WebFetchSkill) Execute(ctx context.Context, arguments map[string]any)
 		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
 
-	wfs.logger.Info("successfully fetched web content", 
+	wfs.logger.Info("successfully fetched web content",
 		zap.String("url", urlStr),
 		zap.String("method", method),
 		zap.Int("status_code", result.StatusCode),
@@ -386,11 +386,11 @@ func (wfs *WebFetchSkill) putInCache(url string, result *WebFetchSkillResult) {
 	defer wfs.cache.mutex.Unlock()
 
 	cacheKey := wfs.getCacheKey(url)
-	
+
 	// Create a copy for caching
 	cached := *result
 	cached.Cached = false // Reset cached flag for storage
-	
+
 	wfs.cache.entries[cacheKey] = &cacheEntry{
 		result:    &cached,
 		timestamp: time.Now(),
@@ -443,7 +443,7 @@ func (wfs *WebFetchSkill) Validate(arguments map[string]any) error {
 		if !ok {
 			return fmt.Errorf("method must be a string")
 		}
-		
+
 		allowedMethods := []string{"GET", "POST", "PUT", "DELETE", "HEAD"}
 		method = strings.ToUpper(method)
 		valid := false
@@ -453,7 +453,7 @@ func (wfs *WebFetchSkill) Validate(arguments map[string]any) error {
 				break
 			}
 		}
-		
+
 		if !valid {
 			return fmt.Errorf("method must be one of: %v", allowedMethods)
 		}

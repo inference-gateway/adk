@@ -23,8 +23,8 @@ type SkillsAgentBuilder interface {
 // skillsAgentBuilder implements SkillsAgentBuilder
 type skillsAgentBuilder struct {
 	AgentBuilder
-	logger        *zap.Logger
-	skillsConfig  *config.SkillsConfig
+	logger         *zap.Logger
+	skillsConfig   *config.SkillsConfig
 	skillsRegistry *skills.SkillsRegistry
 }
 
@@ -49,7 +49,7 @@ func (sab *skillsAgentBuilder) WithSkills(skillsConfig *config.SkillsConfig) Ski
 func (sab *skillsAgentBuilder) WithSkillsEnabled() SkillsAgentBuilder {
 	defaultConfig := config.GetDefaultSkillsConfig()
 	defaultConfig.Enabled = true
-	
+
 	// Enable all skills with default settings
 	defaultConfig.ReadSkill.Enabled = true
 	defaultConfig.WriteSkill.Enabled = true
@@ -57,7 +57,7 @@ func (sab *skillsAgentBuilder) WithSkillsEnabled() SkillsAgentBuilder {
 	defaultConfig.MultiEdit.Enabled = true
 	defaultConfig.WebSearch.Enabled = true
 	defaultConfig.WebFetch.Enabled = true
-	
+
 	return sab.WithSkills(defaultConfig)
 }
 
@@ -137,7 +137,7 @@ func CreateAgentWithSkills(logger *zap.Logger, agentConfig *config.AgentConfig, 
 
 	// Create skills agent builder
 	skillsBuilder := NewSkillsAgentBuilder(logger)
-	
+
 	// Configure the base agent builder
 	if impl, ok := skillsBuilder.(*skillsAgentBuilder); ok {
 		impl.AgentBuilder = impl.AgentBuilder.WithConfig(agentConfig).WithLLMClient(llmClient)

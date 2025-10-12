@@ -250,7 +250,7 @@ func main() {
 
 	if cfg.SkillsConfig.Enabled {
 		logger.Info("skills are enabled - agent can perform file operations and web access")
-		
+
 		if cfg.SkillsConfig.Safety.EnableSandbox {
 			if len(cfg.SkillsConfig.Safety.SandboxPaths) > 0 {
 				logger.Info("file operations sandboxed to configured paths",

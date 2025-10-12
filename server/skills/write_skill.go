@@ -20,10 +20,10 @@ type WriteSkill struct {
 
 // WriteSkillResult represents the result of a write operation
 type WriteSkillResult struct {
-	FilePath    string `json:"file_path"`
+	FilePath     string `json:"file_path"`
 	BytesWritten int    `json:"bytes_written"`
-	BackupPath  string `json:"backup_path,omitempty"`
-	Created     bool   `json:"created"`
+	BackupPath   string `json:"backup_path,omitempty"`
+	Created      bool   `json:"created"`
 }
 
 // NewWriteSkill creates a new Write skill
@@ -139,8 +139,8 @@ func (ws *WriteSkill) Execute(ctx context.Context, arguments map[string]any) (st
 	// Perform the write operation
 	result, err := ws.writeFile(ctx, filePath, content, createBackup, append)
 	if err != nil {
-		ws.logger.Error("failed to write file", 
-			zap.String("file_path", filePath), 
+		ws.logger.Error("failed to write file",
+			zap.String("file_path", filePath),
 			zap.Error(err))
 		return "", fmt.Errorf("failed to write file: %w", err)
 	}
@@ -151,7 +151,7 @@ func (ws *WriteSkill) Execute(ctx context.Context, arguments map[string]any) (st
 		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
 
-	ws.logger.Info("successfully wrote file", 
+	ws.logger.Info("successfully wrote file",
 		zap.String("file_path", filePath),
 		zap.Int("bytes_written", result.BytesWritten),
 		zap.Bool("created", result.Created))

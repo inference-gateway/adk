@@ -105,7 +105,7 @@ func (sr *SkillsRegistry) RegisterSkill(skill Skill) {
 
 	name := skill.GetName()
 	sr.skills[name] = skill
-	
+
 	// Initialize rate limiter for this skill
 	if skill.GetRateLimit() > 0 {
 		sr.rateLimits[name] = NewRateLimiter(skill.GetRateLimit())
@@ -140,16 +140,16 @@ func (sr *SkillsRegistry) GetSkillsForAgentCard() []map[string]interface{} {
 				"description": skill.GetDescription(),
 				"tags":        []string{"built-in", "file-ops", "web-ops"},
 			}
-			
+
 			// Add input/output modes if this skill supports them
 			skillInfo["inputModes"] = []string{"text"}
 			skillInfo["outputModes"] = []string{"text", "json"}
-			
+
 			// Add examples if available
 			if examples := sr.getSkillExamples(skill.GetName()); len(examples) > 0 {
 				skillInfo["examples"] = examples
 			}
-			
+
 			skills = append(skills, skillInfo)
 		}
 	}
@@ -220,7 +220,7 @@ func (sr *SkillsRegistry) ExecuteSkill(ctx context.Context, skillName string, ar
 func (sr *SkillsRegistry) HasSkill(skillName string) bool {
 	sr.mutex.RLock()
 	defer sr.mutex.RUnlock()
-	
+
 	skill, exists := sr.skills[skillName]
 	return exists && skill.IsEnabled()
 }
@@ -238,4 +238,3 @@ func (sr *SkillsRegistry) GetSkillNames() []string {
 	}
 	return names
 }
-

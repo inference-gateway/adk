@@ -12,12 +12,14 @@ This example demonstrates an A2A agent with built-in skills enabled for file ope
 ## Skills Included
 
 ### File Operations
+
 - **Read**: Read file contents with line range support
 - **Write**: Write content to files with backup creation
 - **Edit**: String replacement editing with diff preview
 - **MultiEdit**: Atomic multiple edit operations
 
 ### Web Operations
+
 - **WebSearch**: Search the web using DuckDuckGo, Google, or Bing
 - **WebFetch**: Fetch content from URLs with domain whitelisting
 
@@ -45,6 +47,7 @@ SKILLS_SAFETY_MAX_OPERATION_TIME=30s
 ### Individual Skill Configuration
 
 #### Read Skill
+
 ```bash
 SKILLS_READ_ENABLED=true
 SKILLS_READ_REQUIRE_APPROVAL=false
@@ -53,6 +56,7 @@ SKILLS_READ_TIMEOUT=10s
 ```
 
 #### Write Skill
+
 ```bash
 SKILLS_WRITE_ENABLED=true
 SKILLS_WRITE_REQUIRE_APPROVAL=true
@@ -63,6 +67,7 @@ SKILLS_WRITE_ALLOWED_EXTENSIONS=".txt,.md,.json,.yaml,.yml"
 ```
 
 #### Edit Skill
+
 ```bash
 SKILLS_EDIT_ENABLED=true
 SKILLS_EDIT_REQUIRE_APPROVAL=true
@@ -73,6 +78,7 @@ SKILLS_EDIT_MAX_EDITS_PER_CALL=10
 ```
 
 #### MultiEdit Skill
+
 ```bash
 SKILLS_MULTI_EDIT_ENABLED=true
 SKILLS_MULTI_EDIT_REQUIRE_APPROVAL=true
@@ -84,6 +90,7 @@ SKILLS_MULTI_EDIT_ATOMIC_OPERATIONS=true
 ```
 
 #### WebSearch Skill
+
 ```bash
 SKILLS_WEB_SEARCH_ENABLED=true
 SKILLS_WEB_SEARCH_REQUIRE_APPROVAL=false
@@ -95,6 +102,7 @@ SKILLS_WEB_SEARCH_API_KEY=""  # Required for Google/Bing
 ```
 
 #### WebFetch Skill
+
 ```bash
 SKILLS_WEB_FETCH_ENABLED=true
 SKILLS_WEB_FETCH_REQUIRE_APPROVAL=false
@@ -111,21 +119,25 @@ SKILLS_WEB_FETCH_CACHE_TTL=3600s
 ## Security Features
 
 ### Sandboxing
+
 - File operations are restricted to configured sandbox directories
 - Path traversal protection prevents access outside allowed areas
 - Protected path patterns block access to sensitive files
 
 ### Rate Limiting
+
 - Each skill has configurable rate limits per minute
 - Prevents abuse and resource exhaustion
 - Per-skill granular control
 
 ### Domain Whitelisting
+
 - WebFetch operations limited to whitelisted domains
 - Prevents access to internal/sensitive endpoints
 - Support for subdomain matching
 
 ### Content Size Limits
+
 - File size limits prevent memory exhaustion
 - Web content size limits for fetched resources
 - Configurable per operation type
@@ -135,6 +147,7 @@ SKILLS_WEB_FETCH_CACHE_TTL=3600s
 Once the server is running with skills enabled, you can send requests like:
 
 ### File Operations
+
 ```json
 {
   "message": "Please read the contents of /home/user/documents/config.yaml"
@@ -154,6 +167,7 @@ Once the server is running with skills enabled, you can send requests like:
 ```
 
 ### Web Operations
+
 ```json
 {
   "message": "Search for 'golang best practices' and show me the top 5 results"

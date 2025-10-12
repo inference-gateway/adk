@@ -20,29 +20,29 @@ type MultiEditSkill struct {
 
 // EditOperation represents a single edit operation
 type EditOperation struct {
-	OldString   string `json:"old_string"`
-	NewString   string `json:"new_string"`
-	ReplaceAll  bool   `json:"replace_all,omitempty"`
+	OldString  string `json:"old_string"`
+	NewString  string `json:"new_string"`
+	ReplaceAll bool   `json:"replace_all,omitempty"`
 }
 
 // MultiEditSkillResult represents the result of a multi-edit operation
 type MultiEditSkillResult struct {
-	FilePath        string             `json:"file_path"`
-	BackupPath      string             `json:"backup_path,omitempty"`
-	TotalReplacements int              `json:"total_replacements"`
-	OperationResults []OperationResult `json:"operation_results"`
-	Preview         bool               `json:"preview"`
-	Success         bool               `json:"success"`
-	OriginalContent string             `json:"original_content,omitempty"`
-	NewContent      string             `json:"new_content,omitempty"`
+	FilePath          string            `json:"file_path"`
+	BackupPath        string            `json:"backup_path,omitempty"`
+	TotalReplacements int               `json:"total_replacements"`
+	OperationResults  []OperationResult `json:"operation_results"`
+	Preview           bool              `json:"preview"`
+	Success           bool              `json:"success"`
+	OriginalContent   string            `json:"original_content,omitempty"`
+	NewContent        string            `json:"new_content,omitempty"`
 }
 
 // OperationResult represents the result of a single edit operation
 type OperationResult struct {
-	Operation       EditOperation `json:"operation"`
-	ReplacementsMade int          `json:"replacements_made"`
-	Success         bool          `json:"success"`
-	Error           string        `json:"error,omitempty"`
+	Operation        EditOperation `json:"operation"`
+	ReplacementsMade int           `json:"replacements_made"`
+	Success          bool          `json:"success"`
+	Error            string        `json:"error,omitempty"`
 }
 
 // NewMultiEditSkill creates a new MultiEdit skill
@@ -204,8 +204,8 @@ func (mes *MultiEditSkill) Execute(ctx context.Context, arguments map[string]any
 	// Perform the multi-edit operation
 	result, err := mes.editFile(ctx, filePath, editOps, createBackup, previewOnly, atomic)
 	if err != nil {
-		mes.logger.Error("failed to perform multi-edit", 
-			zap.String("file_path", filePath), 
+		mes.logger.Error("failed to perform multi-edit",
+			zap.String("file_path", filePath),
 			zap.Error(err))
 		return "", fmt.Errorf("failed to perform multi-edit: %w", err)
 	}
@@ -216,7 +216,7 @@ func (mes *MultiEditSkill) Execute(ctx context.Context, arguments map[string]any
 		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
 
-	mes.logger.Info("successfully performed multi-edit", 
+	mes.logger.Info("successfully performed multi-edit",
 		zap.String("file_path", filePath),
 		zap.Int("total_replacements", result.TotalReplacements),
 		zap.Bool("preview_only", previewOnly),

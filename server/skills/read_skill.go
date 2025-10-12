@@ -152,8 +152,8 @@ func (rs *ReadSkill) Execute(ctx context.Context, arguments map[string]any) (str
 	// Read the file
 	result, err := rs.readFile(ctx, filePath, startLine, endLine, maxLines)
 	if err != nil {
-		rs.logger.Error("failed to read file", 
-			zap.String("file_path", filePath), 
+		rs.logger.Error("failed to read file",
+			zap.String("file_path", filePath),
 			zap.Error(err))
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
@@ -164,7 +164,7 @@ func (rs *ReadSkill) Execute(ctx context.Context, arguments map[string]any) (str
 		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
 
-	rs.logger.Info("successfully read file", 
+	rs.logger.Info("successfully read file",
 		zap.String("file_path", filePath),
 		zap.Int("lines", result.Lines),
 		zap.Int64("size", result.Size))

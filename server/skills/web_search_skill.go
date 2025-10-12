@@ -170,7 +170,7 @@ func (wss *WebSearchSkill) Execute(ctx context.Context, arguments map[string]any
 	// Perform the search
 	results, err := wss.performSearch(ctx, query, engine, maxResults, safeSearch)
 	if err != nil {
-		wss.logger.Error("failed to perform web search", 
+		wss.logger.Error("failed to perform web search",
 			zap.String("query", query),
 			zap.String("engine", engine),
 			zap.Error(err))
@@ -193,7 +193,7 @@ func (wss *WebSearchSkill) Execute(ctx context.Context, arguments map[string]any
 		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
 
-	wss.logger.Info("successfully performed web search", 
+	wss.logger.Info("successfully performed web search",
 		zap.String("query", query),
 		zap.String("engine", engine),
 		zap.Int("result_count", len(results)),
@@ -242,14 +242,14 @@ func (wss *WebSearchSkill) performSearch(ctx context.Context, query, engine stri
 func (wss *WebSearchSkill) searchDuckDuckGo(ctx context.Context, query string, maxResults int, safeSearch bool) ([]SearchResult, error) {
 	// DuckDuckGo instant answer API (free, no API key required)
 	baseURL := "https://api.duckduckgo.com/"
-	
+
 	params := url.Values{}
 	params.Set("q", query)
 	params.Set("format", "json")
 	params.Set("no_redirect", "1")
 	params.Set("no_html", "1")
 	params.Set("skip_disambig", "1")
-	
+
 	if safeSearch {
 		params.Set("safe_search", "strict")
 	}
@@ -307,7 +307,7 @@ func (wss *WebSearchSkill) searchDuckDuckGo(ctx context.Context, query string, m
 			if len(results) >= maxResults {
 				break
 			}
-			
+
 			if topicMap, ok := topic.(map[string]interface{}); ok {
 				title := ""
 				url := ""
@@ -353,7 +353,7 @@ func (wss *WebSearchSkill) searchGoogle(ctx context.Context, query string, maxRe
 	return nil, fmt.Errorf("google search requires proper API setup (Custom Search Engine ID and API key)")
 }
 
-// searchBing performs search using Bing Search API (requires API key)  
+// searchBing performs search using Bing Search API (requires API key)
 func (wss *WebSearchSkill) searchBing(ctx context.Context, query string, maxResults int, safeSearch bool) ([]SearchResult, error) {
 	if wss.config.APIKey == "" {
 		return nil, fmt.Errorf("bing search requires API key")
@@ -387,7 +387,7 @@ func (wss *WebSearchSkill) Validate(arguments map[string]any) error {
 		if !ok {
 			return fmt.Errorf("engine must be a string")
 		}
-		
+
 		allowedEngines := []string{"duckduckgo", "google", "bing"}
 		valid := false
 		for _, allowed := range allowedEngines {
@@ -396,7 +396,7 @@ func (wss *WebSearchSkill) Validate(arguments map[string]any) error {
 				break
 			}
 		}
-		
+
 		if !valid {
 			return fmt.Errorf("engine must be one of: %v", allowedEngines)
 		}

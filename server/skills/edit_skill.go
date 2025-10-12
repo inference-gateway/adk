@@ -20,12 +20,12 @@ type EditSkill struct {
 
 // EditSkillResult represents the result of an edit operation
 type EditSkillResult struct {
-	FilePath        string `json:"file_path"`
-	BackupPath      string `json:"backup_path,omitempty"`
+	FilePath         string `json:"file_path"`
+	BackupPath       string `json:"backup_path,omitempty"`
 	ReplacementsMade int    `json:"replacements_made"`
-	OriginalContent string `json:"original_content,omitempty"`
-	NewContent      string `json:"new_content,omitempty"`
-	Preview         bool   `json:"preview"`
+	OriginalContent  string `json:"original_content,omitempty"`
+	NewContent       string `json:"new_content,omitempty"`
+	Preview          bool   `json:"preview"`
 }
 
 // NewEditSkill creates a new Edit skill
@@ -172,8 +172,8 @@ func (es *EditSkill) Execute(ctx context.Context, arguments map[string]any) (str
 	// Perform the edit operation
 	result, err := es.editFile(ctx, filePath, oldString, newString, replaceAll, createBackup, previewOnly)
 	if err != nil {
-		es.logger.Error("failed to edit file", 
-			zap.String("file_path", filePath), 
+		es.logger.Error("failed to edit file",
+			zap.String("file_path", filePath),
 			zap.Error(err))
 		return "", fmt.Errorf("failed to edit file: %w", err)
 	}
@@ -184,7 +184,7 @@ func (es *EditSkill) Execute(ctx context.Context, arguments map[string]any) (str
 		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
 
-	es.logger.Info("successfully edited file", 
+	es.logger.Info("successfully edited file",
 		zap.String("file_path", filePath),
 		zap.Int("replacements_made", result.ReplacementsMade),
 		zap.Bool("preview_only", previewOnly))
