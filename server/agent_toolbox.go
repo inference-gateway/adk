@@ -3,7 +3,11 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
+	"github.com/inference-gateway/adk/server/config"
+	"github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
 )
 
@@ -52,8 +56,14 @@ func NewToolBox() *DefaultToolBox {
 
 // NewDefaultToolBox creates a new DefaultToolBox with built-in tools
 func NewDefaultToolBox() *DefaultToolBox {
+	return NewDefaultToolBoxWithCapabilities(nil)
+}
+
+// NewDefaultToolBoxWithCapabilities creates a new DefaultToolBox with built-in tools based on capabilities configuration
+func NewDefaultToolBoxWithCapabilities(capabilities *config.CapabilitiesConfig) *DefaultToolBox {
 	toolBox := NewToolBox()
 
+	// Always include input_required tool
 	inputRequiredTool := NewBasicTool(
 		"input_required",
 		"REQUIRED: Use this tool when you need additional information from the user to provide a complete and accurate response. Call this instead of making assumptions or providing incomplete answers. Examples: missing location for weather, unclear requirements, ambiguous requests, or when more context would significantly improve the response quality.",
@@ -78,6 +88,41 @@ func NewDefaultToolBox() *DefaultToolBox {
 		},
 	)
 	toolBox.AddTool(inputRequiredTool)
+
+	// Add CreateArtifact tool if enabled
+	if capabilities != nil && capabilities.CreateArtifact {
+		createArtifactTool := NewBasicTool(
+			"create_artifact",
+			"Create an artifact file and make it available via downloadable URL. Use this tool to save important content, outputs, or generated files that the user might want to access or download. The artifact will be stored on the filesystem and made available through a URL.",
+			map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"content": map[string]any{
+						"type":        "string",
+						"description": "The text content to save as an artifact file",
+					},
+					"type": map[string]any{
+						"type":        "string",
+						"description": "Must be 'url' - indicates the artifact will be available as a downloadable URL",
+						"enum":        []string{"url"},
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Optional name for the artifact (will be auto-generated if not provided)",
+					},
+					"filename": map[string]any{
+						"type":        "string",
+						"description": "Optional filename with extension (will be auto-detected if not provided)",
+					},
+				},
+				"required": []string{"content", "type"},
+			},
+			func(ctx context.Context, args map[string]any) (string, error) {
+				return executeCreateArtifact(ctx, args)
+			},
+		)
+		toolBox.AddTool(createArtifactTool)
+	}
 
 	return toolBox
 }
@@ -188,4 +233,157 @@ func JSONTool(result any) (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+// executeCreateArtifact implements the create_artifact tool functionality
+func executeCreateArtifact(ctx context.Context, args map[string]any) (string, error) {
+	// Get TaskManager and ArtifactHelper from context
+	taskManager, ok := ctx.Value("taskManager").(TaskManager)
+	if !ok {
+		return "", fmt.Errorf("task manager not found in context")
+	}
+
+	artifactHelper, ok := ctx.Value("artifactHelper").(*ArtifactHelper)
+	if !ok {
+		return "", fmt.Errorf("artifact helper not found in context")
+	}
+
+	// Extract arguments
+	content, ok := args["content"].(string)
+	if !ok || content == "" {
+		return "", fmt.Errorf("content is required and must be a non-empty string")
+	}
+
+	artifactType, ok := args["type"].(string)
+	if !ok || artifactType != "url" {
+		return "", fmt.Errorf("type must be 'url'")
+	}
+
+	// Get optional parameters
+	name, _ := args["name"].(string)
+	filename, _ := args["filename"].(string)
+
+	// Auto-generate name if not provided
+	if name == "" {
+		name = "Generated Content"
+	}
+
+	// Auto-detect filename if not provided
+	if filename == "" {
+		// Try to detect file type from content
+		filename = detectFilename(content)
+	}
+
+	// Create artifact using the helper
+	data := []byte(content)
+	mimeType := artifactHelper.GetMimeTypeFromExtension(filename)
+	
+	artifact := artifactHelper.CreateFileArtifactFromBytes(
+		name,
+		fmt.Sprintf("Artifact created by create_artifact tool: %s", name),
+		filename,
+		data,
+		mimeType,
+	)
+
+	// Get current task from context
+	taskID, ok := ctx.Value("taskID").(string)
+	if !ok {
+		return "", fmt.Errorf("task ID not found in context")
+	}
+
+	task, found := taskManager.GetTask(taskID)
+	if !found {
+		return "", fmt.Errorf("task not found: %s", taskID)
+	}
+
+	// Add artifact to task
+	artifactHelper.AddArtifactToTask(task, artifact)
+
+	// Update task in storage
+	err := taskManager.UpdateTask(task)
+	if err != nil {
+		return "", fmt.Errorf("failed to update task with artifact: %w", err)
+	}
+
+	// Extract URL from artifact
+	if len(artifact.Parts) > 0 {
+		if filePart, ok := artifact.Parts[0].(types.FilePart); ok {
+			if fileWithURI, ok := filePart.File.(types.FileWithUri); ok {
+				return JSONTool(map[string]any{
+					"success":     true,
+					"message":     fmt.Sprintf("Artifact '%s' created successfully", name),
+					"artifact_id": artifact.ArtifactID,
+					"url":         fileWithURI.URI,
+					"filename":    filename,
+				})
+			}
+		}
+	}
+
+	return JSONTool(map[string]any{
+		"success":     true,
+		"message":     fmt.Sprintf("Artifact '%s' created successfully", name),
+		"artifact_id": artifact.ArtifactID,
+		"filename":    filename,
+	})
+}
+
+// detectFilename attempts to detect appropriate filename from content
+func detectFilename(content string) string {
+	// Clean content for analysis
+	trimmed := strings.TrimSpace(content)
+	
+	// JSON detection
+	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
+		var js json.RawMessage
+		if json.Unmarshal([]byte(trimmed), &js) == nil {
+			return "content.json"
+		}
+	}
+
+	// HTML detection
+	if strings.Contains(strings.ToLower(trimmed), "<html") || 
+		strings.Contains(strings.ToLower(trimmed), "<!doctype html") {
+		return "content.html"
+	}
+
+	// XML detection
+	if strings.HasPrefix(trimmed, "<?xml") || 
+		(strings.HasPrefix(trimmed, "<") && strings.Contains(trimmed, "xmlns")) {
+		return "content.xml"
+	}
+
+	// CSS detection
+	if strings.Contains(trimmed, "{") && strings.Contains(trimmed, "}") && 
+		(strings.Contains(trimmed, "color:") || strings.Contains(trimmed, "font-") || 
+		 strings.Contains(trimmed, "margin:") || strings.Contains(trimmed, "padding:")) {
+		return "content.css"
+	}
+
+	// JavaScript detection
+	if strings.Contains(trimmed, "function") || strings.Contains(trimmed, "const ") ||
+		strings.Contains(trimmed, "let ") || strings.Contains(trimmed, "var ") ||
+		strings.Contains(trimmed, "=>") {
+		return "content.js"
+	}
+
+	// Markdown detection
+	if strings.Contains(trimmed, "# ") || strings.Contains(trimmed, "## ") ||
+		strings.Contains(trimmed, "```") || strings.Contains(trimmed, "**") {
+		return "content.md"
+	}
+
+	// CSV detection
+	lines := strings.Split(trimmed, "\n")
+	if len(lines) > 0 {
+		firstLine := lines[0]
+		if strings.Contains(firstLine, ",") && len(strings.Split(firstLine, ",")) > 2 {
+			return "content.csv"
+		}
+	}
+
+	// Default to text file
+	return "content.txt"
 }

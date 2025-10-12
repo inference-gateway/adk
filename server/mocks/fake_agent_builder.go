@@ -42,6 +42,17 @@ type FakeAgentBuilder struct {
 	withConfigReturnsOnCall map[int]struct {
 		result1 server.AgentBuilder
 	}
+	WithDefaultToolBoxStub        func(*config.CapabilitiesConfig) server.AgentBuilder
+	withDefaultToolBoxMutex       sync.RWMutex
+	withDefaultToolBoxArgsForCall []struct {
+		arg1 *config.CapabilitiesConfig
+	}
+	withDefaultToolBoxReturns struct {
+		result1 server.AgentBuilder
+	}
+	withDefaultToolBoxReturnsOnCall map[int]struct {
+		result1 server.AgentBuilder
+	}
 	WithLLMClientStub        func(server.LLMClient) server.AgentBuilder
 	withLLMClientMutex       sync.RWMutex
 	withLLMClientArgsForCall []struct {
@@ -267,6 +278,67 @@ func (fake *FakeAgentBuilder) WithConfigReturnsOnCall(i int, result1 server.Agen
 		})
 	}
 	fake.withConfigReturnsOnCall[i] = struct {
+		result1 server.AgentBuilder
+	}{result1}
+}
+
+func (fake *FakeAgentBuilder) WithDefaultToolBox(arg1 *config.CapabilitiesConfig) server.AgentBuilder {
+	fake.withDefaultToolBoxMutex.Lock()
+	ret, specificReturn := fake.withDefaultToolBoxReturnsOnCall[len(fake.withDefaultToolBoxArgsForCall)]
+	fake.withDefaultToolBoxArgsForCall = append(fake.withDefaultToolBoxArgsForCall, struct {
+		arg1 *config.CapabilitiesConfig
+	}{arg1})
+	stub := fake.WithDefaultToolBoxStub
+	fakeReturns := fake.withDefaultToolBoxReturns
+	fake.recordInvocation("WithDefaultToolBox", []interface{}{arg1})
+	fake.withDefaultToolBoxMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeAgentBuilder) WithDefaultToolBoxCallCount() int {
+	fake.withDefaultToolBoxMutex.RLock()
+	defer fake.withDefaultToolBoxMutex.RUnlock()
+	return len(fake.withDefaultToolBoxArgsForCall)
+}
+
+func (fake *FakeAgentBuilder) WithDefaultToolBoxCalls(stub func(*config.CapabilitiesConfig) server.AgentBuilder) {
+	fake.withDefaultToolBoxMutex.Lock()
+	defer fake.withDefaultToolBoxMutex.Unlock()
+	fake.WithDefaultToolBoxStub = stub
+}
+
+func (fake *FakeAgentBuilder) WithDefaultToolBoxArgsForCall(i int) *config.CapabilitiesConfig {
+	fake.withDefaultToolBoxMutex.RLock()
+	defer fake.withDefaultToolBoxMutex.RUnlock()
+	argsForCall := fake.withDefaultToolBoxArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeAgentBuilder) WithDefaultToolBoxReturns(result1 server.AgentBuilder) {
+	fake.withDefaultToolBoxMutex.Lock()
+	defer fake.withDefaultToolBoxMutex.Unlock()
+	fake.WithDefaultToolBoxStub = nil
+	fake.withDefaultToolBoxReturns = struct {
+		result1 server.AgentBuilder
+	}{result1}
+}
+
+func (fake *FakeAgentBuilder) WithDefaultToolBoxReturnsOnCall(i int, result1 server.AgentBuilder) {
+	fake.withDefaultToolBoxMutex.Lock()
+	defer fake.withDefaultToolBoxMutex.Unlock()
+	fake.WithDefaultToolBoxStub = nil
+	if fake.withDefaultToolBoxReturnsOnCall == nil {
+		fake.withDefaultToolBoxReturnsOnCall = make(map[int]struct {
+			result1 server.AgentBuilder
+		})
+	}
+	fake.withDefaultToolBoxReturnsOnCall[i] = struct {
 		result1 server.AgentBuilder
 	}{result1}
 }
@@ -585,6 +657,8 @@ func (fake *FakeAgentBuilder) Invocations() map[string][][]interface{} {
 	defer fake.getConfigMutex.RUnlock()
 	fake.withConfigMutex.RLock()
 	defer fake.withConfigMutex.RUnlock()
+	fake.withDefaultToolBoxMutex.RLock()
+	defer fake.withDefaultToolBoxMutex.RUnlock()
 	fake.withLLMClientMutex.RLock()
 	defer fake.withLLMClientMutex.RUnlock()
 	fake.withMaxChatCompletionMutex.RLock()

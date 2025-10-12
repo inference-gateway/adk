@@ -63,6 +63,7 @@ type CapabilitiesConfig struct {
 	Streaming              bool `env:"STREAMING,default=true" description:"Enable streaming support"`
 	PushNotifications      bool `env:"PUSH_NOTIFICATIONS,default=true" description:"Enable push notifications"`
 	StateTransitionHistory bool `env:"STATE_TRANSITION_HISTORY,default=false" description:"Enable state transition history"`
+	CreateArtifact         bool `env:"CREATE_ARTIFACT,default=false" description:"Enable create_artifact tool for autonomous artifact creation"`
 }
 
 // TLSConfig holds TLS configuration

@@ -158,6 +158,103 @@ multiArtifact := artifactHelper.CreateMultiPartArtifact(
 )
 ```
 
+### Autonomous Artifact Creation with CreateArtifact Tool
+
+The ADK includes a built-in `create_artifact` tool that allows LLMs to autonomously create artifacts without requiring custom task handler implementation. This tool is disabled by default and must be enabled through configuration.
+
+#### Enabling the CreateArtifact Tool
+
+```bash
+# Enable via environment variable
+export CAPABILITIES_CREATE_ARTIFACT=true
+```
+
+```go
+// Enable via configuration
+capabilities := &config.CapabilitiesConfig{
+    CreateArtifact: true,
+}
+
+// Create agent with capabilities-enabled toolbox
+agent := server.NewAgentBuilder(logger).
+    WithConfig(agentConfig).
+    WithDefaultToolBox(capabilities).
+    Build()
+```
+
+#### How the CreateArtifact Tool Works
+
+When enabled, the LLM can autonomously use the `create_artifact` tool during task processing:
+
+**Tool Parameters:**
+- `content` (required): The text content to save as an artifact file
+- `type` (required): Must be "url" - indicates the artifact will be available as a downloadable URL
+- `name` (optional): Name for the artifact (auto-generated if not provided)
+- `filename` (optional): Filename with extension (auto-detected from content if not provided)
+
+**Auto File-Type Detection:**
+The tool automatically detects file types based on content:
+- JSON objects/arrays → `.json`
+- HTML documents → `.html`
+- XML documents → `.xml`
+- CSS stylesheets → `.css`
+- JavaScript code → `.js`
+- Markdown → `.md`
+- CSV data → `.csv`
+- Plain text → `.txt` (fallback)
+
+#### Example LLM Usage
+
+When the tool is enabled, an LLM can create artifacts like this:
+
+```json
+{
+  "tool_calls": [
+    {
+      "function": {
+        "name": "create_artifact",
+        "arguments": {
+          "content": "{\"results\": [\"item1\", \"item2\"], \"summary\": \"Analysis complete\"}",
+          "type": "url",
+          "name": "Analysis Results"
+        }
+      }
+    }
+  ]
+}
+```
+
+This will automatically:
+1. Detect the content as JSON and use filename `content.json`
+2. Create an artifact with the provided content
+3. Store it on the filesystem via the artifact storage provider
+4. Add it to the current task
+5. Return a success response with the artifact ID and download URL
+
+#### Tool Response Format
+
+The tool returns a JSON response:
+
+```json
+{
+  "success": true,
+  "message": "Artifact 'Analysis Results' created successfully",
+  "artifact_id": "uuid-generated-id",
+  "url": "http://localhost:8081/artifacts/uuid-generated-id/content.json",
+  "filename": "content.json"
+}
+```
+
+#### Integration Requirements
+
+For the CreateArtifact tool to work properly, you need:
+
+1. **Artifact Storage**: Configure artifact storage (filesystem, MinIO, S3, etc.)
+2. **Context Setup**: The tool requires `taskManager` and `artifactHelper` in the execution context
+3. **Task ID**: The current task ID must be available in the context
+
+This is automatically handled when using the standard ADK server setup with artifact storage enabled.
+
 ### Custom Task Handler with Artifacts
 
 ```go
