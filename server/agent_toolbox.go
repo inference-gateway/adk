@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/inference-gateway/adk/types"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
 )
 
@@ -53,15 +54,10 @@ func NewToolBox() *DefaultToolBox {
 }
 
 // NewDefaultToolBox creates a new DefaultToolBox with built-in tools
-func NewDefaultToolBox() *DefaultToolBox {
-	return NewDefaultToolBoxWithCreateArtifact(false)
-}
-
-// NewDefaultToolBoxWithCreateArtifact creates a new DefaultToolBox with built-in tools and optional CreateArtifact tool
-func NewDefaultToolBoxWithCreateArtifact(enableCreateArtifact bool) *DefaultToolBox {
+// The config parameter determines which tools are enabled
+func NewDefaultToolBox(cfg *config.ToolBoxConfig) *DefaultToolBox {
 	toolBox := NewToolBox()
 
-	// Always include input_required tool
 	inputRequiredTool := NewBasicTool(
 		"input_required",
 		"REQUIRED: Use this tool when you need additional information from the user to provide a complete and accurate response. Call this instead of making assumptions or providing incomplete answers. Examples: missing location for weather, unclear requirements, ambiguous requests, or when more context would significantly improve the response quality.",
@@ -87,8 +83,7 @@ func NewDefaultToolBoxWithCreateArtifact(enableCreateArtifact bool) *DefaultTool
 	)
 	toolBox.AddTool(inputRequiredTool)
 
-	// Add CreateArtifact tool if enabled
-	if enableCreateArtifact {
+	if cfg != nil && cfg.EnableCreateArtifact {
 		createArtifactTool := NewBasicTool(
 			"create_artifact",
 			"Create an artifact file and make it available via downloadable URL. Use this tool to save important content, outputs, or generated files that the user might want to access or download. The artifact will be stored on the filesystem and made available through a URL.",

@@ -48,7 +48,12 @@ type AgentConfig struct {
 	PresencePenalty             float64           `env:"PRESENCE_PENALTY,default=0.0" description:"Presence penalty for completion"`
 	SystemPrompt                string            `env:"SYSTEM_PROMPT,default=You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses." description:"System prompt for LLM interactions"`
 	MaxConversationHistory      int               `env:"MAX_CONVERSATION_HISTORY,default=20" description:"Maximum number of messages to keep in conversation history per context"`
-	EnableCreateArtifact        bool              `env:"ENABLE_CREATE_ARTIFACT,default=false" description:"Enable create_artifact tool for autonomous artifact creation"`
+	ToolBoxConfig               ToolBoxConfig     `env:",prefix=TOOLS_" description:"Tool configuration for agents"`
+}
+
+// ToolBoxConfig defines configuration options for creating a DefaultToolBox
+type ToolBoxConfig struct {
+	EnableCreateArtifact bool `env:"CREATE_ARTIFACT,default=false" description:"Enable create_artifact tool for autonomous artifact creation"`
 }
 
 // ClientTLSConfig holds TLS configuration for LLM client

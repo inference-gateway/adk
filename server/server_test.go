@@ -858,7 +858,7 @@ func TestAgentStreaming_WithToolCalls(t *testing.T) {
 		return responseChan, errorChan
 	}
 
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(nil)
 	testTool := server.NewBasicTool(
 		"test_tool",
 		"Test tool",

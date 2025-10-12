@@ -115,7 +115,7 @@ func (b *AgentBuilderImpl) WithToolBox(toolBox ToolBox) AgentBuilder {
 
 // WithDefaultToolBox sets the default toolbox
 func (b *AgentBuilderImpl) WithDefaultToolBox() AgentBuilder {
-	b.toolBox = NewDefaultToolBoxWithCreateArtifact(b.config.EnableCreateArtifact)
+	b.toolBox = NewDefaultToolBox(&b.config.ToolBoxConfig)
 	return b
 }
 

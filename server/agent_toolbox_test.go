@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
+	config "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
 )
 
 func TestNewDefaultToolBox_IncludesInputRequiredTool(t *testing.T) {
-	toolBox := NewDefaultToolBox()
+	toolBox := NewDefaultToolBox(nil)
 
 	if !toolBox.HasTool("input_required") {
 		t.Error("Expected default toolbox to include 'input_required' tool")
@@ -41,7 +42,7 @@ func TestNewDefaultToolBox_IncludesInputRequiredTool(t *testing.T) {
 }
 
 func TestNewDefaultToolBox_GetTools(t *testing.T) {
-	toolBox := NewDefaultToolBox()
+	toolBox := NewDefaultToolBox(nil)
 	tools := toolBox.GetTools()
 
 	if len(tools) == 0 {
@@ -115,11 +116,11 @@ func TestNewToolBox_CreatesEmptyToolBox(t *testing.T) {
 	}
 }
 
-func TestNewDefaultToolBoxWithCreateArtifact_Disabled(t *testing.T) {
-	toolBox := NewDefaultToolBoxWithCreateArtifact(false)
+func TestNewDefaultToolBox_OnlyInputRequired(t *testing.T) {
+	toolBox := NewDefaultToolBox(nil)
 
 	if toolBox.HasTool("create_artifact") {
-		t.Error("Expected create_artifact tool to be disabled when CreateArtifact is false")
+		t.Error("Expected create_artifact tool to not be in default toolbox")
 	}
 
 	if !toolBox.HasTool("input_required") {
@@ -128,15 +129,17 @@ func TestNewDefaultToolBoxWithCreateArtifact_Disabled(t *testing.T) {
 
 	toolNames := toolBox.GetToolNames()
 	if len(toolNames) != 1 {
-		t.Errorf("Expected only 1 tool (input_required) when create_artifact is disabled, got %d", len(toolNames))
+		t.Errorf("Expected only 1 tool (input_required) in default toolbox, got %d", len(toolNames))
 	}
 }
 
-func TestNewDefaultToolBoxWithCreateArtifact_Enabled(t *testing.T) {
-	toolBox := NewDefaultToolBoxWithCreateArtifact(true)
+func TestDefaultToolBox_WithCreateArtifactAdded(t *testing.T) {
+	toolBox := NewDefaultToolBox(&config.ToolBoxConfig{
+		EnableCreateArtifact: true,
+	})
 
 	if !toolBox.HasTool("create_artifact") {
-		t.Error("Expected create_artifact tool to be enabled when CreateArtifact is true")
+		t.Error("Expected create_artifact tool to be present after adding")
 	}
 
 	if !toolBox.HasTool("input_required") {
@@ -145,12 +148,12 @@ func TestNewDefaultToolBoxWithCreateArtifact_Enabled(t *testing.T) {
 
 	toolNames := toolBox.GetToolNames()
 	if len(toolNames) != 2 {
-		t.Errorf("Expected 2 tools when create_artifact is enabled, got %d", len(toolNames))
+		t.Errorf("Expected 2 tools with create_artifact added, got %d", len(toolNames))
 	}
 }
 
 func TestNewDefaultToolBox_DefaultBehavior(t *testing.T) {
-	toolBox := NewDefaultToolBox()
+	toolBox := NewDefaultToolBox(nil)
 
 	if toolBox.HasTool("create_artifact") {
 		t.Error("Expected create_artifact tool to be disabled by default")
@@ -167,32 +170,35 @@ func TestNewDefaultToolBox_DefaultBehavior(t *testing.T) {
 }
 
 func TestCreateArtifactTool_GetTools(t *testing.T) {
-	toolBox := NewDefaultToolBoxWithCreateArtifact(true)
+	toolBox := NewDefaultToolBox(&config.ToolBoxConfig{
+		EnableCreateArtifact: true,
+	})
+
 	tools := toolBox.GetTools()
 
-	var createArtifactTool *sdk.FunctionObject
+	var foundTool *sdk.FunctionObject
 	for _, tool := range tools {
 		if tool.Function.Name == "create_artifact" {
-			createArtifactTool = &tool.Function
+			foundTool = &tool.Function
 			break
 		}
 	}
 
-	if createArtifactTool == nil {
+	if foundTool == nil {
 		t.Error("Expected to find create_artifact tool in GetTools() result")
 		return
 	}
 
-	if createArtifactTool.Description == nil || *createArtifactTool.Description == "" {
+	if foundTool.Description == nil || *foundTool.Description == "" {
 		t.Error("Expected create_artifact tool to have a description")
 	}
 
-	if createArtifactTool.Parameters == nil {
+	if foundTool.Parameters == nil {
 		t.Error("Expected create_artifact tool to have parameters")
 		return
 	}
 
-	params := map[string]any(*createArtifactTool.Parameters)
+	params := map[string]any(*foundTool.Parameters)
 	properties, ok := params["properties"].(map[string]any)
 	if !ok {
 		t.Error("Expected parameters to have properties")
@@ -341,25 +347,5 @@ func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
 	expectedError := "type must be 'url'"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
-	}
-}
-
-func TestDefaultToolBox_BackwardCompatibility(t *testing.T) {
-	defaultToolBox := NewDefaultToolBox()
-	disabledToolBox := NewDefaultToolBoxWithCreateArtifact(false)
-
-	defaultNames := defaultToolBox.GetToolNames()
-	disabledNames := disabledToolBox.GetToolNames()
-
-	if len(defaultNames) != len(disabledNames) {
-		t.Errorf("Expected same behavior: default toolbox has %d tools, disabled has %d", len(defaultNames), len(disabledNames))
-	}
-
-	if !defaultToolBox.HasTool("input_required") || !disabledToolBox.HasTool("input_required") {
-		t.Error("Expected both toolboxes to have input_required tool")
-	}
-
-	if defaultToolBox.HasTool("create_artifact") || disabledToolBox.HasTool("create_artifact") {
-		t.Error("Expected neither toolbox to have create_artifact tool when disabled")
 	}
 }
