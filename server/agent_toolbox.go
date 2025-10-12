@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
@@ -111,10 +110,10 @@ func NewDefaultToolBoxWithCreateArtifact(enableCreateArtifact bool) *DefaultTool
 					},
 					"filename": map[string]any{
 						"type":        "string",
-						"description": "Optional filename with extension (will be auto-detected if not provided)",
+						"description": "Filename with extension (e.g., 'report.json', 'data.csv', 'script.js')",
 					},
 				},
-				"required": []string{"content", "type"},
+				"required": []string{"content", "type", "filename"},
 			},
 			func(ctx context.Context, args map[string]any) (string, error) {
 				return executeCreateArtifact(ctx, args)
@@ -257,14 +256,13 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 	}
 
 	name, _ := args["name"].(string)
-	filename, _ := args["filename"].(string)
+	filename, ok := args["filename"].(string)
+	if !ok || filename == "" {
+		return "", fmt.Errorf("filename is required and must be a non-empty string")
+	}
 
 	if name == "" {
 		name = "Generated Content"
-	}
-
-	if filename == "" {
-		filename = detectFilename(content)
 	}
 
 	data := []byte(content)
@@ -300,57 +298,4 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 		"artifact_id": artifact.ArtifactID,
 		"filename":    filename,
 	})
-}
-
-// detectFilename attempts to detect appropriate filename from content
-func detectFilename(content string) string {
-	trimmed := strings.TrimSpace(content)
-
-	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
-		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
-		var js json.RawMessage
-		if json.Unmarshal([]byte(trimmed), &js) == nil {
-			return "content.json"
-		}
-	}
-
-	if strings.Contains(strings.ToLower(trimmed), "<html") ||
-		strings.Contains(strings.ToLower(trimmed), "<!doctype html") {
-		return "content.html"
-	}
-
-	if strings.HasPrefix(trimmed, "<?xml") ||
-		(strings.HasPrefix(trimmed, "<") && strings.Contains(trimmed, "xmlns")) {
-		return "content.xml"
-	}
-
-	if strings.Contains(trimmed, "{") && strings.Contains(trimmed, "}") &&
-		(strings.Contains(trimmed, "color:") || strings.Contains(trimmed, "font-") ||
-			strings.Contains(trimmed, "margin:") || strings.Contains(trimmed, "padding:")) {
-		return "content.css"
-	}
-
-	// JavaScript detection
-	if strings.Contains(trimmed, "function") || strings.Contains(trimmed, "const ") ||
-		strings.Contains(trimmed, "let ") || strings.Contains(trimmed, "var ") ||
-		strings.Contains(trimmed, "=>") {
-		return "content.js"
-	}
-
-	// Markdown detection
-	if strings.Contains(trimmed, "# ") || strings.Contains(trimmed, "## ") ||
-		strings.Contains(trimmed, "```") || strings.Contains(trimmed, "**") {
-		return "content.md"
-	}
-
-	// CSV detection
-	lines := strings.Split(trimmed, "\n")
-	if len(lines) > 0 {
-		firstLine := lines[0]
-		if strings.Contains(firstLine, ",") && len(strings.Split(firstLine, ",")) > 2 {
-			return "content.csv"
-		}
-	}
-
-	return "content.txt"
 }

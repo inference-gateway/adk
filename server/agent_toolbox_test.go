@@ -221,7 +221,7 @@ func TestCreateArtifactTool_GetTools(t *testing.T) {
 		return
 	}
 
-	expectedRequired := []string{"content", "type"}
+	expectedRequired := []string{"content", "type", "filename"}
 	for _, req := range expectedRequired {
 		found := false
 		for _, actual := range required {
@@ -239,8 +239,9 @@ func TestCreateArtifactTool_GetTools(t *testing.T) {
 func TestExecuteCreateArtifact_MissingContext(t *testing.T) {
 	ctx := context.Background()
 	args := map[string]any{
-		"content": "test content",
-		"type":    "url",
+		"content":  "test content",
+		"type":     "url",
+		"filename": "test.txt",
 	}
 
 	result, err := executeCreateArtifact(ctx, args)
@@ -286,7 +287,7 @@ func TestExecuteCreateArtifact_MissingContent(t *testing.T) {
 	}
 }
 
-func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
+func TestExecuteCreateArtifact_MissingFilename(t *testing.T) {
 	task := &types.Task{ID: "test-task"}
 	artifactHelper := NewArtifactHelper()
 
@@ -295,7 +296,36 @@ func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
 
 	args := map[string]any{
 		"content": "test content",
-		"type":    "invalid",
+		"type":    "url",
+	}
+
+	result, err := executeCreateArtifact(ctx, args)
+
+	if err == nil {
+		t.Error("Expected error when filename is missing")
+	}
+
+	if result != "" {
+		t.Errorf("Expected empty result on error, got: %s", result)
+	}
+
+	expectedError := "filename is required and must be a non-empty string"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
+	task := &types.Task{ID: "test-task"}
+	artifactHelper := NewArtifactHelper()
+
+	ctx := context.WithValue(context.Background(), TaskContextKey, task)
+	ctx = context.WithValue(ctx, ArtifactHelperContextKey, artifactHelper)
+
+	args := map[string]any{
+		"content":  "test content",
+		"type":     "invalid",
+		"filename": "test.txt",
 	}
 
 	result, err := executeCreateArtifact(ctx, args)
@@ -311,104 +341,6 @@ func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
 	expectedError := "type must be 'url'"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
-	}
-}
-
-func TestDetectFilename(t *testing.T) {
-	tests := []struct {
-		name     string
-		content  string
-		expected string
-	}{
-		{
-			name:     "JSON object",
-			content:  `{"key": "value", "number": 123}`,
-			expected: "content.json",
-		},
-		{
-			name:     "JSON array",
-			content:  `[{"key": "value"}, {"key": "value2"}]`,
-			expected: "content.json",
-		},
-		{
-			name:     "HTML document",
-			content:  `<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Hello</h1></body></html>`,
-			expected: "content.html",
-		},
-		{
-			name:     "HTML with tag",
-			content:  `<html><body>Hello World</body></html>`,
-			expected: "content.html",
-		},
-		{
-			name:     "XML document",
-			content:  `<?xml version="1.0" encoding="UTF-8"?><root><item>test</item></root>`,
-			expected: "content.xml",
-		},
-		{
-			name:     "XML with namespace",
-			content:  `<root xmlns="http://example.com"><item>test</item></root>`,
-			expected: "content.xml",
-		},
-		{
-			name:     "CSS styles",
-			content:  `.class { color: red; margin: 10px; }`,
-			expected: "content.css",
-		},
-		{
-			name:     "JavaScript function",
-			content:  `function test() { return "hello"; }`,
-			expected: "content.js",
-		},
-		{
-			name:     "JavaScript const",
-			content:  `const greeting = "hello world";`,
-			expected: "content.js",
-		},
-		{
-			name:     "JavaScript arrow function",
-			content:  `const test = () => { return "hello"; };`,
-			expected: "content.js",
-		},
-		{
-			name:     "Markdown with headers",
-			content:  `# Main Title\n## Subtitle\nSome **bold** text`,
-			expected: "content.md",
-		},
-		{
-			name:     "Markdown with code blocks",
-			content:  "Some text\n```javascript\nconsole.log('hello');\n```",
-			expected: "content.md",
-		},
-		{
-			name:     "CSV data",
-			content:  `name,age,city\nJohn,25,New York\nJane,30,San Francisco`,
-			expected: "content.csv",
-		},
-		{
-			name:     "Plain text",
-			content:  `This is just plain text without any special formatting.`,
-			expected: "content.txt",
-		},
-		{
-			name:     "Invalid JSON",
-			content:  `{"key": "value"`,
-			expected: "content.txt",
-		},
-		{
-			name:     "Empty content",
-			content:  ``,
-			expected: "content.txt",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := detectFilename(tt.content)
-			if result != tt.expected {
-				t.Errorf("detectFilename() = %v, want %v", result, tt.expected)
-			}
-		})
 	}
 }
 
