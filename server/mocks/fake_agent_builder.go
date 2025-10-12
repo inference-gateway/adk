@@ -42,10 +42,9 @@ type FakeAgentBuilder struct {
 	withConfigReturnsOnCall map[int]struct {
 		result1 server.AgentBuilder
 	}
-	WithDefaultToolBoxStub        func(*config.CapabilitiesConfig) server.AgentBuilder
+	WithDefaultToolBoxStub        func() server.AgentBuilder
 	withDefaultToolBoxMutex       sync.RWMutex
 	withDefaultToolBoxArgsForCall []struct {
-		arg1 *config.CapabilitiesConfig
 	}
 	withDefaultToolBoxReturns struct {
 		result1 server.AgentBuilder
@@ -282,18 +281,17 @@ func (fake *FakeAgentBuilder) WithConfigReturnsOnCall(i int, result1 server.Agen
 	}{result1}
 }
 
-func (fake *FakeAgentBuilder) WithDefaultToolBox(arg1 *config.CapabilitiesConfig) server.AgentBuilder {
+func (fake *FakeAgentBuilder) WithDefaultToolBox() server.AgentBuilder {
 	fake.withDefaultToolBoxMutex.Lock()
 	ret, specificReturn := fake.withDefaultToolBoxReturnsOnCall[len(fake.withDefaultToolBoxArgsForCall)]
 	fake.withDefaultToolBoxArgsForCall = append(fake.withDefaultToolBoxArgsForCall, struct {
-		arg1 *config.CapabilitiesConfig
-	}{arg1})
+	}{})
 	stub := fake.WithDefaultToolBoxStub
 	fakeReturns := fake.withDefaultToolBoxReturns
-	fake.recordInvocation("WithDefaultToolBox", []interface{}{arg1})
+	fake.recordInvocation("WithDefaultToolBox", []interface{}{})
 	fake.withDefaultToolBoxMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
@@ -307,17 +305,10 @@ func (fake *FakeAgentBuilder) WithDefaultToolBoxCallCount() int {
 	return len(fake.withDefaultToolBoxArgsForCall)
 }
 
-func (fake *FakeAgentBuilder) WithDefaultToolBoxCalls(stub func(*config.CapabilitiesConfig) server.AgentBuilder) {
+func (fake *FakeAgentBuilder) WithDefaultToolBoxCalls(stub func() server.AgentBuilder) {
 	fake.withDefaultToolBoxMutex.Lock()
 	defer fake.withDefaultToolBoxMutex.Unlock()
 	fake.WithDefaultToolBoxStub = stub
-}
-
-func (fake *FakeAgentBuilder) WithDefaultToolBoxArgsForCall(i int) *config.CapabilitiesConfig {
-	fake.withDefaultToolBoxMutex.RLock()
-	defer fake.withDefaultToolBoxMutex.RUnlock()
-	argsForCall := fake.withDefaultToolBoxArgsForCall[i]
-	return argsForCall.arg1
 }
 
 func (fake *FakeAgentBuilder) WithDefaultToolBoxReturns(result1 server.AgentBuilder) {

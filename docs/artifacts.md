@@ -187,6 +187,7 @@ agent := server.NewAgentBuilder(logger).
 When enabled, the LLM can autonomously use the `create_artifact` tool during task processing:
 
 **Tool Parameters:**
+
 - `content` (required): The text content to save as an artifact file
 - `type` (required): Must be "url" - indicates the artifact will be available as a downloadable URL
 - `name` (optional): Name for the artifact (auto-generated if not provided)
@@ -194,6 +195,7 @@ When enabled, the LLM can autonomously use the `create_artifact` tool during tas
 
 **Auto File-Type Detection:**
 The tool automatically detects file types based on content:
+
 - JSON objects/arrays → `.json`
 - HTML documents → `.html`
 - XML documents → `.xml`
@@ -225,6 +227,7 @@ When the tool is enabled, an LLM can create artifacts like this:
 ```
 
 This will automatically:
+
 1. Detect the content as JSON and use filename `content.json`
 2. Create an artifact with the provided content
 3. Store it on the filesystem via the artifact storage provider

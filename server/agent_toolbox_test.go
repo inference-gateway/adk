@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/inference-gateway/adk/server/config"
 	sdk "github.com/inference-gateway/sdk"
 )
 
@@ -115,76 +114,64 @@ func TestNewToolBox_CreatesEmptyToolBox(t *testing.T) {
 	}
 }
 
-func TestNewDefaultToolBoxWithCapabilities_CreateArtifactDisabled(t *testing.T) {
-	capabilities := &config.CapabilitiesConfig{
-		CreateArtifact: false,
-	}
-	
-	toolBox := NewDefaultToolBoxWithCapabilities(capabilities)
-	
+func TestNewDefaultToolBoxWithCreateArtifact_Disabled(t *testing.T) {
+	toolBox := NewDefaultToolBoxWithCreateArtifact(false)
+
 	// Should only have input_required tool
 	if toolBox.HasTool("create_artifact") {
 		t.Error("Expected create_artifact tool to be disabled when CreateArtifact is false")
 	}
-	
+
 	if !toolBox.HasTool("input_required") {
 		t.Error("Expected input_required tool to always be present")
 	}
-	
+
 	toolNames := toolBox.GetToolNames()
 	if len(toolNames) != 1 {
 		t.Errorf("Expected only 1 tool (input_required) when create_artifact is disabled, got %d", len(toolNames))
 	}
 }
 
-func TestNewDefaultToolBoxWithCapabilities_CreateArtifactEnabled(t *testing.T) {
-	capabilities := &config.CapabilitiesConfig{
-		CreateArtifact: true,
-	}
-	
-	toolBox := NewDefaultToolBoxWithCapabilities(capabilities)
-	
+func TestNewDefaultToolBoxWithCreateArtifact_Enabled(t *testing.T) {
+	toolBox := NewDefaultToolBoxWithCreateArtifact(true)
+
 	// Should have both tools
 	if !toolBox.HasTool("create_artifact") {
 		t.Error("Expected create_artifact tool to be enabled when CreateArtifact is true")
 	}
-	
+
 	if !toolBox.HasTool("input_required") {
 		t.Error("Expected input_required tool to always be present")
 	}
-	
+
 	toolNames := toolBox.GetToolNames()
 	if len(toolNames) != 2 {
 		t.Errorf("Expected 2 tools when create_artifact is enabled, got %d", len(toolNames))
 	}
 }
 
-func TestNewDefaultToolBoxWithCapabilities_NilCapabilities(t *testing.T) {
-	toolBox := NewDefaultToolBoxWithCapabilities(nil)
-	
-	// Should only have input_required tool when capabilities is nil
+func TestNewDefaultToolBox_DefaultBehavior(t *testing.T) {
+	toolBox := NewDefaultToolBox()
+
+	// Should only have input_required tool by default
 	if toolBox.HasTool("create_artifact") {
-		t.Error("Expected create_artifact tool to be disabled when capabilities is nil")
+		t.Error("Expected create_artifact tool to be disabled by default")
 	}
-	
+
 	if !toolBox.HasTool("input_required") {
 		t.Error("Expected input_required tool to always be present")
 	}
-	
+
 	toolNames := toolBox.GetToolNames()
 	if len(toolNames) != 1 {
-		t.Errorf("Expected only 1 tool (input_required) when capabilities is nil, got %d", len(toolNames))
+		t.Errorf("Expected only 1 tool (input_required) by default, got %d", len(toolNames))
 	}
 }
 
 func TestCreateArtifactTool_GetTools(t *testing.T) {
-	capabilities := &config.CapabilitiesConfig{
-		CreateArtifact: true,
-	}
-	
-	toolBox := NewDefaultToolBoxWithCapabilities(capabilities)
+	toolBox := NewDefaultToolBoxWithCreateArtifact(true)
 	tools := toolBox.GetTools()
-	
+
 	var createArtifactTool *sdk.FunctionObject
 	for _, tool := range tools {
 		if tool.Function.Name == "create_artifact" {
@@ -192,21 +179,21 @@ func TestCreateArtifactTool_GetTools(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if createArtifactTool == nil {
 		t.Error("Expected to find create_artifact tool in GetTools() result")
 		return
 	}
-	
+
 	if createArtifactTool.Description == nil || *createArtifactTool.Description == "" {
 		t.Error("Expected create_artifact tool to have a description")
 	}
-	
+
 	if createArtifactTool.Parameters == nil {
 		t.Error("Expected create_artifact tool to have parameters")
 		return
 	}
-	
+
 	// Check parameters structure
 	params := map[string]any(*createArtifactTool.Parameters)
 	properties, ok := params["properties"].(map[string]any)
@@ -214,33 +201,33 @@ func TestCreateArtifactTool_GetTools(t *testing.T) {
 		t.Error("Expected parameters to have properties")
 		return
 	}
-	
+
 	// Check required content parameter
 	if _, exists := properties["content"]; !exists {
 		t.Error("Expected create_artifact tool to have content parameter")
 	}
-	
+
 	// Check required type parameter
 	if _, exists := properties["type"]; !exists {
 		t.Error("Expected create_artifact tool to have type parameter")
 	}
-	
+
 	// Check optional parameters
 	if _, exists := properties["name"]; !exists {
 		t.Error("Expected create_artifact tool to have name parameter")
 	}
-	
+
 	if _, exists := properties["filename"]; !exists {
 		t.Error("Expected create_artifact tool to have filename parameter")
 	}
-	
+
 	// Check required fields
 	required, ok := params["required"].([]string)
 	if !ok {
 		t.Error("Expected parameters to have required array")
 		return
 	}
-	
+
 	expectedRequired := []string{"content", "type"}
 	for _, req := range expectedRequired {
 		found := false
@@ -262,17 +249,17 @@ func TestExecuteCreateArtifact_MissingContext(t *testing.T) {
 		"content": "test content",
 		"type":    "url",
 	}
-	
+
 	result, err := executeCreateArtifact(ctx, args)
-	
+
 	if err == nil {
 		t.Error("Expected error when task manager not found in context")
 	}
-	
+
 	if result != "" {
 		t.Errorf("Expected empty result on error, got: %s", result)
 	}
-	
+
 	expectedError := "task manager not found in context"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
@@ -283,24 +270,24 @@ func TestExecuteCreateArtifact_MissingContent(t *testing.T) {
 	// Create mock task manager and artifact helper
 	taskManager := &DefaultTaskManager{}
 	artifactHelper := NewArtifactHelper()
-	
+
 	ctx := context.WithValue(context.Background(), "taskManager", taskManager)
 	ctx = context.WithValue(ctx, "artifactHelper", artifactHelper)
-	
+
 	args := map[string]any{
 		"type": "url",
 	}
-	
+
 	result, err := executeCreateArtifact(ctx, args)
-	
+
 	if err == nil {
 		t.Error("Expected error when content is missing")
 	}
-	
+
 	if result != "" {
 		t.Errorf("Expected empty result on error, got: %s", result)
 	}
-	
+
 	expectedError := "content is required and must be a non-empty string"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
@@ -311,25 +298,25 @@ func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
 	// Create mock task manager and artifact helper
 	taskManager := &DefaultTaskManager{}
 	artifactHelper := NewArtifactHelper()
-	
+
 	ctx := context.WithValue(context.Background(), "taskManager", taskManager)
 	ctx = context.WithValue(ctx, "artifactHelper", artifactHelper)
-	
+
 	args := map[string]any{
 		"content": "test content",
 		"type":    "invalid",
 	}
-	
+
 	result, err := executeCreateArtifact(ctx, args)
-	
+
 	if err == nil {
 		t.Error("Expected error when type is invalid")
 	}
-	
+
 	if result != "" {
 		t.Errorf("Expected empty result on error, got: %s", result)
 	}
-	
+
 	expectedError := "type must be 'url'"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
@@ -423,7 +410,7 @@ func TestDetectFilename(t *testing.T) {
 			expected: "content.txt",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := detectFilename(tt.content)
@@ -437,24 +424,24 @@ func TestDetectFilename(t *testing.T) {
 func TestDefaultToolBox_BackwardCompatibility(t *testing.T) {
 	// Test that the existing NewDefaultToolBox function still works
 	// and behaves the same as before (only input_required tool)
-	oldToolBox := NewDefaultToolBox()
-	newToolBox := NewDefaultToolBoxWithCapabilities(nil)
-	
+	defaultToolBox := NewDefaultToolBox()
+	disabledToolBox := NewDefaultToolBoxWithCreateArtifact(false)
+
 	// Both should have the same number of tools
-	oldNames := oldToolBox.GetToolNames()
-	newNames := newToolBox.GetToolNames()
-	
-	if len(oldNames) != len(newNames) {
-		t.Errorf("Expected backward compatibility: old toolbox has %d tools, new has %d", len(oldNames), len(newNames))
+	defaultNames := defaultToolBox.GetToolNames()
+	disabledNames := disabledToolBox.GetToolNames()
+
+	if len(defaultNames) != len(disabledNames) {
+		t.Errorf("Expected same behavior: default toolbox has %d tools, disabled has %d", len(defaultNames), len(disabledNames))
 	}
-	
+
 	// Both should have input_required tool
-	if !oldToolBox.HasTool("input_required") || !newToolBox.HasTool("input_required") {
+	if !defaultToolBox.HasTool("input_required") || !disabledToolBox.HasTool("input_required") {
 		t.Error("Expected both toolboxes to have input_required tool")
 	}
-	
+
 	// Neither should have create_artifact tool
-	if oldToolBox.HasTool("create_artifact") || newToolBox.HasTool("create_artifact") {
+	if defaultToolBox.HasTool("create_artifact") || disabledToolBox.HasTool("create_artifact") {
 		t.Error("Expected neither toolbox to have create_artifact tool when disabled")
 	}
 }

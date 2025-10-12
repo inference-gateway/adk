@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/inference-gateway/adk/server/config"
 	"github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
 )
@@ -56,11 +55,11 @@ func NewToolBox() *DefaultToolBox {
 
 // NewDefaultToolBox creates a new DefaultToolBox with built-in tools
 func NewDefaultToolBox() *DefaultToolBox {
-	return NewDefaultToolBoxWithCapabilities(nil)
+	return NewDefaultToolBoxWithCreateArtifact(false)
 }
 
-// NewDefaultToolBoxWithCapabilities creates a new DefaultToolBox with built-in tools based on capabilities configuration
-func NewDefaultToolBoxWithCapabilities(capabilities *config.CapabilitiesConfig) *DefaultToolBox {
+// NewDefaultToolBoxWithCreateArtifact creates a new DefaultToolBox with built-in tools and optional CreateArtifact tool
+func NewDefaultToolBoxWithCreateArtifact(enableCreateArtifact bool) *DefaultToolBox {
 	toolBox := NewToolBox()
 
 	// Always include input_required tool
@@ -90,7 +89,7 @@ func NewDefaultToolBoxWithCapabilities(capabilities *config.CapabilitiesConfig) 
 	toolBox.AddTool(inputRequiredTool)
 
 	// Add CreateArtifact tool if enabled
-	if capabilities != nil && capabilities.CreateArtifact {
+	if enableCreateArtifact {
 		createArtifactTool := NewBasicTool(
 			"create_artifact",
 			"Create an artifact file and make it available via downloadable URL. Use this tool to save important content, outputs, or generated files that the user might want to access or download. The artifact will be stored on the filesystem and made available through a URL.",
@@ -277,7 +276,7 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 	// Create artifact using the helper
 	data := []byte(content)
 	mimeType := artifactHelper.GetMimeTypeFromExtension(filename)
-	
+
 	artifact := artifactHelper.CreateFileArtifactFromBytes(
 		name,
 		fmt.Sprintf("Artifact created by create_artifact tool: %s", name),
@@ -333,7 +332,7 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 func detectFilename(content string) string {
 	// Clean content for analysis
 	trimmed := strings.TrimSpace(content)
-	
+
 	// JSON detection
 	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
 		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
@@ -344,21 +343,21 @@ func detectFilename(content string) string {
 	}
 
 	// HTML detection
-	if strings.Contains(strings.ToLower(trimmed), "<html") || 
+	if strings.Contains(strings.ToLower(trimmed), "<html") ||
 		strings.Contains(strings.ToLower(trimmed), "<!doctype html") {
 		return "content.html"
 	}
 
 	// XML detection
-	if strings.HasPrefix(trimmed, "<?xml") || 
+	if strings.HasPrefix(trimmed, "<?xml") ||
 		(strings.HasPrefix(trimmed, "<") && strings.Contains(trimmed, "xmlns")) {
 		return "content.xml"
 	}
 
 	// CSS detection
-	if strings.Contains(trimmed, "{") && strings.Contains(trimmed, "}") && 
-		(strings.Contains(trimmed, "color:") || strings.Contains(trimmed, "font-") || 
-		 strings.Contains(trimmed, "margin:") || strings.Contains(trimmed, "padding:")) {
+	if strings.Contains(trimmed, "{") && strings.Contains(trimmed, "}") &&
+		(strings.Contains(trimmed, "color:") || strings.Contains(trimmed, "font-") ||
+			strings.Contains(trimmed, "margin:") || strings.Contains(trimmed, "padding:")) {
 		return "content.css"
 	}
 
