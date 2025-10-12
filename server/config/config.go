@@ -26,6 +26,7 @@ type Config struct {
 	ServerConfig                  ServerConfig        `env:",prefix=SERVER_"`
 	TelemetryConfig               TelemetryConfig     `env:",prefix=TELEMETRY_"`
 	ArtifactsConfig               ArtifactsConfig     `env:",prefix=ARTIFACTS_"`
+	SkillsConfig                  SkillsConfig        `env:",prefix=SKILLS_"`
 }
 
 // AgentConfig holds agent-specific configuration
