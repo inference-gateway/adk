@@ -78,6 +78,7 @@ tasks:
       - task: generate:mock:llm-client
       - task: generate:mock:toolbox
       - task: generate:mock:artifact-storage-provider
+      - task: generate:mock:artifact-service
 
   generate:mocks:clean:
     desc: 'Clean and regenerate all mocks'
@@ -255,6 +256,15 @@ tasks:
       - server/mocks/fake_artifact_storage_provider.go
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_artifact_storage_provider.go server ArtifactStorageProvider
+
+  generate:mock:artifact-service:
+    desc: 'Generate mock for ArtifactService interface'
+    sources:
+      - server/artifact_service.go
+    generates:
+      - server/mocks/fake_artifact_service.go
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_artifact_service.go server ArtifactService
 
   precommit:install:
     desc: 'Install the pre-commit hook'

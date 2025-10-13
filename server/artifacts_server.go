@@ -20,38 +20,33 @@ type ArtifactsServer interface {
 
 	// Stop stops the artifacts server
 	Stop(ctx context.Context) error
-
-	// GetStorage returns the storage provider
-	GetStorage() ArtifactStorageProvider
-
-	// SetStorage sets the storage provider
-	SetStorage(storage ArtifactStorageProvider)
 }
 
 // ArtifactsServerImpl implements the ArtifactsServer interface
 type ArtifactsServerImpl struct {
 	config        *config.ArtifactsConfig
 	logger        *zap.Logger
-	storage       ArtifactStorageProvider
+	artifactSvc   ArtifactService
 	server        *http.Server
 	router        *gin.Engine
 	cleanupTicker *time.Ticker
 	stopCleanup   chan struct{}
 }
 
-// NewArtifactsServer creates a new artifacts server instance
-func NewArtifactsServer(cfg *config.ArtifactsConfig, logger *zap.Logger) ArtifactsServer {
+// NewArtifactsServer creates a new artifacts server instance with the provided service
+func NewArtifactsServer(cfg *config.ArtifactsConfig, logger *zap.Logger, artifactSvc ArtifactService) ArtifactsServer {
 	return &ArtifactsServerImpl{
 		config:      cfg,
 		logger:      logger,
+		artifactSvc: artifactSvc,
 		stopCleanup: make(chan struct{}),
 	}
 }
 
 // Start starts the artifacts server
 func (s *ArtifactsServerImpl) Start(ctx context.Context) error {
-	if s.storage == nil {
-		return fmt.Errorf("storage provider must be set before starting artifacts server")
+	if s.artifactSvc == nil {
+		return fmt.Errorf("artifact service must be set before starting artifacts server")
 	}
 
 	s.setupRouter()
@@ -113,24 +108,14 @@ func (s *ArtifactsServerImpl) Stop(ctx context.Context) error {
 		return err
 	}
 
-	if s.storage != nil {
-		if err := s.storage.Close(); err != nil {
-			s.logger.Error("failed to close storage provider", zap.Error(err))
+	if s.artifactSvc != nil {
+		if err := s.artifactSvc.Close(); err != nil {
+			s.logger.Error("failed to close artifact service", zap.Error(err))
 		}
 	}
 
 	s.logger.Info("artifacts server stopped")
 	return nil
-}
-
-// GetStorage returns the storage provider
-func (s *ArtifactsServerImpl) GetStorage() ArtifactStorageProvider {
-	return s.storage
-}
-
-// SetStorage sets the storage provider
-func (s *ArtifactsServerImpl) SetStorage(storage ArtifactStorageProvider) {
-	s.storage = storage
 }
 
 // setupRouter configures the HTTP routes
@@ -183,7 +168,7 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	exists, err := s.storage.Exists(ctx, artifactID, filename)
+	exists, err := s.artifactSvc.Exists(ctx, artifactID, filename)
 	if err != nil {
 		s.logger.Error("failed to check artifact existence",
 			zap.String("artifact_id", artifactID),
@@ -202,7 +187,7 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 		return
 	}
 
-	reader, err := s.storage.Retrieve(ctx, artifactID, filename)
+	reader, err := s.artifactSvc.Retrieve(ctx, artifactID, filename)
 	if err != nil {
 		s.logger.Error("failed to retrieve artifact",
 			zap.String("artifact_id", artifactID),
@@ -274,7 +259,7 @@ func (s *ArtifactsServerImpl) performCleanup(ctx context.Context) {
 	totalRemoved := 0
 
 	if retentionConfig.MaxAge > 0 {
-		removed, err := s.storage.CleanupExpiredArtifacts(ctx, retentionConfig.MaxAge)
+		removed, err := s.artifactSvc.CleanupExpiredArtifacts(ctx, retentionConfig.MaxAge)
 		if err != nil {
 			s.logger.Error("failed to cleanup expired artifacts", zap.Error(err))
 		} else {
@@ -286,7 +271,7 @@ func (s *ArtifactsServerImpl) performCleanup(ctx context.Context) {
 	}
 
 	if retentionConfig.MaxArtifacts > 0 {
-		removed, err := s.storage.CleanupOldestArtifacts(ctx, retentionConfig.MaxArtifacts)
+		removed, err := s.artifactSvc.CleanupOldestArtifacts(ctx, retentionConfig.MaxArtifacts)
 		if err != nil {
 			s.logger.Error("failed to cleanup oldest artifacts", zap.Error(err))
 		} else {

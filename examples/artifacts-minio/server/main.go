@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -34,14 +33,14 @@ type Config struct {
 type ArtifactsTaskHandler struct {
 	logger          *zap.Logger
 	agent           server.OpenAICompatibleAgent
-	artifactsServer server.ArtifactsServer
+	artifactService server.ArtifactService
 }
 
 // NewArtifactsTaskHandler creates a new artifacts task handler
-func NewArtifactsTaskHandler(logger *zap.Logger, artifactsServer server.ArtifactsServer) *ArtifactsTaskHandler {
+func NewArtifactsTaskHandler(logger *zap.Logger, artifactService server.ArtifactService) *ArtifactsTaskHandler {
 	return &ArtifactsTaskHandler{
 		logger:          logger,
-		artifactsServer: artifactsServer,
+		artifactService: artifactService,
 	}
 }
 
@@ -137,38 +136,25 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	// Generate report content
 	artifactContent := createReportContent(userText, fileName, fileContent, task.ID)
 
-	// Store the artifact using the artifacts server with MinIO storage
-	artifactID := task.ID
+	// Create artifact using artifact service (with MinIO storage)
 	filename := "analysis_report.md"
+	mimeType := "text/markdown"
 
-	storage := h.artifactsServer.GetStorage()
-	url, err := storage.Store(ctx, artifactID, filename, strings.NewReader(artifactContent))
+	artifact, err := h.artifactService.CreateFileArtifact(
+		"Analysis Report",
+		"A detailed analysis report based on your request, stored in MinIO cloud storage",
+		filename,
+		[]byte(artifactContent),
+		&mimeType,
+	)
 	if err != nil {
-		h.logger.Error("failed to store artifact in MinIO", zap.Error(err))
-		return nil, fmt.Errorf("failed to store artifact in MinIO: %w", err)
+		h.logger.Error("failed to create artifact in MinIO", zap.Error(err))
+		return nil, fmt.Errorf("failed to create artifact in MinIO: %w", err)
 	}
 
-	h.logger.Info("artifact stored successfully in MinIO",
-		zap.String("artifact_id", artifactID),
-		zap.String("filename", filename),
-		zap.String("url", url))
-
-	// Create artifact object for the response
-	artifact := types.Artifact{
-		ArtifactID:  artifactID,
-		Name:        stringPtr("Analysis Report"),
-		Description: stringPtr("A detailed analysis report based on your request, stored in MinIO cloud storage"),
-		Parts: []types.Part{
-			types.FilePart{
-				Kind: "file",
-				File: types.FileWithUri{
-					URI:      url,
-					MIMEType: stringPtr("text/markdown"),
-					Name:     stringPtr(filename),
-				},
-			},
-		},
-	}
+	h.logger.Info("artifact created successfully in MinIO",
+		zap.String("artifact_id", artifact.ArtifactID),
+		zap.String("filename", filename))
 
 	// Create response message with artifact
 	responseText := fmt.Sprintf("I've created an analysis report for your request: \"%s\". The report has been saved as an artifact in MinIO cloud storage and is available for download.", userText)
@@ -203,11 +189,6 @@ func (h *ArtifactsTaskHandler) SetAgent(agent server.OpenAICompatibleAgent) {
 // GetAgent returns the configured OpenAI-compatible agent
 func (h *ArtifactsTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 	return h.agent
-}
-
-// stringPtr returns a pointer to the given string
-func stringPtr(s string) *string {
-	return &s
 }
 
 // Artifacts MinIO Example
@@ -306,7 +287,13 @@ func main() {
 		zap.Bool("debug", cfg.A2A.Debug),
 	)
 
-	// Create artifacts server with MinIO storage
+	// Step 1: Create artifact service (encapsulates storage)
+	artifactService, err := server.NewArtifactService(&cfg.A2A.ArtifactsConfig, logger)
+	if err != nil {
+		logger.Fatal("failed to create artifact service", zap.Error(err))
+	}
+
+	// Step 2: Create artifacts server with MinIO storage
 	artifactsServer, err := server.
 		NewArtifactsServerBuilder(&cfg.A2A.ArtifactsConfig, logger).
 		Build()
@@ -314,11 +301,12 @@ func main() {
 		logger.Fatal("failed to create artifacts server with MinIO storage", zap.Error(err))
 	}
 
-	// Create task handler with artifacts support
-	taskHandler := NewArtifactsTaskHandler(logger, artifactsServer)
+	// Create task handler with artifact service support
+	taskHandler := NewArtifactsTaskHandler(logger, artifactService)
 
-	// Build A2A server
+	// Step 3: Build A2A server with artifact service injected
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
+		WithArtifactService(artifactService).
 		WithBackgroundTaskHandler(taskHandler).
 		WithAgentCard(types.AgentCard{
 			Name:            cfg.A2A.AgentName,

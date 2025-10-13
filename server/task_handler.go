@@ -12,12 +12,12 @@ import (
 	zap "go.uber.org/zap"
 )
 
-// Context keys for injecting Task and ArtifactHelper into tool execution
+// Context keys for injecting dependencies into tool execution
 type ContextKey string
 
 const (
-	TaskContextKey           ContextKey = "task"
-	ArtifactHelperContextKey ContextKey = "artifactHelper"
+	TaskContextKey            ContextKey = "task"
+	ArtifactServiceContextKey ContextKey = "artifactService"
 )
 
 // A2AProtocolHandler defines the interface for handling A2A protocol requests
@@ -82,9 +82,9 @@ type StreamableTaskHandler interface {
 // DefaultBackgroundTaskHandler implements the TaskHandler interface optimized for background scenarios
 // This handler automatically handles input-required pausing without requiring custom implementation
 type DefaultBackgroundTaskHandler struct {
-	logger  *zap.Logger
-	agent   OpenAICompatibleAgent
-	storage ArtifactStorageProvider
+	logger          *zap.Logger
+	agent           OpenAICompatibleAgent
+	artifactService ArtifactService
 }
 
 // NewDefaultBackgroundTaskHandler creates a new default background task handler
@@ -129,12 +129,10 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	artifactHelper := NewArtifactHelper()
-	if bth.storage != nil {
-		artifactHelper.SetStorage(bth.storage)
-	}
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
-	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
+	if bth.artifactService != nil {
+		toolCtx = context.WithValue(toolCtx, ArtifactServiceContextKey, bth.artifactService)
+	}
 
 	eventChan, err := bth.agent.RunWithStream(toolCtx, messages)
 	if err != nil {
@@ -285,9 +283,9 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 // DefaultStreamingTaskHandler implements the TaskHandler interface optimized for streaming scenarios
 // This handler automatically handles input-required pausing with streaming-aware behavior
 type DefaultStreamingTaskHandler struct {
-	logger  *zap.Logger
-	agent   OpenAICompatibleAgent
-	storage ArtifactStorageProvider
+	logger          *zap.Logger
+	agent           OpenAICompatibleAgent
+	artifactService ArtifactService
 }
 
 // NewDefaultStreamingTaskHandler creates a new default streaming task handler
@@ -328,12 +326,10 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	artifactHelper := NewArtifactHelper()
-	if sth.storage != nil {
-		artifactHelper.SetStorage(sth.storage)
-	}
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
-	toolCtx = context.WithValue(toolCtx, ArtifactHelperContextKey, artifactHelper)
+	if sth.artifactService != nil {
+		toolCtx = context.WithValue(toolCtx, ArtifactServiceContextKey, sth.artifactService)
+	}
 
 	return sth.agent.RunWithStream(toolCtx, messages)
 }

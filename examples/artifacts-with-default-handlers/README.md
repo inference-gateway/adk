@@ -1,6 +1,6 @@
 # Artifacts with Default Handlers Example
 
-This example demonstrates how to use artifacts with an **AI-powered agent and default task handlers**. It showcases automatic artifact extraction functionality where AI agents use tools to create artifacts via `ArtifactHelper.CreateFileArtifactFromBytes()` and the default handlers automatically extract and attach them to tasks. This example requires an LLM provider configuration.
+This example demonstrates how to use artifacts with an **AI-powered agent and default task handlers**. It showcases automatic artifact extraction functionality where AI agents use tools to create artifacts via `ArtifactService.CreateFileArtifact()` and the default handlers automatically extract and attach them to tasks. This example requires an LLM provider configuration.
 
 ## Table of Contents
 
@@ -110,14 +110,15 @@ The key difference from other artifact examples is that this uses **default task
 ```go
 serverBuilder := server.NewA2AServerBuilder(cfg.A2A, logger).
     WithAgent(agent).
+    WithArtifactService(artifactService).  // Inject artifact service
     WithDefaultTaskHandlers()  // <-- Automatic artifact extraction
 ```
 
-Tools create artifacts:
+Tools create artifacts using the artifact service from context:
 
 ```go
-artifactHelper := server.NewArtifactHelper()
-artifact := artifactHelper.CreateFileArtifactFromBytes(
+artifactService := ctx.Value(server.ArtifactServiceContextKey).(server.ArtifactService)
+artifact, err := artifactService.CreateFileArtifact(
     "Report", "Analysis report", "report.md", data, &mimeType)
 ```
 
@@ -313,8 +314,8 @@ docker compose run --rm a2a-debugger tasks list --include-artifacts
 The example demonstrates how artifacts created by tools are automatically:
 
 1. **Extracted** from tool execution results as the agent appends messages to `task.History`
-2. **Validated** using `ArtifactHelper.ValidateArtifact()`
-3. **Attached** to the task using `ArtifactHelper.AddArtifactToTask()`
+2. **Validated** using `ArtifactService.ValidateArtifact()`
+3. **Attached** to the task using `ArtifactService.AddArtifactToTask()`
 4. **Returned** in the response without any custom handler logic
 
 This shows the power of the default handlers - they handle all the artifact extraction automatically, so you can focus on creating useful tools that generate artifacts.

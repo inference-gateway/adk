@@ -235,9 +235,9 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 		return "", fmt.Errorf("task not found in context")
 	}
 
-	artifactHelper, ok := ctx.Value(ArtifactHelperContextKey).(*ArtifactHelper)
-	if !ok {
-		return "", fmt.Errorf("artifact helper not found in context")
+	artifactService, ok := ctx.Value(ArtifactServiceContextKey).(ArtifactService)
+	if !ok || artifactService == nil {
+		return "", fmt.Errorf("artifact service not found in context - cannot create URL-based artifacts")
 	}
 
 	content, ok := args["content"].(string)
@@ -250,28 +250,30 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 		return "", fmt.Errorf("type must be 'url'")
 	}
 
-	name, _ := args["name"].(string)
 	filename, ok := args["filename"].(string)
 	if !ok || filename == "" {
 		return "", fmt.Errorf("filename is required and must be a non-empty string")
 	}
 
+	name, _ := args["name"].(string)
 	if name == "" {
 		name = "Generated Content"
 	}
 
 	data := []byte(content)
-	mimeType := artifactHelper.GetMimeTypeFromExtension(filename)
-
-	artifact := artifactHelper.CreateFileArtifactFromBytes(
+	mimeType := artifactService.GetMimeTypeFromExtension(filename)
+	artifact, err := artifactService.CreateFileArtifact(
 		name,
 		fmt.Sprintf("Artifact created by create_artifact tool: %s", name),
 		filename,
 		data,
 		mimeType,
 	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create artifact: %w", err)
+	}
 
-	artifactHelper.AddArtifactToTask(task, artifact)
+	artifactService.AddArtifactToTask(task, artifact)
 
 	if len(artifact.Parts) > 0 {
 		if filePart, ok := artifact.Parts[0].(types.FilePart); ok {

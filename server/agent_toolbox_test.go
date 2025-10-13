@@ -268,10 +268,13 @@ func TestExecuteCreateArtifact_MissingContext(t *testing.T) {
 
 func TestExecuteCreateArtifact_MissingContent(t *testing.T) {
 	task := &types.Task{ID: "test-task"}
-	artifactHelper := NewArtifactHelper()
+	artifactService := &ArtifactServiceImpl{
+		storage: nil,
+		logger:  nil,
+	}
 
 	ctx := context.WithValue(context.Background(), TaskContextKey, task)
-	ctx = context.WithValue(ctx, ArtifactHelperContextKey, artifactHelper)
+	ctx = context.WithValue(ctx, ArtifactServiceContextKey, artifactService)
 
 	args := map[string]any{
 		"type": "url",
@@ -295,10 +298,13 @@ func TestExecuteCreateArtifact_MissingContent(t *testing.T) {
 
 func TestExecuteCreateArtifact_MissingFilename(t *testing.T) {
 	task := &types.Task{ID: "test-task"}
-	artifactHelper := NewArtifactHelper()
+	artifactService := &ArtifactServiceImpl{
+		storage: nil,
+		logger:  nil,
+	}
 
 	ctx := context.WithValue(context.Background(), TaskContextKey, task)
-	ctx = context.WithValue(ctx, ArtifactHelperContextKey, artifactHelper)
+	ctx = context.WithValue(ctx, ArtifactServiceContextKey, artifactService)
 
 	args := map[string]any{
 		"content": "test content",
@@ -323,10 +329,13 @@ func TestExecuteCreateArtifact_MissingFilename(t *testing.T) {
 
 func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
 	task := &types.Task{ID: "test-task"}
-	artifactHelper := NewArtifactHelper()
+	artifactService := &ArtifactServiceImpl{
+		storage: nil,
+		logger:  nil,
+	}
 
 	ctx := context.WithValue(context.Background(), TaskContextKey, task)
-	ctx = context.WithValue(ctx, ArtifactHelperContextKey, artifactHelper)
+	ctx = context.WithValue(ctx, ArtifactServiceContextKey, artifactService)
 
 	args := map[string]any{
 		"content":  "test content",
@@ -345,6 +354,33 @@ func TestExecuteCreateArtifact_InvalidType(t *testing.T) {
 	}
 
 	expectedError := "type must be 'url'"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+func TestExecuteCreateArtifact_MissingService(t *testing.T) {
+	task := &types.Task{ID: "test-task"}
+
+	ctx := context.WithValue(context.Background(), TaskContextKey, task)
+
+	args := map[string]any{
+		"content":  "test content",
+		"type":     "url",
+		"filename": "test.txt",
+	}
+
+	result, err := executeCreateArtifact(ctx, args)
+
+	if err == nil {
+		t.Error("Expected error when service is not configured")
+	}
+
+	if result != "" {
+		t.Errorf("Expected empty result on error, got: %s", result)
+	}
+
+	expectedError := "artifact service not found in context - cannot create URL-based artifacts"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
 	}

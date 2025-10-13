@@ -77,7 +77,6 @@ func main() {
 				},
 				StorageConfig: serverConfig.ArtifactsStorageConfig{
 					Provider: "filesystem",
-					BasePath: "./artifacts",
 				},
 			},
 		},
@@ -109,12 +108,21 @@ func main() {
 		zap.String("agent_name", cfg.A2A.AgentName),
 		zap.String("a2a_port", cfg.A2A.ServerConfig.Port),
 		zap.String("artifacts_port", cfg.A2A.ArtifactsConfig.ServerConfig.Port),
+		zap.String("artifacts_storage_path", cfg.A2A.ArtifactsConfig.StorageConfig.BasePath),
+		zap.String("artifacts_storage_provider", cfg.A2A.ArtifactsConfig.StorageConfig.Provider),
+		zap.Bool("artifacts_enabled", cfg.A2A.ArtifactsConfig.Enable),
 		zap.Bool("create_artifact_tool_enabled", cfg.A2A.AgentConfig.ToolBoxConfig.EnableCreateArtifact),
 		zap.String("provider", cfg.A2A.AgentConfig.Provider),
 		zap.String("model", cfg.A2A.AgentConfig.Model),
 	)
 
-	// Create artifacts server
+	// Step 1: Create artifact service (encapsulates storage)
+	artifactService, err := server.NewArtifactService(&cfg.A2A.ArtifactsConfig, logger)
+	if err != nil {
+		logger.Fatal("failed to create artifact service", zap.Error(err))
+	}
+
+	// Step 2: Create artifacts server with injected service
 	artifactsServer, err := server.
 		NewArtifactsServerBuilder(&cfg.A2A.ArtifactsConfig, logger).
 		Build()
@@ -139,10 +147,15 @@ When users ask you to:
 - Export data in various formats (JSON, CSV, etc.)
 - Save any content they might want to download
 
-You should use the create_artifact tool to save the content and make it available as a downloadable file.
+You should IMMEDIATELY use the create_artifact tool to save the content and make it available as a downloadable file.
 
-Always choose appropriate filenames with correct extensions based on the content type.
-Be helpful and proactive in creating artifacts when it makes sense.`).
+Important guidelines:
+1. Create the artifact in your FIRST response - don't ask for clarification unless absolutely necessary
+2. Generate complete, working content based on the request
+3. Choose appropriate filenames with correct extensions based on the content type
+4. After creating the artifact, provide a brief summary of what was created
+
+Be efficient and proactive in creating artifacts.`).
 		WithMaxChatCompletion(10).
 		WithDefaultToolBox().
 		Build()
@@ -150,13 +163,12 @@ Be helpful and proactive in creating artifacts when it makes sense.`).
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Build A2A server with streaming task handler
-	// The streaming handler allows the agent to use tools in real-time
-	// WithArtifactStorage provides the storage to the create_artifact tool
+	// Step 3: Build A2A server with artifact service injected into task handlers
+	// The service is passed to handlers so tools can create artifacts with proper storage
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
-		WithDefaultStreamingTaskHandler().
 		WithAgent(agent).
-		WithArtifactStorage(artifactsServer.GetStorage()).
+		WithArtifactService(artifactService).
+		WithDefaultTaskHandlers().
 		WithAgentCard(types.AgentCard{
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,

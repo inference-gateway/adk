@@ -20,15 +20,15 @@ import (
 	config "github.com/inference-gateway/adk/examples/artifacts-with-default-handlers/server/config"
 )
 
-// Artifacts with Default Handlers and Automatic Storage Example
+// Artifacts with Default Handlers and Artifact Service Example
 //
 // This example demonstrates an A2A server using default task handlers with
-// automatic artifact storage integration. When artifact storage is configured,
+// artifact service integration. When artifact service is configured,
 // the ArtifactHelper automatically stores files as URIs instead of base64-encoded bytes.
 //
 // Features:
 // - Default task handlers with automatic artifact extraction
-// - Automatic artifact storage via WithArtifactStorage()
+// - Artifact service injected via WithArtifactService()
 // - Filesystem-based artifacts storage server
 // - Tools create artifacts using simplified ArtifactHelper API
 // - Client can upload files that are processed by the agent
@@ -100,7 +100,13 @@ func main() {
 		zap.String("model", cfg.A2A.AgentConfig.Model),
 	)
 
-	// Create artifacts server for file storage and retrieval
+	// Step 1: Create artifact service (encapsulates storage)
+	artifactService, err := server.NewArtifactService(&cfg.A2A.ArtifactsConfig, logger)
+	if err != nil {
+		logger.Fatal("failed to create artifact service", zap.Error(err))
+	}
+
+	// Step 2: Create artifacts server with injected service
 	artifactsServer, err := server.
 		NewArtifactsServerBuilder(&cfg.A2A.ArtifactsConfig, logger).
 		Build()
@@ -130,15 +136,15 @@ func main() {
 			"required": []string{"filename", "content"},
 		},
 		func(ctx context.Context, args map[string]any) (string, error) {
-			// Extract Task and ArtifactHelper from context
+			// Extract Task and ArtifactService from context
 			task, ok := ctx.Value(server.TaskContextKey).(*types.Task)
 			if !ok {
 				return "Failed to get task from context", fmt.Errorf("task not found in context")
 			}
 
-			artifactHelper, ok := ctx.Value(server.ArtifactHelperContextKey).(*server.ArtifactHelper)
+			artifactService, ok := ctx.Value(server.ArtifactServiceContextKey).(server.ArtifactService)
 			if !ok {
-				return "Failed to get artifact helper from context", fmt.Errorf("artifact helper not found in context")
+				return "Failed to get artifact service from context", fmt.Errorf("artifact service not found in context")
 			}
 
 			filename := args["filename"].(string)
@@ -183,15 +189,18 @@ The file upload and processing demonstrates the complete artifact lifecycle:
 			mimeType := "text/markdown"
 			reportFilename := fmt.Sprintf("analysis_%s.md", filename)
 
-			// Create and add artifact - storage is handled automatically by ArtifactHelper
-			artifact := artifactHelper.CreateFileArtifactFromBytes(
+			// Create and add artifact - storage is handled automatically by ArtifactService
+			artifact, err := artifactService.CreateFileArtifact(
 				fmt.Sprintf("Analysis Report for %s", filename),
 				fmt.Sprintf("Detailed analysis of the uploaded file: %s", filename),
 				reportFilename,
 				[]byte(analysisReport),
 				&mimeType,
 			)
-			artifactHelper.AddArtifactToTask(task, artifact)
+			if err != nil {
+				return "Failed to create artifact", fmt.Errorf("failed to create artifact: %w", err)
+			}
+			artifactService.AddArtifactToTask(task, artifact)
 
 			return fmt.Sprintf("File '%s' processed successfully, analysis report created.", filename), nil
 		},
@@ -218,15 +227,15 @@ The file upload and processing demonstrates the complete artifact lifecycle:
 			"required": []string{"topic"},
 		},
 		func(ctx context.Context, args map[string]any) (string, error) {
-			// Extract Task and ArtifactHelper from context
+			// Extract Task and ArtifactService from context
 			task, ok := ctx.Value(server.TaskContextKey).(*types.Task)
 			if !ok {
 				return "Failed to get task from context", fmt.Errorf("task not found in context")
 			}
 
-			artifactHelper, ok := ctx.Value(server.ArtifactHelperContextKey).(*server.ArtifactHelper)
+			artifactService, ok := ctx.Value(server.ArtifactServiceContextKey).(server.ArtifactService)
 			if !ok {
-				return "Failed to get artifact helper from context", fmt.Errorf("artifact helper not found in context")
+				return "Failed to get artifact service from context", fmt.Errorf("artifact service not found in context")
 			}
 
 			topic := args["topic"].(string)
@@ -342,15 +351,18 @@ This report demonstrates how tools can create artifacts that are automatically e
 `, topic, topic, topic, topic, topic, topic, topic, time.Now().Format(time.RFC3339), "auto-generated")
 			}
 
-			// Create and add artifact - storage is handled automatically by ArtifactHelper
-			artifact := artifactHelper.CreateFileArtifactFromBytes(
+			// Create and add artifact - storage is handled automatically by ArtifactService
+			artifact, err := artifactService.CreateFileArtifact(
 				fmt.Sprintf("%s Analysis Report", strings.Title(topic)),
 				fmt.Sprintf("Comprehensive analysis report about %s in %s format", topic, format),
 				filename,
 				[]byte(content),
 				&mimeType,
 			)
-			artifactHelper.AddArtifactToTask(task, artifact)
+			if err != nil {
+				return "Failed to create artifact", fmt.Errorf("failed to create artifact: %w", err)
+			}
+			artifactService.AddArtifactToTask(task, artifact)
 
 			return fmt.Sprintf("Report '%s' generated successfully in %s format.", topic, format), nil
 		},
@@ -381,15 +393,15 @@ This report demonstrates how tools can create artifacts that are automatically e
 			"required": []string{"title"},
 		},
 		func(ctx context.Context, args map[string]any) (string, error) {
-			// Extract Task and ArtifactHelper from context
+			// Extract Task and ArtifactService from context
 			task, ok := ctx.Value(server.TaskContextKey).(*types.Task)
 			if !ok {
 				return "Failed to get task from context", fmt.Errorf("task not found in context")
 			}
 
-			artifactHelper, ok := ctx.Value(server.ArtifactHelperContextKey).(*server.ArtifactHelper)
+			artifactService, ok := ctx.Value(server.ArtifactServiceContextKey).(server.ArtifactService)
 			if !ok {
-				return "Failed to get artifact helper from context", fmt.Errorf("artifact helper not found in context")
+				return "Failed to get artifact service from context", fmt.Errorf("artifact service not found in context")
 			}
 
 			title := args["title"].(string)
@@ -508,15 +520,18 @@ note over User,Database : %s
 
 			mimeType := "text/plain"
 
-			// Create and add artifact - storage is handled automatically by ArtifactHelper
-			artifact := artifactHelper.CreateFileArtifactFromBytes(
+			// Create and add artifact - storage is handled automatically by ArtifactService
+			artifact, err := artifactService.CreateFileArtifact(
 				fmt.Sprintf("%s - %s Diagram", title, strings.Title(diagramType)),
 				fmt.Sprintf("PlantUML %s diagram: %s", diagramType, description),
 				filename,
 				[]byte(plantumlContent),
 				&mimeType,
 			)
-			artifactHelper.AddArtifactToTask(task, artifact)
+			if err != nil {
+				return "Failed to create artifact", fmt.Errorf("failed to create artifact: %w", err)
+			}
+			artifactService.AddArtifactToTask(task, artifact)
 
 			return fmt.Sprintf("Diagram '%s' created successfully as a %s diagram.", title, diagramType), nil
 		},
@@ -543,15 +558,15 @@ note over User,Database : %s
 			"required": []string{"dataset"},
 		},
 		func(ctx context.Context, args map[string]any) (string, error) {
-			// Extract Task and ArtifactHelper from context
+			// Extract Task and ArtifactService from context
 			task, ok := ctx.Value(server.TaskContextKey).(*types.Task)
 			if !ok {
 				return "Failed to get task from context", fmt.Errorf("task not found in context")
 			}
 
-			artifactHelper, ok := ctx.Value(server.ArtifactHelperContextKey).(*server.ArtifactHelper)
+			artifactService, ok := ctx.Value(server.ArtifactServiceContextKey).(server.ArtifactService)
 			if !ok {
-				return "Failed to get artifact helper from context", fmt.Errorf("artifact helper not found in context")
+				return "Failed to get artifact service from context", fmt.Errorf("artifact service not found in context")
 			}
 
 			dataset := args["dataset"].(string)
@@ -623,15 +638,18 @@ note over User,Database : %s
 3,"Sample Item 3",300,"%s","%s"`, dataset, time.Now().Format("2006-01-02"), dataset, time.Now().Format("2006-01-02"), dataset, time.Now().Format("2006-01-02"))
 			}
 
-			// Create and add artifact - storage is handled automatically by ArtifactHelper
-			artifact := artifactHelper.CreateFileArtifactFromBytes(
+			// Create and add artifact - storage is handled automatically by ArtifactService
+			artifact, err := artifactService.CreateFileArtifact(
 				fmt.Sprintf("%s Dataset Export", strings.Title(dataset)),
 				fmt.Sprintf("Data export of %s dataset in %s format", dataset, format),
 				filename,
 				[]byte(content),
 				&mimeType,
 			)
-			artifactHelper.AddArtifactToTask(task, artifact)
+			if err != nil {
+				return "Failed to create artifact", fmt.Errorf("failed to create artifact: %w", err)
+			}
+			artifactService.AddArtifactToTask(task, artifact)
 
 			return fmt.Sprintf("Data export '%s' completed successfully in %s format.", dataset, format), nil
 		},
@@ -656,11 +674,11 @@ note over User,Database : %s
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Build server with AI agent and default handlers that automatically extract artifacts
-	// Note: This example requires an AI agent - it does not support non-AI mode
+	// Step 3: Build A2A server with artifact service injected into task handlers
+	// The service is passed to handlers so tools can create artifacts with proper storage
 	serverBuilder := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithAgent(agent).
-		WithArtifactStorage(artifactsServer.GetStorage()). // Enable automatic artifact storage
+		WithArtifactService(artifactService).
 		WithDefaultTaskHandlers()
 
 	// Build and start server

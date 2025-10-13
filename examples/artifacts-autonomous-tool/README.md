@@ -182,8 +182,11 @@ go run main.go
 | `A2A_AGENT_CLIENT_TOOLS_CREATE_ARTIFACT` | `true`                          | **Enable create_artifact tool** |
 | `A2A_ARTIFACTS_ENABLE`                   | `true`                          | Enable artifacts support        |
 | `A2A_ARTIFACTS_SERVER_PORT`              | `8081`                          | Artifacts server port           |
+| `A2A_ARTIFACTS_SERVER_HOST`              | `localhost`                     | Artifacts server hostname       |
 | `A2A_ARTIFACTS_STORAGE_PROVIDER`         | `filesystem`                    | Storage provider                |
 | `A2A_ARTIFACTS_STORAGE_BASE_PATH`        | `./artifacts`                   | Base path for artifacts         |
+
+**Docker Networking Note**: When running in Docker, set `A2A_ARTIFACTS_SERVER_HOST` to the service name (e.g., `server`) so artifact URLs are accessible from other containers in the network. The docker-compose.yaml already configures this correctly.
 
 ### Client Configuration
 
@@ -262,20 +265,22 @@ agent, err := server.NewAgentBuilder(logger).
     Build()
 ```
 
-#### Use Default Streaming Handler
+#### Use Default Task Handlers
 
 ```go
 a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
-    WithDefaultStreamingTaskHandler().  // No custom handler needed!
+    WithArtifactService(artifactService).  // Inject artifact service
+    WithDefaultTaskHandlers().  // Configures both background and streaming handlers
     WithAgent(agent).
     Build()
 ```
 
-The default streaming handler automatically:
+The default task handlers automatically:
 
 - Provides task context to tools via `TaskContextKey`
-- Provides artifact helper via `ArtifactHelperContextKey`
+- Provides artifact service via `ArtifactServiceContextKey`
 - Manages tool execution and artifact attachment
+- Works with both polling (SendTask) and streaming modes
 
 ### Client (`client/main.go`)
 
