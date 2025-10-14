@@ -24,28 +24,28 @@ type ArtifactsServer interface {
 
 // ArtifactsServerImpl implements the ArtifactsServer interface
 type ArtifactsServerImpl struct {
-	config        *config.ArtifactsConfig
-	logger        *zap.Logger
-	artifactSvc   ArtifactService
-	server        *http.Server
-	router        *gin.Engine
-	cleanupTicker *time.Ticker
-	stopCleanup   chan struct{}
+	config          *config.ArtifactsConfig
+	logger          *zap.Logger
+	artifactService ArtifactService
+	server          *http.Server
+	router          *gin.Engine
+	cleanupTicker   *time.Ticker
+	stopCleanup     chan struct{}
 }
 
 // NewArtifactsServer creates a new artifacts server instance with the provided service
-func NewArtifactsServer(cfg *config.ArtifactsConfig, logger *zap.Logger, artifactSvc ArtifactService) ArtifactsServer {
+func NewArtifactsServer(cfg *config.ArtifactsConfig, logger *zap.Logger, artifactService ArtifactService) ArtifactsServer {
 	return &ArtifactsServerImpl{
-		config:      cfg,
-		logger:      logger,
-		artifactSvc: artifactSvc,
-		stopCleanup: make(chan struct{}),
+		config:          cfg,
+		logger:          logger,
+		artifactService: artifactService,
+		stopCleanup:     make(chan struct{}),
 	}
 }
 
 // Start starts the artifacts server
 func (s *ArtifactsServerImpl) Start(ctx context.Context) error {
-	if s.artifactSvc == nil {
+	if s.artifactService == nil {
 		return fmt.Errorf("artifact service must be set before starting artifacts server")
 	}
 
@@ -108,8 +108,8 @@ func (s *ArtifactsServerImpl) Stop(ctx context.Context) error {
 		return err
 	}
 
-	if s.artifactSvc != nil {
-		if err := s.artifactSvc.Close(); err != nil {
+	if s.artifactService != nil {
+		if err := s.artifactService.Close(); err != nil {
 			s.logger.Error("failed to close artifact service", zap.Error(err))
 		}
 	}
@@ -168,7 +168,7 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	exists, err := s.artifactSvc.Exists(ctx, artifactID, filename)
+	exists, err := s.artifactService.Exists(ctx, artifactID, filename)
 	if err != nil {
 		s.logger.Error("failed to check artifact existence",
 			zap.String("artifact_id", artifactID),
@@ -187,7 +187,7 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 		return
 	}
 
-	reader, err := s.artifactSvc.Retrieve(ctx, artifactID, filename)
+	reader, err := s.artifactService.Retrieve(ctx, artifactID, filename)
 	if err != nil {
 		s.logger.Error("failed to retrieve artifact",
 			zap.String("artifact_id", artifactID),
@@ -259,7 +259,7 @@ func (s *ArtifactsServerImpl) performCleanup(ctx context.Context) {
 	totalRemoved := 0
 
 	if retentionConfig.MaxAge > 0 {
-		removed, err := s.artifactSvc.CleanupExpiredArtifacts(ctx, retentionConfig.MaxAge)
+		removed, err := s.artifactService.CleanupExpiredArtifacts(ctx, retentionConfig.MaxAge)
 		if err != nil {
 			s.logger.Error("failed to cleanup expired artifacts", zap.Error(err))
 		} else {
@@ -271,7 +271,7 @@ func (s *ArtifactsServerImpl) performCleanup(ctx context.Context) {
 	}
 
 	if retentionConfig.MaxArtifacts > 0 {
-		removed, err := s.artifactSvc.CleanupOldestArtifacts(ctx, retentionConfig.MaxArtifacts)
+		removed, err := s.artifactService.CleanupOldestArtifacts(ctx, retentionConfig.MaxArtifacts)
 		if err != nil {
 			s.logger.Error("failed to cleanup oldest artifacts", zap.Error(err))
 		} else {
