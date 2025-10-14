@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.0](https://github.com/inference-gateway/adk/compare/v0.14.0...v0.15.0) (2025-10-14)
+
+### ✨ Features
+
+* **toolbox:** Implement CreateArtifact tool for autonomous artifact creation ([#111](https://github.com/inference-gateway/adk/issues/111)) ([5fe9bf3](https://github.com/inference-gateway/adk/commit/5fe9bf3898fae795f40f7c07a681656ee55245c9)), closes [#109](https://github.com/inference-gateway/adk/issues/109)
+
 ## [0.14.0](https://github.com/inference-gateway/adk/compare/v0.13.1...v0.14.0) (2025-10-11)
 
 ### ✨ Features
