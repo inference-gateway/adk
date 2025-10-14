@@ -117,7 +117,7 @@ func TestAgentBuilder_WithLLMClient(t *testing.T) {
 
 func TestAgentBuilder_WithToolBox(t *testing.T) {
 	logger := zap.NewNop()
-	mockToolBox := server.NewDefaultToolBox()
+	mockToolBox := server.NewDefaultToolBox(nil)
 
 	agent, err := server.NewAgentBuilder(logger).
 		WithToolBox(mockToolBox).
@@ -264,7 +264,7 @@ func TestAgentBuilder_WithMaxConversationHistory(t *testing.T) {
 func TestAgentBuilder_ChainedCalls(t *testing.T) {
 	logger := zap.NewNop()
 	mockLLMClient := &mocks.FakeLLMClient{}
-	mockToolBox := server.NewDefaultToolBox()
+	mockToolBox := server.NewDefaultToolBox(nil)
 	customConfig := &config.AgentConfig{
 		Provider:                    "openai",
 		Model:                       "gpt-4",
@@ -340,7 +340,7 @@ func TestAgentBuilder_OverrideSystemPrompt(t *testing.T) {
 func TestAgentBuilder_WithCompleteConfiguration(t *testing.T) {
 	logger := zap.NewNop()
 	mockLLMClient := &mocks.FakeLLMClient{}
-	mockToolBox := server.NewDefaultToolBox()
+	mockToolBox := server.NewDefaultToolBox(nil)
 
 	testTool := server.NewBasicTool(
 		"test_tool",
@@ -421,7 +421,7 @@ func TestAgentWithLLM(t *testing.T) {
 func TestFullyConfiguredAgent(t *testing.T) {
 	logger := zap.NewNop()
 	mockLLMClient := &mocks.FakeLLMClient{}
-	mockToolBox := server.NewDefaultToolBox()
+	mockToolBox := server.NewDefaultToolBox(nil)
 	testConfig := &config.AgentConfig{
 		SystemPrompt:                "Fully configured prompt",
 		MaxChatCompletionIterations: 12,
@@ -495,7 +495,7 @@ func TestAgentBuilder_FluentInterface(t *testing.T) {
 	result3 := result2.WithMaxChatCompletion(5)
 	result4 := result3.WithMaxConversationHistory(15)
 	result5 := result4.WithLLMClient(&mocks.FakeLLMClient{})
-	result6 := result5.WithToolBox(server.NewDefaultToolBox())
+	result6 := result5.WithToolBox(server.NewDefaultToolBox(nil))
 
 	assert.Implements(t, (*server.AgentBuilder)(nil), result1)
 	assert.Implements(t, (*server.AgentBuilder)(nil), result2)

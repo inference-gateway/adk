@@ -25,28 +25,35 @@ func TestNewArtifactsServer(t *testing.T) {
 		ServerConfig: config.ArtifactsServerConfig{
 			Port: "8082",
 		},
+		StorageConfig: config.ArtifactsStorageConfig{
+			Provider: "filesystem",
+			BasePath: "./test-artifacts-new",
+		},
 	}
 
-	srv := server.NewArtifactsServer(cfg, logger)
+	artifactService, err := server.NewArtifactService(cfg, logger)
+	assert.NoError(t, err)
+	assert.NotNil(t, artifactService)
+
+	srv := server.NewArtifactsServer(cfg, logger, artifactService)
 	assert.NotNil(t, srv)
 }
 
-func TestArtifactsServer_SetGetStorage(t *testing.T) {
+func TestArtifactsServer_WithMockService(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
+		ServerConfig: config.ArtifactsServerConfig{
+			Port: "8082",
+		},
 	}
 
-	server := server.NewArtifactsServer(cfg, logger)
-	mockStorage := &mocks.FakeArtifactStorageProvider{}
-
-	assert.Nil(t, server.GetStorage())
-
-	server.SetStorage(mockStorage)
-	assert.Equal(t, mockStorage, server.GetStorage())
+	mockService := &mocks.FakeArtifactService{}
+	srv := server.NewArtifactsServer(cfg, logger, mockService)
+	assert.NotNil(t, srv)
 }
 
-func TestArtifactsServer_StartWithoutStorage(t *testing.T) {
+func TestArtifactsServer_StartWithoutService(t *testing.T) {
 	logger := zaptest.NewLogger(t)
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
@@ -55,13 +62,13 @@ func TestArtifactsServer_StartWithoutStorage(t *testing.T) {
 		},
 	}
 
-	server := server.NewArtifactsServer(cfg, logger)
+	srv := server.NewArtifactsServer(cfg, logger, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	err := server.Start(ctx)
+	err := srv.Start(ctx)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "storage provider must be set")
+	assert.Contains(t, err.Error(), "artifact service must be set")
 }
 
 func TestArtifactsServer_HealthEndpoint(t *testing.T) {
@@ -71,17 +78,22 @@ func TestArtifactsServer_HealthEndpoint(t *testing.T) {
 		ServerConfig: config.ArtifactsServerConfig{
 			Port: "8084",
 		},
+		StorageConfig: config.ArtifactsStorageConfig{
+			Provider: "filesystem",
+			BasePath: "./test-artifacts-health",
+		},
 	}
 
-	server := server.NewArtifactsServer(cfg, logger)
-	mockStorage := &mocks.FakeArtifactStorageProvider{}
-	server.SetStorage(mockStorage)
+	artifactService, err := server.NewArtifactService(cfg, logger)
+	require.NoError(t, err)
+
+	srv := server.NewArtifactsServer(cfg, logger, artifactService)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		_ = server.Start(ctx)
+		_ = srv.Start(ctx)
 	}()
 
 	time.Sleep(100 * time.Millisecond)
@@ -108,26 +120,25 @@ func TestArtifactsServer_ArtifactDownload(t *testing.T) {
 		},
 	}
 
-	server := server.NewArtifactsServer(cfg, logger)
-
 	testContent := "test artifact content"
-	mockStorage := &mocks.FakeArtifactStorageProvider{}
-	mockStorage.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
+	mockService := &mocks.FakeArtifactService{}
+	mockService.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
 		return artifactID == "test-artifact" && filename == "test.txt", nil
 	}
-	mockStorage.RetrieveStub = func(ctx context.Context, artifactID string, filename string) (io.ReadCloser, error) {
+	mockService.RetrieveStub = func(ctx context.Context, artifactID string, filename string) (io.ReadCloser, error) {
 		if artifactID == "test-artifact" && filename == "test.txt" {
 			return io.NopCloser(strings.NewReader(testContent)), nil
 		}
 		return nil, fmt.Errorf("artifact not found")
 	}
-	server.SetStorage(mockStorage)
+
+	srv := server.NewArtifactsServer(cfg, logger, mockService)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		_ = server.Start(ctx)
+		_ = srv.Start(ctx)
 	}()
 
 	time.Sleep(100 * time.Millisecond)
@@ -154,18 +165,18 @@ func TestArtifactsServer_ArtifactNotFound(t *testing.T) {
 		},
 	}
 
-	server := server.NewArtifactsServer(cfg, logger)
-	mockStorage := &mocks.FakeArtifactStorageProvider{}
-	mockStorage.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
+	mockService := &mocks.FakeArtifactService{}
+	mockService.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
 		return false, nil
 	}
-	server.SetStorage(mockStorage)
+
+	srv := server.NewArtifactsServer(cfg, logger, mockService)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		_ = server.Start(ctx)
+		_ = srv.Start(ctx)
 	}()
 
 	time.Sleep(100 * time.Millisecond)
@@ -190,15 +201,14 @@ func TestArtifactsServer_BadRequest(t *testing.T) {
 		},
 	}
 
-	server := server.NewArtifactsServer(cfg, logger)
-	mockStorage := &mocks.FakeArtifactStorageProvider{}
-	server.SetStorage(mockStorage)
+	mockService := &mocks.FakeArtifactService{}
+	srv := server.NewArtifactsServer(cfg, logger, mockService)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		_ = server.Start(ctx)
+		_ = srv.Start(ctx)
 	}()
 
 	time.Sleep(100 * time.Millisecond)
@@ -219,18 +229,18 @@ func TestArtifactsServer_StorageError(t *testing.T) {
 		},
 	}
 
-	server := server.NewArtifactsServer(cfg, logger)
-	mockStorage := &mocks.FakeArtifactStorageProvider{}
-	mockStorage.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
+	mockService := &mocks.FakeArtifactService{}
+	mockService.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
 		return false, fmt.Errorf("storage error")
 	}
-	server.SetStorage(mockStorage)
+
+	srv := server.NewArtifactsServer(cfg, logger, mockService)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
-		_ = server.Start(ctx)
+		_ = srv.Start(ctx)
 	}()
 
 	time.Sleep(100 * time.Millisecond)

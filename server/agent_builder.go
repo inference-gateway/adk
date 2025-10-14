@@ -24,6 +24,8 @@ type AgentBuilder interface {
 	WithLLMClient(client LLMClient) AgentBuilder
 	// WithToolBox sets a custom toolbox
 	WithToolBox(toolBox ToolBox) AgentBuilder
+	// WithDefaultToolBox sets the default toolbox
+	WithDefaultToolBox() AgentBuilder
 	// WithSystemPrompt sets the system prompt (overrides config)
 	WithSystemPrompt(prompt string) AgentBuilder
 	// WithMaxChatCompletion sets the maximum chat completion iterations for the agent
@@ -108,6 +110,12 @@ func (b *AgentBuilderImpl) WithLLMClient(client LLMClient) AgentBuilder {
 // WithToolBox sets a custom toolbox
 func (b *AgentBuilderImpl) WithToolBox(toolBox ToolBox) AgentBuilder {
 	b.toolBox = toolBox
+	return b
+}
+
+// WithDefaultToolBox sets the default toolbox
+func (b *AgentBuilderImpl) WithDefaultToolBox() AgentBuilder {
+	b.toolBox = NewDefaultToolBox(&b.config.ToolBoxConfig)
 	return b
 }
 

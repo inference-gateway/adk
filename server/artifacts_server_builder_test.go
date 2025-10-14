@@ -76,5 +76,4 @@ func TestSimpleArtifactsServerWithFilesystem(t *testing.T) {
 	srv, err := server.NewArtifactsServerBuilder(cfg, logger).Build()
 	assert.NoError(t, err)
 	assert.NotNil(t, srv)
-	assert.NotNil(t, srv.GetStorage())
 }

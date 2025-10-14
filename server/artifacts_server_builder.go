@@ -29,9 +29,8 @@ var _ ArtifactsServerBuilder = (*ArtifactsServerBuilderImpl)(nil)
 // It provides a fluent interface for building artifacts servers with custom configurations.
 // This struct holds the configuration and optional components that will be used to create the server.
 type ArtifactsServerBuilderImpl struct {
-	config  *config.ArtifactsConfig
-	logger  *zap.Logger
-	storage ArtifactStorageProvider
+	config *config.ArtifactsConfig
+	logger *zap.Logger
 }
 
 // NewArtifactsServerBuilder creates a new artifacts server builder with required dependencies.
@@ -83,76 +82,10 @@ func (b *ArtifactsServerBuilderImpl) Build() (ArtifactsServer, error) {
 		return nil, fmt.Errorf("artifacts server is not enabled in configuration")
 	}
 
-	if b.storage == nil {
-		if err := b.autoConfigureStorage(); err != nil {
-			return nil, fmt.Errorf("no storage provider configured and failed to auto-configure: %w", err)
-		}
+	artifactService, err := NewArtifactService(b.config, b.logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create artifact service: %w", err)
 	}
 
-	server := NewArtifactsServer(b.config, b.logger)
-	server.SetStorage(b.storage)
-
-	return server, nil
-}
-
-// autoConfigureStorage attempts to configure storage based on the configuration
-func (b *ArtifactsServerBuilderImpl) autoConfigureStorage() error {
-	storageConfig := b.config.StorageConfig
-
-	switch storageConfig.Provider {
-	case "filesystem":
-		if storageConfig.BaseURL == "" {
-			storageConfig.BaseURL = b.generateBaseURL()
-		}
-
-		storage, err := NewFilesystemArtifactStorage(&storageConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create filesystem storage: %w", err)
-		}
-		b.storage = storage
-		b.logger.Info("configured filesystem storage",
-			zap.String("base_path", storageConfig.BasePath),
-			zap.String("base_url", storageConfig.BaseURL))
-
-	case "minio":
-		if storageConfig.Endpoint == "" || storageConfig.AccessKey == "" || storageConfig.SecretKey == "" {
-			return fmt.Errorf("MinIO storage requires endpoint, access key, and secret key")
-		}
-
-		if storageConfig.BaseURL == "" {
-			storageConfig.BaseURL = b.generateBaseURL()
-		}
-
-		storage, err := NewMinIOArtifactStorage(&storageConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create MinIO storage: %w", err)
-		}
-		b.storage = storage
-		b.logger.Info("configured MinIO storage",
-			zap.String("endpoint", storageConfig.Endpoint),
-			zap.String("bucket", storageConfig.BucketName),
-			zap.Bool("ssl", storageConfig.UseSSL))
-
-	default:
-		return fmt.Errorf("unsupported storage provider: %s", storageConfig.Provider)
-	}
-
-	return nil
-}
-
-// generateBaseURL generates a base URL from the server configuration
-func (b *ArtifactsServerBuilderImpl) generateBaseURL() string {
-	scheme := "http"
-	if b.config.ServerConfig.TLSConfig.Enable {
-		scheme = "https"
-	}
-	host := b.config.ServerConfig.Host
-	if host == "" {
-		host = "localhost"
-	}
-	port := b.config.ServerConfig.Port
-	if port == "" {
-		port = "8081"
-	}
-	return fmt.Sprintf("%s://%s:%s", scheme, host, port)
+	return NewArtifactsServer(b.config, b.logger, artifactService), nil
 }

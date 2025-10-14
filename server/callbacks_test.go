@@ -1137,3 +1137,8 @@ func TestCallbackExecutor_ExecuteAfterTool(t *testing.T) {
 		})
 	}
 }
+
+// Helper function for pointer conversion
+func stringPtr(s string) *string {
+	return &s
+}

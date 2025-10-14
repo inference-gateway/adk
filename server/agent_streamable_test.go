@@ -943,7 +943,7 @@ func TestRunWithStream_WithInputRequiredTool(t *testing.T) {
 		return responseChan, errorChan
 	}
 
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(nil)
 	agent, err := server.NewAgentBuilder(logger).
 		WithLLMClient(mockLLMClient).
 		WithToolBox(toolBox).
@@ -1011,7 +1011,7 @@ func TestRunWithStream_MaxIterationsReached(t *testing.T) {
 		return responseChan, errorChan
 	}
 
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(nil)
 	testTool := server.NewBasicTool(
 		"test_tool",
 		"Test tool",
@@ -1095,7 +1095,7 @@ func TestRunWithStream_ToolExecutionError(t *testing.T) {
 		return responseChan, errorChan
 	}
 
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(nil)
 	failingTool := server.NewBasicTool(
 		"failing_tool",
 		"Tool that fails",
@@ -1178,7 +1178,7 @@ func TestRunWithStream_InvalidToolArguments(t *testing.T) {
 		return responseChan, errorChan
 	}
 
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(nil)
 	testTool := server.NewBasicTool(
 		"test_tool",
 		"Test tool",
@@ -1327,7 +1327,7 @@ func TestRunWithStream_MultipleIterations(t *testing.T) {
 		return responseChan, errorChan
 	}
 
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(nil)
 	iterationTool := server.NewBasicTool(
 		"iteration_tool",
 		"Tool for iterations",
@@ -1411,7 +1411,7 @@ func TestRunWithStream_AllEventTypesEmitted(t *testing.T) {
 		return responseChan, errorChan
 	}
 
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(nil)
 	successTool := server.NewBasicTool(
 		"success_tool",
 		"Tool that succeeds",
@@ -1496,7 +1496,7 @@ func TestRunWithStream_ToolFailedEventEmitted(t *testing.T) {
 		return responseChan, errorChan
 	}
 
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(nil)
 	failTool := server.NewBasicTool(
 		"fail_tool",
 		"Tool that fails",

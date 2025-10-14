@@ -22,17 +22,18 @@ Each example is a self-contained scenario with:
 
 ```text
 examples/
-├── minimal/              # Basic server/client without AI (echo responses)
-├── default-handlers/     # Using built-in default task handlers
-├── static-agent-card/    # Loading agent config from JSON file
-├── ai-powered/           # Server with LLM integration
-├── ai-powered-streaming/ # AI with real-time streaming
-├── streaming/            # Real-time streaming responses
-├── input-required/       # Input-required flow (non-streaming and streaming)
-├── artifacts-filesystem/ # Artifact storage using local filesystem
-├── artifacts-minio/      # Artifact storage using MinIO (S3-compatible)
-├── queue-storage/        # Queue storage backends (in-memory and Redis)
-└── tls-example/          # TLS-enabled server with HTTPS communication
+├── minimal/                   # Basic server/client without AI (echo responses)
+├── default-handlers/          # Using built-in default task handlers
+├── static-agent-card/         # Loading agent config from JSON file
+├── ai-powered/                # Server with LLM integration
+├── ai-powered-streaming/      # AI with real-time streaming
+├── streaming/                 # Real-time streaming responses
+├── input-required/            # Input-required flow (non-streaming and streaming)
+├── artifacts-filesystem/      # Artifact storage using local filesystem
+├── artifacts-minio/           # Artifact storage using MinIO (S3-compatible)
+├── artifacts-autonomous-tool/ # LLM autonomously creates artifacts via create_artifact tool
+├── queue-storage/             # Queue storage backends (in-memory and Redis)
+└── tls-example/               # TLS-enabled server with HTTPS communication
 ```
 
 ## 🚀 Quick Start
@@ -139,6 +140,16 @@ Demonstrates artifact creation and download using MinIO (S3-compatible) storage.
 - S3-compatible API
 - Enterprise-ready cloud storage
 
+#### `artifacts-autonomous-tool/`
+
+Demonstrates autonomous artifact creation where the LLM decides when and what artifacts to create using the built-in `create_artifact` tool.
+
+- LLM autonomously creates artifacts
+- Built-in `create_artifact` tool enabled via configuration
+- No custom task handler required
+- AI-driven decision making for artifact creation
+- Supports multiple file types (JSON, CSV, code files, etc.)
+
 #### `queue-storage/`
 
 Demonstrates different queue storage backends for task management and horizontal
@@ -192,9 +203,10 @@ See each example's README for specific configuration details.
 6. **`ai-powered/`** - Add LLM integration for intelligent responses
 7. **`streaming/`** - Implement real-time streaming capabilities
 8. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
-9. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
-10. **`queue-storage/`** - Learn different queue storage backends for scaling
-11. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
+9. **`artifacts-autonomous-tool/`** - Enable LLM to autonomously create artifacts
+10. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
+11. **`queue-storage/`** - Learn different queue storage backends for scaling
+12. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 
 ---
 

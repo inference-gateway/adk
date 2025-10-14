@@ -62,9 +62,9 @@ type A2AServerBuilder interface {
 	// This allows using a logger configured with appropriate level based on the Debug config.
 	WithLogger(logger *zap.Logger) A2AServerBuilder
 
-	// WithArtifactStorage sets the artifact storage provider for the server.
+	// WithArtifactService sets the artifact service for the server.
 	// This enables URI-based artifacts instead of base64-encoded ones.
-	WithArtifactStorage(storage ArtifactStorageProvider) A2AServerBuilder
+	WithArtifactService(service ArtifactService) A2AServerBuilder
 
 	// Build creates and returns the configured A2A server.
 	// This method applies configuration defaults and initializes all components.
@@ -77,14 +77,14 @@ var _ A2AServerBuilder = (*A2AServerBuilderImpl)(nil)
 // It provides a fluent interface for building A2A servers with custom configurations.
 // This struct holds the configuration and optional components that will be used to create the server.
 type A2AServerBuilderImpl struct {
-	cfg                  config.Config           // Base configuration for the server
-	logger               *zap.Logger             // Logger instance for the server
-	pollingTaskHandler   TaskHandler             // Optional custom task handler for polling scenarios
-	streamingTaskHandler StreamableTaskHandler   // Optional custom task handler for streaming scenarios
-	taskResultProcessor  TaskResultProcessor     // Optional custom task result processor
-	agent                OpenAICompatibleAgent   // Optional pre-configured agent
-	agentCard            *types.AgentCard        // Optional custom agent card
-	artifactStorage      ArtifactStorageProvider // Optional artifact storage provider
+	cfg                  config.Config         // Base configuration for the server
+	logger               *zap.Logger           // Logger instance for the server
+	pollingTaskHandler   TaskHandler           // Optional custom task handler for polling scenarios
+	streamingTaskHandler StreamableTaskHandler // Optional custom task handler for streaming scenarios
+	taskResultProcessor  TaskResultProcessor   // Optional custom task result processor
+	agent                OpenAICompatibleAgent // Optional pre-configured agent
+	agentCard            *types.AgentCard      // Optional custom agent card
+	artifactService      ArtifactService       // Optional artifact service for storage operations
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies.
@@ -165,7 +165,9 @@ func (b *A2AServerBuilderImpl) WithStreamingTaskHandler(handler StreamableTaskHa
 // WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios
 func (b *A2AServerBuilderImpl) WithDefaultBackgroundTaskHandler() A2AServerBuilder {
 	handler := NewDefaultBackgroundTaskHandler(b.logger, b.agent)
-	handler.storage = b.artifactStorage
+	if b.artifactService != nil {
+		handler.artifactService = b.artifactService
+	}
 	b.pollingTaskHandler = handler
 	return b
 }
@@ -173,7 +175,9 @@ func (b *A2AServerBuilderImpl) WithDefaultBackgroundTaskHandler() A2AServerBuild
 // WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios
 func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilder {
 	handler := NewDefaultStreamingTaskHandler(b.logger, b.agent)
-	handler.storage = b.artifactStorage
+	if b.artifactService != nil {
+		handler.artifactService = b.artifactService
+	}
 	b.streamingTaskHandler = handler
 	return b
 }
@@ -181,10 +185,11 @@ func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilde
 // WithDefaultTaskHandlers sets both default background and streaming task handlers
 func (b *A2AServerBuilderImpl) WithDefaultTaskHandlers() A2AServerBuilder {
 	bgHandler := NewDefaultBackgroundTaskHandler(b.logger, b.agent)
-	bgHandler.storage = b.artifactStorage
+	bgHandler.artifactService = b.artifactService
 	b.pollingTaskHandler = bgHandler
+
 	streamHandler := NewDefaultStreamingTaskHandler(b.logger, b.agent)
-	streamHandler.storage = b.artifactStorage
+	streamHandler.artifactService = b.artifactService
 	b.streamingTaskHandler = streamHandler
 	return b
 }
@@ -261,9 +266,9 @@ func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 	return b
 }
 
-// WithArtifactStorage sets the artifact storage provider
-func (b *A2AServerBuilderImpl) WithArtifactStorage(storage ArtifactStorageProvider) A2AServerBuilder {
-	b.artifactStorage = storage
+// WithArtifactService sets the artifact service
+func (b *A2AServerBuilderImpl) WithArtifactService(service ArtifactService) A2AServerBuilder {
+	b.artifactService = service
 	return b
 }
 

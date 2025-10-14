@@ -3,7 +3,10 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
 )
 
@@ -51,7 +54,8 @@ func NewToolBox() *DefaultToolBox {
 }
 
 // NewDefaultToolBox creates a new DefaultToolBox with built-in tools
-func NewDefaultToolBox() *DefaultToolBox {
+// The config parameter determines which tools are enabled
+func NewDefaultToolBox(cfg *config.ToolBoxConfig) *DefaultToolBox {
 	toolBox := NewToolBox()
 
 	inputRequiredTool := NewBasicTool(
@@ -78,6 +82,40 @@ func NewDefaultToolBox() *DefaultToolBox {
 		},
 	)
 	toolBox.AddTool(inputRequiredTool)
+
+	if cfg != nil && cfg.EnableCreateArtifact {
+		createArtifactTool := NewBasicTool(
+			"create_artifact",
+			"Create an artifact file and make it available via downloadable URL. Use this tool to save important content, outputs, or generated files that the user might want to access or download. The artifact will be stored on the filesystem and made available through a URL.",
+			map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"content": map[string]any{
+						"type":        "string",
+						"description": "The text content to save as an artifact file",
+					},
+					"type": map[string]any{
+						"type":        "string",
+						"description": "Must be 'url' - indicates the artifact will be available as a downloadable URL",
+						"enum":        []string{"url"},
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Optional name for the artifact (will be auto-generated if not provided)",
+					},
+					"filename": map[string]any{
+						"type":        "string",
+						"description": "Filename with extension (e.g., 'report.json', 'data.csv', 'script.js')",
+					},
+				},
+				"required": []string{"content", "type", "filename"},
+			},
+			func(ctx context.Context, args map[string]any) (string, error) {
+				return executeCreateArtifact(ctx, args)
+			},
+		)
+		toolBox.AddTool(createArtifactTool)
+	}
 
 	return toolBox
 }
@@ -188,4 +226,73 @@ func JSONTool(result any) (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+// executeCreateArtifact implements the create_artifact tool functionality
+func executeCreateArtifact(ctx context.Context, args map[string]any) (string, error) {
+	task, ok := ctx.Value(TaskContextKey).(*types.Task)
+	if !ok {
+		return "", fmt.Errorf("task not found in context")
+	}
+
+	artifactService, ok := ctx.Value(ArtifactServiceContextKey).(ArtifactService)
+	if !ok || artifactService == nil {
+		return "", fmt.Errorf("artifact service not found in context - cannot create URL-based artifacts")
+	}
+
+	content, ok := args["content"].(string)
+	if !ok || content == "" {
+		return "", fmt.Errorf("content is required and must be a non-empty string")
+	}
+
+	artifactType, ok := args["type"].(string)
+	if !ok || artifactType != "url" {
+		return "", fmt.Errorf("type must be 'url'")
+	}
+
+	filename, ok := args["filename"].(string)
+	if !ok || filename == "" {
+		return "", fmt.Errorf("filename is required and must be a non-empty string")
+	}
+
+	name, _ := args["name"].(string)
+	if name == "" {
+		name = "Generated Content"
+	}
+
+	data := []byte(content)
+	mimeType := artifactService.GetMimeTypeFromExtension(filename)
+	artifact, err := artifactService.CreateFileArtifact(
+		name,
+		fmt.Sprintf("Artifact created by create_artifact tool: %s", name),
+		filename,
+		data,
+		mimeType,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create artifact: %w", err)
+	}
+
+	artifactService.AddArtifactToTask(task, artifact)
+
+	if len(artifact.Parts) > 0 {
+		if filePart, ok := artifact.Parts[0].(types.FilePart); ok {
+			if fileWithURI, ok := filePart.File.(types.FileWithUri); ok {
+				return JSONTool(map[string]any{
+					"success":     true,
+					"message":     fmt.Sprintf("Artifact '%s' created successfully", name),
+					"artifact_id": artifact.ArtifactID,
+					"url":         fileWithURI.URI,
+					"filename":    filename,
+				})
+			}
+		}
+	}
+
+	return JSONTool(map[string]any{
+		"success":     true,
+		"message":     fmt.Sprintf("Artifact '%s' created successfully", name),
+		"artifact_id": artifact.ArtifactID,
+		"filename":    filename,
+	})
 }
