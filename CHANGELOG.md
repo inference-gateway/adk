@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.1](https://github.com/inference-gateway/adk/compare/v0.15.0...v0.15.1) (2025-10-17)
+
+### 🐛 Bug Fixes
+
+* **task:** CancelTask now actually stops running task execution ([#113](https://github.com/inference-gateway/adk/issues/113)) ([9aefbcf](https://github.com/inference-gateway/adk/commit/9aefbcf6b990f987950b8f18d4d161ebce01956b)), closes [#112](https://github.com/inference-gateway/adk/issues/112)
+
 ## [0.15.0](https://github.com/inference-gateway/adk/compare/v0.14.0...v0.15.0) (2025-10-14)
 
 ### ✨ Features
