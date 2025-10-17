@@ -88,6 +88,8 @@ type DefaultTaskManager struct {
 	retentionConfig           config.TaskRetentionConfig
 	cleanupTicker             *time.Ticker
 	stopCleanup               chan struct{}
+	runningTasks              map[string]context.CancelFunc
+	runningTasksMu            sync.RWMutex
 }
 
 // NewDefaultTaskManager creates a new default task manager
@@ -97,6 +99,7 @@ func NewDefaultTaskManager(logger *zap.Logger) *DefaultTaskManager {
 		storage:                 NewInMemoryStorage(logger, 0),
 		pushNotificationConfigs: make(map[string]map[string]*types.TaskPushNotificationConfig),
 		notificationSender:      nil,
+		runningTasks:            make(map[string]context.CancelFunc),
 	}
 }
 
@@ -107,6 +110,7 @@ func NewDefaultTaskManagerWithStorage(logger *zap.Logger, storage Storage) *Defa
 		storage:                 storage,
 		pushNotificationConfigs: make(map[string]map[string]*types.TaskPushNotificationConfig),
 		notificationSender:      nil,
+		runningTasks:            make(map[string]context.CancelFunc),
 	}
 }
 
@@ -117,6 +121,7 @@ func NewDefaultTaskManagerWithNotifications(logger *zap.Logger, notificationSend
 		storage:                 NewInMemoryStorage(logger, 0),
 		pushNotificationConfigs: make(map[string]map[string]*types.TaskPushNotificationConfig),
 		notificationSender:      notificationSender,
+		runningTasks:            make(map[string]context.CancelFunc),
 	}
 }
 
@@ -128,6 +133,22 @@ func (tm *DefaultTaskManager) SetNotificationSender(sender PushNotificationSende
 // GetStorage returns the storage interface used by this task manager
 func (tm *DefaultTaskManager) GetStorage() Storage {
 	return tm.storage
+}
+
+// RegisterTaskCancelFunc registers a cancel function for a running task
+func (tm *DefaultTaskManager) RegisterTaskCancelFunc(taskID string, cancelFunc context.CancelFunc) {
+	tm.runningTasksMu.Lock()
+	defer tm.runningTasksMu.Unlock()
+	tm.runningTasks[taskID] = cancelFunc
+	tm.logger.Debug("registered cancel function for task", zap.String("task_id", taskID))
+}
+
+// UnregisterTaskCancelFunc removes the cancel function for a completed task
+func (tm *DefaultTaskManager) UnregisterTaskCancelFunc(taskID string) {
+	tm.runningTasksMu.Lock()
+	defer tm.runningTasksMu.Unlock()
+	delete(tm.runningTasks, taskID)
+	tm.logger.Debug("unregistered cancel function for task", zap.String("task_id", taskID))
 }
 
 // CreateTask creates a new task with message history managed within the task
@@ -251,6 +272,8 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 	task.Status.Timestamp = &timestamp
 
 	if tm.isTaskFinalState(state) {
+		tm.UnregisterTaskCancelFunc(taskID)
+
 		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
@@ -286,6 +309,8 @@ func (tm *DefaultTaskManager) UpdateTask(task *types.Task) error {
 	task.Status.Timestamp = &timestamp
 
 	if tm.isTaskFinalState(task.Status.State) {
+		tm.UnregisterTaskCancelFunc(task.ID)
+
 		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
@@ -323,6 +348,8 @@ func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message)
 	task.Status.State = types.TaskStateFailed
 	task.Status.Message = message
 	task.Status.Timestamp = &timestamp
+
+	tm.UnregisterTaskCancelFunc(taskID)
 
 	err := tm.storage.StoreDeadLetterTask(task)
 	if err != nil {
@@ -451,6 +478,16 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 
 	if !tm.isTaskCancelable(task.Status.State) {
 		return NewTaskNotCancelableError(taskID, task.Status.State)
+	}
+
+	tm.runningTasksMu.RLock()
+	cancelFunc, isRunning := tm.runningTasks[taskID]
+	tm.runningTasksMu.RUnlock()
+
+	if isRunning {
+		tm.logger.Info("canceling running task execution", zap.String("task_id", taskID))
+		cancelFunc()
+		tm.UnregisterTaskCancelFunc(taskID)
 	}
 
 	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
