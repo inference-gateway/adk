@@ -596,7 +596,17 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		}
 	}
 
-	eventsChan, err := streamingHandler.HandleStreamingTask(ctx, task, message)
+	// Create cancellable context for this streaming task
+	taskCtx, cancel := context.WithCancel(ctx)
+	defer cancel() // Ensure cancel is called when function exits
+
+	// Register cancel function with task manager if it supports it
+	if defaultTM, ok := h.taskManager.(*DefaultTaskManager); ok {
+		defaultTM.RegisterTaskCancelFunc(task.ID, cancel)
+		// Cleanup will happen when task reaches final state via the task manager
+	}
+
+	eventsChan, err := streamingHandler.HandleStreamingTask(taskCtx, task, message)
 	if err != nil {
 		h.logger.Error("failed to start streaming task",
 			zap.Error(err),
