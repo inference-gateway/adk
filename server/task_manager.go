@@ -273,7 +273,6 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 	task.Status.Timestamp = &timestamp
 
 	if tm.isTaskFinalState(state) {
-		// Unregister cancel function when task reaches final state
 		tm.UnregisterTaskCancelFunc(taskID)
 
 		err := tm.storage.StoreDeadLetterTask(task)
@@ -311,7 +310,6 @@ func (tm *DefaultTaskManager) UpdateTask(task *types.Task) error {
 	task.Status.Timestamp = &timestamp
 
 	if tm.isTaskFinalState(task.Status.State) {
-		// Unregister cancel function when task reaches final state
 		tm.UnregisterTaskCancelFunc(task.ID)
 
 		err := tm.storage.StoreDeadLetterTask(task)
@@ -352,7 +350,6 @@ func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message)
 	task.Status.Message = message
 	task.Status.Timestamp = &timestamp
 
-	// Unregister cancel function when task fails
 	tm.UnregisterTaskCancelFunc(taskID)
 
 	err := tm.storage.StoreDeadLetterTask(task)
@@ -484,7 +481,6 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 		return NewTaskNotCancelableError(taskID, task.Status.State)
 	}
 
-	// Cancel the running task if it exists
 	tm.runningTasksMu.RLock()
 	cancelFunc, isRunning := tm.runningTasks[taskID]
 	tm.runningTasksMu.RUnlock()
@@ -492,7 +488,6 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 	if isRunning {
 		tm.logger.Info("canceling running task execution", zap.String("task_id", taskID))
 		cancelFunc()
-		// Remove from running tasks immediately after canceling
 		tm.UnregisterTaskCancelFunc(taskID)
 	}
 

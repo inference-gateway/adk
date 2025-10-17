@@ -589,14 +589,10 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		return
 	}
 
-	// Create cancellable context for this task
 	taskCtx, cancel := context.WithCancel(ctx)
-	defer cancel() // Ensure cancel is called when function exits
-
-	// Register cancel function with task manager if it supports it
+	defer cancel()
 	if defaultTM, ok := s.taskManager.(*DefaultTaskManager); ok {
 		defaultTM.RegisterTaskCancelFunc(task.ID, cancel)
-		// Ensure cleanup happens even if task completes normally
 		defer defaultTM.UnregisterTaskCancelFunc(task.ID)
 	}
 
