@@ -275,7 +275,7 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 	if tm.isTaskFinalState(state) {
 		// Unregister cancel function when task reaches final state
 		tm.UnregisterTaskCancelFunc(taskID)
-		
+
 		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
@@ -313,7 +313,7 @@ func (tm *DefaultTaskManager) UpdateTask(task *types.Task) error {
 	if tm.isTaskFinalState(task.Status.State) {
 		// Unregister cancel function when task reaches final state
 		tm.UnregisterTaskCancelFunc(task.ID)
-		
+
 		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
