@@ -88,9 +88,8 @@ type DefaultTaskManager struct {
 	retentionConfig           config.TaskRetentionConfig
 	cleanupTicker             *time.Ticker
 	stopCleanup               chan struct{}
-	// runningTasks tracks cancel functions for active tasks
-	runningTasks   map[string]context.CancelFunc
-	runningTasksMu sync.RWMutex
+	runningTasks              map[string]context.CancelFunc
+	runningTasksMu            sync.RWMutex
 }
 
 // NewDefaultTaskManager creates a new default task manager
