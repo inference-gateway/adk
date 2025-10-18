@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.2](https://github.com/inference-gateway/adk/compare/v0.15.1...v0.15.2) (2025-10-18)
+
+### 🐛 Bug Fixes
+
+* **artifacts:** Prevent double initialization of artifacts service ([#115](https://github.com/inference-gateway/adk/issues/115)) ([5f79ef4](https://github.com/inference-gateway/adk/commit/5f79ef4c1ac716f8c129099e7d66a0debe42a75e)), closes [#114](https://github.com/inference-gateway/adk/issues/114)
+
 ## [0.15.1](https://github.com/inference-gateway/adk/compare/v0.15.0...v0.15.1) (2025-10-17)
 
 ### 🐛 Bug Fixes
