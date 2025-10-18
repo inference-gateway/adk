@@ -20,7 +20,6 @@ type ArtifactsServerBuilder interface {
 	WithLogger(logger *zap.Logger) ArtifactsServerBuilder
 
 	// WithArtifactService sets a pre-configured artifact service for the server.
-	// If not set, a new artifact service will be created from the configuration.
 	WithArtifactService(service ArtifactService) ArtifactsServerBuilder
 
 	// Build creates and returns the configured artifacts server
@@ -35,7 +34,7 @@ var _ ArtifactsServerBuilder = (*ArtifactsServerBuilderImpl)(nil)
 type ArtifactsServerBuilderImpl struct {
 	config          *config.ArtifactsConfig
 	logger          *zap.Logger
-	artifactService ArtifactService // Optional pre-configured artifact service
+	artifactService ArtifactService
 }
 
 // NewArtifactsServerBuilder creates a new artifacts server builder with required dependencies.
@@ -96,7 +95,6 @@ func (b *ArtifactsServerBuilderImpl) Build() (ArtifactsServer, error) {
 	var artifactService ArtifactService
 	var err error
 
-	// Use provided artifact service if available, otherwise create a new one
 	if b.artifactService != nil {
 		artifactService = b.artifactService
 	} else {
