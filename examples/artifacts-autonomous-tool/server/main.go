@@ -122,9 +122,10 @@ func main() {
 		logger.Fatal("failed to create artifact service", zap.Error(err))
 	}
 
-	// Step 2: Create artifacts server with injected service
+	// Step 2: Create artifacts server with shared artifact service
 	artifactsServer, err := server.
 		NewArtifactsServerBuilder(&cfg.A2A.ArtifactsConfig, logger).
+		WithArtifactService(artifactService).
 		Build()
 	if err != nil {
 		logger.Fatal("failed to create artifacts server", zap.Error(err))

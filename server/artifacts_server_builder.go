@@ -19,6 +19,9 @@ type ArtifactsServerBuilder interface {
 	// WithLogger sets a custom logger for the builder and resulting server
 	WithLogger(logger *zap.Logger) ArtifactsServerBuilder
 
+	// WithArtifactService sets a pre-configured artifact service for the server.
+	WithArtifactService(service ArtifactService) ArtifactsServerBuilder
+
 	// Build creates and returns the configured artifacts server
 	Build() (ArtifactsServer, error)
 }
@@ -29,8 +32,9 @@ var _ ArtifactsServerBuilder = (*ArtifactsServerBuilderImpl)(nil)
 // It provides a fluent interface for building artifacts servers with custom configurations.
 // This struct holds the configuration and optional components that will be used to create the server.
 type ArtifactsServerBuilderImpl struct {
-	config *config.ArtifactsConfig
-	logger *zap.Logger
+	config          *config.ArtifactsConfig
+	logger          *zap.Logger
+	artifactService ArtifactService
 }
 
 // NewArtifactsServerBuilder creates a new artifacts server builder with required dependencies.
@@ -72,6 +76,12 @@ func (b *ArtifactsServerBuilderImpl) WithLogger(logger *zap.Logger) ArtifactsSer
 	return b
 }
 
+// WithArtifactService sets a pre-configured artifact service for the server
+func (b *ArtifactsServerBuilderImpl) WithArtifactService(service ArtifactService) ArtifactsServerBuilder {
+	b.artifactService = service
+	return b
+}
+
 // Build creates and returns the configured artifacts server
 func (b *ArtifactsServerBuilderImpl) Build() (ArtifactsServer, error) {
 	if b.config == nil {
@@ -82,9 +92,16 @@ func (b *ArtifactsServerBuilderImpl) Build() (ArtifactsServer, error) {
 		return nil, fmt.Errorf("artifacts server is not enabled in configuration")
 	}
 
-	artifactService, err := NewArtifactService(b.config, b.logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create artifact service: %w", err)
+	var artifactService ArtifactService
+	var err error
+
+	if b.artifactService != nil {
+		artifactService = b.artifactService
+	} else {
+		artifactService, err = NewArtifactService(b.config, b.logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create artifact service: %w", err)
+		}
 	}
 
 	return NewArtifactsServer(b.config, b.logger, artifactService), nil
