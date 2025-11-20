@@ -2,19 +2,19 @@ version = 1
 
 [install]
 go.pkg-path = "go"
-go.version = "1.25"
+go.version = "^1.25.2"
 
 golangci-lint.pkg-path = "golangci-lint"
-golangci-lint.version = "2.5.0"
+golangci-lint.version = "^2.6.0"
 
 prettier.pkg-path = "prettier"
 prettier.version = "3.6.2"
 
 claude-code.pkg-path = "claude-code"
-claude-code.version = "2.0.8"
+claude-code.version = "^2.0.30"
 
 gh.pkg-path = "gh"
-gh.version = "2.81.0"
+gh.version = "^2.82.1"
 
 markdownlint-cli2.pkg-path = "markdownlint-cli2"
 markdownlint-cli2.version = "0.18.1"

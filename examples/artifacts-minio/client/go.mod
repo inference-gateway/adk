@@ -1,6 +1,6 @@
 module github.com/inference-gateway/adk/examples/artifacts-minio/client
 
-go 1.25
+go 1.25.2
 
 replace github.com/inference-gateway/adk => ../../..
 

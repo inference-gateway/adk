@@ -36,10 +36,10 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:    sdk.User,
-					Content: "Hello, world!",
-				},
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.User, "Hello, world!")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -59,10 +59,10 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:    sdk.Assistant,
-					Content: "Hi there!",
-				},
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.Assistant, "Hi there!")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -82,10 +82,10 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:    sdk.System,
-					Content: "You are a helpful assistant.",
-				},
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.System, "You are a helpful assistant.")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -105,10 +105,10 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:    sdk.User,
-					Content: "Default role test",
-				},
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.User, "Default role test")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -132,10 +132,10 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:    sdk.User,
-					Content: "Part 1. Part 2.",
-				},
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.User, "Part 1. Part 2.")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -159,11 +159,14 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:       sdk.Tool,
-					Content:    "Tool execution result",
-					ToolCallId: stringPtr("call_test_function"),
-				},
+				func() sdk.Message {
+					msg := sdk.Message{
+						Role:       sdk.Tool,
+						ToolCallId: stringPtr("call_test_function"),
+					}
+					_ = msg.Content.FromMessageContent0("Tool execution result")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -183,10 +186,10 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:    sdk.User,
-					Content: "Strongly typed message",
-				},
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.User, "Strongly typed message")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -214,10 +217,10 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:    sdk.User,
-					Content: "Please analyze this file: ",
-				},
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.User, "Please analyze this file: ")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -248,14 +251,14 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				},
 			},
 			expectedOutput: []sdk.Message{
-				{
-					Role:    sdk.User,
-					Content: "First message",
-				},
-				{
-					Role:    sdk.Assistant,
-					Content: "Second message",
-				},
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.User, "First message")
+					return msg
+				}(),
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.Assistant, "Second message")
+					return msg
+				}(),
 			},
 			expectError: false,
 		},
@@ -293,10 +296,10 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 	}{
 		{
 			name: "convert SDK user message",
-			input: sdk.Message{
-				Role:    sdk.User,
-				Content: "Hello from SDK",
-			},
+			input: func() sdk.Message {
+				msg, _ := sdk.NewTextMessage(sdk.User, "Hello from SDK")
+				return msg
+			}(),
 			expectedOutput: &types.Message{
 				Kind: "message",
 				Role: "user",
@@ -311,10 +314,10 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 		},
 		{
 			name: "convert SDK assistant message",
-			input: sdk.Message{
-				Role:    sdk.Assistant,
-				Content: "Response from assistant",
-			},
+			input: func() sdk.Message {
+				msg, _ := sdk.NewTextMessage(sdk.Assistant, "Response from assistant")
+				return msg
+			}(),
 			expectedOutput: &types.Message{
 				Kind: "message",
 				Role: "assistant",
@@ -329,10 +332,10 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 		},
 		{
 			name: "convert SDK system message",
-			input: sdk.Message{
-				Role:    sdk.System,
-				Content: "System instructions",
-			},
+			input: func() sdk.Message {
+				msg, _ := sdk.NewTextMessage(sdk.System, "System instructions")
+				return msg
+			}(),
 			expectedOutput: &types.Message{
 				Kind: "message",
 				Role: "system",
@@ -347,11 +350,14 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 		},
 		{
 			name: "convert SDK tool message",
-			input: sdk.Message{
-				Role:       sdk.Tool,
-				Content:    "Tool response",
-				ToolCallId: func() *string { s := "call_123"; return &s }(),
-			},
+			input: func() sdk.Message {
+				msg := sdk.Message{
+					Role:       sdk.Tool,
+					ToolCallId: func() *string { s := "call_123"; return &s }(),
+				}
+				_ = msg.Content.FromMessageContent0("Tool response")
+				return msg
+			}(),
 			expectedOutput: &types.Message{
 				Kind: "message",
 				Role: "tool",
@@ -370,20 +376,23 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 		},
 		{
 			name: "convert SDK message with tool calls",
-			input: sdk.Message{
-				Role:    sdk.Assistant,
-				Content: "I'll help you with that",
-				ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
-					{
-						Id:   "call_123",
-						Type: "function",
-						Function: sdk.ChatCompletionMessageToolCallFunction{
-							Name:      "get_weather",
-							Arguments: `{"location": "New York"}`,
+			input: func() sdk.Message {
+				msg := sdk.Message{
+					Role: sdk.Assistant,
+					ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
+						{
+							Id:   "call_123",
+							Type: "function",
+							Function: sdk.ChatCompletionMessageToolCallFunction{
+								Name:      "get_weather",
+								Arguments: `{"location": "New York"}`,
+							},
 						},
 					},
-				},
-			},
+				}
+				_ = msg.Content.FromMessageContent0("I'll help you with that")
+				return msg
+			}(),
 			expectedOutput: &types.Message{
 				Kind: "message",
 				Role: "assistant",
@@ -413,10 +422,10 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 		},
 		{
 			name: "convert SDK message with empty content",
-			input: sdk.Message{
-				Role:    sdk.Assistant,
-				Content: "",
-			},
+			input: func() sdk.Message {
+				msg, _ := sdk.NewTextMessage(sdk.Assistant, "")
+				return msg
+			}(),
 			expectedOutput: &types.Message{
 				Kind: "message",
 				Role: "assistant",
@@ -689,7 +698,8 @@ func TestMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 
 	for _, sdkMsg := range result {
 		assert.Equal(t, sdk.User, sdkMsg.Role)
-		assert.Contains(t, sdkMsg.Content, "Performance test message")
+		content, _ := sdkMsg.Content.AsMessageContent0()
+		assert.Contains(t, content, "Performance test message")
 	}
 }
 
@@ -789,7 +799,9 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 			require.Len(t, result, 1)
 
 			sdkMsg := result[0]
-			assert.Equal(t, tt.expectedContent, sdkMsg.Content)
+			content, err := sdkMsg.Content.AsMessageContent0()
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedContent, content)
 
 			if tt.expectedToolCalls == nil {
 				assert.Nil(t, sdkMsg.ToolCalls)
@@ -863,13 +875,15 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 
 	userMsg := result[0]
 	assert.Equal(t, sdk.User, userMsg.Role)
-	assert.Equal(t, "What's on my calendar today?", userMsg.Content)
+	userContent, _ := userMsg.Content.AsMessageContent0()
+	assert.Equal(t, "What's on my calendar today?", userContent)
 	assert.Nil(t, userMsg.ToolCalls)
 	assert.Nil(t, userMsg.ToolCallId)
 
 	assistantMsg := result[1]
 	assert.Equal(t, sdk.Assistant, assistantMsg.Role)
-	assert.Equal(t, "", assistantMsg.Content)
+	assistantContent, _ := assistantMsg.Content.AsMessageContent0()
+	assert.Equal(t, "", assistantContent)
 	require.NotNil(t, assistantMsg.ToolCalls)
 	require.Len(t, *assistantMsg.ToolCalls, 1)
 
@@ -881,7 +895,8 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 
 	toolMsg := result[2]
 	assert.Equal(t, sdk.Tool, toolMsg.Role)
-	assert.Contains(t, toolMsg.Content, "Found 0 events between 2025-06-16 00:00 and 2025-06-16 23:59")
+	toolContent, _ := toolMsg.Content.AsMessageContent0()
+	assert.Contains(t, toolContent, "Found 0 events between 2025-06-16 00:00 and 2025-06-16 23:59")
 	assert.Nil(t, toolMsg.ToolCalls)
 	require.NotNil(t, toolMsg.ToolCallId)
 	assert.Equal(t, "call_0_2e5a532f-06e2-4ced-8434-31e25019e144", *toolMsg.ToolCallId)

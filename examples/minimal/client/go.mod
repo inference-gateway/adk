@@ -1,6 +1,6 @@
 module github.com/inference-gateway/adk/examples/minimal/client
 
-go 1.25
+go 1.25.2
 
 replace github.com/inference-gateway/adk => ../../..
 

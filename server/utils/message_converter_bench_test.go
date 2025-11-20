@@ -61,10 +61,9 @@ func BenchmarkMessageConverter_ConvertFromSDK(b *testing.B) {
 	logger := zap.NewNop()
 	converter := NewMessageConverter(logger)
 
-	// Create test SDK message
-	sdkMessage := sdk.Message{
-		Role:    sdk.Assistant,
-		Content: "This is a benchmark test response from the SDK with some content to convert back to A2A format.",
+	sdkMessage, err := sdk.NewTextMessage(sdk.Assistant, "This is a benchmark test response from the SDK with some content to convert back to A2A format.")
+	if err != nil {
+		b.Fatal(err)
 	}
 
 	b.ResetTimer()

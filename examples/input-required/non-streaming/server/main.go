@@ -448,7 +448,7 @@ func main() {
 		}
 
 		// Create default toolbox (includes input_required tool)
-		toolBox := server.NewDefaultToolBox()
+		toolBox := server.NewDefaultToolBox(&cfg.A2A.AgentConfig.ToolBoxConfig)
 
 		// Create agent with default toolbox
 		agent, err := server.NewAgentBuilder(logger).

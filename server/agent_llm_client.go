@@ -110,8 +110,8 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 
 		if len(tools) > 0 {
 			response, lastErr = c.client.WithMiddlewareOptions(&sdk.MiddlewareOptions{
-				SkipA2A: true,
-				SkipMCP: true,
+				DirectProvider: true,
+				SkipMCP:        true,
 			}).WithOptions(options).WithTools(&tools).GenerateContent(
 				ctx,
 				c.provider,
@@ -120,8 +120,8 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 			)
 		} else {
 			response, lastErr = c.client.WithMiddlewareOptions(&sdk.MiddlewareOptions{
-				SkipA2A: true,
-				SkipMCP: true,
+				DirectProvider: true,
+				SkipMCP:        true,
 			}).WithOptions(options).GenerateContent(
 				ctx,
 				c.provider,
@@ -174,8 +174,8 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 
 		if len(tools) > 0 {
 			events, err = c.client.WithMiddlewareOptions(&sdk.MiddlewareOptions{
-				SkipA2A: true,
-				SkipMCP: true,
+				DirectProvider: true,
+				SkipMCP:        true,
 			}).WithOptions(options).WithTools(&tools).GenerateContentStream(
 				ctx,
 				c.provider,
@@ -184,8 +184,8 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 			)
 		} else {
 			events, err = c.client.WithMiddlewareOptions(&sdk.MiddlewareOptions{
-				SkipA2A: true,
-				SkipMCP: true,
+				DirectProvider: true,
+				SkipMCP:        true,
 			}).WithOptions(options).GenerateContentStream(
 				ctx,
 				c.provider,
