@@ -61,9 +61,10 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			}
 
 			if a.config != nil && a.config.SystemPrompt != "" {
-				systemMessage := sdk.Message{
-					Role:    sdk.System,
-					Content: a.config.SystemPrompt,
+				systemMessage, err := sdk.NewTextMessage(sdk.System, a.config.SystemPrompt)
+				if err != nil {
+					a.logger.Error("failed to create system message", zap.Error(err))
+					return
 				}
 				sdkMessages = append([]sdk.Message{systemMessage}, sdkMessages...)
 			}

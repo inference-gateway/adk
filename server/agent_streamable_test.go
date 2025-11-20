@@ -1272,7 +1272,8 @@ func TestRunWithStream_WithSystemPrompt(t *testing.T) {
 
 	require.NotEmpty(t, capturedMessages, "Should have captured messages")
 	assert.Equal(t, sdk.System, capturedMessages[0].Role, "First message should be system message")
-	assert.Equal(t, "You are a helpful assistant", capturedMessages[0].Content, "System prompt should match")
+	systemContent, _ := capturedMessages[0].Content.AsMessageContent0()
+	assert.Equal(t, "You are a helpful assistant", systemContent, "System prompt should match")
 }
 
 func TestRunWithStream_MultipleIterations(t *testing.T) {

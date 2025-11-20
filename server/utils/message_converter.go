@@ -108,12 +108,17 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 		sdkRole = sdk.User
 	}
 
-	return sdk.Message{
+	sdkMsg := sdk.Message{
 		Role:       sdkRole,
-		Content:    content,
 		ToolCallId: toolCallId,
 		ToolCalls:  toolCalls,
-	}, nil
+	}
+
+	if err := sdkMsg.Content.FromMessageContent0(content); err != nil {
+		return sdk.Message{}, fmt.Errorf("failed to set message content: %w", err)
+	}
+
+	return sdkMsg, nil
 }
 
 // processDataPart handles the extraction of data from data parts for both typed and map formats
@@ -321,10 +326,17 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 		Parts:     []types.Part{},
 	}
 
+	content, err := response.Content.AsMessageContent0()
+	if err != nil {
+		c.logger.Debug("content is not a string, treating as empty",
+			zap.Error(err))
+		content = ""
+	}
+
 	switch role {
 	case "tool":
 		toolData := map[string]any{
-			"result": response.Content,
+			"result": content,
 		}
 
 		if response.ToolCallId != nil {
@@ -342,8 +354,8 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 	case "assistant":
 		hasToolCalls := response.ToolCalls != nil && len(*response.ToolCalls) > 0
 
-		if response.Content != "" {
-			message.Parts = append(message.Parts, types.CreateTextPart(response.Content))
+		if content != "" {
+			message.Parts = append(message.Parts, types.CreateTextPart(content))
 		}
 
 		if hasToolCalls {
@@ -360,8 +372,8 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 		}
 
 	default:
-		if response.Content != "" {
-			message.Parts = append(message.Parts, types.CreateTextPart(response.Content))
+		if content != "" {
+			message.Parts = append(message.Parts, types.CreateTextPart(content))
 		}
 	}
 
@@ -374,7 +386,7 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 
 	c.logger.Debug("converted SDK message to A2A format",
 		zap.String("role", role),
-		zap.String("content", response.Content),
+		zap.String("content", content),
 		zap.Bool("has_tool_calls", response.ToolCalls != nil),
 		zap.Bool("has_reasoning", hasReasoning),
 		zap.Int("parts_count", len(message.Parts)))
