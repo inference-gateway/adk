@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.15.3](https://github.com/inference-gateway/adk/compare/v0.15.2...v0.15.3) (2025-11-20)
+
+### 🔧 Miscellaneous
+
+* **deps:** Upgrade Inference Gateway SDK to v1.14.0 ([#116](https://github.com/inference-gateway/adk/issues/116)) ([26722e9](https://github.com/inference-gateway/adk/commit/26722e9ac1cdc5ffaebe10dea3fffae5f75c9f71))
+
 ## [0.15.2](https://github.com/inference-gateway/adk/compare/v0.15.1...v0.15.2) (2025-10-18)
 
 ### 🐛 Bug Fixes
