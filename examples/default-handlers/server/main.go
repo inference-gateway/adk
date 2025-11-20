@@ -80,7 +80,7 @@ func main() {
 	)
 
 	// Create toolbox with sample tools
-	toolBox := server.NewDefaultToolBox()
+	toolBox := server.NewDefaultToolBox(&cfg.A2A.AgentConfig.ToolBoxConfig)
 
 	// Add weather tool
 	weatherTool := server.NewBasicTool(
