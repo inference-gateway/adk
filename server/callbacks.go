@@ -1,3 +1,42 @@
+// Package server provides callback functionality for hooking into agent execution lifecycle.
+//
+// Callbacks allow you to intercept and modify behavior at various points during agent execution:
+//   - BeforeAgent/AfterAgent: Hook into the overall agent execution
+//   - BeforeModel/AfterModel: Hook into LLM calls for caching, guardrails, etc.
+//   - BeforeTool/AfterTool: Hook into tool execution for authorization, logging, etc.
+//
+// # Flow Control
+//
+// Before callbacks can skip default behavior by returning a non-nil value:
+//   - BeforeAgent returning a Message skips agent execution
+//   - BeforeModel returning an LLMResponse skips the LLM call
+//   - BeforeTool returning a map skips tool execution
+//
+// After callbacks can modify outputs by returning a non-nil value:
+//   - AfterAgent returning a Message replaces the agent output
+//   - AfterModel returning an LLMResponse replaces the LLM response
+//   - AfterTool returning a map replaces the tool result
+//
+// # Example Usage
+//
+//	callbacks := &CallbackConfig{
+//	    BeforeAgent: []BeforeAgentCallback{
+//	        func(ctx context.Context, callbackCtx *CallbackContext) *types.Message {
+//	            // Log, validate, or return early
+//	            return nil // proceed with execution
+//	        },
+//	    },
+//	    BeforeModel: []BeforeModelCallback{
+//	        func(ctx context.Context, callbackCtx *CallbackContext, req *LLMRequest) *LLMResponse {
+//	            // Implement caching or guardrails
+//	            return nil // proceed with LLM call
+//	        },
+//	    },
+//	}
+//
+//	agent, err := NewAgentBuilder(logger).
+//	    WithCallbacks(callbacks).
+//	    Build()
 package server
 
 import (

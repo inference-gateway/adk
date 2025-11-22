@@ -31,6 +31,17 @@ type FakeAgentBuilder struct {
 	getConfigReturnsOnCall map[int]struct {
 		result1 *config.AgentConfig
 	}
+	WithCallbacksStub        func(*server.CallbackConfig) server.AgentBuilder
+	withCallbacksMutex       sync.RWMutex
+	withCallbacksArgsForCall []struct {
+		arg1 *server.CallbackConfig
+	}
+	withCallbacksReturns struct {
+		result1 server.AgentBuilder
+	}
+	withCallbacksReturnsOnCall map[int]struct {
+		result1 server.AgentBuilder
+	}
 	WithConfigStub        func(*config.AgentConfig) server.AgentBuilder
 	withConfigMutex       sync.RWMutex
 	withConfigArgsForCall []struct {
@@ -217,6 +228,67 @@ func (fake *FakeAgentBuilder) GetConfigReturnsOnCall(i int, result1 *config.Agen
 	}
 	fake.getConfigReturnsOnCall[i] = struct {
 		result1 *config.AgentConfig
+	}{result1}
+}
+
+func (fake *FakeAgentBuilder) WithCallbacks(arg1 *server.CallbackConfig) server.AgentBuilder {
+	fake.withCallbacksMutex.Lock()
+	ret, specificReturn := fake.withCallbacksReturnsOnCall[len(fake.withCallbacksArgsForCall)]
+	fake.withCallbacksArgsForCall = append(fake.withCallbacksArgsForCall, struct {
+		arg1 *server.CallbackConfig
+	}{arg1})
+	stub := fake.WithCallbacksStub
+	fakeReturns := fake.withCallbacksReturns
+	fake.recordInvocation("WithCallbacks", []interface{}{arg1})
+	fake.withCallbacksMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeAgentBuilder) WithCallbacksCallCount() int {
+	fake.withCallbacksMutex.RLock()
+	defer fake.withCallbacksMutex.RUnlock()
+	return len(fake.withCallbacksArgsForCall)
+}
+
+func (fake *FakeAgentBuilder) WithCallbacksCalls(stub func(*server.CallbackConfig) server.AgentBuilder) {
+	fake.withCallbacksMutex.Lock()
+	defer fake.withCallbacksMutex.Unlock()
+	fake.WithCallbacksStub = stub
+}
+
+func (fake *FakeAgentBuilder) WithCallbacksArgsForCall(i int) *server.CallbackConfig {
+	fake.withCallbacksMutex.RLock()
+	defer fake.withCallbacksMutex.RUnlock()
+	argsForCall := fake.withCallbacksArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeAgentBuilder) WithCallbacksReturns(result1 server.AgentBuilder) {
+	fake.withCallbacksMutex.Lock()
+	defer fake.withCallbacksMutex.Unlock()
+	fake.WithCallbacksStub = nil
+	fake.withCallbacksReturns = struct {
+		result1 server.AgentBuilder
+	}{result1}
+}
+
+func (fake *FakeAgentBuilder) WithCallbacksReturnsOnCall(i int, result1 server.AgentBuilder) {
+	fake.withCallbacksMutex.Lock()
+	defer fake.withCallbacksMutex.Unlock()
+	fake.WithCallbacksStub = nil
+	if fake.withCallbacksReturnsOnCall == nil {
+		fake.withCallbacksReturnsOnCall = make(map[int]struct {
+			result1 server.AgentBuilder
+		})
+	}
+	fake.withCallbacksReturnsOnCall[i] = struct {
+		result1 server.AgentBuilder
 	}{result1}
 }
 
@@ -646,6 +718,8 @@ func (fake *FakeAgentBuilder) Invocations() map[string][][]interface{} {
 	defer fake.buildMutex.RUnlock()
 	fake.getConfigMutex.RLock()
 	defer fake.getConfigMutex.RUnlock()
+	fake.withCallbacksMutex.RLock()
+	defer fake.withCallbacksMutex.RUnlock()
 	fake.withConfigMutex.RLock()
 	defer fake.withConfigMutex.RUnlock()
 	fake.withDefaultToolBoxMutex.RLock()

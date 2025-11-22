@@ -36,6 +36,25 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 	go func() {
 		defer close(outputChan)
 
+		// Execute BeforeAgent callback - can skip agent execution by returning a message
+		callbackCtx := a.createCallbackContext(taskID, contextID)
+		executor := a.GetCallbackExecutor()
+		if override := executor.ExecuteBeforeAgent(ctx, callbackCtx); override != nil {
+			a.logger.Debug("BeforeAgent callback returned override, skipping agent execution")
+			// Send completed status with the override message
+			completedStatusEvent := cloudevents.NewEvent()
+			completedStatusEvent.SetType(types.EventTaskStatusChanged)
+			if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+				State:   types.TaskStateCompleted,
+				Message: override,
+			}); err != nil {
+				a.logger.Error("failed to set completed status event data", zap.Error(err))
+				return
+			}
+			outputChan <- completedStatusEvent
+			return
+		}
+
 		statusEvent := cloudevents.NewEvent()
 		statusEvent.SetType(types.EventTaskStatusChanged)
 		if err := statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
@@ -48,6 +67,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 		currentMessages := make([]types.Message, len(messages))
 		copy(currentMessages, messages)
+
+		// Track the final assistant message for AfterAgent callback
+		var finalAssistantMessage *types.Message
 
 		for iteration := 1; iteration <= a.config.MaxChatCompletionIterations; iteration++ {
 			a.logger.Debug("starting streaming iteration",
@@ -69,15 +91,81 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				sdkMessages = append([]sdk.Message{systemMessage}, sdkMessages...)
 			}
 
-			streamResponseChan, streamErrorChan := a.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
+			// Execute BeforeModel callback - can skip LLM call by returning a response
+			llmRequest := &LLMRequest{
+				Contents: currentMessages,
+				Config: &LLMConfig{
+					SystemInstruction: nil,
+				},
+			}
+			if a.config != nil && a.config.SystemPrompt != "" {
+				sysMsg := &types.Message{
+					Role: "system",
+					Parts: []types.Part{
+						map[string]any{"kind": "text", "text": a.config.SystemPrompt},
+					},
+				}
+				llmRequest.Config.SystemInstruction = sysMsg
+			}
+
+			var beforeModelOverride *LLMResponse
+			if override := executor.ExecuteBeforeModel(ctx, callbackCtx, llmRequest); override != nil {
+				a.logger.Debug("BeforeModel callback returned override, skipping LLM call")
+				beforeModelOverride = override
+			}
+
+			// Variables for streaming
+			var streamResponseChan <-chan *sdk.CreateChatCompletionStreamResponse
+			var streamErrorChan <-chan error
+
+			// If BeforeModel didn't override, make the actual LLM call
+			if beforeModelOverride == nil {
+				streamResponseChan, streamErrorChan = a.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
+			}
 
 			var fullContent string
 			toolCallAccumulator := make(map[string]*sdk.ChatCompletionMessageToolCall)
 			var assistantMessage *types.Message
 			var toolResultMessages []types.Message
 			toolResults := make(map[string]*types.Message)
+			skipStreaming := false
 
-			streaming := true
+			// Handle BeforeModel override case - skip streaming entirely
+			if beforeModelOverride != nil && beforeModelOverride.Content != nil {
+				assistantMessage = beforeModelOverride.Content
+				assistantMessage.TaskID = taskID
+				assistantMessage.ContextID = contextID
+
+				// Execute AfterModel callback on the override response
+				llmResponse := &LLMResponse{Content: assistantMessage}
+				if modified := executor.ExecuteAfterModel(ctx, callbackCtx, llmResponse); modified != nil && modified.Content != nil {
+					assistantMessage = modified.Content
+					assistantMessage.TaskID = taskID
+					assistantMessage.ContextID = contextID
+				}
+
+				// Extract text content if present
+				for _, part := range assistantMessage.Parts {
+					if partMap, ok := part.(map[string]any); ok {
+						if text, exists := partMap["text"].(string); exists {
+							fullContent = text
+							break
+						}
+					}
+				}
+
+				currentMessages = append(currentMessages, *assistantMessage)
+				iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
+				select {
+				case outputChan <- iterationEvent:
+				case <-ctx.Done():
+					return
+				}
+
+				skipStreaming = true
+			}
+
+			streaming := !skipStreaming
 			for streaming {
 				select {
 				case <-ctx.Done():
@@ -222,6 +310,23 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 							})
 						}
 
+						// Execute AfterModel callback - can modify the LLM response
+						llmResponse := &LLMResponse{Content: assistantMessage}
+						if modified := executor.ExecuteAfterModel(ctx, callbackCtx, llmResponse); modified != nil && modified.Content != nil {
+							assistantMessage = modified.Content
+							assistantMessage.TaskID = taskID
+							assistantMessage.ContextID = contextID
+							// Update fullContent if text part was modified
+							for _, part := range assistantMessage.Parts {
+								if partMap, ok := part.(map[string]any); ok {
+									if text, exists := partMap["text"].(string); exists {
+										fullContent = text
+										break
+									}
+								}
+							}
+						}
+
 						if len(toolCallAccumulator) > 0 && a.toolBox != nil {
 							for key, toolCall := range toolCallAccumulator {
 								a.logger.Debug("tool call accumulator",
@@ -302,11 +407,21 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					zap.Int("final_message_count", len(currentMessages)),
 					zap.Bool("has_assistant_message", assistantMessage != nil))
 
+				// Track the final assistant message for AfterAgent callback
+				finalAssistantMessage = assistantMessage
+
+				// Execute AfterAgent callback - can modify the final agent output
+				if modified := executor.ExecuteAfterAgent(ctx, callbackCtx, finalAssistantMessage); modified != nil {
+					finalAssistantMessage = modified
+					finalAssistantMessage.TaskID = taskID
+					finalAssistantMessage.ContextID = contextID
+				}
+
 				completedStatusEvent := cloudevents.NewEvent()
 				completedStatusEvent.SetType(types.EventTaskStatusChanged)
 				if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
 					State:   types.TaskStateCompleted,
-					Message: assistantMessage,
+					Message: finalAssistantMessage,
 				}); err != nil {
 					a.logger.Error("failed to set completed status event data", zap.Error(err))
 					return
@@ -368,6 +483,8 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 		contextID = &task.ContextID
 	}
 
+	executor := a.GetCallbackExecutor()
+
 	for _, toolCall := range toolCalls {
 		if toolCall.Function.Name == "" {
 			continue
@@ -401,6 +518,19 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			continue
 		}
 
+		// Create tool context for callbacks
+		toolCtx := a.createToolContext(taskID, contextID)
+
+		// Get the tool for callbacks (if it exists in toolbox)
+		var tool Tool
+		if a.toolBox != nil {
+			if tb, ok := a.toolBox.(*DefaultToolBox); ok {
+				if t, exists := tb.tools[toolCall.Function.Name]; exists {
+					tool = t
+				}
+			}
+		}
+
 		switch toolCall.Function.Name {
 		case types.ToolInputRequired:
 			a.logger.Debug("input_required tool called in streaming mode", zap.String("tool_call_id", toolCall.Id), zap.String("message", toolCall.Function.Arguments))
@@ -425,7 +555,41 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			return append(toolResultMessages, *inputRequiredMessage)
 
 		default:
-			result, toolErr := a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			var result string
+			var toolErr error
+
+			// Execute BeforeTool callback - can skip tool execution by returning a result
+			if override := executor.ExecuteBeforeTool(ctx, tool, args, toolCtx); override != nil {
+				a.logger.Debug("BeforeTool callback returned override, skipping tool execution",
+					zap.String("tool", toolCall.Function.Name))
+				// Convert override map to string result
+				if resultStr, ok := override["result"].(string); ok {
+					result = resultStr
+				} else {
+					// Marshal the override as JSON if not a simple string
+					if jsonBytes, err := json.Marshal(override); err == nil {
+						result = string(jsonBytes)
+					}
+				}
+			} else {
+				// Execute the actual tool
+				result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
+			}
+
+			// Execute AfterTool callback - can modify the tool result
+			toolResult := map[string]interface{}{"result": result}
+			if toolErr != nil {
+				toolResult["error"] = toolErr.Error()
+			}
+			if modified := executor.ExecuteAfterTool(ctx, tool, args, toolCtx, toolResult); modified != nil {
+				if resultStr, ok := modified["result"].(string); ok {
+					result = resultStr
+				}
+				// Check if error was cleared by callback
+				if _, hasError := modified["error"]; !hasError {
+					toolErr = nil
+				}
+			}
 
 			if toolErr != nil {
 				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
@@ -483,4 +647,50 @@ func isCompleteJSON(s string) bool {
 	}
 
 	return openCount == 0
+}
+
+// createCallbackContext creates a CallbackContext from the current execution state
+func (a *OpenAICompatibleAgentImpl) createCallbackContext(taskID, contextID *string) *CallbackContext {
+	agentName := ""
+	if a.config != nil {
+		agentName = a.config.AgentName
+	}
+
+	callbackCtx := &CallbackContext{
+		AgentName: agentName,
+		State:     make(map[string]any),
+		Logger:    a.logger,
+	}
+
+	if taskID != nil {
+		callbackCtx.TaskID = *taskID
+	}
+	if contextID != nil {
+		callbackCtx.ContextID = *contextID
+	}
+
+	return callbackCtx
+}
+
+// createToolContext creates a ToolContext from the current execution state
+func (a *OpenAICompatibleAgentImpl) createToolContext(taskID, contextID *string) *ToolContext {
+	agentName := ""
+	if a.config != nil {
+		agentName = a.config.AgentName
+	}
+
+	toolCtx := &ToolContext{
+		AgentName: agentName,
+		State:     make(map[string]any),
+		Logger:    a.logger,
+	}
+
+	if taskID != nil {
+		toolCtx.TaskID = *taskID
+	}
+	if contextID != nil {
+		toolCtx.ContextID = *contextID
+	}
+
+	return toolCtx
 }
