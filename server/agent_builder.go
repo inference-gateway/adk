@@ -51,12 +51,12 @@ var _ AgentBuilder = (*AgentBuilderImpl)(nil)
 // AgentBuilderImpl is the concrete implementation of the AgentBuilder interface.
 // It provides a fluent interface for building OpenAI-compatible agents with custom configurations.
 type AgentBuilderImpl struct {
-	logger          *zap.Logger
-	config          *config.AgentConfig
-	llmClient       LLMClient
-	toolBox         ToolBox
-	systemPrompt    *string // Use pointer to distinguish between not set and empty string
-	callbackConfig  *CallbackConfig
+	logger         *zap.Logger
+	config         *config.AgentConfig
+	llmClient      LLMClient
+	toolBox        ToolBox
+	systemPrompt   *string // Use pointer to distinguish between not set and empty string
+	callbackConfig *CallbackConfig
 }
 
 // NewAgentBuilder creates a new agent builder with required dependencies.

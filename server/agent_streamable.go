@@ -36,12 +36,10 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 	go func() {
 		defer close(outputChan)
 
-		// Execute BeforeAgent callback - can skip agent execution by returning a message
 		callbackCtx := a.createCallbackContext(taskID, contextID)
 		executor := a.GetCallbackExecutor()
 		if override := executor.ExecuteBeforeAgent(ctx, callbackCtx); override != nil {
 			a.logger.Debug("BeforeAgent callback returned override, skipping agent execution")
-			// Send completed status with the override message
 			completedStatusEvent := cloudevents.NewEvent()
 			completedStatusEvent.SetType(types.EventTaskStatusChanged)
 			if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
@@ -68,7 +66,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		currentMessages := make([]types.Message, len(messages))
 		copy(currentMessages, messages)
 
-		// Track the final assistant message for AfterAgent callback
 		var finalAssistantMessage *types.Message
 
 		for iteration := 1; iteration <= a.config.MaxChatCompletionIterations; iteration++ {
@@ -91,7 +88,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				sdkMessages = append([]sdk.Message{systemMessage}, sdkMessages...)
 			}
 
-			// Execute BeforeModel callback - can skip LLM call by returning a response
 			llmRequest := &LLMRequest{
 				Contents: currentMessages,
 				Config: &LLMConfig{
@@ -114,11 +110,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				beforeModelOverride = override
 			}
 
-			// Variables for streaming
 			var streamResponseChan <-chan *sdk.CreateChatCompletionStreamResponse
 			var streamErrorChan <-chan error
 
-			// If BeforeModel didn't override, make the actual LLM call
 			if beforeModelOverride == nil {
 				streamResponseChan, streamErrorChan = a.llmClient.CreateStreamingChatCompletion(ctx, sdkMessages, tools...)
 			}
@@ -130,13 +124,11 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			toolResults := make(map[string]*types.Message)
 			skipStreaming := false
 
-			// Handle BeforeModel override case - skip streaming entirely
 			if beforeModelOverride != nil && beforeModelOverride.Content != nil {
 				assistantMessage = beforeModelOverride.Content
 				assistantMessage.TaskID = taskID
 				assistantMessage.ContextID = contextID
 
-				// Execute AfterModel callback on the override response
 				llmResponse := &LLMResponse{Content: assistantMessage}
 				if modified := executor.ExecuteAfterModel(ctx, callbackCtx, llmResponse); modified != nil && modified.Content != nil {
 					assistantMessage = modified.Content
@@ -144,7 +136,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					assistantMessage.ContextID = contextID
 				}
 
-				// Extract text content if present
 				for _, part := range assistantMessage.Parts {
 					if partMap, ok := part.(map[string]any); ok {
 						if text, exists := partMap["text"].(string); exists {
@@ -310,13 +301,11 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 							})
 						}
 
-						// Execute AfterModel callback - can modify the LLM response
 						llmResponse := &LLMResponse{Content: assistantMessage}
 						if modified := executor.ExecuteAfterModel(ctx, callbackCtx, llmResponse); modified != nil && modified.Content != nil {
 							assistantMessage = modified.Content
 							assistantMessage.TaskID = taskID
 							assistantMessage.ContextID = contextID
-							// Update fullContent if text part was modified
 							for _, part := range assistantMessage.Parts {
 								if partMap, ok := part.(map[string]any); ok {
 									if text, exists := partMap["text"].(string); exists {
@@ -407,10 +396,8 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					zap.Int("final_message_count", len(currentMessages)),
 					zap.Bool("has_assistant_message", assistantMessage != nil))
 
-				// Track the final assistant message for AfterAgent callback
 				finalAssistantMessage = assistantMessage
 
-				// Execute AfterAgent callback - can modify the final agent output
 				if modified := executor.ExecuteAfterAgent(ctx, callbackCtx, finalAssistantMessage); modified != nil {
 					finalAssistantMessage = modified
 					finalAssistantMessage.TaskID = taskID
@@ -518,10 +505,8 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			continue
 		}
 
-		// Create tool context for callbacks
 		toolCtx := a.createToolContext(taskID, contextID)
 
-		// Get the tool for callbacks (if it exists in toolbox)
 		var tool Tool
 		if a.toolBox != nil {
 			if tb, ok := a.toolBox.(*DefaultToolBox); ok {
@@ -558,25 +543,20 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			var result string
 			var toolErr error
 
-			// Execute BeforeTool callback - can skip tool execution by returning a result
 			if override := executor.ExecuteBeforeTool(ctx, tool, args, toolCtx); override != nil {
 				a.logger.Debug("BeforeTool callback returned override, skipping tool execution",
 					zap.String("tool", toolCall.Function.Name))
-				// Convert override map to string result
 				if resultStr, ok := override["result"].(string); ok {
 					result = resultStr
 				} else {
-					// Marshal the override as JSON if not a simple string
 					if jsonBytes, err := json.Marshal(override); err == nil {
 						result = string(jsonBytes)
 					}
 				}
 			} else {
-				// Execute the actual tool
 				result, toolErr = a.toolBox.ExecuteTool(ctx, toolCall.Function.Name, args)
 			}
 
-			// Execute AfterTool callback - can modify the tool result
 			toolResult := map[string]interface{}{"result": result}
 			if toolErr != nil {
 				toolResult["error"] = toolErr.Error()
@@ -585,7 +565,6 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 				if resultStr, ok := modified["result"].(string); ok {
 					result = resultStr
 				}
-				// Check if error was cleared by callback
 				if _, hasError := modified["error"]; !hasError {
 					toolErr = nil
 				}

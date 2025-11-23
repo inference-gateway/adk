@@ -6,14 +6,14 @@ This example demonstrates how to use the callback feature in the ADK (Agent Deve
 
 The ADK supports six types of callbacks:
 
-| Callback | When Triggered | Purpose |
-|----------|----------------|---------|
-| `BeforeAgent` | Before agent execution starts | Guardrails, validation, early returns |
-| `AfterAgent` | After agent execution completes | Post-processing, logging, output modification |
-| `BeforeModel` | Before each LLM call | Caching, request modification, guardrails |
-| `AfterModel` | After each LLM response | Response modification, logging, sanitization |
-| `BeforeTool` | Before each tool execution | Authorization, caching, argument modification |
-| `AfterTool` | After each tool execution | Result modification, logging, sanitization |
+| Callback      | When Triggered                  | Purpose                                       |
+| ------------- | ------------------------------- | --------------------------------------------- |
+| `BeforeAgent` | Before agent execution starts   | Guardrails, validation, early returns         |
+| `AfterAgent`  | After agent execution completes | Post-processing, logging, output modification |
+| `BeforeModel` | Before each LLM call            | Caching, request modification, guardrails     |
+| `AfterModel`  | After each LLM response         | Response modification, logging, sanitization  |
+| `BeforeTool`  | Before each tool execution      | Authorization, caching, argument modification |
+| `AfterTool`   | After each tool execution       | Result modification, logging, sanitization    |
 
 ## Flow Control
 
@@ -60,23 +60,29 @@ agent, err := server.NewAgentBuilder(logger).
 ## Use Cases
 
 ### Guardrails
+
 Use `BeforeAgent` or `BeforeModel` to block or modify requests based on content policies.
 
 ### Caching
+
 Use `BeforeModel` to return cached responses and skip expensive LLM calls.
 
 ### Authorization
+
 Use `BeforeTool` to implement tool-level authorization checks.
 
 ### Logging & Metrics
+
 Use any callback to log execution details or send metrics.
 
 ### Response Sanitization
+
 Use `AfterModel` or `AfterTool` to remove sensitive information from outputs.
 
 ## Running the Example
 
 1. Set required environment variables:
+
 ```bash
 export A2A_AGENT_CLIENT_PROVIDER=openai
 export A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
@@ -84,12 +90,14 @@ export A2A_AGENT_CLIENT_API_KEY=your-api-key
 ```
 
 2. Run the server:
+
 ```bash
 cd examples/callbacks/server
 go run main.go
 ```
 
 3. Send a test request:
+
 ```bash
 curl -X POST http://localhost:8080/tasks/send \
   -H "Content-Type: application/json" \
@@ -112,6 +120,7 @@ Watch the server logs to see the callbacks being triggered in sequence.
 ## Context Objects
 
 ### CallbackContext
+
 Available in agent and model callbacks:
 - `AgentName`: Name of the agent
 - `TaskID`: Current task ID
@@ -120,6 +129,7 @@ Available in agent and model callbacks:
 - `Logger`: Logger instance
 
 ### ToolContext
+
 Available in tool callbacks (extends CallbackContext functionality):
 - `AgentName`: Name of the agent
 - `TaskID`: Current task ID

@@ -119,7 +119,6 @@ func (h *CallbacksTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 //
 // To run: go run main.go
 func main() {
-	// Create configuration with defaults
 	cfg := &config.Config{
 		Environment: "development",
 		A2A: serverConfig.Config{
@@ -141,13 +140,11 @@ func main() {
 		},
 	}
 
-	// Load configuration from environment variables
 	ctx := context.Background()
 	if err := envconfig.Process(ctx, cfg); err != nil {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
 
-	// Initialize logger
 	var logger *zap.Logger
 	var err error
 	if cfg.Environment == "development" || cfg.A2A.Debug {
@@ -168,7 +165,6 @@ func main() {
 		zap.String("port", cfg.A2A.ServerConfig.Port),
 	)
 
-	// Validate required configuration
 	if cfg.A2A.AgentConfig.Provider == "" {
 		logger.Fatal("A2A_AGENT_CLIENT_PROVIDER is required")
 	}
@@ -176,10 +172,8 @@ func main() {
 		logger.Fatal("A2A_AGENT_CLIENT_MODEL is required")
 	}
 
-	// Create toolbox with sample tools
 	toolBox := server.NewDefaultToolBox(&cfg.A2A.AgentConfig.ToolBoxConfig)
 
-	// Add a sample tool for demonstration
 	echoTool := server.NewBasicTool(
 		"echo",
 		"Echo the provided message back",
@@ -200,10 +194,7 @@ func main() {
 	)
 	toolBox.AddTool(echoTool)
 
-	// Define callback configuration with example callbacks
 	callbackConfig := &server.CallbackConfig{
-		// BeforeAgent: Called before the agent starts processing
-		// Return non-nil to skip agent execution entirely
 		BeforeAgent: []server.BeforeAgentCallback{
 			func(ctx context.Context, callbackCtx *server.CallbackContext) *types.Message {
 				logger.Info("BeforeAgent callback triggered",
@@ -226,8 +217,6 @@ func main() {
 			},
 		},
 
-		// AfterAgent: Called after the agent completes processing
-		// Return non-nil to modify the final output
 		AfterAgent: []server.AfterAgentCallback{
 			func(ctx context.Context, callbackCtx *server.CallbackContext, agentOutput *types.Message) *types.Message {
 				logger.Info("AfterAgent callback triggered",
@@ -241,8 +230,6 @@ func main() {
 			},
 		},
 
-		// BeforeModel: Called before each LLM call
-		// Return non-nil to skip the LLM call and use a cached/mocked response
 		BeforeModel: []server.BeforeModelCallback{
 			func(ctx context.Context, callbackCtx *server.CallbackContext, llmRequest *server.LLMRequest) *server.LLMResponse {
 				logger.Info("BeforeModel callback triggered",
@@ -264,8 +251,6 @@ func main() {
 			},
 		},
 
-		// AfterModel: Called after each LLM response
-		// Return non-nil to modify the LLM response
 		AfterModel: []server.AfterModelCallback{
 			func(ctx context.Context, callbackCtx *server.CallbackContext, llmResponse *server.LLMResponse) *server.LLMResponse {
 				logger.Info("AfterModel callback triggered",
@@ -277,8 +262,6 @@ func main() {
 			},
 		},
 
-		// BeforeTool: Called before each tool execution
-		// Return non-nil to skip tool execution and use a mock result
 		BeforeTool: []server.BeforeToolCallback{
 			func(ctx context.Context, tool server.Tool, args map[string]interface{}, toolCtx *server.ToolContext) map[string]interface{} {
 				toolName := ""
@@ -299,8 +282,6 @@ func main() {
 			},
 		},
 
-		// AfterTool: Called after each tool execution
-		// Return non-nil to modify the tool result
 		AfterTool: []server.AfterToolCallback{
 			func(ctx context.Context, tool server.Tool, args map[string]interface{}, toolCtx *server.ToolContext, toolResult map[string]interface{}) map[string]interface{} {
 				toolName := ""
@@ -319,30 +300,26 @@ func main() {
 		},
 	}
 
-	// Create LLM client
 	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)
 	if err != nil {
 		logger.Fatal("failed to create LLM client", zap.Error(err))
 	}
 
-	// Create AI agent with callbacks configured
 	agent, err := server.NewAgentBuilder(logger).
 		WithConfig(&cfg.A2A.AgentConfig).
 		WithLLMClient(llmClient).
 		WithSystemPrompt("You are a helpful AI assistant demonstrating callback functionality. You have access to an echo tool.").
 		WithMaxChatCompletion(10).
 		WithToolBox(toolBox).
-		WithCallbacks(callbackConfig). // <-- Register callbacks here
+		WithCallbacks(callbackConfig).
 		Build()
 	if err != nil {
 		logger.Fatal("failed to create AI agent", zap.Error(err))
 	}
 
-	// Create task handler
 	taskHandler := NewCallbacksTaskHandler(logger)
 	taskHandler.SetAgent(agent)
 
-	// Build and start server
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithBackgroundTaskHandler(taskHandler).
 		WithStreamingTaskHandler(taskHandler).
@@ -376,7 +353,6 @@ func main() {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
 
-	// Start server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -391,7 +367,6 @@ func main() {
 		zap.String("callbacks", "BeforeAgent, AfterAgent, BeforeModel, AfterModel, BeforeTool, AfterTool"),
 	)
 
-	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
