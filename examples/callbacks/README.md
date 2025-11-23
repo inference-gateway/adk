@@ -122,6 +122,7 @@ Watch the server logs to see the callbacks being triggered in sequence.
 ### CallbackContext
 
 Available in agent and model callbacks:
+
 - `AgentName`: Name of the agent
 - `TaskID`: Current task ID
 - `ContextID`: Conversation context ID
@@ -131,6 +132,7 @@ Available in agent and model callbacks:
 ### ToolContext
 
 Available in tool callbacks (extends CallbackContext functionality):
+
 - `AgentName`: Name of the agent
 - `TaskID`: Current task ID
 - `ContextID`: Conversation context ID
