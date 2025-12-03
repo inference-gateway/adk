@@ -16,6 +16,10 @@ import (
 //	agent := NewAgentBuilder(logger).
 //	  WithConfig(agentConfig).
 //	  WithLLMClient(client).
+//	  WithCallbacks(&CallbackConfig{
+//	    BeforeAgent: []BeforeAgentCallback{myBeforeAgentCallback},
+//	    AfterAgent:  []AfterAgentCallback{myAfterAgentCallback},
+//	  }).
 //	  Build()
 type AgentBuilder interface {
 	// WithConfig sets the agent configuration
@@ -32,6 +36,10 @@ type AgentBuilder interface {
 	WithMaxChatCompletion(max int) AgentBuilder
 	// WithMaxConversationHistory sets the maximum conversation history for the agent
 	WithMaxConversationHistory(max int) AgentBuilder
+	// WithCallbacks sets the callback configuration for the agent
+	// Callbacks allow you to hook into various points of the agent's execution lifecycle
+	// including before/after agent execution, model calls, and tool execution
+	WithCallbacks(config *CallbackConfig) AgentBuilder
 	// GetConfig returns the current agent configuration (for testing purposes)
 	GetConfig() *config.AgentConfig
 	// Build creates and returns the configured agent
@@ -43,11 +51,12 @@ var _ AgentBuilder = (*AgentBuilderImpl)(nil)
 // AgentBuilderImpl is the concrete implementation of the AgentBuilder interface.
 // It provides a fluent interface for building OpenAI-compatible agents with custom configurations.
 type AgentBuilderImpl struct {
-	logger       *zap.Logger
-	config       *config.AgentConfig
-	llmClient    LLMClient
-	toolBox      ToolBox
-	systemPrompt *string // Use pointer to distinguish between not set and empty string
+	logger         *zap.Logger
+	config         *config.AgentConfig
+	llmClient      LLMClient
+	toolBox        ToolBox
+	systemPrompt   *string // Use pointer to distinguish between not set and empty string
+	callbackConfig *CallbackConfig
 }
 
 // NewAgentBuilder creates a new agent builder with required dependencies.
@@ -137,6 +146,13 @@ func (b *AgentBuilderImpl) WithMaxConversationHistory(max int) AgentBuilder {
 	return b
 }
 
+// WithCallbacks sets the callback configuration for the agent
+// This allows hooking into the agent lifecycle, model calls, and tool execution
+func (b *AgentBuilderImpl) WithCallbacks(config *CallbackConfig) AgentBuilder {
+	b.callbackConfig = config
+	return b
+}
+
 // GetConfig returns the current agent configuration (for testing purposes)
 func (b *AgentBuilderImpl) GetConfig() *config.AgentConfig {
 	return b.config
@@ -166,6 +182,11 @@ func (b *AgentBuilderImpl) Build() (*OpenAICompatibleAgentImpl, error) {
 
 	if b.toolBox != nil {
 		agent.SetToolBox(b.toolBox)
+	}
+
+	// Set up callback executor if callbacks are configured
+	if b.callbackConfig != nil {
+		agent.SetCallbackExecutor(NewCallbackExecutor(b.callbackConfig, b.logger))
 	}
 
 	return agent, nil

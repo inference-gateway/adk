@@ -30,6 +30,7 @@ type Config struct {
 
 // AgentConfig holds agent-specific configuration
 type AgentConfig struct {
+	AgentName                   string            `env:"NAME" description:"Name of the agent for identification in callbacks and logging"`
 	Provider                    string            `env:"PROVIDER" description:"LLM provider name"`
 	Model                       string            `env:"MODEL" description:"LLM model name"`
 	BaseURL                     string            `env:"BASE_URL" description:"Base URL for the LLM provider API"`

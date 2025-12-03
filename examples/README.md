@@ -29,6 +29,7 @@ examples/
 ├── ai-powered-streaming/      # AI with real-time streaming
 ├── streaming/                 # Real-time streaming responses
 ├── input-required/            # Input-required flow (non-streaming and streaming)
+├── callbacks/                 # Callback hooks for agent/model/tool lifecycle
 ├── artifacts-filesystem/      # Artifact storage using local filesystem
 ├── artifacts-minio/           # Artifact storage using MinIO (S3-compatible)
 ├── artifacts-autonomous-tool/ # LLM autonomously creates artifacts via create_artifact tool
@@ -124,6 +125,16 @@ Demonstrates input-required flow where agents pause to request additional inform
 - Built-in `input_required` tool usage
 - Interactive conversation examples
 
+#### `callbacks/`
+
+Demonstrates callback hooks for intercepting and modifying agent execution lifecycle.
+
+- `BeforeAgent`/`AfterAgent`: Hook into overall agent execution
+- `BeforeModel`/`AfterModel`: Hook into LLM calls for caching, guardrails
+- `BeforeTool`/`AfterTool`: Hook into tool execution for authorization, logging
+- Flow control: skip default behavior or modify outputs
+- Use cases: guardrails, caching, logging, authorization, sanitization
+
 #### `artifacts-filesystem/`
 
 Demonstrates artifact creation and download using local filesystem storage.
@@ -199,14 +210,15 @@ See each example's README for specific configuration details.
 2. **`default-handlers/`** - Learn built-in handlers for rapid development
 3. **`static-agent-card/`** - Externalize agent configuration to JSON files
 4. **`input-required/`** - Learn input-required flow for interactive conversations
-5. **`artifacts-filesystem/`** - Add file generation and download capabilities
-6. **`ai-powered/`** - Add LLM integration for intelligent responses
-7. **`streaming/`** - Implement real-time streaming capabilities
-8. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
-9. **`artifacts-autonomous-tool/`** - Enable LLM to autonomously create artifacts
-10. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
-11. **`queue-storage/`** - Learn different queue storage backends for scaling
-12. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
+5. **`callbacks/`** - Hook into agent lifecycle for guardrails, caching, and logging
+6. **`artifacts-filesystem/`** - Add file generation and download capabilities
+7. **`ai-powered/`** - Add LLM integration for intelligent responses
+8. **`streaming/`** - Implement real-time streaming capabilities
+9. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
+10. **`artifacts-autonomous-tool/`** - Enable LLM to autonomously create artifacts
+11. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
+12. **`queue-storage/`** - Learn different queue storage backends for scaling
+13. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 
 ---
 

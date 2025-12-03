@@ -1,3 +1,42 @@
+// Package server provides callback functionality for hooking into agent execution lifecycle.
+//
+// Callbacks allow you to intercept and modify behavior at various points during agent execution:
+//   - BeforeAgent/AfterAgent: Hook into the overall agent execution
+//   - BeforeModel/AfterModel: Hook into LLM calls for caching, guardrails, etc.
+//   - BeforeTool/AfterTool: Hook into tool execution for authorization, logging, etc.
+//
+// # Flow Control
+//
+// Before callbacks can skip default behavior by returning a non-nil value:
+//   - BeforeAgent returning a Message skips agent execution
+//   - BeforeModel returning an LLMResponse skips the LLM call
+//   - BeforeTool returning a map skips tool execution
+//
+// After callbacks can modify outputs by returning a non-nil value:
+//   - AfterAgent returning a Message replaces the agent output
+//   - AfterModel returning an LLMResponse replaces the LLM response
+//   - AfterTool returning a map replaces the tool result
+//
+// # Example Usage
+//
+//	callbacks := &CallbackConfig{
+//	    BeforeAgent: []BeforeAgentCallback{
+//	        func(ctx context.Context, callbackCtx *CallbackContext) *types.Message {
+//	            // Log, validate, or return early
+//	            return nil // proceed with execution
+//	        },
+//	    },
+//	    BeforeModel: []BeforeModelCallback{
+//	        func(ctx context.Context, callbackCtx *CallbackContext, req *LLMRequest) *LLMResponse {
+//	            // Implement caching or guardrails
+//	            return nil // proceed with LLM call
+//	        },
+//	    },
+//	}
+//
+//	agent, err := NewAgentBuilder(logger).
+//	    WithCallbacks(callbacks).
+//	    Build()
 package server
 
 import (
@@ -122,17 +161,17 @@ type AfterModelCallback func(ctx context.Context, callbackContext *CallbackConte
 //
 // It's purpose is to allow inspection and modification of the tool arguments, perform authz checks, logging or implementing tool-level caching.
 //
-// Return nil to allow the tool to execute, or return map[string]interface{} to skip tool execution. The returned map is used directly as the result of the tool call.
-// Making it useful for either caching or overriding the tool behaviour completely.
-type BeforeToolCallback func(ctx context.Context, tool Tool, args map[string]interface{}, toolContext *ToolContext) map[string]interface{}
+// Return nil to allow the tool to execute, or return map[string]any to skip tool execution. The returned map is used directly as the result of the tool call.
+// Making it useful for either caching or overriding the tool behavior completely.
+type BeforeToolCallback func(ctx context.Context, tool Tool, args map[string]any, toolContext *ToolContext) map[string]any
 
 // AfterToolCallback is called just after a tool's execution completes successfully.
 //
 // It's purpose is to allow inspection or modification of the tool's result before it's sent back to the LLM.
 // Useful for logging, post-processing, or in the future saving parts of the result to the session state (not implemented yet).
 //
-// Return nil to use the original result, or return map[string]interface{} to replace the tool result
-type AfterToolCallback func(ctx context.Context, tool Tool, args map[string]interface{}, toolContext *ToolContext, toolResult map[string]interface{}) map[string]interface{}
+// Return nil to use the original result, or return map[string]any to replace the tool result
+type AfterToolCallback func(ctx context.Context, tool Tool, args map[string]any, toolContext *ToolContext, toolResult map[string]any) map[string]any
 
 // CallbackConfig holds all callback configurations for an agent
 type CallbackConfig struct {
@@ -164,10 +203,10 @@ type CallbackExecutor interface {
 	ExecuteAfterModel(ctx context.Context, callbackContext *CallbackContext, llmResponse *LLMResponse) *LLMResponse
 
 	// ExecuteBeforeTool executes the before tool callback if configured
-	ExecuteBeforeTool(ctx context.Context, tool Tool, args map[string]interface{}, toolContext *ToolContext) map[string]interface{}
+	ExecuteBeforeTool(ctx context.Context, tool Tool, args map[string]any, toolContext *ToolContext) map[string]any
 
 	// ExecuteAfterTool executes the after tool callback if configured
-	ExecuteAfterTool(ctx context.Context, tool Tool, args map[string]interface{}, toolContext *ToolContext, toolResult map[string]interface{}) map[string]interface{}
+	ExecuteAfterTool(ctx context.Context, tool Tool, args map[string]any, toolContext *ToolContext, toolResult map[string]any) map[string]any
 }
 
 // DefaultCallbackExecutor implements CallbackExecutor with proper error handling and logging
@@ -323,14 +362,14 @@ func (ce *DefaultCallbackExecutor) ExecuteAfterModel(ctx context.Context, callba
 // ExecuteBeforeTool executes all before tool callbacks if configured
 // Returns the result of the first callback that returns a non-nil value (flow control)
 // If all callbacks return nil, execution continues normally with tool call
-func (ce *DefaultCallbackExecutor) ExecuteBeforeTool(ctx context.Context, tool Tool, args map[string]interface{}, toolContext *ToolContext) map[string]interface{} {
+func (ce *DefaultCallbackExecutor) ExecuteBeforeTool(ctx context.Context, tool Tool, args map[string]any, toolContext *ToolContext) map[string]any {
 	if ce.config == nil || len(ce.config.BeforeTool) == 0 {
 		return nil
 	}
 
 	// Execute callbacks in sequence, respecting flow control
 	for i, callback := range ce.config.BeforeTool {
-		var result map[string]interface{}
+		var result map[string]any
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -355,17 +394,17 @@ func (ce *DefaultCallbackExecutor) ExecuteBeforeTool(ctx context.Context, tool T
 // ExecuteAfterTool executes all after tool callbacks if configured
 // Chains the callbacks - each callback receives the result from the previous callback
 // Returns the final modified result, or nil if no callbacks modify the result
-func (ce *DefaultCallbackExecutor) ExecuteAfterTool(ctx context.Context, tool Tool, args map[string]interface{}, toolContext *ToolContext, toolResult map[string]interface{}) map[string]interface{} {
+func (ce *DefaultCallbackExecutor) ExecuteAfterTool(ctx context.Context, tool Tool, args map[string]any, toolContext *ToolContext, toolResult map[string]any) map[string]any {
 	if ce.config == nil || len(ce.config.AfterTool) == 0 {
 		return nil
 	}
 
 	currentResult := toolResult
-	var finalResult map[string]interface{}
+	var finalResult map[string]any
 
 	// Execute callbacks in sequence, chaining their outputs
 	for i, callback := range ce.config.AfterTool {
-		var result map[string]interface{}
+		var result map[string]any
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
