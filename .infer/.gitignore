@@ -1,0 +1,6 @@
+# Ignore log files and history files
+logs/*.log
+history
+chat_export_*
+conversations.db
+bin/

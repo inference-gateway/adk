@@ -1,0 +1,552 @@
+gateway:
+  url: http://localhost:8080
+  api_key: ""
+  timeout: 200
+  oci: ghcr.io/inference-gateway/inference-gateway:latest
+  run: true
+  docker: true
+  exclude_models:
+    - ollama_cloud/cogito-2.1:671b
+    - ollama_cloud/kimi-k2:1t
+    - ollama_cloud/kimi-k2-thinking
+    - ollama_cloud/deepseek-v3.1:671b
+  vision_enabled: true
+client:
+  timeout: 200
+  retry:
+    enabled: true
+    max_attempts: 3
+    initial_backoff_sec: 5
+    max_backoff_sec: 60
+    backoff_multiplier: 2
+    retryable_status_codes:
+      - 400
+      - 408
+      - 429
+      - 500
+      - 502
+      - 503
+      - 504
+logging:
+  debug: false
+  dir: ""
+tools:
+  enabled: true
+  sandbox:
+    directories:
+      - .
+      - /tmp
+    protected_paths:
+      - .infer/
+      - .git/
+      - '*.env'
+  bash:
+    enabled: true
+    whitelist:
+      commands:
+        - ls
+        - pwd
+        - tree
+        - wc
+        - sort
+        - uniq
+        - head
+        - tail
+        - task
+        - make
+        - find
+      patterns:
+        - ^git status$
+        - ^git branch( --show-current)?( -[alrvd])?$
+        - ^git log
+        - ^git diff
+        - ^git remote( -v)?$
+        - ^git show
+  read:
+    enabled: true
+    require_approval: false
+  write:
+    enabled: true
+    require_approval: true
+  edit:
+    enabled: true
+    require_approval: true
+  delete:
+    enabled: true
+    require_approval: true
+  grep:
+    enabled: true
+    backend: auto
+    require_approval: false
+  tree:
+    enabled: true
+    require_approval: false
+  web_fetch:
+    enabled: true
+    whitelisted_domains:
+      - golang.org
+    safety:
+      max_size: 8192
+      timeout: 30
+      allow_redirect: true
+    cache:
+      enabled: true
+      ttl: 3600
+      max_size: 52428800
+  web_search:
+    enabled: true
+    default_engine: duckduckgo
+    max_results: 10
+    engines:
+      - duckduckgo
+      - google
+    timeout: 10
+  github:
+    enabled: true
+    token: '%GITHUB_TOKEN%'
+    base_url: https://api.github.com
+    owner: inference-gateway
+    safety:
+      max_size: 1048576
+      timeout: 30
+  todo_write:
+    enabled: true
+    require_approval: false
+  safety:
+    require_approval: true
+image:
+  max_size: 5242880
+  timeout: 30
+export:
+  output_dir: .infer
+  summary_model: ""
+agent:
+  model: ""
+  system_prompt: |
+    Autonomous software engineering agent. Execute tasks iteratively until completion.
+
+    IMPORTANT: You NEVER push to main or master or to the current branch - instead you create a branch and push to a branch.
+    IMPORTANT: You ALWAYS prefer to search for specific matches in a file rather than reading it all - prefer to use Grep tool over Read tool for efficiency.
+    IMPORTANT: You ALWAYS prefer to see AGENTS.md before README.md files.
+    IMPORTANT: When reading project documentation, prefer AGENTS.md if available, otherwise fallback to README.md - start by Using Grep tool and read all the headings followed by '^##' - found the section you were looking for? great - use Read tool. You didn't find anything? continue to see '^###'
+
+    RULES:
+    - Security: Defensive only (analysis, detection, docs)
+    - Style: no emojis/comments unless asked, use conventional commits
+    - Code: Follow existing patterns, check deps, no secrets
+    - Tasks: Use TodoWrite, mark progress immediately
+    - Chat exports: Read only "## Summary" to "---" section
+    - Tools: ALWAYS use parallel execution when possible - batch multiple tool calls in a single response to improve efficiency
+    - Tools: Prefer Grep for search, Read for specific files
+
+    PARALLEL TOOL EXECUTION:
+    - When you need to perform multiple operations, make ALL tool calls in a single response
+    - Examples: Read multiple files, search multiple patterns, execute multiple commands
+    - The system supports up to 5 concurrent tool executions by default
+    - This reduces back-and-forth communication and significantly improves performance
+
+    WORKFLOW:
+    When asked to implement features or fix issues:
+    1. Plan with TodoWrite
+    2. Search codebase to understand context
+    3. Implement solution
+    4. Run tests with: task test
+    5. Run lint/format with: task fmt and task lint
+    6. Commit changes (only if explicitly asked)
+    7. Create a pull request (only if explicitly asked)
+
+    EXAMPLE:
+    <user>Can you create a pull request with the changes?</user>
+    <assistant>I will checkout to a new branch</assistant>
+    <tool>Bash(git checkout -b feat/my-new-feature)</tool>
+    <assistant>Now I will modify the files</assistant>
+    <tool>Read|Edit|Grep etc</tool>
+    <tool>Bash(git add <files>)</tool>
+    <tool>Bash(git commit -m <message>)</tool>
+    <assistant>Now I will push the changes</assistant>
+    <tool>Bash(git push origin <branch>)</tool>
+    <assistant>Now I'll create a pull request</assistant>
+    <tool>Github(...)</tool>
+  system_prompt_plan: |-
+    You are an AI planning assistant in PLAN MODE. Your role is to analyze user requests and create ACTIONABLE, EXECUTABLE plans WITHOUT executing them.
+
+    CRITICAL: Your plan MUST be actionable - if the user accepts it, you will be asked to execute it step-by-step. Plans that are not actionable are NOT plans.
+
+    CAPABILITIES IN PLAN MODE:
+    - Read, Grep, and Tree tools for gathering information
+    - TodoWrite for tracking planning progress
+    - RequestPlanApproval tool to submit your plan for user approval
+    - Analyze code structure and dependencies
+    - Break down complex tasks into concrete, executable steps
+    - Identify exact files and code locations that need changes
+
+    RESTRICTIONS IN PLAN MODE:
+    - DO NOT execute Write, Edit, Delete, Bash, or modification tools
+    - DO NOT make any changes to files or system
+    - DO NOT attempt to implement the plan
+    - Focus solely on creating an executable plan
+
+    PLANNING WORKFLOW:
+    1. Use Read/Grep/Tree to understand the codebase thoroughly
+    2. Analyze the user's request and identify ALL requirements
+    3. If you need clarification or more information, ASK the user - do NOT call RequestPlanApproval yet
+    4. Break down into specific, numbered action steps
+    5. For EACH step, specify:
+       - Exact file paths to modify
+       - Specific changes to make
+       - Tool calls that will be needed
+    6. Include testing and validation steps
+    7. When your plan is complete and actionable, call RequestPlanApproval tool
+
+    DECISION MAKING:
+    - Need more info? ASK questions instead of requesting approval
+    - Plan has gaps or uncertainties? ASK for clarification
+    - Plan is complete and specific? Call RequestPlanApproval tool
+
+    OUTPUT FORMAT - ACTIONABLE STEPS:
+    Structure your plan with concrete actions:
+    - Overview: What will be done and why
+    - Steps: Numbered steps with SPECIFIC actions
+      Example: "Step 1: Edit /path/to/file.go - Add function X at line Y"
+      Example: "Step 2: Run 'task test' to verify changes"
+    - Files: Exact list of files to be modified
+    - Testing: Specific commands to run and expected outcomes
+
+    REMEMBER:
+    - If accepted, YOU will execute this plan. Make it specific and actionable!
+    - Call RequestPlanApproval ONLY when your plan is complete and ready
+    - If you need clarification, ASK - don't guess!
+  system_reminders:
+    enabled: true
+    interval: 4
+    reminder_text: |-
+      <system-reminder>
+      This is a reminder that your todo list is currently empty. DO NOT mention this to the user explicitly because they are already aware. If you are working on tasks that would benefit from a todo list please use the TodoWrite tool to create one. If not, please feel free to ignore. Again do not mention this message to the user.
+      </system-reminder>
+  verbose_tools: false
+  max_turns: 50
+  max_tokens: 8192
+  max_concurrent_tools: 5
+git:
+  commit_message:
+    model: ""
+    system_prompt: |-
+      Generate a concise git commit message following conventional commit format.
+
+      REQUIREMENTS:
+      - MUST use format: "type: Brief description"
+      - MUST be under 50 characters total
+      - MUST use imperative mood (e.g., "Add", "Fix", "Update")
+      - Types: feat, fix, docs, style, refactor, test, chore
+
+      EXAMPLES:
+      - "feat: Add git shortcut with AI commits"
+      - "fix: Resolve build error in container"
+      - "docs: Update README installation guide"
+      - "refactor: Simplify error handling"
+
+      Respond with ONLY the commit message, no quotes or explanation.
+scm:
+  pr_create:
+    prompt: ""
+    base_branch: main
+    branch_prefix: ""
+    model: ""
+  cleanup:
+    return_to_base: true
+    delete_local_branch: false
+storage:
+  enabled: true
+  type: sqlite
+  sqlite:
+    path: .infer/conversations.db
+  postgres:
+    host: localhost
+    port: 5432
+    database: infer_conversations
+    username: ""
+    password: ""
+    ssl_mode: prefer
+  redis:
+    host: localhost
+    port: 6379
+    password: ""
+    db: 0
+conversation:
+  title_generation:
+    enabled: true
+    model: ""
+    system_prompt: |-
+      Generate a concise conversation title based on the messages provided.
+
+      REQUIREMENTS:
+      - MUST be under 50 characters total
+      - MUST be descriptive and capture the main topic
+      - MUST use title case
+      - NO quotes, colons, or special characters
+      - Focus on the primary subject or task discussed
+
+      EXAMPLES:
+      - "React Component Testing"
+      - "Database Migration Setup"
+      - "API Error Handling"
+      - "Docker Configuration"
+
+      Respond with ONLY the title, no quotes or explanation.
+    batch_size: 10
+    interval: 0
+chat:
+  theme: tokyo-night
+  keybindings:
+    enabled: false
+    bindings:
+      chat_enter_key_handler:
+        keys:
+          - enter
+        description: send message or insert newline
+        category: chat
+        enabled: true
+      clipboard_copy_text:
+        keys:
+          - ctrl+shift+c
+        description: copy text
+        category: clipboard
+        enabled: true
+      clipboard_paste_text:
+        keys:
+          - ctrl+v
+        description: paste text
+        category: clipboard
+        enabled: true
+      display_toggle_raw_format:
+        keys:
+          - ctrl+r
+        description: toggle raw/rendered markdown
+        category: display
+        enabled: true
+      display_toggle_todo_box:
+        keys:
+          - ctrl+t
+        description: toggle todo list
+        category: display
+        enabled: true
+      global_cancel:
+        keys:
+          - esc
+        description: cancel current operation
+        category: global
+        enabled: true
+      global_quit:
+        keys:
+          - ctrl+c
+        description: exit application
+        category: global
+        enabled: true
+      help_toggle_help:
+        keys:
+          - '?'
+        description: toggle help when input is empty
+        category: help
+        enabled: true
+      mode_cycle_agent_mode:
+        keys:
+          - shift+tab
+        description: cycle agent mode (Standard/Plan/Auto-Accept)
+        category: mode
+        enabled: true
+      navigation_page_down:
+        keys:
+          - pgdn
+          - page_down
+        description: page down
+        category: navigation
+        enabled: true
+      navigation_page_up:
+        keys:
+          - pgup
+          - page_up
+        description: page up
+        category: navigation
+        enabled: true
+      navigation_scroll_down_half_page:
+        keys:
+          - shift+down
+        description: scroll down half page
+        category: navigation
+        enabled: true
+      navigation_scroll_to_bottom:
+        keys:
+          - end
+        description: scroll to bottom
+        category: navigation
+        enabled: true
+      navigation_scroll_to_top:
+        keys:
+          - home
+        description: scroll to top
+        category: navigation
+        enabled: true
+      navigation_scroll_up_half_page:
+        keys:
+          - shift+up
+        description: scroll up half page
+        category: navigation
+        enabled: true
+      plan_approval_plan_approval_accept:
+        keys:
+          - enter
+          - "y"
+        description: accept plan
+        category: plan_approval
+        enabled: true
+      plan_approval_plan_approval_accept_and_auto_approve:
+        keys:
+          - a
+        description: accept plan and enable auto-approve mode
+        category: plan_approval
+        enabled: true
+      plan_approval_plan_approval_left:
+        keys:
+          - left
+          - h
+        description: move selection left
+        category: plan_approval
+        enabled: true
+      plan_approval_plan_approval_reject:
+        keys:
+          - "n"
+        description: reject plan
+        category: plan_approval
+        enabled: true
+      plan_approval_plan_approval_right:
+        keys:
+          - right
+          - l
+        description: move selection right
+        category: plan_approval
+        enabled: true
+      selection_toggle_mouse_mode:
+        keys:
+          - ctrl+s
+        description: toggle mouse scrolling/text selection
+        category: selection
+        enabled: true
+      text_editing_backspace:
+        keys:
+          - backspace
+        description: delete character
+        category: text_editing
+        enabled: true
+      text_editing_delete_to_beginning:
+        keys:
+          - ctrl+u
+        description: delete to beginning of line
+        category: text_editing
+        enabled: true
+      text_editing_delete_word_backward:
+        keys:
+          - ctrl+w
+        description: delete word backward
+        category: text_editing
+        enabled: true
+      text_editing_history_down:
+        keys:
+          - down
+        description: navigate to next message in history
+        category: text_editing
+        enabled: true
+      text_editing_history_up:
+        keys:
+          - up
+        description: navigate to previous message in history
+        category: text_editing
+        enabled: true
+      text_editing_insert_newline_alt:
+        keys:
+          - alt+enter
+        description: insert newline
+        category: text_editing
+        enabled: true
+      text_editing_insert_newline_ctrl:
+        keys:
+          - ctrl+j
+        description: insert newline
+        category: text_editing
+        enabled: true
+      text_editing_move_cursor_left:
+        keys:
+          - left
+        description: move cursor left
+        category: text_editing
+        enabled: true
+      text_editing_move_cursor_right:
+        keys:
+          - right
+        description: move cursor right
+        category: text_editing
+        enabled: true
+      text_editing_move_to_beginning:
+        keys:
+          - ctrl+a
+        description: move cursor to beginning
+        category: text_editing
+        enabled: true
+      text_editing_move_to_end:
+        keys:
+          - ctrl+e
+        description: move cursor to end
+        category: text_editing
+        enabled: true
+      tools_toggle_tool_expansion:
+        keys:
+          - ctrl+o
+        description: expand/collapse tool results
+        category: tools
+        enabled: true
+a2a:
+  enabled: true
+  cache:
+    enabled: true
+    ttl: 300
+  task:
+    status_poll_seconds: 5
+    polling_strategy: exponential
+    initial_poll_interval_sec: 2
+    max_poll_interval_sec: 60
+    backoff_multiplier: 2
+    background_monitoring: true
+    completed_task_retention: 5
+  tools:
+    query_agent:
+      enabled: true
+      require_approval: false
+    query_task:
+      enabled: true
+      require_approval: false
+    submit_task:
+      enabled: true
+      require_approval: true
+    download_artifacts:
+      enabled: true
+      download_dir: /tmp/downloads
+      timeout_seconds: 30
+      require_approval: true
+init:
+  prompt: |-
+    Please analyze this project and generate a comprehensive AGENTS.md file. Start by using the Tree tool to understand the project structure.
+    Use your available tools to examine configuration files, documentation, build systems, and development workflow.
+    Focus on creating actionable documentation that will help other AI agents understand how to work effectively with this project.
+
+    The AGENTS.md file should include:
+    - Project overview and main technologies
+    - Architecture and structure
+    - Development environment setup
+    - Key commands (build, test, lint, run)
+    - Testing instructions
+    - Project conventions and coding standards
+    - Important files and configurations
+
+    Write the AGENTS.md file to the project root when you have gathered enough information.
+compact:
+  enabled: true
+  auto_at: 80
