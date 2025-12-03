@@ -194,108 +194,64 @@ func main() {
 	)
 	toolBox.AddTool(echoTool)
 
+	// Configure callbacks to hook into agent lifecycle
 	callbackConfig := &server.CallbackConfig{
 		BeforeAgent: []server.BeforeAgentCallback{
 			func(ctx context.Context, callbackCtx *server.CallbackContext) *types.Message {
-				logger.Info("BeforeAgent callback triggered",
-					zap.String("agent_name", callbackCtx.AgentName),
+				logger.Info("🔵 BeforeAgent: Starting agent execution",
 					zap.String("task_id", callbackCtx.TaskID),
 				)
-
-				// Example: Check for blocked words and return early
-				// Uncomment to enable guardrail:
-				// if strings.Contains(callbackCtx.TaskID, "blocked") {
-				// 	return &types.Message{
-				// 		Kind:      "message",
-				// 		Role:      "assistant",
-				// 		Parts:     []types.Part{types.NewTextPart("Request blocked by guardrail")},
-				// 	}
-				// }
-
-				// Return nil to proceed with normal execution
-				return nil
-			},
-		},
-
-		AfterAgent: []server.AfterAgentCallback{
-			func(ctx context.Context, callbackCtx *server.CallbackContext, agentOutput *types.Message) *types.Message {
-				logger.Info("AfterAgent callback triggered",
-					zap.String("agent_name", callbackCtx.AgentName),
-					zap.String("task_id", callbackCtx.TaskID),
-				)
-
-				// Example: Log the output (without modifying it)
-				// You could modify the output here if needed
-				return nil
+				return nil // proceed with execution
 			},
 		},
 
 		BeforeModel: []server.BeforeModelCallback{
 			func(ctx context.Context, callbackCtx *server.CallbackContext, llmRequest *server.LLMRequest) *server.LLMResponse {
-				logger.Info("BeforeModel callback triggered",
+				logger.Info("🟢 BeforeModel: About to call LLM",
 					zap.String("task_id", callbackCtx.TaskID),
 					zap.Int("message_count", len(llmRequest.Contents)),
 				)
-
-				// Example: Implement response caching
-				// Uncomment to return a cached response:
-				// return &server.LLMResponse{
-				// 	Content: &types.Message{
-				// 		Kind:  "message",
-				// 		Role:  "assistant",
-				// 		Parts: []types.Part{types.NewTextPart("Cached response")},
-				// 	},
-				// }
-
-				return nil
+				return nil // proceed with LLM call
 			},
 		},
 
 		AfterModel: []server.AfterModelCallback{
 			func(ctx context.Context, callbackCtx *server.CallbackContext, llmResponse *server.LLMResponse) *server.LLMResponse {
-				logger.Info("AfterModel callback triggered",
+				logger.Info("🟡 AfterModel: Received LLM response",
 					zap.String("task_id", callbackCtx.TaskID),
 				)
-
-				// Example: Post-process or sanitize the response
-				return nil
+				return nil // use original response
 			},
 		},
 
 		BeforeTool: []server.BeforeToolCallback{
 			func(ctx context.Context, tool server.Tool, args map[string]any, toolCtx *server.ToolContext) map[string]any {
-				toolName := ""
-				if tool != nil {
-					toolName = tool.GetName()
-				}
-				logger.Info("BeforeTool callback triggered",
-					zap.String("tool_name", toolName),
+				logger.Info("🟣 BeforeTool: About to execute tool",
+					zap.String("tool_name", tool.GetName()),
 					zap.String("task_id", toolCtx.TaskID),
+					zap.Any("args", args),
 				)
-
-				// Example: Implement tool-level authorization
-				// if toolName == "sensitive_tool" && !isAuthorized(ctx) {
-				// 	return map[string]any{"result": "Unauthorized", "error": "Access denied"}
-				// }
-
-				return nil
+				return nil // proceed with tool execution
 			},
 		},
 
 		AfterTool: []server.AfterToolCallback{
 			func(ctx context.Context, tool server.Tool, args map[string]any, toolCtx *server.ToolContext, toolResult map[string]any) map[string]any {
-				toolName := ""
-				if tool != nil {
-					toolName = tool.GetName()
-				}
-				logger.Info("AfterTool callback triggered",
-					zap.String("tool_name", toolName),
+				logger.Info("🟠 AfterTool: Tool execution completed",
+					zap.String("tool_name", tool.GetName()),
 					zap.String("task_id", toolCtx.TaskID),
 					zap.Any("result", toolResult),
 				)
+				return nil // use original result
+			},
+		},
 
-				// Example: Sanitize sensitive data from tool results
-				return nil
+		AfterAgent: []server.AfterAgentCallback{
+			func(ctx context.Context, callbackCtx *server.CallbackContext, agentOutput *types.Message) *types.Message {
+				logger.Info("🔴 AfterAgent: Agent execution completed",
+					zap.String("task_id", callbackCtx.TaskID),
+				)
+				return nil // use original output
 			},
 		},
 	}

@@ -1,6 +1,14 @@
 # Callbacks Example
 
-This example demonstrates how to use the callback feature in the ADK (Agent Development Kit) to hook into various points of the agent's execution lifecycle.
+This example demonstrates how to use the **callback feature** in the ADK (Agent Development Kit) to hook into various points of the agent's execution lifecycle.
+
+Callbacks allow you to:
+
+- Log and monitor agent execution at each step
+- Implement guardrails and validation
+- Cache LLM responses
+- Authorize tool usage
+- Modify inputs and outputs
 
 ## Callback Types
 
@@ -59,12 +67,35 @@ agent, err := server.NewAgentBuilder(logger).
 
 ## Running the Example
 
+### Option 1: Docker Compose (Recommended)
+
+This setup includes the Inference Gateway for LLM routing.
+
+1. Copy the environment file and add your DeepSeek API key:
+
+```bash
+cp .env.example .env
+# Edit .env and add your DEEPSEEK_API_KEY
+```
+
+2. Start the services:
+
+```bash
+docker-compose up --build
+```
+
+The server will be available at `http://localhost:8080` (port can be configured in `.env`)
+
+### Option 2: Local Development
+
 1. Set required environment variables:
 
 ```bash
-export A2A_AGENT_CLIENT_PROVIDER=openai
-export A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
-export A2A_AGENT_CLIENT_API_KEY=your-api-key
+export A2A_SERVER_PORT=8081
+export A2A_AGENT_CLIENT_PROVIDER=deepseek
+export A2A_AGENT_CLIENT_MODEL=deepseek-chat
+export A2A_AGENT_CLIENT_API_KEY=your-deepseek-api-key
+export A2A_AGENT_CLIENT_BASE_URL=http://localhost:8080/v1 # Inference Gateway URL - you need to run it separately
 ```
 
 2. Run the server:
@@ -74,14 +105,34 @@ cd examples/callbacks/server
 go run main.go
 ```
 
-3. Send a test request:
+The server will be available at `http://localhost:8081`
+
+## Testing the Callbacks
+
+Send a test request (adjust port based on how you're running):
 
 ```bash
-curl -X POST http://localhost:8080/tasks/send \
+curl -X POST http://localhost:8081/a2a \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "method": "tasks/send",
+    "method": "message/send",
+    "params": {
+      "message": {
+        "kind": "message",
+        "role": "user",
+        "parts": [{"kind": "text", "text": "Please use the echo tool to say hello"}]
+      }
+    },
+    "id": "1"
+  }'
+
+# Or use the streaming endpoint
+curl -X POST http://localhost:8081/a2a \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "message/stream",
     "params": {
       "message": {
         "kind": "message",
@@ -93,7 +144,20 @@ curl -X POST http://localhost:8080/tasks/send \
   }'
 ```
 
-Watch the server logs to see the callbacks being triggered in sequence.
+## What to Expect
+
+Watch the server logs to see the callbacks being triggered in sequence with colored emojis:
+
+```
+🔵 BeforeAgent: Starting agent execution
+🟢 BeforeModel: About to call LLM
+🟡 AfterModel: Received LLM response
+🟣 BeforeTool: About to execute tool (echo)
+🟠 AfterTool: Tool execution completed
+🔴 AfterAgent: Agent execution completed
+```
+
+Each callback shows the execution flow and allows you to inspect or modify the data at each step.
 
 ## Context Objects
 
