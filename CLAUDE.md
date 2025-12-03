@@ -70,6 +70,7 @@ go test -run TestTaskHandler ./server/
 - `OpenAICompatibleAgent` (`server/agent.go`) - LLM integration layer
 - `AgentBuilder` (`server/agent_builder.go`) - Agent configuration
 - `ToolBox` (`server/agent_toolbox.go`) - Tool management for agents
+- `CallbackConfig` (`server/callbacks.go`) - Lifecycle hooks for agents
 - Support for custom tools and system prompts
 
 **Client Interface (`client/`)**
@@ -103,6 +104,75 @@ go test -run TestTaskHandler ./server/
 - Memory storage for development (default)
 - Redis storage for production with horizontal scaling
 - Configurable via `QUEUE_PROVIDER` environment variable
+
+**Callback System**
+
+- Lifecycle hooks for intercepting and modifying behavior
+- Six callback types: BeforeAgent/AfterAgent, BeforeModel/AfterModel, BeforeTool/AfterTool
+- Flow control: skip default behavior or modify outputs
+- Use cases: guardrails, caching, logging, authorization, sanitization
+
+### Callback Hooks
+
+The ADK provides a comprehensive callback system for hooking into the agent execution lifecycle:
+
+**Agent Lifecycle Callbacks**
+
+- `BeforeAgent`: Called before agent execution starts
+  - Use for: validation, guardrails, early returns
+  - Return non-nil to skip agent execution
+- `AfterAgent`: Called after agent execution completes
+  - Use for: post-processing, logging, output modification
+  - Return non-nil to replace agent output
+
+**LLM Interaction Callbacks**
+
+- `BeforeModel`: Called before each LLM call
+  - Use for: request caching, guardrails, request modification
+  - Return non-nil to skip LLM call
+- `AfterModel`: Called after each LLM response
+  - Use for: response modification, logging, sanitization
+  - Return non-nil to replace LLM response
+
+**Tool Execution Callbacks**
+
+- `BeforeTool`: Called before each tool execution
+  - Use for: authorization, caching, argument validation
+  - Return non-nil to skip tool execution
+- `AfterTool`: Called after each tool execution
+  - Use for: result modification, logging, sanitization
+  - Return non-nil to replace tool result
+
+**Configuration Example**
+
+```go
+callbackConfig := &server.CallbackConfig{
+    BeforeAgent: []server.BeforeAgentCallback{
+        func(ctx context.Context, callbackCtx *server.CallbackContext) *types.Message {
+            // Implement guardrails or validation
+            return nil // proceed with execution
+        },
+    },
+    BeforeModel: []server.BeforeModelCallback{
+        func(ctx context.Context, callbackCtx *server.CallbackContext, req *server.LLMRequest) *server.LLMResponse {
+            // Implement caching or request modification
+            return nil // proceed with LLM call
+        },
+    },
+    BeforeTool: []server.BeforeToolCallback{
+        func(ctx context.Context, tool server.Tool, args map[string]any, toolCtx *server.ToolContext) map[string]any {
+            // Implement authorization or caching
+            return nil // proceed with tool execution
+        },
+    },
+}
+
+agent, err := server.NewAgentBuilder(logger).
+    WithCallbacks(callbackConfig).
+    Build()
+```
+
+See `examples/callbacks/` for a complete working example.
 
 ### Configuration System
 
@@ -175,5 +245,10 @@ The `examples/` directory contains complete working implementations:
 - `streaming/` - Real-time streaming response handling
 - `static-agent-card/` - JSON-based agent metadata management
 - `default-handlers/` - Built-in task processing patterns
+- `callbacks/` - Lifecycle hooks for guardrails, caching, and logging
+- `input-required/` - Interactive conversation flow with input pausing
+- `artifacts-*/` - Artifact creation and storage examples
+- `queue-storage/` - Different queue backends for task management
+- `tls-example/` - Secure HTTPS communication with TLS
 
 Each example includes setup instructions and demonstrates specific ADK features.

@@ -263,7 +263,7 @@ func main() {
 		},
 
 		BeforeTool: []server.BeforeToolCallback{
-			func(ctx context.Context, tool server.Tool, args map[string]interface{}, toolCtx *server.ToolContext) map[string]interface{} {
+			func(ctx context.Context, tool server.Tool, args map[string]any, toolCtx *server.ToolContext) map[string]any {
 				toolName := ""
 				if tool != nil {
 					toolName = tool.GetName()
@@ -275,7 +275,7 @@ func main() {
 
 				// Example: Implement tool-level authorization
 				// if toolName == "sensitive_tool" && !isAuthorized(ctx) {
-				// 	return map[string]interface{}{"result": "Unauthorized", "error": "Access denied"}
+				// 	return map[string]any{"result": "Unauthorized", "error": "Access denied"}
 				// }
 
 				return nil
@@ -283,7 +283,7 @@ func main() {
 		},
 
 		AfterTool: []server.AfterToolCallback{
-			func(ctx context.Context, tool server.Tool, args map[string]interface{}, toolCtx *server.ToolContext, toolResult map[string]interface{}) map[string]interface{} {
+			func(ctx context.Context, tool server.Tool, args map[string]any, toolCtx *server.ToolContext, toolResult map[string]any) map[string]any {
 				toolName := ""
 				if tool != nil {
 					toolName = tool.GetName()

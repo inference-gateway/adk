@@ -43,7 +43,7 @@ callbackConfig := &server.CallbackConfig{
         },
     },
     BeforeTool: []server.BeforeToolCallback{
-        func(ctx context.Context, tool server.Tool, args map[string]interface{}, toolCtx *server.ToolContext) map[string]interface{} {
+        func(ctx context.Context, tool server.Tool, args map[string]any, toolCtx *server.ToolContext) map[string]any {
             // Return nil to execute tool, or return a result to skip execution
             return nil
         },
