@@ -509,11 +509,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 
 		var tool Tool
 		if a.toolBox != nil {
-			if tb, ok := a.toolBox.(*DefaultToolBox); ok {
-				if t, exists := tb.tools[toolCall.Function.Name]; exists {
-					tool = t
-				}
-			}
+			tool, _ = a.toolBox.GetTool(toolCall.Function.Name)
 		}
 
 		switch toolCall.Function.Name {

@@ -25,6 +25,19 @@ type FakeToolBox struct {
 		result1 string
 		result2 error
 	}
+	GetToolStub        func(string) (server.Tool, bool)
+	getToolMutex       sync.RWMutex
+	getToolArgsForCall []struct {
+		arg1 string
+	}
+	getToolReturns struct {
+		result1 server.Tool
+		result2 bool
+	}
+	getToolReturnsOnCall map[int]struct {
+		result1 server.Tool
+		result2 bool
+	}
 	GetToolNamesStub        func() []string
 	getToolNamesMutex       sync.RWMutex
 	getToolNamesArgsForCall []struct {
@@ -123,6 +136,70 @@ func (fake *FakeToolBox) ExecuteToolReturnsOnCall(i int, result1 string, result2
 	fake.executeToolReturnsOnCall[i] = struct {
 		result1 string
 		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeToolBox) GetTool(arg1 string) (server.Tool, bool) {
+	fake.getToolMutex.Lock()
+	ret, specificReturn := fake.getToolReturnsOnCall[len(fake.getToolArgsForCall)]
+	fake.getToolArgsForCall = append(fake.getToolArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	stub := fake.GetToolStub
+	fakeReturns := fake.getToolReturns
+	fake.recordInvocation("GetTool", []interface{}{arg1})
+	fake.getToolMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeToolBox) GetToolCallCount() int {
+	fake.getToolMutex.RLock()
+	defer fake.getToolMutex.RUnlock()
+	return len(fake.getToolArgsForCall)
+}
+
+func (fake *FakeToolBox) GetToolCalls(stub func(string) (server.Tool, bool)) {
+	fake.getToolMutex.Lock()
+	defer fake.getToolMutex.Unlock()
+	fake.GetToolStub = stub
+}
+
+func (fake *FakeToolBox) GetToolArgsForCall(i int) string {
+	fake.getToolMutex.RLock()
+	defer fake.getToolMutex.RUnlock()
+	argsForCall := fake.getToolArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeToolBox) GetToolReturns(result1 server.Tool, result2 bool) {
+	fake.getToolMutex.Lock()
+	defer fake.getToolMutex.Unlock()
+	fake.GetToolStub = nil
+	fake.getToolReturns = struct {
+		result1 server.Tool
+		result2 bool
+	}{result1, result2}
+}
+
+func (fake *FakeToolBox) GetToolReturnsOnCall(i int, result1 server.Tool, result2 bool) {
+	fake.getToolMutex.Lock()
+	defer fake.getToolMutex.Unlock()
+	fake.GetToolStub = nil
+	if fake.getToolReturnsOnCall == nil {
+		fake.getToolReturnsOnCall = make(map[int]struct {
+			result1 server.Tool
+			result2 bool
+		})
+	}
+	fake.getToolReturnsOnCall[i] = struct {
+		result1 server.Tool
+		result2 bool
 	}{result1, result2}
 }
 
@@ -298,6 +375,8 @@ func (fake *FakeToolBox) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.executeToolMutex.RLock()
 	defer fake.executeToolMutex.RUnlock()
+	fake.getToolMutex.RLock()
+	defer fake.getToolMutex.RUnlock()
 	fake.getToolNamesMutex.RLock()
 	defer fake.getToolNamesMutex.RUnlock()
 	fake.getToolsMutex.RLock()

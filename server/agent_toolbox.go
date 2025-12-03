@@ -24,6 +24,9 @@ type ToolBox interface {
 
 	// HasTool checks if a tool with the given name exists
 	HasTool(toolName string) bool
+
+	// GetTool retrieves a tool by name, returning the tool and a boolean indicating if it was found
+	GetTool(toolName string) (Tool, bool)
 }
 
 // Tool represents a single tool that can be executed
@@ -169,6 +172,12 @@ func (tb *DefaultToolBox) GetToolNames() []string {
 func (tb *DefaultToolBox) HasTool(toolName string) bool {
 	_, exists := tb.tools[toolName]
 	return exists
+}
+
+// GetTool retrieves a tool by name, returning the tool and a boolean indicating if it was found
+func (tb *DefaultToolBox) GetTool(toolName string) (Tool, bool) {
+	tool, exists := tb.tools[toolName]
+	return tool, exists
 }
 
 // ToolNotFoundError represents an error when a requested tool is not found

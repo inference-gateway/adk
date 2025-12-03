@@ -57,28 +57,6 @@ agent, err := server.NewAgentBuilder(logger).
     Build()
 ```
 
-## Use Cases
-
-### Guardrails
-
-Use `BeforeAgent` or `BeforeModel` to block or modify requests based on content policies.
-
-### Caching
-
-Use `BeforeModel` to return cached responses and skip expensive LLM calls.
-
-### Authorization
-
-Use `BeforeTool` to implement tool-level authorization checks.
-
-### Logging & Metrics
-
-Use any callback to log execution details or send metrics.
-
-### Response Sanitization
-
-Use `AfterModel` or `AfterTool` to remove sensitive information from outputs.
-
 ## Running the Example
 
 1. Set required environment variables:
