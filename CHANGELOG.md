@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0](https://github.com/inference-gateway/adk/compare/v0.15.3...v0.16.0) (2025-12-03)
+
+### ✨ Features
+
+* **callbacks:** Integrate callback hooks into agent execution flow ([#118](https://github.com/inference-gateway/adk/issues/118)) ([b69b34b](https://github.com/inference-gateway/adk/commit/b69b34b21994277bb2c8401341664a017bac3237)), closes [#94](https://github.com/inference-gateway/adk/issues/94) [#71](https://github.com/inference-gateway/adk/issues/71)
+
+### 🔧 Miscellaneous
+
+* Add infer agent ([0963b3e](https://github.com/inference-gateway/adk/commit/0963b3eae2324f1e43b1c6d06351024dc049c05d))
+
 ## [0.15.3](https://github.com/inference-gateway/adk/compare/v0.15.2...v0.15.3) (2025-11-20)
 
 ### 🔧 Miscellaneous
