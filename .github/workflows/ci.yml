@@ -1,3 +1,4 @@
+---
 name: CI
 
 on:
@@ -19,14 +20,14 @@ jobs:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v6.1.0
         with:
           go-version-file: 'go.mod'
           cache: true
 
       - name: Install golangci-lint
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.6.0
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.6.2
 
       - name: Install Mockgen
         run: go install go.uber.org/mock/mockgen@v0.6.0
@@ -35,7 +36,7 @@ jobs:
         run: go install github.com/inference-gateway/tools/cmd/generator@v0.1.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6.1.0
         with:
           node-version: 'lts/*'
 

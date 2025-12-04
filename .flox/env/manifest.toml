@@ -3,24 +3,26 @@ version = 1
 [install]
 go.pkg-path = "go"
 go.version = "^1.25.2"
-
 golangci-lint.pkg-path = "golangci-lint"
-golangci-lint.version = "^2.6.0"
-
+golangci-lint.version = "^2.6.2"
 prettier.pkg-path = "prettier"
 prettier.version = "3.6.2"
-
 claude-code.pkg-path = "claude-code"
-claude-code.version = "^2.0.30"
-
+claude-code.version = "^2.0.55"
 gh.pkg-path = "gh"
-gh.version = "^2.82.1"
-
+gh.version = "^2.83.1"
 markdownlint-cli2.pkg-path = "markdownlint-cli2"
 markdownlint-cli2.version = "0.18.1"
+mockgen.pkg-path = "mockgen"
+mockgen.version = "0.6.0"
 
 [hook]
 on-activate = """
   export GOENV="$FLOX_ENV_CACHE/goenv"
   go get .
+
+  echo "Installing infer CLI..."
+  curl -fsSL https://raw.githubusercontent.com/inference-gateway/cli/main/install.sh | bash -s -- --install-dir "$FLOX_ENV_CACHE/bin"
+  export PATH="$FLOX_ENV_CACHE/bin:$PATH"
+  echo "✓ infer CLI installed successfully"
 """
