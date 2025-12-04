@@ -84,10 +84,18 @@ For complete working examples, see the [examples](./examples/) directory:
 
 - **[Minimal](./examples/minimal/)** - Basic A2A server without AI capabilities
 - **[AI-Powered](./examples/ai-powered/)** - Full A2A server with LLM integration
-- **[Artifacts](./examples/artifacts-minio/)** - File artifacts storage using MinIO cloud storage with direct/proxy download modes
-- **[Static Agent Card](./examples/static-agent-card/)** - JSON-based agent metadata management
+- **[AI-Powered Streaming](./examples/ai-powered-streaming/)** - AI agent with streaming capabilities
+- **[Callbacks](./examples/callbacks/)** - Lifecycle hooks for guardrails, caching, and logging
 - **[Default Handlers](./examples/default-handlers/)** - Built-in task processing
+- **[Static Agent Card](./examples/static-agent-card/)** - JSON-based agent metadata management
 - **[Streaming](./examples/streaming/)** - Real-time streaming responses
+- **[Input Required](./examples/input-required/)** - Interactive conversation with input pausing
+- **[Artifacts - MinIO](./examples/artifacts-minio/)** - MinIO cloud storage with direct/proxy download modes
+- **[Artifacts - Filesystem](./examples/artifacts-filesystem/)** - Filesystem-based artifact storage
+- **[Artifacts - Autonomous Tool](./examples/artifacts-autonomous-tool/)** - Autonomous tool for artifact creation
+- **[Artifacts - Default Handlers](./examples/artifacts-with-default-handlers/)** - Artifacts with default handlers
+- **[Queue Storage](./examples/queue-storage/)** - Memory and Redis storage backends
+- **[TLS Server](./examples/tls-server/)** - Secure HTTPS with TLS configuration
 
 #### Getting Started
 
@@ -108,6 +116,7 @@ Each example includes its own README with setup instructions and usage details.
 - 🔌 **Multi-Provider Support**: Works with OpenAI, Ollama, Groq, Cohere, and other LLM providers
 - 🌊 **Real-time Streaming**: Stream responses as they're generated from language models
 - 🔧 **Custom Tools**: Easy integration of custom tools and capabilities
+- 🪝 **Callback Hooks**: Lifecycle hooks for agent, model, and tool execution with flow control
 - 📎 **File Artifacts**: Support for downloadable file artifacts with filesystem and MinIO storage backends
 - 🔐 **Secure Authentication**: Built-in OIDC/OAuth2 authentication support
 - 📨 **Push Notifications**: Webhook notifications for real-time task state updates
@@ -318,9 +327,10 @@ Build OpenAI-compatible agents using a fluent interface. Supports:
 - Custom LLM clients
 - System prompts and conversation limits
 - Tool integration
+- Callback hooks (BeforeAgent, AfterAgent, BeforeModel, AfterModel, BeforeTool, AfterTool)
 - Configuration management
 
-See [AI-powered examples](./examples/ai-powered/) for complete agent setup.
+See [AI-powered examples](./examples/ai-powered/) and [callback examples](./examples/callbacks/) for complete agent setup.
 
 #### A2AClient
 
@@ -511,6 +521,7 @@ See [configuration examples](./examples/) for complete setup patterns, including
 For detailed implementation examples and patterns, see the [examples](./examples/) directory:
 
 - **[Custom Tools](./examples/ai-powered/)** - Creating and integrating custom tools
+- **[Callback Hooks](./examples/callbacks/)** - Lifecycle hooks for guardrails, caching, and flow control
 - **[Agent Configuration](./examples/static-agent-card/)** - JSON-based agent metadata management
 - **[Task Handling](./examples/default-handlers/)** - Built-in and custom task processing
 - **[Streaming](./examples/streaming/)** - Real-time response handling
