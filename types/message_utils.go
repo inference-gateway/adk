@@ -9,10 +9,11 @@ import (
 
 // NewToolResultMessage creates a standardized tool result message
 func NewToolResultMessage(toolCallID string, toolName string, result any, hasError bool) *Message {
+	msgID := fmt.Sprintf("tool-result-%s", toolCallID)
+	role := any("tool")
 	return &Message{
-		Kind:      "message",
-		MessageID: fmt.Sprintf("tool-result-%s", toolCallID),
-		Role:      "tool",
+		MessageID: &msgID,
+		Role:      &role,
 		Parts: []Part{
 			map[string]any{
 				"kind": "data",
@@ -29,10 +30,10 @@ func NewToolResultMessage(toolCallID string, toolName string, result any, hasErr
 
 // NewAssistantMessage creates a standardized assistant message
 func NewAssistantMessage(messageID string, parts []Part) *Message {
+	role := any("assistant")
 	return &Message{
-		Kind:      "message",
-		MessageID: messageID,
-		Role:      "assistant",
+		MessageID: &messageID,
+		Role:      &role,
 		Parts:     parts,
 	}
 }
@@ -74,10 +75,10 @@ func NewStreamingStatusMessage(messageID, status string, metadata map[string]any
 		data[k] = v
 	}
 
+	role := any("assistant")
 	return &Message{
-		Kind:      "message",
-		MessageID: messageID,
-		Role:      "assistant",
+		MessageID: &messageID,
+		Role:      &role,
 		Parts: []Part{
 			NewDataPart(data),
 		},
@@ -86,10 +87,11 @@ func NewStreamingStatusMessage(messageID, status string, metadata map[string]any
 
 // NewInputRequiredMessage creates an input required message
 func NewInputRequiredMessage(toolCallID, message string) *Message {
+	msgID := fmt.Sprintf("input-required-%s", toolCallID)
+	role := any("assistant")
 	return &Message{
-		Kind:      "input_required",
-		MessageID: fmt.Sprintf("input-required-%s", toolCallID),
-		Role:      "assistant",
+		MessageID: &msgID,
+		Role:      &role,
 		Parts: []Part{
 			NewTextPart(message),
 		},
@@ -111,7 +113,11 @@ func NewAgentEvent(eventType, eventID string, data map[string]any) cloudevents.E
 // NewDeltaEvent creates a CloudEvent for streaming deltas, with the message in the data field
 func NewDeltaEvent(message *Message) cloudevents.Event {
 	event := cloudevents.NewEvent()
-	event.SetID(message.MessageID)
+	msgID := ""
+	if message.MessageID != nil {
+		msgID = *message.MessageID
+	}
+	event.SetID(msgID)
 	event.SetType("adk.agent.delta")
 	event.SetSource("adk/agent")
 	event.SetTime(time.Now())

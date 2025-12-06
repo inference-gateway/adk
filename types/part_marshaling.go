@@ -7,15 +7,14 @@ import (
 
 // MessageWithTypedParts is a wrapper for Message that ensures Parts are properly unmarshaled
 type messageUnmarshalHelper struct {
-	ContextID        *string           `json:"contextId,omitempty"`
+	ContextID        *string           `json:"context_id,omitempty"`
 	Extensions       []string          `json:"extensions,omitempty"`
-	Kind             string            `json:"kind"`
-	MessageID        string            `json:"messageId"`
+	MessageID        *string           `json:"message_id,omitempty"`
 	Metadata         map[string]any    `json:"metadata,omitempty"`
 	Parts            []json.RawMessage `json:"parts"`
-	ReferenceTaskIds []string          `json:"referenceTaskIds,omitempty"`
-	Role             string            `json:"role"`
-	TaskID           *string           `json:"taskId,omitempty"`
+	ReferenceTaskIds []string          `json:"reference_task_ids,omitempty"`
+	Role             *any              `json:"role,omitempty"`
+	TaskID           *string           `json:"task_id,omitempty"`
 }
 
 // UnmarshalJSON custom unmarshaler for Message that properly handles typed Parts
@@ -36,7 +35,6 @@ func (m *Message) UnmarshalJSON(data []byte) error {
 
 	m.ContextID = helper.ContextID
 	m.Extensions = helper.Extensions
-	m.Kind = helper.Kind
 	m.MessageID = helper.MessageID
 	m.Metadata = helper.Metadata
 	m.Parts = parts
@@ -73,7 +71,7 @@ func UnmarshalPart(data []byte) (Part, error) {
 		return dataPart, nil
 
 	case "file":
-		var filePart FilePart
+		var filePart any
 		if err := json.Unmarshal(data, &filePart); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal FilePart: %w", err)
 		}
@@ -114,36 +112,20 @@ func MarshalParts(parts []Part) ([]byte, error) {
 
 // CreateTextPart creates a properly typed TextPart
 func CreateTextPart(text string, metadata ...map[string]any) TextPart {
-	part := TextPart{
-		Kind: "text",
+	return TextPart{
 		Text: text,
 	}
-	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
-	}
-	return part
 }
 
 // CreateDataPart creates a properly typed DataPart
 func CreateDataPart(data map[string]any, metadata ...map[string]any) DataPart {
-	part := DataPart{
-		Kind: "data",
+	return DataPart{
 		Data: data,
 	}
-	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
-	}
-	return part
 }
 
 // CreateFilePart creates a properly typed FilePart
 func CreateFilePart(file any, metadata ...map[string]any) FilePart {
-	part := FilePart{
-		Kind: "file",
-		File: file,
-	}
-	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
-	}
-	return part
+	// FilePart is now just `any` type in the new schema
+	return file
 }

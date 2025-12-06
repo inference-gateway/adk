@@ -64,7 +64,7 @@ func (ah *ArtifactHelper) GetArtifactByID(task *types.Task, artifactID string) (
 		return nil, false
 	}
 	for i, artifact := range task.Artifacts {
-		if artifact.ArtifactID == artifactID {
+		if artifact.ArtifactID != nil && *artifact.ArtifactID == artifactID {
 			return &task.Artifacts[i], true
 		}
 	}
@@ -117,9 +117,7 @@ func (ah *ArtifactHelper) ExtractTextFromArtifact(artifact *types.Artifact) []st
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
 		case types.TextPart:
-			if p.Kind == "text" {
-				texts = append(texts, p.Text)
-			}
+			texts = append(texts, p.Text)
 		case map[string]any:
 			if kind, ok := p["kind"].(string); ok && kind == "text" {
 				if text, exists := p["text"].(string); exists {
@@ -143,13 +141,11 @@ func (ah *ArtifactHelper) ExtractFileDataFromArtifact(artifact *types.Artifact) 
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
 		case types.FilePart:
-			if p.Kind == "file" {
-				fileData, err := ah.extractFileFromPart(p)
-				if err != nil {
-					return nil, fmt.Errorf("failed to extract file from part: %w", err)
-				}
-				files = append(files, fileData)
+			fileData, err := ah.extractFileFromPart(p)
+			if err != nil {
+				return nil, fmt.Errorf("failed to extract file from part: %w", err)
 			}
+			files = append(files, fileData)
 		case map[string]any:
 			if kind, ok := p["kind"].(string); ok && kind == "file" {
 				fileData, err := ah.extractFileFromMap(p)
@@ -175,9 +171,7 @@ func (ah *ArtifactHelper) ExtractDataFromArtifact(artifact *types.Artifact) []ma
 	for _, part := range artifact.Parts {
 		switch p := part.(type) {
 		case types.DataPart:
-			if p.Kind == "data" {
-				dataList = append(dataList, p.Data)
-			}
+			dataList = append(dataList, p.Data)
 		case map[string]any:
 			if kind, ok := p["kind"].(string); ok && kind == "data" {
 				if data, exists := p["data"].(map[string]any); exists {
@@ -226,14 +220,15 @@ func (fd *FileData) GetMIMEType() string {
 
 // isPartOfKind checks if a part is of a specific kind
 func (ah *ArtifactHelper) isPartOfKind(part types.Part, kind string) bool {
-	switch p := part.(type) {
+	switch part.(type) {
 	case types.TextPart:
-		return p.Kind == kind
+		return kind == "text"
 	case types.FilePart:
-		return p.Kind == kind
+		return kind == "file"
 	case types.DataPart:
-		return p.Kind == kind
+		return kind == "data"
 	case map[string]any:
+		p := part.(map[string]any)
 		if partKind, ok := p["kind"].(string); ok {
 			return partKind == kind
 		}
@@ -243,22 +238,19 @@ func (ah *ArtifactHelper) isPartOfKind(part types.Part, kind string) bool {
 
 // extractFileFromPart extracts file data from a FilePart
 func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData, error) {
-	switch file := filePart.File.(type) {
+	// FilePart is now just any type, need to handle it differently
+	switch file := filePart.(type) {
 	case types.FileWithBytes:
-		data, err := base64.StdEncoding.DecodeString(file.Bytes)
-		if err != nil {
-			return FileData{}, fmt.Errorf("failed to decode base64 file data: %w", err)
-		}
 		return FileData{
-			Name:     file.Name,
-			MIMEType: file.MIMEType,
-			Data:     data,
+			Name:     &file.Name,
+			MIMEType: &file.MimeType,
+			Data:     file.Bytes,
 		}, nil
 	case types.FileWithUri:
 		return FileData{
-			Name:     file.Name,
-			MIMEType: file.MIMEType,
-			URI:      &file.URI,
+			Name:     &file.Name,
+			MIMEType: &file.MimeType,
+			URI:      &file.Uri,
 		}, nil
 	default:
 		return FileData{}, fmt.Errorf("unsupported file type: %T", file)
@@ -352,11 +344,11 @@ func (ah *ArtifactHelper) GetArtifactSummary(task *types.Task) map[string]int {
 		for _, part := range artifact.Parts {
 			switch p := part.(type) {
 			case types.TextPart:
-				summary[p.Kind]++
+				summary["text"]++
 			case types.FilePart:
-				summary[p.Kind]++
+				summary["file"]++
 			case types.DataPart:
-				summary[p.Kind]++
+				summary["data"]++
 			case map[string]any:
 				if kind, ok := p["kind"].(string); ok {
 					summary[kind]++
@@ -483,9 +475,9 @@ func (ah *ArtifactHelper) DownloadArtifact(ctx context.Context, artifact *types.
 	}
 
 	artifactConfig := config
-	if config != nil && config.OrganizeByArtifactID && artifact != nil {
+	if config != nil && config.OrganizeByArtifactID && artifact != nil && artifact.ArtifactID != nil {
 		artifactConfig = &DownloadConfig{
-			OutputDir:         filepath.Join(config.OutputDir, artifact.ArtifactID),
+			OutputDir:         filepath.Join(config.OutputDir, *artifact.ArtifactID),
 			HTTPClient:        config.HTTPClient,
 			OverwriteExisting: config.OverwriteExisting,
 		}

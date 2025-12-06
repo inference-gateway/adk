@@ -40,9 +40,13 @@ func (c *messageConverter) ConvertToSDK(messages []types.Message) ([]sdk.Message
 	for i, msg := range messages {
 		sdkMsg, err := c.convertSingleMessage(msg)
 		if err != nil {
+			msgID := ""
+			if msg.MessageID != nil {
+				msgID = *msg.MessageID
+			}
 			c.logger.Error("failed to convert message",
 				zap.Int("message_index", i),
-				zap.String("message_id", msg.MessageID),
+				zap.String("message_id", msgID),
 				zap.Error(err))
 			return nil, err
 		}
@@ -55,9 +59,17 @@ func (c *messageConverter) ConvertToSDK(messages []types.Message) ([]sdk.Message
 
 // convertSingleMessage converts a single A2A message to SDK format
 func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message, error) {
-	role := msg.Role
-	if role == "" {
-		role = "user"
+	// Extract role as string, handling the pointer and any type
+	roleStr := "user"
+	if msg.Role != nil {
+		if r, ok := (*msg.Role).(string); ok {
+			roleStr = r
+		}
+	}
+
+	msgID := ""
+	if msg.MessageID != nil {
+		msgID = *msg.MessageID
 	}
 
 	var content string
@@ -70,32 +82,32 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 			content += p.Text
 
 		case types.DataPart:
-			if err := c.processDataPart(p.Data, role, &content, &toolCallId, &toolCalls); err != nil {
+			if err := c.processDataPart(p.Data, roleStr, &content, &toolCallId, &toolCalls); err != nil {
 				c.logger.Warn("failed to process DataPart",
-					zap.String("message_id", msg.MessageID),
+					zap.String("message_id", msgID),
 					zap.Error(err))
 			}
 
 		case types.FilePart:
 			c.logger.Debug("file part detected in message",
-				zap.String("message_id", msg.MessageID))
+				zap.String("message_id", msgID))
 
 		case map[string]any:
-			if err := c.processMapPart(p, role, &content, &toolCallId, &toolCalls); err != nil {
+			if err := c.processMapPart(p, roleStr, &content, &toolCallId, &toolCalls); err != nil {
 				c.logger.Warn("failed to process map part",
-					zap.String("message_id", msg.MessageID),
+					zap.String("message_id", msgID),
 					zap.Error(err))
 			}
 
 		default:
 			c.logger.Warn("unsupported part type",
-				zap.String("message_id", msg.MessageID),
+				zap.String("message_id", msgID),
 				zap.String("type", fmt.Sprintf("%T", part)))
 		}
 	}
 
 	var sdkRole sdk.MessageRole
-	switch role {
+	switch roleStr {
 	case "user":
 		sdkRole = sdk.User
 	case "assistant":
@@ -318,11 +330,11 @@ func (c *messageConverter) mapToToolCall(toolCallMap map[string]any) (sdk.ChatCo
 func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message, error) {
 	role := string(response.Role)
 	messageID := fmt.Sprintf("%s-%d", role, time.Now().UnixNano())
+	roleAny := any(role)
 
 	message := &types.Message{
-		Kind:      "message",
-		MessageID: messageID,
-		Role:      role,
+		MessageID: &messageID,
+		Role:      &roleAny,
 		Parts:     []types.Part{},
 	}
 
@@ -410,8 +422,9 @@ func (c *messageConverter) ValidateMessagePart(part types.Part) error {
 		return nil
 
 	case types.FilePart:
-		if p.File == nil {
-			return fmt.Errorf("file part missing file field")
+		// FilePart is now just any type, so just check it's not nil
+		if p == nil {
+			return fmt.Errorf("file part is nil")
 		}
 		return nil
 

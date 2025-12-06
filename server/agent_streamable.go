@@ -27,8 +27,8 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 	var taskID *string
 	var contextID *string
 	if task, ok := ctx.Value(TaskContextKey).(*types.Task); ok && task != nil {
-		taskID = &task.ID
-		contextID = &task.ContextID
+		taskID = task.ID
+		contextID = task.ContextID
 	}
 
 	outputChan := make(chan cloudevents.Event, 100)
@@ -42,8 +42,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			a.logger.Debug("BeforeAgent callback returned override, skipping agent execution")
 			completedStatusEvent := cloudevents.NewEvent()
 			completedStatusEvent.SetType(types.EventTaskStatusChanged)
+			state := any(types.TaskStateCompleted)
 			if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-				State:   types.TaskStateCompleted,
+				State:   &state,
 				Message: override,
 			}); err != nil {
 				a.logger.Error("failed to set completed status event data", zap.Error(err))
@@ -55,8 +56,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 		statusEvent := cloudevents.NewEvent()
 		statusEvent.SetType(types.EventTaskStatusChanged)
+		workingState := any(types.TaskStateWorking)
 		if err := statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-			State: types.TaskStateWorking,
+			State: &workingState,
 		}); err != nil {
 			a.logger.Error("failed to set status event data", zap.Error(err))
 			return
@@ -95,8 +97,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				},
 			}
 			if a.config != nil && a.config.SystemPrompt != "" {
+				systemRole := any("system")
 				sysMsg := &types.Message{
-					Role: "system",
+					Role: &systemRole,
 					Parts: []types.Part{
 						map[string]any{"kind": "text", "text": a.config.SystemPrompt},
 					},
@@ -177,8 +180,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 					cancelledStatusEvent := cloudevents.NewEvent()
 					cancelledStatusEvent.SetType(types.EventTaskStatusChanged)
+					canceledState := any(types.TaskStateCanceled)
 					if err := cancelledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-						State: types.TaskStateCanceled,
+						State: &canceledState,
 					}); err != nil {
 						a.logger.Error("failed to set cancelled status event data", zap.Error(err))
 						return
@@ -195,8 +199,12 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					)
 					interruptMessage.TaskID = taskID
 					interruptMessage.ContextID = contextID
+					msgID := ""
+					if interruptMessage.MessageID != nil {
+						msgID = *interruptMessage.MessageID
+					}
 					select {
-					case outputChan <- types.NewMessageEvent(types.EventTaskInterrupted, interruptMessage.MessageID, interruptMessage):
+					case outputChan <- types.NewMessageEvent(types.EventTaskInterrupted, msgID, interruptMessage):
 					default:
 					}
 					return
@@ -207,8 +215,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 						failedStatusEvent := cloudevents.NewEvent()
 						failedStatusEvent.SetType(types.EventTaskStatusChanged)
+						failedState := any(types.TaskStateFailed)
 						if err := failedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-							State: types.TaskStateFailed,
+							State: &failedState,
 						}); err != nil {
 							a.logger.Error("failed to set failed status event data", zap.Error(err))
 							return
@@ -225,8 +234,12 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						)
 						errorMessage.TaskID = taskID
 						errorMessage.ContextID = contextID
+						errMsgID := ""
+						if errorMessage.MessageID != nil {
+							errMsgID = *errorMessage.MessageID
+						}
 						select {
-						case outputChan <- types.NewMessageEvent(types.EventStreamFailed, errorMessage.MessageID, errorMessage):
+						case outputChan <- types.NewMessageEvent(types.EventStreamFailed, errMsgID, errorMessage):
 						default:
 						}
 						return
@@ -382,11 +395,15 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 			if len(toolResultMessages) > 0 {
 				lastToolMessage := toolResultMessages[len(toolResultMessages)-1]
-				if lastToolMessage.Kind == "input_required" {
-					a.logger.Debug("streaming completed - input required from user",
-						zap.Int("iteration", iteration),
-						zap.Int("final_message_count", len(currentMessages)))
-					return
+				// Check if input is required based on metadata or parts
+				// Note: Kind field no longer exists in the new schema
+				if lastToolMessage.Metadata != nil {
+					if kind, ok := lastToolMessage.Metadata["kind"].(string); ok && kind == "input_required" {
+						a.logger.Debug("streaming completed - input required from user",
+							zap.Int("iteration", iteration),
+							zap.Int("final_message_count", len(currentMessages)))
+						return
+					}
 				}
 			}
 
@@ -406,8 +423,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 				completedStatusEvent := cloudevents.NewEvent()
 				completedStatusEvent.SetType(types.EventTaskStatusChanged)
+				completedState := any(types.TaskStateCompleted)
 				if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-					State:   types.TaskStateCompleted,
+					State:   &completedState,
 					Message: finalAssistantMessage,
 				}); err != nil {
 					a.logger.Error("failed to set completed status event data", zap.Error(err))
@@ -466,8 +484,8 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 	var taskID *string
 	var contextID *string
 	if task, ok := ctx.Value(TaskContextKey).(*types.Task); ok && task != nil {
-		taskID = &task.ID
-		contextID = &task.ContextID
+		taskID = task.ID
+		contextID = task.ContextID
 	}
 
 	executor := a.GetCallbackExecutor()

@@ -125,10 +125,20 @@ func (c *Client) getA2AEndpointURL() string {
 
 // SendTask sends a task to the agent (primary interface following official A2A pattern)
 func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (*types.JSONRPCSuccessResponse, error) {
+	msgID := ""
+	if params.Request != nil && params.Request.MessageID != nil {
+		msgID = *params.Request.MessageID
+	}
+	role := ""
+	if params.Request != nil && params.Request.Role != nil {
+		if r, ok := (*params.Request.Role).(string); ok {
+			role = r
+		}
+	}
 	c.logger.Debug("sending task",
 		zap.String("method", "message/send"),
-		zap.String("message_id", params.Message.MessageID),
-		zap.String("role", params.Message.Role))
+		zap.String("message_id", msgID),
+		zap.String("role", role))
 
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -151,20 +161,30 @@ func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (
 
 	var resp types.JSONRPCSuccessResponse
 	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to send task", zap.Error(err), zap.String("message_id", params.Message.MessageID))
+		c.logger.Error("failed to send task", zap.Error(err), zap.String("message_id", msgID))
 		return nil, err
 	}
 
-	c.logger.Debug("task sent successfully", zap.String("message_id", params.Message.MessageID))
+	c.logger.Debug("task sent successfully", zap.String("message_id", msgID))
 	return &resp, nil
 }
 
 // SendTaskStreaming sends a task and returns a channel for streaming events
 func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error) {
+	msgID := ""
+	if params.Request != nil && params.Request.MessageID != nil {
+		msgID = *params.Request.MessageID
+	}
+	role := ""
+	if params.Request != nil && params.Request.Role != nil {
+		if r, ok := (*params.Request.Role).(string); ok {
+			role = r
+		}
+	}
 	c.logger.Debug("starting task streaming",
 		zap.String("method", "message/stream"),
-		zap.String("message_id", params.Message.MessageID),
-		zap.String("role", params.Message.Role))
+		zap.String("message_id", msgID),
+		zap.String("role", role))
 
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -283,7 +303,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 
 // GetTaskWithContext retrieves the status of a task with context support
 func (c *Client) GetTask(ctx context.Context, params types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error) {
-	c.logger.Debug("retrieving task", zap.String("method", "tasks/get"), zap.String("task_id", params.ID))
+	c.logger.Debug("retrieving task", zap.String("method", "tasks/get"), zap.String("task_id", params.Name))
 
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -306,17 +326,17 @@ func (c *Client) GetTask(ctx context.Context, params types.TaskQueryParams) (*ty
 
 	var resp types.JSONRPCSuccessResponse
 	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to retrieve task", zap.Error(err), zap.String("task_id", params.ID))
+		c.logger.Error("failed to retrieve task", zap.Error(err), zap.String("task_id", params.Name))
 		return nil, err
 	}
 
-	c.logger.Debug("task retrieved successfully", zap.String("task_id", params.ID))
+	c.logger.Debug("task retrieved successfully", zap.String("task_id", params.Name))
 	return &resp, nil
 }
 
 // CancelTaskWithContext cancels a task with context support
 func (c *Client) CancelTask(ctx context.Context, params types.TaskIdParams) (*types.JSONRPCSuccessResponse, error) {
-	c.logger.Debug("cancelling task", zap.String("method", "tasks/cancel"), zap.String("task_id", params.ID))
+	c.logger.Debug("cancelling task", zap.String("method", "tasks/cancel"), zap.String("task_id", params.Name))
 
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -339,11 +359,11 @@ func (c *Client) CancelTask(ctx context.Context, params types.TaskIdParams) (*ty
 
 	var resp types.JSONRPCSuccessResponse
 	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to cancel task", zap.Error(err), zap.String("task_id", params.ID))
+		c.logger.Error("failed to cancel task", zap.Error(err), zap.String("task_id", params.Name))
 		return nil, err
 	}
 
-	c.logger.Debug("task cancelled successfully", zap.String("task_id", params.ID))
+	c.logger.Debug("task cancelled successfully", zap.String("task_id", params.Name))
 	return &resp, nil
 }
 
@@ -420,9 +440,17 @@ func (c *Client) GetAgentCard(ctx context.Context) (*types.AgentCard, error) {
 		return nil, fmt.Errorf("failed to decode agent card response: %w", err)
 	}
 
+	name := ""
+	if agentCard.Name != nil {
+		name = *agentCard.Name
+	}
+	version := ""
+	if agentCard.Version != nil {
+		version = *agentCard.Version
+	}
 	c.logger.Debug("agent card retrieved successfully",
-		zap.String("name", agentCard.Name),
-		zap.String("version", agentCard.Version))
+		zap.String("name", name),
+		zap.String("version", version))
 	return &agentCard, nil
 }
 
