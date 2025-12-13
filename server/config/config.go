@@ -37,7 +37,7 @@ type AgentConfig struct {
 	APIKey                      string            `env:"API_KEY" description:"API key for authentication"`
 	Timeout                     time.Duration     `env:"TIMEOUT,default=30s" description:"Client timeout for requests"`
 	MaxRetries                  int               `env:"MAX_RETRIES,default=3" description:"Maximum number of retries"`
-	MaxChatCompletionIterations int               `env:"MAX_CHAT_COMPLETION_ITERATIONS,default=10" description:"Maximum chat completion iterations"`
+	MaxChatCompletionIterations int               `env:"MAX_CHAT_COMPLETION_ITERATIONS,default=50" description:"Maximum chat completion iterations"`
 	CustomHeaders               map[string]string `env:"CUSTOM_HEADERS" description:"Custom headers to include in requests"`
 	TLSConfig                   ClientTLSConfig   `env:",prefix=TLS_" description:"TLS configuration for client"`
 	ProxyURL                    string            `env:"PROXY_URL" description:"Proxy URL for requests"`

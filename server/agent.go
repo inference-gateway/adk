@@ -36,7 +36,7 @@ type OpenAICompatibleAgentImpl struct {
 // NewOpenAICompatibleAgent creates a new OpenAICompatibleAgentImpl
 func NewOpenAICompatibleAgent(logger *zap.Logger) *OpenAICompatibleAgentImpl {
 	defaultConfig := &config.AgentConfig{
-		MaxChatCompletionIterations: 10,
+		MaxChatCompletionIterations: 50,
 		SystemPrompt:                "You are a helpful AI assistant.",
 	}
 	return &OpenAICompatibleAgentImpl{
