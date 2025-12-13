@@ -366,7 +366,7 @@ func TestServerBuilderPreservesExplicitAgentConfig(t *testing.T) {
 		AgentConfig: config.AgentConfig{
 			MaxConversationHistory:      5,
 			SystemPrompt:                "Custom system prompt",
-			MaxChatCompletionIterations: 10,
+			MaxChatCompletionIterations: 50,
 		},
 		QueueConfig: config.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
@@ -375,7 +375,7 @@ func TestServerBuilderPreservesExplicitAgentConfig(t *testing.T) {
 
 	assert.Equal(t, 5, cfg.AgentConfig.MaxConversationHistory, "Expected explicit MaxConversationHistory to be 5")
 	assert.Equal(t, "Custom system prompt", cfg.AgentConfig.SystemPrompt, "Expected explicit SystemPrompt")
-	assert.Equal(t, 10, cfg.AgentConfig.MaxChatCompletionIterations, "Expected explicit MaxChatCompletionIterations")
+	assert.Equal(t, 50, cfg.AgentConfig.MaxChatCompletionIterations, "Expected explicit MaxChatCompletionIterations")
 
 	builder := server.NewA2AServerBuilder(cfg, logger)
 	srv, err := builder.WithAgentCard(createTestAgentCard()).WithDefaultTaskHandlers().Build()

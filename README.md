@@ -380,7 +380,7 @@ Configure your A2A agent using environment variables. All configuration is optio
 | `AGENT_CLIENT_API_KEY`                        | -       | API key for LLM provider                     |
 | `AGENT_CLIENT_TIMEOUT`                        | `30s`   | Request timeout                              |
 | `AGENT_CLIENT_MAX_RETRIES`                    | `3`     | Maximum retry attempts                       |
-| `AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS` | `10`    | Max chat completion rounds                   |
+| `AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS` | `50`    | Max chat completion rounds                   |
 | `AGENT_CLIENT_MAX_TOKENS`                     | `4096`  | Maximum tokens per response                  |
 | `AGENT_CLIENT_TEMPERATURE`                    | `0.7`   | LLM temperature (0.0-2.0)                    |
 | `AGENT_CLIENT_SYSTEM_PROMPT`                  | -       | System prompt for the agent                  |

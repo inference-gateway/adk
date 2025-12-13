@@ -34,7 +34,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				assert.Equal(t, "", cfg.AgentConfig.Model)
 				assert.Equal(t, 30*time.Second, cfg.AgentConfig.Timeout)
 				assert.Equal(t, 3, cfg.AgentConfig.MaxRetries)
-				assert.Equal(t, 10, cfg.AgentConfig.MaxChatCompletionIterations)
+				assert.Equal(t, 50, cfg.AgentConfig.MaxChatCompletionIterations)
 				assert.Equal(t, "a2a-agent/1.0", cfg.AgentConfig.UserAgent)
 				assert.Equal(t, 4096, cfg.AgentConfig.MaxTokens)
 				assert.Equal(t, 0.7, cfg.AgentConfig.Temperature)
@@ -270,7 +270,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name:               "uses default when not specified",
 			envVars:            map[string]string{},
-			expectedIterations: 10,
+			expectedIterations: 50,
 		},
 	}
 

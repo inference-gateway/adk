@@ -90,7 +90,7 @@ func NewAgentBuilder(logger *zap.Logger) AgentBuilder {
 		agentConfig = &config.AgentConfig{
 			Provider:                    "openai",
 			Model:                       "gpt-3.5-turbo",
-			MaxChatCompletionIterations: 10,
+			MaxChatCompletionIterations: 50,
 			MaxConversationHistory:      20,
 			SystemPrompt:                "You are a helpful AI assistant.",
 		}

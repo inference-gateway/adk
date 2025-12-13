@@ -156,7 +156,7 @@ func TestA2AServer_ResponseSender_SendError(t *testing.T) {
 func TestA2AServer_DirectTaskCreation_Integration(t *testing.T) {
 	cfg := &config.Config{
 		AgentConfig: config.AgentConfig{
-			MaxChatCompletionIterations: 10,
+			MaxChatCompletionIterations: 50,
 			SystemPrompt:                "You are a helpful AI assistant.",
 		},
 	}
