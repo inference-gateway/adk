@@ -269,7 +269,7 @@ func TestAgentBuilder_ChainedCalls(t *testing.T) {
 		Provider:                    "openai",
 		Model:                       "gpt-4",
 		SystemPrompt:                "Original prompt",
-		MaxChatCompletionIterations: 10,
+		MaxChatCompletionIterations: 50,
 	}
 
 	agent, err := server.NewAgentBuilder(logger).
@@ -324,7 +324,7 @@ func TestAgentBuilder_OverrideSystemPrompt(t *testing.T) {
 
 	configWithPrompt := &config.AgentConfig{
 		SystemPrompt:                "Config prompt",
-		MaxChatCompletionIterations: 10,
+		MaxChatCompletionIterations: 50,
 	}
 
 	agent, err := server.NewAgentBuilder(logger).
@@ -523,7 +523,7 @@ func TestAgentBuilder_GetConfig(t *testing.T) {
 				return builder
 			},
 			expectedMaxHistory:           20,                                                                                                                       // From struct tag default
-			expectedMaxIterations:        10,                                                                                                                       // From struct tag default
+			expectedMaxIterations:        50,                                                                                                                       // From struct tag default
 			expectedSystemPromptInConfig: "You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses.", // From struct tag default
 		},
 		{
