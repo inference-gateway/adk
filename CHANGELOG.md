@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.1](https://github.com/inference-gateway/adk/compare/v0.16.0...v0.16.1) (2025-12-13)
+
+### ♻️ Improvements
+
+* **config:** Increase default queue cleanup interval to 120s ([#122](https://github.com/inference-gateway/adk/issues/122)) ([10e6e94](https://github.com/inference-gateway/adk/commit/10e6e94c41f584564a0ff87bac179e5e4033f852))
+
+### 📚 Documentation
+
+* Add missing examples to main readme ([e0687d9](https://github.com/inference-gateway/adk/commit/e0687d9db516a1f7f3acdcb8eb5c4f80ae91c5c4))
+
+### 🔧 Miscellaneous
+
+* **deps:** Bump common dependecies to their latest and add missing infer cli and mockgen ([81a7221](https://github.com/inference-gateway/adk/commit/81a7221590829477af8fc876e371a4c6442df630))
+
 ## [0.16.0](https://github.com/inference-gateway/adk/compare/v0.15.3...v0.16.0) (2025-12-03)
 
 ### ✨ Features
