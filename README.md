@@ -417,7 +417,7 @@ Configure your A2A agent using environment variables. All configuration is optio
 | `QUEUE_PROVIDER`         | `memory` | Storage backend: `memory` or `redis`             |
 | `QUEUE_URL`              | -        | Redis connection URL (required when using Redis) |
 | `QUEUE_MAX_SIZE`         | `100`    | Maximum queue size                               |
-| `QUEUE_CLEANUP_INTERVAL` | `30s`    | How often to clean up completed tasks            |
+| `QUEUE_CLEANUP_INTERVAL` | `120s`   | How often to clean up completed tasks            |
 
 **Storage Backends:**
 
