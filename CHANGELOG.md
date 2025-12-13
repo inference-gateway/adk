@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.2](https://github.com/inference-gateway/adk/compare/v0.16.1...v0.16.2) (2025-12-13)
+
+### ♻️ Improvements
+
+* Increase Max Chat Completion Iterations default threshold from 10 to 50 ([#125](https://github.com/inference-gateway/adk/issues/125)) ([e871791](https://github.com/inference-gateway/adk/commit/e87179160f99ab1653048c3c744f5401b253e251)), closes [#123](https://github.com/inference-gateway/adk/issues/123)
+
 ## [0.16.1](https://github.com/inference-gateway/adk/compare/v0.16.0...v0.16.1) (2025-12-13)
 
 ### ♻️ Improvements
