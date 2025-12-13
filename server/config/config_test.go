@@ -52,7 +52,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 
 				require.NotNil(t, cfg.QueueConfig)
 				assert.Equal(t, 100, cfg.QueueConfig.MaxSize)
-				assert.Equal(t, 30*time.Second, cfg.QueueConfig.CleanupInterval)
+				assert.Equal(t, 120*time.Second, cfg.QueueConfig.CleanupInterval)
 
 				require.NotNil(t, cfg.ServerConfig)
 				assert.Equal(t, "8080", cfg.ServerConfig.Port)
@@ -174,7 +174,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 
 				require.NotNil(t, cfg.QueueConfig)
 				assert.Equal(t, 200, cfg.QueueConfig.MaxSize)
-				assert.Equal(t, 30*time.Second, cfg.QueueConfig.CleanupInterval)
+				assert.Equal(t, 120*time.Second, cfg.QueueConfig.CleanupInterval)
 			},
 		},
 	}

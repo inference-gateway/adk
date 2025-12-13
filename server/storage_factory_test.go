@@ -194,7 +194,7 @@ func TestConfigQueueConfigExtensions(t *testing.T) {
 			expected: config.QueueConfig{
 				Provider:        "memory",
 				MaxSize:         100,
-				CleanupInterval: 30 * time.Second,
+				CleanupInterval: 120 * time.Second,
 			},
 		},
 		{
@@ -207,7 +207,7 @@ func TestConfigQueueConfigExtensions(t *testing.T) {
 				Provider:        "redis",
 				URL:             "redis://localhost:6379",
 				MaxSize:         100,
-				CleanupInterval: 30 * time.Second,
+				CleanupInterval: 120 * time.Second,
 			},
 		},
 		{
@@ -221,7 +221,7 @@ func TestConfigQueueConfigExtensions(t *testing.T) {
 				Provider:        "redis",
 				URL:             "redis://localhost:6379",
 				MaxSize:         200,
-				CleanupInterval: 30 * time.Second,
+				CleanupInterval: 120 * time.Second,
 			},
 		},
 	}
