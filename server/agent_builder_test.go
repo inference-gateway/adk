@@ -522,9 +522,9 @@ func TestAgentBuilder_GetConfig(t *testing.T) {
 			setupBuilder: func(builder server.AgentBuilder) server.AgentBuilder {
 				return builder
 			},
-			expectedMaxHistory:           20,                                                                                                                       // From struct tag default
-			expectedMaxIterations:        50,                                                                                                                       // From struct tag default
-			expectedSystemPromptInConfig: "You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses.", // From struct tag default
+			expectedMaxHistory:           20,
+			expectedMaxIterations:        50,
+			expectedSystemPromptInConfig: "You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses.",
 		},
 		{
 			name: "config_set_via_WithConfig",
