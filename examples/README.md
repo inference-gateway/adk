@@ -34,7 +34,8 @@ examples/
 ├── artifacts-minio/           # Artifact storage using MinIO (S3-compatible)
 ├── artifacts-autonomous-tool/ # LLM autonomously creates artifacts via create_artifact tool
 ├── queue-storage/             # Queue storage backends (in-memory and Redis)
-└── tls-example/               # TLS-enabled server with HTTPS communication
+├── tls-example/               # TLS-enabled server with HTTPS communication
+└── usage-metadata/            # Token usage and execution metrics tracking
 ```
 
 ## 🚀 Quick Start
@@ -180,6 +181,16 @@ TLS-enabled A2A server demonstrating secure HTTPS communication.
 - Docker Compose orchestration with TLS setup
 - Secure task submission and response handling
 
+#### `usage-metadata/`
+
+Demonstrates automatic token usage and execution metrics tracking in task responses.
+
+- Token usage tracking (prompt_tokens, completion_tokens, total_tokens)
+- Execution statistics (iterations, messages, tool_calls, failed_tools)
+- Automatic metadata population in Task.Metadata field
+- Configuration options for enabling/disabling usage tracking
+- Cost monitoring and performance analysis use cases
+
 ## 🔧 Configuration
 
 All examples follow a consistent environment variable pattern with the `A2A_` prefix:
@@ -219,6 +230,7 @@ See each example's README for specific configuration details.
 11. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
 12. **`queue-storage/`** - Learn different queue storage backends for scaling
 13. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
+14. **`usage-metadata/`** - Track token usage and execution metrics for cost monitoring
 
 ---
 
