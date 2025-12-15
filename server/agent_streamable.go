@@ -491,7 +491,6 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			continue
 		}
 
-		// Track tool call
 		usageTracker.IncrementToolCalls()
 
 		toolStartMessage := types.NewStreamingStatusMessage(fmt.Sprintf("tool-start-%s", toolCall.Id), string(types.TaskStateWorking), nil)
