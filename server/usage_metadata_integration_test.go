@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/adk/types"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 )
 
 // TestUsageMetadata_BackgroundTaskHandler tests usage metadata in background task processing
