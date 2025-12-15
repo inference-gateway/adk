@@ -179,8 +179,8 @@ The metadata is returned in the `Task.Metadata` field with the following structu
 
 Usage metadata tracking is controlled by the `AGENT_CLIENT_ENABLE_USAGE_METADATA` environment variable:
 
-| Environment Variable                      | Description                   | Default |
-| ----------------------------------------- | ----------------------------- | ------- |
+| Environment Variable                     | Description                    | Default |
+| ---------------------------------------- | ------------------------------ | ------- |
 | `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA` | Enable usage metadata tracking | `true`  |
 
 ### Disabling Usage Metadata
