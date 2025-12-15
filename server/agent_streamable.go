@@ -31,6 +31,14 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		contextID = &task.ContextID
 	}
 
+	// Get or create usage tracker from context
+	var usageTracker *UsageTracker
+	if tracker, ok := ctx.Value(UsageTrackerContextKey).(*UsageTracker); ok && tracker != nil {
+		usageTracker = tracker
+	} else {
+		usageTracker = NewUsageTracker()
+	}
+
 	outputChan := make(chan cloudevents.Event, 100)
 
 	go func() {
@@ -69,6 +77,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		var finalAssistantMessage *types.Message
 
 		for iteration := 1; iteration <= a.config.MaxChatCompletionIterations; iteration++ {
+			// Track iteration
+			usageTracker.IncrementIteration()
+
 			a.logger.Debug("starting streaming iteration",
 				zap.Int("iteration", iteration),
 				zap.Int("message_count", len(currentMessages)))
@@ -245,6 +256,11 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 					choice := streamResp.Choices[0]
 
+					// Track token usage if available in streaming response
+					if streamResp.Usage != nil {
+						usageTracker.AddTokenUsage(*streamResp.Usage)
+					}
+
 					if choice.Delta.Content != "" {
 						fullContent += choice.Delta.Content
 
@@ -345,7 +361,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 								return
 							}
 
-							toolResultMessages = a.executeToolCallsWithEvents(ctx, toolCalls, outputChan)
+							toolResultMessages = a.executeToolCallsWithEvents(ctx, toolCalls, outputChan, usageTracker)
 
 							for _, toolResult := range toolResultMessages {
 								for _, part := range toolResult.Parts {
@@ -375,6 +391,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 			if len(toolResultMessages) > 0 {
 				currentMessages = append(currentMessages, toolResultMessages...)
+				usageTracker.AddMessages(len(toolResultMessages))
 				a.logger.Debug("persisted tool result messages",
 					zap.Int("iteration", iteration),
 					zap.Int("tool_result_count", len(toolResultMessages)))
@@ -460,7 +477,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 }
 
 // executeToolCallsWithEvents executes tool calls and emits events, returning tool result messages
-func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- cloudevents.Event) []types.Message {
+func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Context, toolCalls []sdk.ChatCompletionMessageToolCall, outputChan chan<- cloudevents.Event, usageTracker *UsageTracker) []types.Message {
 	toolResultMessages := make([]types.Message, 0, len(toolCalls))
 
 	var taskID *string
@@ -477,6 +494,9 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 			continue
 		}
 
+		// Track tool call
+		usageTracker.IncrementToolCalls()
+
 		toolStartMessage := types.NewStreamingStatusMessage(fmt.Sprintf("tool-start-%s", toolCall.Id), string(types.TaskStateWorking), nil)
 		toolStartMessage.TaskID = taskID
 		toolStartMessage.ContextID = contextID
@@ -489,6 +509,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 		var args map[string]any
 		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 			a.logger.Error("failed to parse tool arguments", zap.String("tool", toolCall.Function.Name), zap.Error(err))
+			usageTracker.IncrementFailedTools()
 
 			toolFailedMessage := types.NewStreamingStatusMessage(fmt.Sprintf("tool-failed-%s", toolCall.Id), string(types.TaskStateFailed), nil)
 			toolFailedMessage.TaskID = taskID
@@ -568,6 +589,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 
 			if toolErr != nil {
 				a.logger.Error("failed to execute tool", zap.String("tool", toolCall.Function.Name), zap.Error(toolErr))
+				usageTracker.IncrementFailedTools()
 				result = fmt.Sprintf("Tool execution failed: %s", toolErr.Error())
 
 				toolFailedMsg := types.NewStreamingStatusMessage(fmt.Sprintf("tool-failed-%s", toolCall.Id), string(types.TaskStateFailed), nil)

@@ -50,6 +50,7 @@ type AgentConfig struct {
 	SystemPrompt                string            `env:"SYSTEM_PROMPT,default=You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses." description:"System prompt for LLM interactions"`
 	MaxConversationHistory      int               `env:"MAX_CONVERSATION_HISTORY,default=20" description:"Maximum number of messages to keep in conversation history per context"`
 	ToolBoxConfig               ToolBoxConfig     `env:",prefix=TOOLS_" description:"Tool configuration for agents"`
+	EnableUsageMetadata         bool              `env:"ENABLE_USAGE_METADATA,default=true" description:"Enable usage metadata (token counts and execution stats) in task responses"`
 }
 
 // ToolBoxConfig defines configuration options for creating a DefaultToolBox

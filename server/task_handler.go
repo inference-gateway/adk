@@ -18,6 +18,7 @@ type ContextKey string
 const (
 	TaskContextKey            ContextKey = "task"
 	ArtifactServiceContextKey ContextKey = "artifactService"
+	UsageTrackerContextKey    ContextKey = "usageTracker"
 )
 
 // A2AProtocolHandler defines the interface for handling A2A protocol requests
@@ -82,24 +83,27 @@ type StreamableTaskHandler interface {
 // DefaultBackgroundTaskHandler implements the TaskHandler interface optimized for background scenarios
 // This handler automatically handles input-required pausing without requiring custom implementation
 type DefaultBackgroundTaskHandler struct {
-	logger          *zap.Logger
-	agent           OpenAICompatibleAgent
-	artifactService ArtifactService
+	logger               *zap.Logger
+	agent                OpenAICompatibleAgent
+	artifactService      ArtifactService
+	enableUsageMetadata  bool
 }
 
 // NewDefaultBackgroundTaskHandler creates a new default background task handler
 func NewDefaultBackgroundTaskHandler(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultBackgroundTaskHandler {
 	return &DefaultBackgroundTaskHandler{
-		logger: logger,
-		agent:  agent,
+		logger:              logger,
+		agent:               agent,
+		enableUsageMetadata: true, // Default to enabled
 	}
 }
 
 // NewDefaultBackgroundTaskHandlerWithAgent creates a new default background task handler with an agent
 func NewDefaultBackgroundTaskHandlerWithAgent(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultBackgroundTaskHandler {
 	return &DefaultBackgroundTaskHandler{
-		logger: logger,
-		agent:  agent,
+		logger:              logger,
+		agent:               agent,
+		enableUsageMetadata: true, // Default to enabled
 	}
 }
 
@@ -129,7 +133,11 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
+	// Create usage tracker for this task
+	usageTracker := NewUsageTracker()
+
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
+	toolCtx = context.WithValue(toolCtx, UsageTrackerContextKey, usageTracker)
 	if bth.artifactService != nil {
 		toolCtx = context.WithValue(toolCtx, ArtifactServiceContextKey, bth.artifactService)
 	}
@@ -179,6 +187,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 				if statusData.State == types.TaskStateCompleted ||
 					statusData.State == types.TaskStateFailed ||
 					statusData.State == types.TaskStateCanceled {
+					// Populate task metadata with usage statistics
+					bth.populateTaskMetadata(task, usageTracker)
 					return task, nil
 				}
 			}
@@ -227,6 +237,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		bth.logger.Info("background task completed successfully",
 			zap.String("task_id", task.ID))
 
+		// Populate task metadata with usage statistics
+		bth.populateTaskMetadata(task, usageTracker)
 		return task, nil
 	}
 
@@ -248,6 +260,8 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		},
 	}
 
+	// Populate task metadata with usage statistics
+	bth.populateTaskMetadata(task, usageTracker)
 	return task, nil
 }
 
@@ -283,9 +297,10 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 // DefaultStreamingTaskHandler implements the TaskHandler interface optimized for streaming scenarios
 // This handler automatically handles input-required pausing with streaming-aware behavior
 type DefaultStreamingTaskHandler struct {
-	logger          *zap.Logger
-	agent           OpenAICompatibleAgent
-	artifactService ArtifactService
+	logger               *zap.Logger
+	agent                OpenAICompatibleAgent
+	artifactService      ArtifactService
+	enableUsageMetadata  bool
 }
 
 // NewDefaultStreamingTaskHandler creates a new default streaming task handler
@@ -296,8 +311,9 @@ func NewDefaultStreamingTaskHandler(logger *zap.Logger, agent OpenAICompatibleAg
 	}
 
 	return &DefaultStreamingTaskHandler{
-		logger: logger,
-		agent:  agentInstance,
+		logger:              logger,
+		agent:               agentInstance,
+		enableUsageMetadata: true, // Default to enabled
 	}
 }
 
@@ -326,12 +342,44 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
+	// Create usage tracker for this task
+	usageTracker := NewUsageTracker()
+
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
+	toolCtx = context.WithValue(toolCtx, UsageTrackerContextKey, usageTracker)
 	if sth.artifactService != nil {
 		toolCtx = context.WithValue(toolCtx, ArtifactServiceContextKey, sth.artifactService)
 	}
 
-	return sth.agent.RunWithStream(toolCtx, messages)
+	// Create output channel that will include metadata in final events
+	eventChan, err := sth.agent.RunWithStream(toolCtx, messages)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wrap the event channel to add metadata to final status events
+	wrappedChan := make(chan cloudevents.Event, 100)
+	go func() {
+		defer close(wrappedChan)
+		for event := range eventChan {
+			// Check if this is a final status event
+			if event.Type() == types.EventTaskStatusChanged {
+				var statusData types.TaskStatus
+				if err := event.DataAs(&statusData); err == nil {
+					// If task is in final state, populate metadata
+					if statusData.State == types.TaskStateCompleted ||
+						statusData.State == types.TaskStateFailed ||
+						statusData.State == types.TaskStateCanceled {
+						// Add metadata to task
+						sth.populateTaskMetadata(task, usageTracker)
+					}
+				}
+			}
+			wrappedChan <- event
+		}
+	}()
+
+	return wrappedChan, nil
 }
 
 // DefaultA2AProtocolHandler implements the A2AProtocolHandler interface
@@ -1021,4 +1069,52 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 		zap.String("task_id", params.ID),
 		zap.String("config_id", params.PushNotificationConfigID))
 	h.responseSender.SendSuccess(c, req.ID, nil)
+}
+
+// populateTaskMetadata populates task metadata with usage statistics if enabled
+func (bth *DefaultBackgroundTaskHandler) populateTaskMetadata(task *types.Task, usageTracker *UsageTracker) {
+	if !bth.enableUsageMetadata || usageTracker == nil {
+		return
+	}
+
+	if !usageTracker.HasUsage() {
+		return
+	}
+
+	if task.Metadata == nil {
+		task.Metadata = make(map[string]any)
+	}
+
+	metadata := usageTracker.GetMetadata()
+	for key, value := range metadata {
+		task.Metadata[key] = value
+	}
+
+	bth.logger.Debug("populated task metadata with usage statistics",
+		zap.String("task_id", task.ID),
+		zap.Any("metadata", metadata))
+}
+
+// populateTaskMetadata populates task metadata with usage statistics if enabled (streaming handler)
+func (sth *DefaultStreamingTaskHandler) populateTaskMetadata(task *types.Task, usageTracker *UsageTracker) {
+	if !sth.enableUsageMetadata || usageTracker == nil {
+		return
+	}
+
+	if !usageTracker.HasUsage() {
+		return
+	}
+
+	if task.Metadata == nil {
+		task.Metadata = make(map[string]any)
+	}
+
+	metadata := usageTracker.GetMetadata()
+	for key, value := range metadata {
+		task.Metadata[key] = value
+	}
+
+	sth.logger.Debug("populated task metadata with usage statistics",
+		zap.String("task_id", task.ID),
+		zap.Any("metadata", metadata))
 }
