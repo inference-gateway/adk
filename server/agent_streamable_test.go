@@ -28,7 +28,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "streaming_chunks_accumulated_correctly",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -39,7 +38,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-2",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -50,7 +48,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-3",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -69,7 +66,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "single_streaming_message",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -88,7 +84,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "consolidated_message_with_final_assistant_message",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -99,7 +94,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-2",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -110,7 +104,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "assistant-final",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -129,7 +122,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "input_required_message_handling",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -166,7 +158,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "mixed_chunk_and_non_chunk_messages",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "user-1",
 					Role:      "user",
 					Parts: []types.Part{
@@ -177,7 +168,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -188,7 +178,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-2",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -252,7 +241,6 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 
 					if fullContent != "" {
 						consolidatedMessage = &types.Message{
-							Kind:      "message",
 							MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
 							Role:      "assistant",
 							Parts: []types.Part{
@@ -310,7 +298,6 @@ func TestStreamingMessageAccumulationPerformance(t *testing.T) {
 
 	for i := 0; i < numMessages; i++ {
 		messages[i] = types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("chunk-%d", i+1),
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -355,7 +342,6 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 			name: "malformed_message_parts",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -365,7 +351,6 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-2",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -383,7 +368,6 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 			name: "non_string_text_field",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{

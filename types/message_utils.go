@@ -10,17 +10,17 @@ import (
 // NewToolResultMessage creates a standardized tool result message
 func NewToolResultMessage(toolCallID string, toolName string, result any, hasError bool) *Message {
 	return &Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("tool-result-%s", toolCallID),
 		Role:      "tool",
 		Parts: []Part{
-			map[string]any{
-				"kind": "data",
-				"data": map[string]any{
-					"tool_call_id": toolCallID,
-					"tool_name":    toolName,
-					"result":       result,
-					"error":        hasError,
+			{
+				Data: &DataPart{
+					Data: Struct{
+						"tool_call_id": toolCallID,
+						"tool_name":    toolName,
+						"result":       result,
+						"error":        hasError,
+					},
 				},
 			},
 		},
@@ -30,7 +30,6 @@ func NewToolResultMessage(toolCallID string, toolName string, result any, hasErr
 // NewAssistantMessage creates a standardized assistant message
 func NewAssistantMessage(messageID string, parts []Part) *Message {
 	return &Message{
-		Kind:      "message",
 		MessageID: messageID,
 		Role:      "assistant",
 		Parts:     parts,
@@ -39,35 +38,38 @@ func NewAssistantMessage(messageID string, parts []Part) *Message {
 
 // NewTextPart creates a text part for a message
 func NewTextPart(text string) Part {
-	return map[string]any{
-		"kind": "text",
-		"text": text,
+	return Part{
+		Text: &text,
 	}
 }
 
 // NewToolCallPart creates a tool call part for a message
 func NewToolCallPart(toolCallID, toolName string, arguments map[string]any) Part {
-	return map[string]any{
-		"kind": "tool_call",
-		"tool_call": map[string]any{
-			"id":        toolCallID,
-			"name":      toolName,
-			"arguments": arguments,
+	return Part{
+		Data: &DataPart{
+			Data: Struct{
+				"tool_call": map[string]any{
+					"id":        toolCallID,
+					"name":      toolName,
+					"arguments": arguments,
+				},
+			},
 		},
 	}
 }
 
 // NewDataPart creates a generic data part for a message
 func NewDataPart(data map[string]any) Part {
-	return map[string]any{
-		"kind": "data",
-		"data": data,
+	return Part{
+		Data: &DataPart{
+			Data: Struct(data),
+		},
 	}
 }
 
 // NewStreamingStatusMessage creates a status message for streaming
 func NewStreamingStatusMessage(messageID, status string, metadata map[string]any) *Message {
-	data := map[string]any{
+	data := Struct{
 		"status": status,
 	}
 	for k, v := range metadata {
@@ -75,7 +77,6 @@ func NewStreamingStatusMessage(messageID, status string, metadata map[string]any
 	}
 
 	return &Message{
-		Kind:      "message",
 		MessageID: messageID,
 		Role:      "assistant",
 		Parts: []Part{
@@ -87,7 +88,6 @@ func NewStreamingStatusMessage(messageID, status string, metadata map[string]any
 // NewInputRequiredMessage creates an input required message
 func NewInputRequiredMessage(toolCallID, message string) *Message {
 	return &Message{
-		Kind:      "input_required",
 		MessageID: fmt.Sprintf("input-required-%s", toolCallID),
 		Role:      "assistant",
 		Parts: []Part{

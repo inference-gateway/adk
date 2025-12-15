@@ -320,7 +320,6 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 	messageID := fmt.Sprintf("%s-%d", role, time.Now().UnixNano())
 
 	message := &types.Message{
-		Kind:      "message",
 		MessageID: messageID,
 		Role:      role,
 		Parts:     []types.Part{},

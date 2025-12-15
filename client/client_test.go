@@ -299,7 +299,6 @@ func TestClient_SendTask(t *testing.T) {
 			},
 			params: types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "test-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
@@ -335,7 +334,6 @@ func TestClient_SendTask(t *testing.T) {
 			},
 			params: types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "test-msg-error",
 					Role:      "user",
 					Parts:     []types.Part{},
@@ -356,7 +354,6 @@ func TestClient_SendTask(t *testing.T) {
 			},
 			params: types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "test-msg-500",
 					Role:      "user",
 					Parts: []types.Part{
@@ -383,7 +380,6 @@ func TestClient_SendTask(t *testing.T) {
 			},
 			params: types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "test-msg-invalid",
 					Role:      "user",
 					Parts: []types.Part{
@@ -782,7 +778,6 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 			},
 			params: types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "stream-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
@@ -807,7 +802,6 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 			},
 			params: types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "stream-error",
 					Role:      "user",
 					Parts: []types.Part{
@@ -833,7 +827,6 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 			},
 			params: types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "stream-invalid",
 					Role:      "user",
 					Parts: []types.Part{
@@ -861,7 +854,6 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 			},
 			params: types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "stream-empty",
 					Role:      "user",
 					Parts: []types.Part{
@@ -1034,7 +1026,6 @@ func TestClient_RetryMechanism(t *testing.T) {
 
 			params := types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "retry-test",
 					Role:      "user",
 					Parts: []types.Part{
@@ -1153,7 +1144,6 @@ func TestClient_ContextCancellation(t *testing.T) {
 
 			params := types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "context-test",
 					Role:      "user",
 					Parts: []types.Part{
@@ -1315,7 +1305,6 @@ func TestClient_HeadersAndAuthentication(t *testing.T) {
 			ctx := context.Background()
 			params := types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: "header-test",
 					Role:      "user",
 					Parts: []types.Part{
@@ -1390,7 +1379,6 @@ func TestClient_LargeResponses(t *testing.T) {
 
 	params := types.MessageSendParams{
 		Message: types.Message{
-			Kind:      "message",
 			MessageID: "large-test",
 			Role:      "user",
 			Parts: []types.Part{
@@ -1437,7 +1425,6 @@ func TestClient_ConcurrentRequests(t *testing.T) {
 		go func(index int) {
 			params := types.MessageSendParams{
 				Message: types.Message{
-					Kind:      "message",
 					MessageID: fmt.Sprintf("concurrent-msg-%d", index),
 					Role:      "user",
 					Parts: []types.Part{

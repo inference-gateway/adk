@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/inference-gateway/adk/types"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // ArtifactHelper provides utility functions for working with artifacts in client responses
@@ -115,17 +115,8 @@ func (ah *ArtifactHelper) ExtractTextFromArtifact(artifact *types.Artifact) []st
 	}
 
 	for _, part := range artifact.Parts {
-		switch p := part.(type) {
-		case types.TextPart:
-			if p.Kind == "text" {
-				texts = append(texts, p.Text)
-			}
-		case map[string]any:
-			if kind, ok := p["kind"].(string); ok && kind == "text" {
-				if text, exists := p["text"].(string); exists {
-					texts = append(texts, text)
-				}
-			}
+		if part.Text != nil {
+			texts = append(texts, *part.Text)
 		}
 	}
 
@@ -141,23 +132,12 @@ func (ah *ArtifactHelper) ExtractFileDataFromArtifact(artifact *types.Artifact) 
 	}
 
 	for _, part := range artifact.Parts {
-		switch p := part.(type) {
-		case types.FilePart:
-			if p.Kind == "file" {
-				fileData, err := ah.extractFileFromPart(p)
-				if err != nil {
-					return nil, fmt.Errorf("failed to extract file from part: %w", err)
-				}
-				files = append(files, fileData)
+		if part.File != nil {
+			fileData, err := ah.extractFileFromPart(*part.File)
+			if err != nil {
+				return nil, fmt.Errorf("failed to extract file from part: %w", err)
 			}
-		case map[string]any:
-			if kind, ok := p["kind"].(string); ok && kind == "file" {
-				fileData, err := ah.extractFileFromMap(p)
-				if err != nil {
-					return nil, fmt.Errorf("failed to extract file from map part: %w", err)
-				}
-				files = append(files, fileData)
-			}
+			files = append(files, fileData)
 		}
 	}
 
@@ -173,17 +153,8 @@ func (ah *ArtifactHelper) ExtractDataFromArtifact(artifact *types.Artifact) []ma
 	}
 
 	for _, part := range artifact.Parts {
-		switch p := part.(type) {
-		case types.DataPart:
-			if p.Kind == "data" {
-				dataList = append(dataList, p.Data)
-			}
-		case map[string]any:
-			if kind, ok := p["kind"].(string); ok && kind == "data" {
-				if data, exists := p["data"].(map[string]any); exists {
-					dataList = append(dataList, data)
-				}
-			}
+		if part.Data != nil {
+			dataList = append(dataList, part.Data.Data)
 		}
 	}
 
@@ -226,69 +197,27 @@ func (fd *FileData) GetMIMEType() string {
 
 // isPartOfKind checks if a part is of a specific kind
 func (ah *ArtifactHelper) isPartOfKind(part types.Part, kind string) bool {
-	switch p := part.(type) {
-	case types.TextPart:
-		return p.Kind == kind
-	case types.FilePart:
-		return p.Kind == kind
-	case types.DataPart:
-		return p.Kind == kind
-	case map[string]any:
-		if partKind, ok := p["kind"].(string); ok {
-			return partKind == kind
-		}
+	switch kind {
+	case "text":
+		return part.Text != nil
+	case "file":
+		return part.File != nil
+	case "data":
+		return part.Data != nil
 	}
 	return false
 }
 
 // extractFileFromPart extracts file data from a FilePart
 func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData, error) {
-	switch file := filePart.File.(type) {
-	case types.FileWithBytes:
-		data, err := base64.StdEncoding.DecodeString(file.Bytes)
-		if err != nil {
-			return FileData{}, fmt.Errorf("failed to decode base64 file data: %w", err)
-		}
-		return FileData{
-			Name:     file.Name,
-			MIMEType: file.MIMEType,
-			Data:     data,
-		}, nil
-	case types.FileWithUri:
-		return FileData{
-			Name:     file.Name,
-			MIMEType: file.MIMEType,
-			URI:      &file.URI,
-		}, nil
-	default:
-		return FileData{}, fmt.Errorf("unsupported file type: %T", file)
-	}
-}
-
-// extractFileFromMap extracts file data from a map representation
-func (ah *ArtifactHelper) extractFileFromMap(fileMap map[string]any) (FileData, error) {
-	fileData := FileData{}
-
-	fileContent, exists := fileMap["file"]
-	if !exists {
-		return FileData{}, fmt.Errorf("file map missing 'file' field")
+	fileData := FileData{
+		Name:     &filePart.Name,
+		MIMEType: &filePart.MediaType,
 	}
 
-	fileContentMap, ok := fileContent.(map[string]any)
-	if !ok {
-		return FileData{}, fmt.Errorf("file content is not a map")
-	}
-
-	if name, exists := fileContentMap["name"].(string); exists {
-		fileData.Name = &name
-	}
-
-	if mimeType, exists := fileContentMap["mimeType"].(string); exists {
-		fileData.MIMEType = &mimeType
-	}
-
-	if bytes, exists := fileContentMap["bytes"].(string); exists {
-		data, err := base64.StdEncoding.DecodeString(bytes)
+	// Check if it's a bytes-based file
+	if filePart.FileWithBytes != nil && *filePart.FileWithBytes != "" {
+		data, err := base64.StdEncoding.DecodeString(*filePart.FileWithBytes)
 		if err != nil {
 			return FileData{}, fmt.Errorf("failed to decode base64 file data: %w", err)
 		}
@@ -296,12 +225,13 @@ func (ah *ArtifactHelper) extractFileFromMap(fileMap map[string]any) (FileData, 
 		return fileData, nil
 	}
 
-	if uri, exists := fileContentMap["uri"].(string); exists {
-		fileData.URI = &uri
+	// Check if it's a URI-based file
+	if filePart.FileWithURI != nil && *filePart.FileWithURI != "" {
+		fileData.URI = filePart.FileWithURI
 		return fileData, nil
 	}
 
-	return FileData{}, fmt.Errorf("file content contains neither 'bytes' nor 'uri'")
+	return FileData{}, fmt.Errorf("file part contains neither bytes nor URI")
 }
 
 // ExtractArtifactUpdateFromStreamEvent extracts an artifact update event from a streaming event
@@ -350,17 +280,14 @@ func (ah *ArtifactHelper) GetArtifactSummary(task *types.Task) map[string]int {
 
 	for _, artifact := range task.Artifacts {
 		for _, part := range artifact.Parts {
-			switch p := part.(type) {
-			case types.TextPart:
-				summary[p.Kind]++
-			case types.FilePart:
-				summary[p.Kind]++
-			case types.DataPart:
-				summary[p.Kind]++
-			case map[string]any:
-				if kind, ok := p["kind"].(string); ok {
-					summary[kind]++
-				}
+			if part.Text != nil {
+				summary["text"]++
+			}
+			if part.File != nil {
+				summary["file"]++
+			}
+			if part.Data != nil {
+				summary["data"]++
 			}
 		}
 	}

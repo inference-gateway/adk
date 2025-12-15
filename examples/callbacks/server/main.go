@@ -62,7 +62,6 @@ func (h *CallbacksTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	}
 
 	responseMessage := types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("msg-%s", task.ID),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,

@@ -24,7 +24,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert simple text message",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
@@ -47,7 +46,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert assistant message",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-2",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -70,7 +68,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert system message",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-3",
 					Role:      "system",
 					Parts: []types.Part{
@@ -93,7 +90,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert message with empty role defaults to user",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-4",
 					Role:      "",
 					Parts: []types.Part{
@@ -116,7 +112,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert message with multiple text parts",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-5",
 					Role:      "user",
 					Parts: []types.Part{
@@ -143,7 +138,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert message with data part",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-6",
 					Role:      "tool",
 					Parts: []types.Part{
@@ -174,7 +168,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert strongly-typed message part",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-7",
 					Role:      "user",
 					Parts: []types.Part{
@@ -197,7 +190,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert message with file part (no content extraction)",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-8",
 					Role:      "user",
 					Parts: []types.Part{
@@ -228,7 +220,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			name: "convert multiple messages",
 			input: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "test-msg-9",
 					Role:      "user",
 					Parts: []types.Part{
@@ -239,7 +230,6 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "test-msg-10",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -301,7 +291,6 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
 					types.TextPart{
@@ -319,7 +308,6 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
 					types.TextPart{
@@ -337,7 +325,6 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Kind: "message",
 				Role: "system",
 				Parts: []types.Part{
 					types.TextPart{
@@ -359,7 +346,6 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Kind: "message",
 				Role: "tool",
 				Parts: []types.Part{
 					types.DataPart{
@@ -394,7 +380,6 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
 					types.TextPart{
@@ -427,7 +412,6 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Kind: "message",
 				Role: "assistant",
 				Parts: []types.Part{
 					types.TextPart{
@@ -645,7 +629,6 @@ func TestMessageConverter_RoundTrip(t *testing.T) {
 	converter := NewMessageConverter(logger)
 
 	originalMessage := types.Message{
-		Kind:      "message",
 		MessageID: "round-trip-test",
 		Role:      "user",
 		Parts: []types.Part{
@@ -680,7 +663,6 @@ func TestMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 	messages := make([]types.Message, 1000)
 	for i := 0; i < 1000; i++ {
 		messages[i] = types.Message{
-			Kind:      "message",
 			MessageID: "perf-test-" + string(rune(i)),
 			Role:      "user",
 			Parts: []types.Part{
@@ -718,7 +700,6 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 			inputMessage: types.Message{
 				MessageID: "test-assistant-msg",
 				Role:      "assistant",
-				Kind:      "message",
 				Parts: []types.Part{
 					map[string]any{
 						"kind": "data",
@@ -755,7 +736,6 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 			inputMessage: types.Message{
 				MessageID: "test-assistant-msg-2",
 				Role:      "assistant",
-				Kind:      "message",
 				Parts: []types.Part{
 					map[string]any{
 						"kind": "text",
@@ -771,7 +751,6 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 			inputMessage: types.Message{
 				MessageID: "test-user-msg",
 				Role:      "user",
-				Kind:      "message",
 				Parts: []types.Part{
 					map[string]any{
 						"kind": "data",
@@ -821,7 +800,6 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 		{
 			MessageID: "user-msg",
 			Role:      "user",
-			Kind:      "message",
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "text",
@@ -832,7 +810,6 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 		{
 			MessageID: "assistant-msg",
 			Role:      "assistant",
-			Kind:      "message",
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "data",
@@ -855,7 +832,6 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 		{
 			MessageID: "tool-result-msg",
 			Role:      "tool",
-			Kind:      "message",
 			Parts: []types.Part{
 				map[string]any{
 					"kind": "data",

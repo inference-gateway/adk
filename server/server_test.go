@@ -52,7 +52,6 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 			contextID: "test-context-1",
 			state:     types.TaskStateSubmitted,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "test-message-1",
 				Role:      "user",
 				Parts: []types.Part{
@@ -68,7 +67,6 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 			contextID: "test-context-2",
 			state:     types.TaskStateWorking,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "test-message-2",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -103,7 +101,6 @@ func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 	taskManager := server.NewDefaultTaskManager(logger)
 
 	message := &types.Message{
-		Kind:      "message",
 		MessageID: "test-message",
 		Role:      "user",
 	}
@@ -368,7 +365,6 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		Status: types.TaskStatus{
 			State: types.TaskStateCompleted,
 			Message: &types.Message{
-				Kind:      "message",
 				MessageID: "response-msg",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -402,7 +398,6 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	serverInstance.SetStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{})
 
 	originalMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "original-msg",
 		Role:      "user",
 		Parts: []types.Part{
@@ -416,7 +411,6 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	task := &types.Task{
 		ID:        "test-task",
 		ContextID: "test-context",
-		Kind:      "task",
 		Status: types.TaskStatus{
 			State:   types.TaskStateSubmitted,
 			Message: originalMessage,
@@ -455,7 +449,6 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		Status: types.TaskStatus{
 			State: types.TaskStateCompleted,
 			Message: &types.Message{
-				Kind:      "message",
 				MessageID: "response-msg",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -489,7 +482,6 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 	serverInstance.SetStreamingTaskHandler(&mocks.FakeStreamableTaskHandler{})
 
 	originalUserMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "user-msg-123",
 		Role:      "user",
 		Parts: []types.Part{
@@ -503,7 +495,6 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 	task := &types.Task{
 		ID:        "task-456",
 		ContextID: "context-789",
-		Kind:      "task",
 		Status: types.TaskStatus{
 			State:   types.TaskStateSubmitted,
 			Message: originalUserMessage,

@@ -67,7 +67,6 @@ func (h *AIStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Tas
 
 	// Create final response message
 	responseMessage := types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("msg-%s", task.ID),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,

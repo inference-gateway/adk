@@ -99,7 +99,6 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 		// Send task completion event with final message
 		m.logger.Debug("sending task completion event")
 		finalMessage := types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("mock-completion-%d", time.Now().UnixNano()),
 			Role:      "assistant",
 			TaskID:    &taskID,
@@ -154,7 +153,6 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	response := fmt.Sprintf("Mock response: I received your message '%s'. This is a mock response since no AI provider is configured.", userInput)
 
 	responseMessage := types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("mock-response-%s", task.ID),
 		Role:      "assistant",
 		TaskID:    &task.ID,

@@ -235,7 +235,6 @@ func (h *StreamingInputRequiredTaskHandler) sendStreamingText(outputChan chan<- 
 		}
 
 		deltaMessage := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("delta-%s-%d", taskID, time.Now().UnixNano()),
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -258,7 +257,6 @@ func (h *StreamingInputRequiredTaskHandler) sendStreamingText(outputChan chan<- 
 
 func (h *StreamingInputRequiredTaskHandler) sendStreamingStatus(outputChan chan<- cloudevents.Event, taskID, status string) {
 	statusMessage := &types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("status-%s-%d", taskID, time.Now().UnixNano()),
 		Role:      "assistant",
 		Parts: []types.Part{

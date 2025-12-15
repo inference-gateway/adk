@@ -24,7 +24,6 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "context-1",
 			state:     types.TaskStateSubmitted,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-1",
 				Role:      "user",
 				Parts: []types.Part{
@@ -40,7 +39,6 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "context-2",
 			state:     types.TaskStateWorking,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-2",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -56,7 +54,6 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "context-3",
 			state:     types.TaskStateCompleted,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-3",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -72,7 +69,6 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "context-4",
 			state:     types.TaskStateFailed,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-4",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -94,7 +90,6 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "",
 			state:     types.TaskStateSubmitted,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-6",
 				Role:      "user",
 			},
@@ -129,7 +124,6 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 	taskManager := server.NewDefaultTaskManager(logger)
 
 	message := &types.Message{
-		Kind:      "message",
 		MessageID: "test-msg",
 		Role:      "user",
 		Parts: []types.Part{
@@ -217,7 +211,6 @@ func TestDefaultTaskManager_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < numGoroutines; i++ {
 		go func(index int) {
 			message := &types.Message{
-				Kind:      "message",
 				MessageID: "concurrent-msg",
 				Role:      "user",
 			}
@@ -263,7 +256,6 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	contextID := "test-conversation-context"
 
 	firstMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
@@ -281,7 +273,6 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.Equal(t, *firstMessage, task1.History[0])
 
 	assistantResponse1 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-response-1",
 		Role:      "assistant",
 		Parts: []types.Part{
@@ -304,7 +295,6 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.Equal(t, *assistantResponse1, completedHistory[1])
 
 	secondMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
@@ -326,7 +316,6 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.Equal(t, *secondMessage, task2.History[2])
 
 	assistantResponse2 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-response-2",
 		Role:      "assistant",
 		Parts: []types.Part{
@@ -351,7 +340,6 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.Equal(t, *assistantResponse2, finalHistory[3])
 
 	thirdMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
@@ -378,7 +366,6 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	contextID2 := "context-2"
 
 	message1 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
@@ -390,7 +377,6 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	}
 
 	message2 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
@@ -411,7 +397,6 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	assert.Equal(t, *message2, task2.History[0])
 
 	response1 := &types.Message{
-		Kind:      "message",
 		MessageID: "response-1",
 		Role:      "assistant",
 		Parts: []types.Part{
@@ -434,7 +419,6 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	assert.NoError(t, err)
 
 	message3 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
@@ -451,7 +435,6 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	assert.Equal(t, *message3, task3.History[0])
 
 	message4 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-4",
 		Role:      "user",
 		Parts: []types.Part{
@@ -487,7 +470,6 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	assert.Empty(t, history)
 
 	message := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
@@ -501,7 +483,6 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	task := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message)
 
 	response := &types.Message{
-		Kind:      "message",
 		MessageID: "response-1",
 		Role:      "assistant",
 		Parts: []types.Part{
@@ -543,7 +524,6 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 
 	messages := []types.Message{
 		{
-			Kind:      "message",
 			MessageID: "msg-1",
 			Role:      "user",
 			Parts: []types.Part{
@@ -554,7 +534,6 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 			},
 		},
 		{
-			Kind:      "message",
 			MessageID: "msg-2",
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -592,7 +571,6 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		message := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("completed-msg-%d", i),
 			Role:      "user",
 			Parts:     []types.Part{map[string]any{"kind": "text", "text": fmt.Sprintf("Completed message %d", i)}},
@@ -603,7 +581,6 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		message := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("failed-msg-%d", i),
 			Role:      "user",
 			Parts:     []types.Part{map[string]any{"kind": "text", "text": fmt.Sprintf("Failed message %d", i)}},
@@ -652,7 +629,6 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	contextID := "test-context"
 
 	message1 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
@@ -669,7 +645,6 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	assert.NoError(t, err)
 
 	message2 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
@@ -682,7 +657,6 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	task2 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message2)
 
 	message3 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
@@ -768,7 +742,6 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			task := taskManager.CreateTask("test-context", tt.initialState, &types.Message{
-				Kind:      "message",
 				MessageID: "test-msg",
 				Role:      "user",
 				Parts: []types.Part{
@@ -808,7 +781,6 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 
 	t.Run("pause existing task successfully", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
-			Kind:      "message",
 			MessageID: "initial-msg",
 			Role:      "user",
 			Parts: []types.Part{
@@ -823,7 +795,6 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 		assert.NoError(t, err)
 
 		pauseMessage := &types.Message{
-			Kind:      "message",
 			MessageID: "pause-msg",
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -882,7 +853,6 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 		assert.NoError(t, err)
 
 		resumeMessage := &types.Message{
-			Kind:      "message",
 			MessageID: "resume-msg",
 			Role:      "user",
 			Parts: []types.Part{
@@ -1011,7 +981,6 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	taskManager := server.NewDefaultTaskManager(logger)
 
 	initialMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "initial-msg",
 		Role:      "user",
 		Parts: []types.Part{
@@ -1027,7 +996,6 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 
 	pauseMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "pause-msg",
 		Role:      "assistant",
 		Parts: []types.Part{
@@ -1056,7 +1024,6 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 
 	resumeMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "resume-msg",
 		Role:      "user",
 		Parts: []types.Part{

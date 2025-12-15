@@ -39,7 +39,7 @@ func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {
 							ArtifactID: "artifact-1",
 							Name:       stringPtr("Test Artifact"),
 							Parts: []types.Part{
-								types.TextPart{Kind: "text", Text: "Hello, World!"},
+								types.CreateTextPart("Hello, World!"),
 							},
 						},
 					},
@@ -104,14 +104,14 @@ func TestArtifactHelper_ExtractArtifactsFromTask(t *testing.T) {
 						ArtifactID: "artifact-1",
 						Name:       stringPtr("Artifact 1"),
 						Parts: []types.Part{
-							types.TextPart{Kind: "text", Text: "Content 1"},
+							{Text: stringPtr("Content 1")},
 						},
 					},
 					{
 						ArtifactID: "artifact-2",
 						Name:       stringPtr("Artifact 2"),
 						Parts: []types.Part{
-							types.TextPart{Kind: "text", Text: "Content 2"},
+							{Text: stringPtr("Content 2")},
 						},
 					},
 				},
@@ -202,26 +202,26 @@ func TestArtifactHelper_GetArtifactsByType(t *testing.T) {
 			{
 				ArtifactID: "text-artifact",
 				Parts: []types.Part{
-					types.TextPart{Kind: "text", Text: "Hello"},
+					{Text: stringPtr("Hello")},
 				},
 			},
 			{
 				ArtifactID: "file-artifact",
 				Parts: []types.Part{
-					types.FilePart{Kind: "file", File: types.FileWithBytes{Bytes: "dGVzdA=="}},
+					{File: &types.FilePart{FileWithBytes: stringPtr("dGVzdA=="), Name: "test.txt", MediaType: "text/plain"}},
 				},
 			},
 			{
 				ArtifactID: "data-artifact",
 				Parts: []types.Part{
-					types.DataPart{Kind: "data", Data: map[string]any{"key": "value"}},
+					{Data: &types.DataPart{}},
 				},
 			},
 			{
 				ArtifactID: "mixed-artifact",
 				Parts: []types.Part{
-					types.TextPart{Kind: "text", Text: "Mixed"},
-					types.DataPart{Kind: "data", Data: map[string]any{}},
+					{Text: stringPtr("Mixed")},
+					{Data: &types.DataPart{}},
 				},
 			},
 		},

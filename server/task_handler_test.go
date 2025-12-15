@@ -27,7 +27,6 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 				Status: types.TaskStatus{
 					State: types.TaskStateSubmitted,
 					Message: &types.Message{
-						Kind:      "message",
 						MessageID: "test-msg",
 						Role:      "user",
 						Parts: []types.Part{
@@ -126,7 +125,6 @@ func TestDefaultBackgroundTaskHandler_InputPausing(t *testing.T) {
 				taskHandler.SetAgent(tt.agent)
 			}
 			message := &types.Message{
-				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
 					types.TextPart{
@@ -192,7 +190,6 @@ func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			taskHandler := server.NewDefaultStreamingTaskHandler(logger, tt.agent)
 			message := &types.Message{
-				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
 					types.TextPart{
@@ -283,7 +280,6 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			contextID: stringPtr("existing-context"),
 			existingHistory: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "msg-1",
 					Role:      "user",
 					Parts: []types.Part{
@@ -313,7 +309,6 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			contextID: stringPtr("multi-history-context"),
 			existingHistory: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "msg-1",
 					Role:      "user",
 					Parts: []types.Part{
@@ -324,7 +319,6 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "msg-2",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -360,7 +354,6 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			mockTaskManager.CreateTaskReturns(expectedTask)
 
 			testMessage := types.Message{
-				Kind:      "message",
 				MessageID: "test-msg",
 				Role:      "user",
 				ContextID: tt.contextID,

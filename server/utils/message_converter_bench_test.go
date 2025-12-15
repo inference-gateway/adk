@@ -14,7 +14,6 @@ func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 
 	messages := []types.Message{
 		{
-			Kind:      "message",
 			MessageID: "bench-msg-1",
 			Role:      "user",
 			Parts: []types.Part{
@@ -25,7 +24,6 @@ func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 			},
 		},
 		{
-			Kind:      "message",
 			MessageID: "bench-msg-2",
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -36,7 +34,6 @@ func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 			},
 		},
 		{
-			Kind:      "message",
 			MessageID: "bench-msg-3",
 			Role:      "system",
 			Parts: []types.Part{
@@ -81,7 +78,6 @@ func BenchmarkMessageConverter_ConvertToSDK_StronglyTyped(b *testing.B) {
 
 	messages := []types.Message{
 		{
-			Kind:      "message",
 			MessageID: "bench-typed-msg-1",
 			Role:      "user",
 			Parts: []types.Part{
@@ -92,7 +88,6 @@ func BenchmarkMessageConverter_ConvertToSDK_StronglyTyped(b *testing.B) {
 			},
 		},
 		{
-			Kind:      "message",
 			MessageID: "bench-typed-msg-2",
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -124,7 +119,6 @@ func BenchmarkMessageConverter_ConvertToSDK_LargeMessages(b *testing.B) {
 
 	messages := []types.Message{
 		{
-			Kind:      "message",
 			MessageID: "bench-large-msg",
 			Role:      "user",
 			Parts: []types.Part{
@@ -152,7 +146,6 @@ func BenchmarkMessageConverter_ConvertToSDK_ManyMessages(b *testing.B) {
 	messages := make([]types.Message, 100)
 	for i := 0; i < 100; i++ {
 		messages[i] = types.Message{
-			Kind:      "message",
 			MessageID: "bench-many-msg-" + string(rune(i)),
 			Role:      "user",
 			Parts: []types.Part{

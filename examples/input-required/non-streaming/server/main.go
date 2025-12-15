@@ -74,7 +74,6 @@ func (h *InputRequiredTaskHandler) processWithAgent(ctx context.Context, task *t
 		h.logger.Error("agent processing failed", zap.Error(err))
 		task.Status.State = types.TaskStateFailed
 		task.Status.Message = &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -139,7 +138,6 @@ func (h *InputRequiredTaskHandler) processWithAgent(ctx context.Context, task *t
 		// No clear result, mark as failed
 		task.Status.State = types.TaskStateFailed
 		task.Status.Message = &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -177,7 +175,6 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		case "weather":
 			// User provided location for weather query
 			responseMessage := &types.Message{
-				Kind:      "message",
 				MessageID: fmt.Sprintf("response-%s", task.ID),
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -195,7 +192,6 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		case "calculate":
 			// User provided calculation
 			responseMessage := &types.Message{
-				Kind:      "message",
 				MessageID: fmt.Sprintf("response-%s", task.ID),
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -239,7 +235,6 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 
 		// If location is provided, give weather response
 		responseMessage := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("response-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -279,7 +274,6 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 
 		// If numbers are provided, give calculation response
 		responseMessage := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("response-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -297,7 +291,6 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 	case contains(messageText, "hello") || contains(messageText, "hi"):
 		// Simple greeting, no input required
 		responseMessage := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("response-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{

@@ -36,7 +36,6 @@ func TestTaskCancellation(t *testing.T) {
 
 	t.Run("CancelTaskActuallyCancelsContext", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
-			Kind:      "message",
 			MessageID: "test-message",
 			Role:      "user",
 			Parts: []types.Part{
@@ -92,7 +91,6 @@ func TestTaskCancellation(t *testing.T) {
 
 	t.Run("CancelAlreadyCompletedTask", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateCompleted, &types.Message{
-			Kind:      "message",
 			MessageID: "test-message",
 			Role:      "assistant",
 			Parts: []types.Part{
@@ -110,7 +108,6 @@ func TestTaskCancellation(t *testing.T) {
 
 	t.Run("CancelTaskWithoutRegisteredCancelFunc", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
-			Kind:      "message",
 			MessageID: "test-message",
 			Role:      "user",
 			Parts: []types.Part{

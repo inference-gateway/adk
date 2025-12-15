@@ -43,7 +43,6 @@ func TestCallbackExecutor_ExecuteBeforeAgent(t *testing.T) {
 					func(ctx context.Context, callbackContext *CallbackContext) *types.Message {
 						counter.Increment()
 						return &types.Message{
-							Kind:      "message",
 							MessageID: "test-skip",
 							Role:      "assistant",
 							Parts: []types.Part{
@@ -57,7 +56,6 @@ func TestCallbackExecutor_ExecuteBeforeAgent(t *testing.T) {
 				}
 			},
 			expected: &types.Message{
-				Kind:      "message",
 				MessageID: "test-skip",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -247,7 +245,6 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 					}}
 			},
 			agentOutput: &types.Message{
-				Kind:      "message",
 				MessageID: "original",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -258,7 +255,6 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				},
 			},
 			expected: &types.Message{
-				Kind:      "message",
 				MessageID: "test-modified",
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -305,7 +301,6 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				}
 			},
 			agentOutput: &types.Message{
-				Kind:      "message",
 				MessageID: "original",
 			},
 			expected: &types.Message{
@@ -395,7 +390,6 @@ func TestCallbackExecutor_ExecuteBeforeModel(t *testing.T) {
 						counter.Increment()
 						return &LLMResponse{
 							Content: &types.Message{
-								Kind:      "message",
 								MessageID: "test-blocked",
 								Role:      "assistant",
 								Parts: []types.Part{
@@ -412,7 +406,6 @@ func TestCallbackExecutor_ExecuteBeforeModel(t *testing.T) {
 			request: &LLMRequest{},
 			expected: &LLMResponse{
 				Content: &types.Message{
-					Kind:      "message",
 					MessageID: "test-blocked",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -655,7 +648,6 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 			},
 			response: &LLMResponse{
 				Content: &types.Message{
-					Kind:      "message",
 					MessageID: "original",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -668,7 +660,6 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 			},
 			expected: &LLMResponse{
 				Content: &types.Message{
-					Kind:      "message",
 					MessageID: "test-modified",
 					Role:      "assistant",
 					Parts: []types.Part{
@@ -717,7 +708,6 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 			},
 			response: &LLMResponse{
 				Content: &types.Message{
-					Kind:      "message",
 					MessageID: "original",
 				},
 			},

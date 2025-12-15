@@ -160,7 +160,6 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	responseText := fmt.Sprintf("I've created an analysis report for your request: \"%s\". The report has been saved as an artifact in MinIO cloud storage and is available for download.", userText)
 
 	responseMessage := types.Message{
-		Kind:      "message",
 		MessageID: uuid.New().String(),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,

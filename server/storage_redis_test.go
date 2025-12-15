@@ -161,7 +161,6 @@ func TestRedisStorageBasicOperations(t *testing.T) {
 	task := &types.Task{
 		ID:        "test-task-1",
 		ContextID: "test-context",
-		Kind:      "task",
 		Status: types.TaskStatus{
 			State: types.TaskStateSubmitted,
 		},
@@ -202,7 +201,6 @@ func TestRedisStorageActiveTaskOperations(t *testing.T) {
 	task := &types.Task{
 		ID:        "test-task-2",
 		ContextID: "test-context",
-		Kind:      "task",
 		Status: types.TaskStatus{
 			State: types.TaskStateSubmitted,
 		},
@@ -252,14 +250,12 @@ func TestRedisStorageDeadLetterOperations(t *testing.T) {
 	task := &types.Task{
 		ID:        "test-task-3",
 		ContextID: "test-context",
-		Kind:      "task",
 		Status: types.TaskStatus{
 			State: types.TaskStateCompleted,
 		},
 		History: []types.Message{
 			{
 				Role:      "user",
-				Kind:      "message",
 				MessageID: "msg-1",
 				Parts: []types.Part{
 					map[string]any{
@@ -314,23 +310,20 @@ func TestRedisStorageListOperations(t *testing.T) {
 		{
 			ID:        "task-1",
 			ContextID: "context-1",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateCompleted},
-			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg1", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg1"}}}},
+			History:   []types.Message{{Role: "user", MessageID: "msg1", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg1"}}}},
 		},
 		{
 			ID:        "task-2",
 			ContextID: "context-1",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateFailed},
-			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg2", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg2"}}}},
+			History:   []types.Message{{Role: "user", MessageID: "msg2", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg2"}}}},
 		},
 		{
 			ID:        "task-3",
 			ContextID: "context-2",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateCompleted},
-			History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg3", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg3"}}}},
+			History:   []types.Message{{Role: "user", MessageID: "msg3", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg3"}}}},
 		},
 	}
 
@@ -388,13 +381,11 @@ func TestRedisStorageContextOperations(t *testing.T) {
 	task1 := &types.Task{
 		ID:        "task-1",
 		ContextID: "context-1",
-		Kind:      "task",
 		Status:    types.TaskStatus{State: types.TaskStateCompleted},
 	}
 	task2 := &types.Task{
 		ID:        "task-2",
 		ContextID: "context-2",
-		Kind:      "task",
 		Status:    types.TaskStatus{State: types.TaskStateCompleted},
 	}
 
@@ -443,7 +434,6 @@ func TestRedisStorageClearQueue(t *testing.T) {
 	task := &types.Task{
 		ID:        "test-task",
 		ContextID: "test-context",
-		Kind:      "task",
 		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 	}
 
@@ -474,16 +464,14 @@ func TestRedisStorageGetStats(t *testing.T) {
 	completedTask := &types.Task{
 		ID:        "completed-task",
 		ContextID: "context-1",
-		Kind:      "task",
 		Status:    types.TaskStatus{State: types.TaskStateCompleted},
-		History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg1", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg1"}}}},
+		History:   []types.Message{{Role: "user", MessageID: "msg1", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg1"}}}},
 	}
 	failedTask := &types.Task{
 		ID:        "failed-task",
 		ContextID: "context-2",
-		Kind:      "task",
 		Status:    types.TaskStatus{State: types.TaskStateFailed},
-		History:   []types.Message{{Role: "user", Kind: "message", MessageID: "msg2", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg2"}}}},
+		History:   []types.Message{{Role: "user", MessageID: "msg2", Parts: []types.Part{map[string]any{"kind": "text", "text": "msg2"}}}},
 	}
 
 	err = storage.StoreDeadLetterTask(completedTask)

@@ -50,7 +50,6 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 
 	// Create response message
 	responseMessage := types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("msg-%s", task.ID),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,
