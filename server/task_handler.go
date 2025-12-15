@@ -103,7 +103,7 @@ func NewDefaultBackgroundTaskHandlerWithAgent(logger *zap.Logger, agent OpenAICo
 	return &DefaultBackgroundTaskHandler{
 		logger:              logger,
 		agent:               agent,
-		enableUsageMetadata: true, // Default to enabled
+		enableUsageMetadata: true,
 	}
 }
 
@@ -133,7 +133,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	// Create usage tracker for this task
 	usageTracker := NewUsageTracker()
 
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
@@ -187,7 +186,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 				if statusData.State == types.TaskStateCompleted ||
 					statusData.State == types.TaskStateFailed ||
 					statusData.State == types.TaskStateCanceled {
-					// Populate task metadata with usage statistics
 					bth.populateTaskMetadata(task, usageTracker)
 					return task, nil
 				}
@@ -237,7 +235,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		bth.logger.Info("background task completed successfully",
 			zap.String("task_id", task.ID))
 
-		// Populate task metadata with usage statistics
 		bth.populateTaskMetadata(task, usageTracker)
 		return task, nil
 	}
@@ -260,7 +257,6 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		},
 	}
 
-	// Populate task metadata with usage statistics
 	bth.populateTaskMetadata(task, usageTracker)
 	return task, nil
 }
@@ -313,7 +309,7 @@ func NewDefaultStreamingTaskHandler(logger *zap.Logger, agent OpenAICompatibleAg
 	return &DefaultStreamingTaskHandler{
 		logger:              logger,
 		agent:               agentInstance,
-		enableUsageMetadata: true, // Default to enabled
+		enableUsageMetadata: true,
 	}
 }
 
@@ -342,7 +338,6 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 	messages := make([]types.Message, len(task.History))
 	copy(messages, task.History)
 
-	// Create usage tracker for this task
 	usageTracker := NewUsageTracker()
 
 	toolCtx := context.WithValue(ctx, TaskContextKey, task)
@@ -351,26 +346,21 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 		toolCtx = context.WithValue(toolCtx, ArtifactServiceContextKey, sth.artifactService)
 	}
 
-	// Create output channel that will include metadata in final events
 	eventChan, err := sth.agent.RunWithStream(toolCtx, messages)
 	if err != nil {
 		return nil, err
 	}
 
-	// Wrap the event channel to add metadata to final status events
 	wrappedChan := make(chan cloudevents.Event, 100)
 	go func() {
 		defer close(wrappedChan)
 		for event := range eventChan {
-			// Check if this is a final status event
 			if event.Type() == types.EventTaskStatusChanged {
 				var statusData types.TaskStatus
 				if err := event.DataAs(&statusData); err == nil {
-					// If task is in final state, populate metadata
 					if statusData.State == types.TaskStateCompleted ||
 						statusData.State == types.TaskStateFailed ||
 						statusData.State == types.TaskStateCanceled {
-						// Add metadata to task
 						sth.populateTaskMetadata(task, usageTracker)
 					}
 				}

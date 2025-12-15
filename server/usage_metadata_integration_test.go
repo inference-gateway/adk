@@ -17,7 +17,6 @@ import (
 func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 	logger := zap.NewNop()
 
-	// Create a mock LLM client that returns usage information
 	mockLLMClient := &MockLLMClient{
 		streamResponses: []*sdk.CreateChatCompletionStreamResponse{
 			{
@@ -47,17 +46,14 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 		},
 	}
 
-	// Create agent with mock client
 	agent := NewOpenAICompatibleAgentWithConfig(logger, &config.AgentConfig{
 		MaxChatCompletionIterations: 10,
 		SystemPrompt:                "You are a test assistant",
 	})
 	agent.SetLLMClient(mockLLMClient)
 
-	// Create background task handler
 	handler := NewDefaultBackgroundTaskHandler(logger, agent)
 
-	// Create test task
 	task := &types.Task{
 		ID:        "test-task-123",
 		ContextID: "test-context-456",
@@ -77,15 +73,12 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 		},
 	}
 
-	// Process task using the public interface method
 	resultTask, err := handler.HandleTask(context.Background(), task, nil)
 	require.NoError(t, err)
 	require.NotNil(t, resultTask)
 
-	// Verify task metadata contains usage information
 	require.NotNil(t, resultTask.Metadata, "Task metadata should not be nil")
 
-	// Check usage section
 	assert.Contains(t, resultTask.Metadata, "usage", "Metadata should contain 'usage' field")
 	usageMap, ok := resultTask.Metadata["usage"].(map[string]any)
 	require.True(t, ok, "Usage should be a map")
@@ -93,7 +86,6 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 	assert.Equal(t, int64(50), usageMap["completion_tokens"])
 	assert.Equal(t, int64(150), usageMap["total_tokens"])
 
-	// Check execution stats
 	assert.Contains(t, resultTask.Metadata, "execution_stats", "Metadata should contain 'execution_stats' field")
 	execStats, ok := resultTask.Metadata["execution_stats"].(map[string]any)
 	require.True(t, ok, "Execution stats should be a map")
@@ -105,7 +97,6 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 	logger := zap.NewNop()
 
-	// Create a mock LLM client that returns usage information
 	mockLLMClient := &MockLLMClient{
 		streamResponses: []*sdk.CreateChatCompletionStreamResponse{
 			{
@@ -135,7 +126,6 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 		},
 	}
 
-	// Create agent with mock client
 	agent := NewOpenAICompatibleAgentWithConfig(logger, &config.AgentConfig{
 		MaxChatCompletionIterations: 10,
 		SystemPrompt:                "You are a test assistant",
@@ -165,12 +155,10 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 		},
 	}
 
-	// Process task
 	eventChan, err := handler.HandleStreamingTask(context.Background(), task, nil)
 	require.NoError(t, err)
 	require.NotNil(t, eventChan)
 
-	// Consume all events
 	var completedEvent *cloudevents.Event
 	for event := range eventChan {
 		if event.Type() == types.EventTaskStatusChanged {
@@ -186,10 +174,8 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 
 	require.NotNil(t, completedEvent, "Should receive completed event")
 
-	// Verify task metadata contains usage information
 	require.NotNil(t, task.Metadata, "Task metadata should not be nil")
 
-	// Check usage section
 	assert.Contains(t, task.Metadata, "usage", "Metadata should contain 'usage' field")
 	usageMap, ok := task.Metadata["usage"].(map[string]any)
 	require.True(t, ok, "Usage should be a map")
@@ -197,7 +183,6 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 	assert.Equal(t, int64(75), usageMap["completion_tokens"])
 	assert.Equal(t, int64(275), usageMap["total_tokens"])
 
-	// Check execution stats
 	assert.Contains(t, task.Metadata, "execution_stats", "Metadata should contain 'execution_stats' field")
 	execStats, ok := task.Metadata["execution_stats"].(map[string]any)
 	require.True(t, ok, "Execution stats should be a map")

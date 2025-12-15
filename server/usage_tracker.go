@@ -74,7 +74,6 @@ func (ut *UsageTracker) GetMetadata() map[string]any {
 
 	metadata := make(map[string]any)
 
-	// Only include usage section if there were LLM calls
 	if ut.llmCalls > 0 {
 		metadata["usage"] = map[string]any{
 			"prompt_tokens":     ut.promptTokens,
@@ -83,7 +82,6 @@ func (ut *UsageTracker) GetMetadata() map[string]any {
 		}
 	}
 
-	// Always include execution stats
 	metadata["execution_stats"] = map[string]any{
 		"iterations":   ut.iterations,
 		"messages":     ut.messages,
