@@ -1,6 +1,6 @@
 module github.com/inference-gateway/adk
 
-go 1.25.2
+go 1.25.4
 
 require (
 	github.com/cloudevents/sdk-go/v2 v2.15.2
