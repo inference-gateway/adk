@@ -37,14 +37,12 @@ func TestUsageTracker_AddTokenUsage(t *testing.T) {
 func TestUsageTracker_AddTokenUsage_Multiple(t *testing.T) {
 	tracker := NewUsageTracker()
 
-	// Add first usage
 	tracker.AddTokenUsage(sdk.CompletionUsage{
 		PromptTokens:     100,
 		CompletionTokens: 50,
 		TotalTokens:      150,
 	})
 
-	// Add second usage
 	tracker.AddTokenUsage(sdk.CompletionUsage{
 		PromptTokens:     200,
 		CompletionTokens: 75,
@@ -54,7 +52,6 @@ func TestUsageTracker_AddTokenUsage_Multiple(t *testing.T) {
 	metadata := tracker.GetMetadata()
 	usageMap := metadata["usage"].(map[string]any)
 
-	// Should be accumulated
 	assert.Equal(t, int64(300), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(125), usageMap["completion_tokens"])
 	assert.Equal(t, int64(425), usageMap["total_tokens"])
