@@ -144,7 +144,6 @@ func TestUsageTracker_GetMetadata_NoLLMCalls(t *testing.T) {
 
 	assert.NotContains(t, metadata, "usage")
 
-	// Should include execution stats
 	assert.Contains(t, metadata, "execution_stats")
 	execStats := metadata["execution_stats"].(map[string]any)
 	assert.Equal(t, 1, execStats["iterations"])
