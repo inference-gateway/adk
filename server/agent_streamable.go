@@ -31,7 +31,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		contextID = &task.ContextID
 	}
 
-	// Get or create usage tracker from context
 	var usageTracker *UsageTracker
 	if tracker, ok := ctx.Value(UsageTrackerContextKey).(*UsageTracker); ok && tracker != nil {
 		usageTracker = tracker
@@ -77,7 +76,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		var finalAssistantMessage *types.Message
 
 		for iteration := 1; iteration <= a.config.MaxChatCompletionIterations; iteration++ {
-			// Track iteration
 			usageTracker.IncrementIteration()
 
 			a.logger.Debug("starting streaming iteration",
@@ -256,7 +254,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 					choice := streamResp.Choices[0]
 
-					// Track token usage if available in streaming response
 					if streamResp.Usage != nil {
 						usageTracker.AddTokenUsage(*streamResp.Usage)
 					}

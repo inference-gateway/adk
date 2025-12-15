@@ -132,10 +132,8 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 	})
 	agent.SetLLMClient(mockLLMClient)
 
-	// Create streaming task handler
 	handler := NewDefaultStreamingTaskHandler(logger, agent)
 
-	// Create test task
 	task := &types.Task{
 		ID:        "test-streaming-task-123",
 		ContextID: "test-streaming-context-456",

@@ -107,7 +107,6 @@ func TestUsageTracker_IncrementFailedTools(t *testing.T) {
 func TestUsageTracker_GetMetadata_Complete(t *testing.T) {
 	tracker := NewUsageTracker()
 
-	// Add all types of metrics
 	tracker.AddTokenUsage(sdk.CompletionUsage{
 		PromptTokens:     156,
 		CompletionTokens: 89,
@@ -121,14 +120,12 @@ func TestUsageTracker_GetMetadata_Complete(t *testing.T) {
 
 	metadata := tracker.GetMetadata()
 
-	// Check usage
 	assert.Contains(t, metadata, "usage")
 	usageMap := metadata["usage"].(map[string]any)
 	assert.Equal(t, int64(156), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(89), usageMap["completion_tokens"])
 	assert.Equal(t, int64(245), usageMap["total_tokens"])
 
-	// Check execution stats
 	assert.Contains(t, metadata, "execution_stats")
 	execStats := metadata["execution_stats"].(map[string]any)
 	assert.Equal(t, 2, execStats["iterations"])
@@ -140,13 +137,11 @@ func TestUsageTracker_GetMetadata_Complete(t *testing.T) {
 func TestUsageTracker_GetMetadata_NoLLMCalls(t *testing.T) {
 	tracker := NewUsageTracker()
 
-	// Only add execution stats, no token usage
 	tracker.IncrementIteration()
 	tracker.AddMessages(2)
 
 	metadata := tracker.GetMetadata()
 
-	// Should not include usage section if no LLM calls
 	assert.NotContains(t, metadata, "usage")
 
 	// Should include execution stats
@@ -210,7 +205,6 @@ func TestUsageTracker_ThreadSafety(t *testing.T) {
 	tracker := NewUsageTracker()
 	done := make(chan bool)
 
-	// Simulate concurrent updates
 	for i := 0; i < 10; i++ {
 		go func() {
 			tracker.AddTokenUsage(sdk.CompletionUsage{
@@ -225,7 +219,6 @@ func TestUsageTracker_ThreadSafety(t *testing.T) {
 		}()
 	}
 
-	// Wait for all goroutines
 	for i := 0; i < 10; i++ {
 		<-done
 	}
@@ -234,7 +227,6 @@ func TestUsageTracker_ThreadSafety(t *testing.T) {
 	usageMap := metadata["usage"].(map[string]any)
 	execStats := metadata["execution_stats"].(map[string]any)
 
-	// Should have accumulated all values correctly
 	assert.Equal(t, int64(100), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(50), usageMap["completion_tokens"])
 	assert.Equal(t, int64(150), usageMap["total_tokens"])
