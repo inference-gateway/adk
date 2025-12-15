@@ -83,10 +83,10 @@ type StreamableTaskHandler interface {
 // DefaultBackgroundTaskHandler implements the TaskHandler interface optimized for background scenarios
 // This handler automatically handles input-required pausing without requiring custom implementation
 type DefaultBackgroundTaskHandler struct {
-	logger               *zap.Logger
-	agent                OpenAICompatibleAgent
-	artifactService      ArtifactService
-	enableUsageMetadata  bool
+	logger              *zap.Logger
+	agent               OpenAICompatibleAgent
+	artifactService     ArtifactService
+	enableUsageMetadata bool
 }
 
 // NewDefaultBackgroundTaskHandler creates a new default background task handler
@@ -293,10 +293,10 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 // DefaultStreamingTaskHandler implements the TaskHandler interface optimized for streaming scenarios
 // This handler automatically handles input-required pausing with streaming-aware behavior
 type DefaultStreamingTaskHandler struct {
-	logger               *zap.Logger
-	agent                OpenAICompatibleAgent
-	artifactService      ArtifactService
-	enableUsageMetadata  bool
+	logger              *zap.Logger
+	agent               OpenAICompatibleAgent
+	artifactService     ArtifactService
+	enableUsageMetadata bool
 }
 
 // NewDefaultStreamingTaskHandler creates a new default streaming task handler

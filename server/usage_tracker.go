@@ -16,11 +16,11 @@ type UsageTracker struct {
 	totalTokens      int64
 
 	// Execution statistics
-	iterations   int
-	messages     int
-	toolCalls    int
-	failedTools  int
-	llmCalls     int
+	iterations  int
+	messages    int
+	toolCalls   int
+	failedTools int
+	llmCalls    int
 }
 
 // NewUsageTracker creates a new usage tracker
