@@ -1,6 +1,6 @@
 module github.com/inference-gateway/adk/examples/artifacts-autonomous-tool/client
 
-go 1.25.2
+go 1.25.4
 
 replace github.com/inference-gateway/adk => ../../..
 
