@@ -94,7 +94,7 @@ func NewDefaultBackgroundTaskHandler(logger *zap.Logger, agent OpenAICompatibleA
 	return &DefaultBackgroundTaskHandler{
 		logger:              logger,
 		agent:               agent,
-		enableUsageMetadata: true, // Default to enabled
+		enableUsageMetadata: true,
 	}
 }
 
