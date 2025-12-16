@@ -65,12 +65,9 @@ func main() {
 
 		// Create message with proper structure
 		message := types.Message{
-			Role: "user",
+			Role: types.RoleUser,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: prompt,
-				},
+				types.CreateTextPart(prompt),
 			},
 		}
 
@@ -157,7 +154,7 @@ func main() {
 						fmt.Printf("Partial Response:\n%s\n", string(messageJSON))
 					}
 					completed = true
-				case types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+				case types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 					logger.Warn("task ended", zap.String("state", string(task.Status.State)))
 					if task.Status.Message != nil {
 						messageJSON, _ := json.MarshalIndent(task.Status.Message, "", "  ")

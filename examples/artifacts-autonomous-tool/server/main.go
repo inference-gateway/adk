@@ -174,7 +174,7 @@ Be efficient and proactive in creating artifacts.`).
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -232,4 +232,9 @@ Be efficient and proactive in creating artifacts.`).
 	if err := artifactsServer.Stop(shutdownCtx); err != nil {
 		logger.Error("artifacts server shutdown error", zap.Error(err))
 	}
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }

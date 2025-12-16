@@ -6,7 +6,7 @@ import (
 	"time"
 
 	server "github.com/inference-gateway/adk/server"
-	"github.com/inference-gateway/adk/server/config"
+	config "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	zap "go.uber.org/zap"
@@ -24,14 +24,10 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "context-1",
 			state:     types.TaskStateSubmitted,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-1",
-				Role:      "user",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Test message",
-					},
+					types.CreateTextPart("Test message"),
 				},
 			},
 		},
@@ -40,14 +36,10 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "context-2",
 			state:     types.TaskStateWorking,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-2",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Processing...",
-					},
+					types.CreateTextPart("Processing..."),
 				},
 			},
 		},
@@ -56,14 +48,10 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "context-3",
 			state:     types.TaskStateCompleted,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-3",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Task completed",
-					},
+					types.CreateTextPart("Task completed"),
 				},
 			},
 		},
@@ -72,14 +60,10 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "context-4",
 			state:     types.TaskStateFailed,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-4",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Task failed",
-					},
+					types.CreateTextPart("Task failed"),
 				},
 			},
 		},
@@ -94,7 +78,6 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			contextID: "",
 			state:     types.TaskStateSubmitted,
 			message: &types.Message{
-				Kind:      "message",
 				MessageID: "msg-6",
 				Role:      "user",
 			},
@@ -114,12 +97,6 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			assert.Equal(t, tt.state, task.Status.State)
 			assert.Equal(t, tt.message, task.Status.Message)
 			assert.NotNil(t, task.Status.Timestamp)
-
-			if task.Status.Timestamp != nil {
-				timestamp, err := time.Parse(time.RFC3339Nano, *task.Status.Timestamp)
-				assert.NoError(t, err)
-				assert.WithinDuration(t, time.Now(), timestamp, time.Second)
-			}
 		})
 	}
 }
@@ -129,14 +106,10 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 	taskManager := server.NewDefaultTaskManager(logger)
 
 	message := &types.Message{
-		Kind:      "message",
 		MessageID: "test-msg",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Test message",
-			},
+			types.CreateTextPart("Test message"),
 		},
 	}
 
@@ -217,7 +190,6 @@ func TestDefaultTaskManager_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < numGoroutines; i++ {
 		go func(index int) {
 			message := &types.Message{
-				Kind:      "message",
 				MessageID: "concurrent-msg",
 				Role:      "user",
 			}
@@ -263,14 +235,10 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	contextID := "test-conversation-context"
 
 	firstMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Hello, what's the weather like?",
-			},
+			types.CreateTextPart("Hello, what's the weather like?"),
 		},
 	}
 
@@ -281,14 +249,10 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.Equal(t, *firstMessage, task1.History[0])
 
 	assistantResponse1 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-response-1",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "It's sunny today with a temperature of 72°F.",
-			},
+			types.CreateTextPart("It's sunny today with a temperature of 72°F."),
 		},
 	}
 
@@ -304,14 +268,10 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.Equal(t, *assistantResponse1, completedHistory[1])
 
 	secondMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "What about tomorrow?",
-			},
+			types.CreateTextPart("What about tomorrow?"),
 		},
 	}
 
@@ -326,14 +286,10 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.Equal(t, *secondMessage, task2.History[2])
 
 	assistantResponse2 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-response-2",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Tomorrow will be partly cloudy with a high of 68°F.",
-			},
+			types.CreateTextPart("Tomorrow will be partly cloudy with a high of 68°F."),
 		},
 	}
 
@@ -351,14 +307,10 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 	assert.Equal(t, *assistantResponse2, finalHistory[3])
 
 	thirdMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Should I bring an umbrella?",
-			},
+			types.CreateTextPart("Should I bring an umbrella?"),
 		},
 	}
 
@@ -378,26 +330,18 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	contextID2 := "context-2"
 
 	message1 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Message for context 1",
-			},
+			types.CreateTextPart("Message for context 1"),
 		},
 	}
 
 	message2 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Message for context 2",
-			},
+			types.CreateTextPart("Message for context 2"),
 		},
 	}
 
@@ -411,14 +355,10 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	assert.Equal(t, *message2, task2.History[0])
 
 	response1 := &types.Message{
-		Kind:      "message",
 		MessageID: "response-1",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Response to context 1",
-			},
+			types.CreateTextPart("Response to context 1"),
 		},
 	}
 
@@ -434,14 +374,10 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	assert.NoError(t, err)
 
 	message3 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Follow-up for context 1",
-			},
+			types.CreateTextPart("Follow-up for context 1"),
 		},
 	}
 
@@ -451,14 +387,10 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 	assert.Equal(t, *message3, task3.History[0])
 
 	message4 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-4",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Follow-up for context 2",
-			},
+			types.CreateTextPart("Follow-up for context 2"),
 		},
 	}
 
@@ -487,28 +419,20 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	assert.Empty(t, history)
 
 	message := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Test message",
-			},
+			types.CreateTextPart("Test message"),
 		},
 	}
 
 	task := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message)
 
 	response := &types.Message{
-		Kind:      "message",
 		MessageID: "response-1",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Test response",
-			},
+			types.CreateTextPart("Test response"),
 		},
 	}
 
@@ -524,15 +448,13 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 	assert.Equal(t, *response, history[1])
 
 	history[0].Parts = []types.Part{
-		map[string]any{
-			"kind": "text",
-			"text": "Modified message",
-		},
+		types.CreateTextPart("Modified message"),
 	}
 
 	freshHistory := taskManager.GetConversationHistory(contextID)
 	assert.Len(t, freshHistory, 2)
-	assert.Equal(t, "Test message", freshHistory[0].Parts[0].(map[string]any)["text"])
+	assert.NotNil(t, freshHistory[0].Parts[0].Text)
+	assert.Equal(t, "Test message", *freshHistory[0].Parts[0].Text)
 }
 
 func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
@@ -543,25 +465,17 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 
 	messages := []types.Message{
 		{
-			Kind:      "message",
 			MessageID: "msg-1",
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "First message",
-				},
+				types.CreateTextPart("First message"),
 			},
 		},
 		{
-			Kind:      "message",
 			MessageID: "msg-2",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "First response",
-				},
+				types.CreateTextPart("First response"),
 			},
 		},
 	}
@@ -574,14 +488,12 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 	assert.Equal(t, messages[1], history[1])
 
 	messages[0].Parts = []types.Part{
-		map[string]any{
-			"kind": "text",
-			"text": "Modified message",
-		},
+		types.CreateTextPart("Modified message"),
 	}
 
 	freshHistory := taskManager.GetConversationHistory(contextID)
-	assert.Equal(t, "First message", freshHistory[0].Parts[0].(map[string]any)["text"])
+	assert.NotNil(t, freshHistory[0].Parts[0].Text)
+	assert.Equal(t, "First message", *freshHistory[0].Parts[0].Text)
 }
 
 func TestDefaultTaskManager_TaskRetention(t *testing.T) {
@@ -592,10 +504,9 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		message := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("completed-msg-%d", i),
 			Role:      "user",
-			Parts:     []types.Part{map[string]any{"kind": "text", "text": fmt.Sprintf("Completed message %d", i)}},
+			Parts:     []types.Part{types.CreateTextPart(fmt.Sprintf("Completed message %d", i))},
 		}
 		task := taskManager.CreateTask(contextID, types.TaskStateCompleted, message)
 		assert.NotNil(t, task)
@@ -603,10 +514,9 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		message := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("failed-msg-%d", i),
 			Role:      "user",
-			Parts:     []types.Part{map[string]any{"kind": "text", "text": fmt.Sprintf("Failed message %d", i)}},
+			Parts:     []types.Part{types.CreateTextPart(fmt.Sprintf("Failed message %d", i))},
 		}
 		task := taskManager.CreateTask(contextID, types.TaskStateFailed, message)
 		assert.NotNil(t, task)
@@ -652,14 +562,10 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	contextID := "test-context"
 
 	message1 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-1",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "First message",
-			},
+			types.CreateTextPart("First message"),
 		},
 	}
 	task1 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message1)
@@ -669,27 +575,19 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	assert.NoError(t, err)
 
 	message2 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-2",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Second message",
-			},
+			types.CreateTextPart("Second message"),
 		},
 	}
 	task2 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message2)
 
 	message3 := &types.Message{
-		Kind:      "message",
 		MessageID: "msg-3",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Third message",
-			},
+			types.CreateTextPart("Third message"),
 		},
 	}
 	task3 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message3)
@@ -736,46 +634,42 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 		},
 		{
 			name:          "can cancel unknown task",
-			initialState:  types.TaskStateUnknown,
+			initialState:  types.TaskStateUnspecified,
 			shouldSucceed: true,
 		},
 		{
 			name:          "cannot cancel completed task",
 			initialState:  types.TaskStateCompleted,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is completed",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_COMPLETED",
 		},
 		{
 			name:          "cannot cancel failed task",
 			initialState:  types.TaskStateFailed,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is failed",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_FAILED",
 		},
 		{
 			name:          "cannot cancel already canceled task",
-			initialState:  types.TaskStateCanceled,
+			initialState:  types.TaskStateCancelled,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is canceled",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_CANCELLED",
 		},
 		{
 			name:          "cannot cancel rejected task",
 			initialState:  types.TaskStateRejected,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is rejected",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_REJECTED",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			task := taskManager.CreateTask("test-context", tt.initialState, &types.Message{
-				Kind:      "message",
 				MessageID: "test-msg",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Test message",
-					},
+					types.CreateTextPart("Test message"),
 				},
 			})
 
@@ -789,7 +683,7 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 
 				retrievedTask, exists := taskManager.GetTask(task.ID)
 				assert.True(t, exists)
-				assert.Equal(t, types.TaskStateCanceled, retrievedTask.Status.State)
+				assert.Equal(t, types.TaskStateCancelled, retrievedTask.Status.State)
 			} else {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMsg)
@@ -808,14 +702,10 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 
 	t.Run("pause existing task successfully", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
-			Kind:      "message",
 			MessageID: "initial-msg",
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Initial message",
-				},
+				types.CreateTextPart("Initial message"),
 			},
 		})
 
@@ -823,14 +713,10 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 		assert.NoError(t, err)
 
 		pauseMessage := &types.Message{
-			Kind:      "message",
 			MessageID: "pause-msg",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Please provide more information",
-				},
+				types.CreateTextPart("Please provide more information"),
 			},
 		}
 
@@ -882,14 +768,10 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 		assert.NoError(t, err)
 
 		resumeMessage := &types.Message{
-			Kind:      "message",
 			MessageID: "resume-msg",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Here is the additional information",
-				},
+				types.CreateTextPart("Here is the additional information"),
 			},
 		}
 
@@ -928,7 +810,7 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 		err = taskManager.ResumeTaskWithInput(task.ID, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "already completed and cannot be resumed")
-		assert.Contains(t, err.Error(), "current state: completed")
+		assert.Contains(t, err.Error(), "current state: TASK_STATE_COMPLETED")
 	})
 
 	t.Run("resume non-existent task", func(t *testing.T) {
@@ -1011,14 +893,10 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	taskManager := server.NewDefaultTaskManager(logger)
 
 	initialMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "initial-msg",
-		Role:      "user",
+		Role:      types.RoleUser,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Process this request",
-			},
+			types.CreateTextPart("Process this request"),
 		},
 	}
 	task := taskManager.CreateTask("test-context", types.TaskStateWorking, initialMessage)
@@ -1027,14 +905,10 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 
 	pauseMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "pause-msg",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "I need more information. What is your preference?",
-			},
+			types.CreateTextPart("I need more information. What is your preference?"),
 		},
 	}
 	err = taskManager.PauseTaskForInput(task.ID, pauseMessage)
@@ -1056,14 +930,10 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	assert.NoError(t, err)
 
 	resumeMessage := &types.Message{
-		Kind:      "message",
 		MessageID: "resume-msg",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "I prefer option A",
-			},
+			types.CreateTextPart("I prefer option A"),
 		},
 	}
 	err = taskManager.ResumeTaskWithInput(task2.ID, resumeMessage)

@@ -77,12 +77,9 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 
 				// Create a delta message with just the new token
 				deltaMessage := types.Message{
-					Role: "assistant",
+					Role: types.RoleAgent,
 					Parts: []types.Part{
-						types.TextPart{
-							Kind: "text",
-							Text: delta,
-						},
+						types.CreateTextPart(delta),
 					},
 				}
 
@@ -99,16 +96,12 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 		// Send task completion event with final message
 		m.logger.Debug("sending task completion event")
 		finalMessage := types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("mock-completion-%d", time.Now().UnixNano()),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			TaskID:    &taskID,
 			ContextID: &contextID,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: fullText,
-				},
+				types.CreateTextPart(fullText),
 			},
 		}
 
@@ -143,8 +136,8 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	userInput := "Hello!"
 	if message != nil {
 		for _, part := range message.Parts {
-			if textPart, ok := part.(types.TextPart); ok {
-				userInput = textPart.Text
+			if part.Text != nil {
+				userInput = *part.Text
 				break
 			}
 		}
@@ -154,16 +147,12 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	response := fmt.Sprintf("Mock response: I received your message '%s'. This is a mock response since no AI provider is configured.", userInput)
 
 	responseMessage := types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("mock-response-%s", task.ID),
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		TaskID:    &task.ID,
 		ContextID: &task.ContextID,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: response,
-			},
+			types.CreateTextPart(response),
 		},
 	}
 
@@ -266,7 +255,7 @@ func main() {
 			Name:            server.BuildAgentName,
 			Description:     server.BuildAgentDescription,
 			Version:         server.BuildAgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "3.0.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -308,4 +297,9 @@ func main() {
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
 	}
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }

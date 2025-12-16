@@ -163,7 +163,6 @@ func TestInMemoryStorage_ConcurrentQueueOperations(t *testing.T) {
 					task := &types.Task{
 						ID:        fmt.Sprintf("task-%d-%d", i, j),
 						ContextID: "concurrent-test",
-						Kind:      "task",
 						Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 					}
 					err := storage.EnqueueTask(task, fmt.Sprintf("req-%d-%d", i, j))

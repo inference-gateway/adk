@@ -153,28 +153,26 @@ func (tm *DefaultTaskManager) UnregisterTaskCancelFunc(taskID string) {
 
 // CreateTask creates a new task with message history managed within the task
 func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState, message *types.Message) *types.Task {
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
-
 	var history []types.Message
 
 	if message != nil {
 		history = append(history, *message)
 	}
 
+	now := time.Now()
 	task := &types.Task{
-		ID:   uuid.New().String(),
-		Kind: "task",
+		ID: uuid.New().String(),
 		Status: types.TaskStatus{
-			State:     state,
+			State:     types.TaskState(state),
 			Message:   message,
-			Timestamp: &timestamp,
+			Timestamp: &now,
 		},
 		ContextID: contextID,
 		History:   history,
 	}
 
 	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
@@ -197,8 +195,6 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 
 // CreateTaskWithHistory creates a new task with existing conversation history
 func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state types.TaskState, message *types.Message, history []types.Message) *types.Task {
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
-
 	taskHistory := make([]types.Message, len(history))
 	copy(taskHistory, history)
 
@@ -206,20 +202,20 @@ func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state type
 		taskHistory = append(taskHistory, *message)
 	}
 
+	now := time.Now()
 	task := &types.Task{
-		ID:   uuid.New().String(),
-		Kind: "task",
+		ID: uuid.New().String(),
 		Status: types.TaskStatus{
-			State:     state,
+			State:     types.TaskState(state),
 			Message:   message,
-			Timestamp: &timestamp,
+			Timestamp: &now,
 		},
 		ContextID: contextID,
 		History:   taskHistory,
 	}
 
 	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
@@ -267,9 +263,9 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 		}
 	}
 
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
-	task.Status.State = state
-	task.Status.Timestamp = &timestamp
+	task.Status.State = types.TaskState(state)
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	if tm.isTaskFinalState(state) {
 		tm.UnregisterTaskCancelFunc(taskID)
@@ -305,10 +301,10 @@ func (tm *DefaultTaskManager) UpdateTask(task *types.Task) error {
 		return fmt.Errorf("task cannot be nil")
 	}
 
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
-	task.Status.Timestamp = &timestamp
+	now := time.Now()
+	task.Status.Timestamp = &now
 
-	if tm.isTaskFinalState(task.Status.State) {
+	if tm.isTaskFinalState(types.TaskState(task.Status.State)) {
 		tm.UnregisterTaskCancelFunc(task.ID)
 
 		err := tm.storage.StoreDeadLetterTask(task)
@@ -344,10 +340,10 @@ func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message)
 		return NewTaskNotFoundError(taskID)
 	}
 
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 	task.Status.State = types.TaskStateFailed
 	task.Status.Message = message
-	task.Status.Timestamp = &timestamp
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	tm.UnregisterTaskCancelFunc(taskID)
 
@@ -372,7 +368,7 @@ func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message)
 // sendPushNotifications sends push notifications for a task update
 func (tm *DefaultTaskManager) sendPushNotifications(taskID string, task *types.Task) {
 	configs, err := tm.ListTaskPushNotificationConfigs(types.ListTaskPushNotificationConfigParams{
-		ID: taskID,
+		Parent: taskID,
 	})
 	if err != nil {
 		tm.logger.Error("failed to retrieve push notification configs",
@@ -454,10 +450,9 @@ func (tm *DefaultTaskManager) ListTasks(params types.TaskListParams) (*types.Tas
 	}
 
 	result := &types.TaskList{
-		Tasks:  resultTasks,
-		Total:  len(totalTasks),
-		Limit:  filter.Limit,
-		Offset: filter.Offset,
+		Tasks:     resultTasks,
+		TotalSize: len(totalTasks),
+		PageSize:  filter.Limit,
 	}
 
 	tm.logger.Debug("listed tasks",
@@ -476,8 +471,8 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 		return NewTaskNotFoundError(taskID)
 	}
 
-	if !tm.isTaskCancelable(task.Status.State) {
-		return NewTaskNotCancelableError(taskID, task.Status.State)
+	if !tm.isTaskCancelable(string(task.Status.State)) {
+		return NewTaskNotCancelableError(taskID, types.TaskState(task.Status.State))
 	}
 
 	tm.runningTasksMu.RLock()
@@ -490,9 +485,9 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 		tm.UnregisterTaskCancelFunc(taskID)
 	}
 
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
-	task.Status.State = types.TaskStateCanceled
-	task.Status.Timestamp = &timestamp
+	task.Status.State = types.TaskStateCancelled
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	err := tm.storage.StoreDeadLetterTask(task)
 	if err != nil {
@@ -510,11 +505,12 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 }
 
 // isTaskCancelable determines if a task can be canceled based on its current state
-func (tm *DefaultTaskManager) isTaskCancelable(state types.TaskState) bool {
-	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+func (tm *DefaultTaskManager) isTaskCancelable(state string) bool {
+	taskState := types.TaskState(state)
+	switch taskState {
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 		return false
-	case types.TaskStateSubmitted, types.TaskStateWorking, types.TaskStateInputRequired, types.TaskStateAuthRequired, types.TaskStateUnknown:
+	case types.TaskStateSubmitted, types.TaskStateWorking, types.TaskStateInputRequired, types.TaskStateAuthRequired, types.TaskStateUnspecified:
 		return true
 	default:
 		return false
@@ -524,7 +520,7 @@ func (tm *DefaultTaskManager) isTaskCancelable(state types.TaskState) bool {
 // isTaskFinalState determines if a task state is final and should move to dead letter queue
 func (tm *DefaultTaskManager) isTaskFinalState(state types.TaskState) bool {
 	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 		return true
 	default:
 		return false
@@ -555,8 +551,9 @@ func (tm *DefaultTaskManager) PollTaskStatus(taskID string, interval time.Durati
 				return nil, NewTaskNotFoundError(taskID)
 			}
 
-			switch task.Status.State {
-			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+			taskState := types.TaskState(task.Status.State)
+			switch taskState {
+			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 				return task, nil
 			case types.TaskStateInputRequired:
 				return task, nil
@@ -607,18 +604,16 @@ func (tm *DefaultTaskManager) UpdateConversationHistory(contextID string, messag
 		zap.String("context_id", contextID),
 		zap.Int("message_count", len(messages)))
 
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
-
 	historyCopy := make([]types.Message, len(messages))
 	copy(historyCopy, messages)
 
+	now := time.Now()
 	task := &types.Task{
-		ID:   uuid.New().String(),
-		Kind: "task",
+		ID: uuid.New().String(),
 		Status: types.TaskStatus{
 			State:     types.TaskStateCompleted,
 			Message:   nil,
-			Timestamp: &timestamp,
+			Timestamp: &now,
 		},
 		ContextID: contextID,
 		History:   historyCopy,
@@ -635,8 +630,9 @@ func (tm *DefaultTaskManager) SetTaskPushNotificationConfig(config types.TaskPus
 	tm.pushNotificationConfigsMu.Lock()
 	defer tm.pushNotificationConfigsMu.Unlock()
 
-	if _, ok := tm.pushNotificationConfigs[config.TaskID]; !ok {
-		tm.pushNotificationConfigs[config.TaskID] = make(map[string]*types.TaskPushNotificationConfig)
+	taskID := config.Name
+	if _, ok := tm.pushNotificationConfigs[taskID]; !ok {
+		tm.pushNotificationConfigs[taskID] = make(map[string]*types.TaskPushNotificationConfig)
 	}
 
 	configID := config.PushNotificationConfig.ID
@@ -646,10 +642,10 @@ func (tm *DefaultTaskManager) SetTaskPushNotificationConfig(config types.TaskPus
 		configID = &id
 	}
 
-	tm.pushNotificationConfigs[config.TaskID][*configID] = &config
+	tm.pushNotificationConfigs[taskID][*configID] = &config
 
 	tm.logger.Debug("push notification config set",
-		zap.String("task_id", config.TaskID),
+		zap.String("task_id", taskID),
 		zap.String("config_id", *configID))
 
 	return &config, nil
@@ -660,20 +656,14 @@ func (tm *DefaultTaskManager) GetTaskPushNotificationConfig(params types.GetTask
 	tm.pushNotificationConfigsMu.RLock()
 	defer tm.pushNotificationConfigsMu.RUnlock()
 
-	if configs, ok := tm.pushNotificationConfigs[params.ID]; ok {
-		if params.PushNotificationConfigID != nil {
-			if config, ok := configs[*params.PushNotificationConfigID]; ok {
-				return config, nil
-			}
-			return nil, fmt.Errorf("push notification config not found for task %s, config %s", params.ID, *params.PushNotificationConfigID)
-		}
-
+	taskID := params.Name
+	if configs, ok := tm.pushNotificationConfigs[taskID]; ok {
 		for _, config := range configs {
 			return config, nil
 		}
 	}
 
-	return nil, fmt.Errorf("no push notification configs found for task %s", params.ID)
+	return nil, fmt.Errorf("no push notification configs found for task %s", taskID)
 }
 
 // ListTaskPushNotificationConfigs lists all push notification configurations for a task
@@ -681,7 +671,8 @@ func (tm *DefaultTaskManager) ListTaskPushNotificationConfigs(params types.ListT
 	tm.pushNotificationConfigsMu.RLock()
 	defer tm.pushNotificationConfigsMu.RUnlock()
 
-	if configs, ok := tm.pushNotificationConfigs[params.ID]; ok {
+	taskID := params.Parent
+	if configs, ok := tm.pushNotificationConfigs[taskID]; ok {
 		var result []types.TaskPushNotificationConfig
 		for _, config := range configs {
 			result = append(result, *config)
@@ -697,17 +688,18 @@ func (tm *DefaultTaskManager) DeleteTaskPushNotificationConfig(params types.Dele
 	tm.pushNotificationConfigsMu.Lock()
 	defer tm.pushNotificationConfigsMu.Unlock()
 
-	if configs, ok := tm.pushNotificationConfigs[params.ID]; ok {
-		if _, ok := configs[params.PushNotificationConfigID]; ok {
-			delete(configs, params.PushNotificationConfigID)
+	taskID := params.Name
+	if configs, ok := tm.pushNotificationConfigs[taskID]; ok {
+		for configID := range configs {
+			delete(configs, configID)
 			tm.logger.Info("push notification config deleted",
-				zap.String("task_id", params.ID),
-				zap.String("config_id", params.PushNotificationConfigID))
+				zap.String("task_id", taskID),
+				zap.String("config_id", configID))
 			return nil
 		}
 	}
 
-	return fmt.Errorf("push notification config not found for task %s, config %s", params.ID, params.PushNotificationConfigID)
+	return fmt.Errorf("push notification config not found for task %s", taskID)
 }
 
 // TaskNotFoundError represents an error when a task is not found
@@ -746,10 +738,10 @@ func (tm *DefaultTaskManager) PauseTaskForInput(taskID string, message *types.Me
 		return NewTaskNotFoundError(taskID)
 	}
 
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 	task.Status.State = types.TaskStateInputRequired
 	task.Status.Message = message
-	task.Status.Timestamp = &timestamp
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	if message != nil {
 		task.History = append(task.History, *message)
@@ -784,10 +776,10 @@ func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.
 		return fmt.Errorf("task %s is already completed and cannot be resumed, current state: %s", taskID, task.Status.State)
 	}
 
-	timestamp := time.Now().UTC().Format(time.RFC3339Nano)
 	task.Status.State = types.TaskStateWorking
 	task.Status.Message = message
-	task.Status.Timestamp = &timestamp
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	if message != nil {
 		task.History = append(task.History, *message)

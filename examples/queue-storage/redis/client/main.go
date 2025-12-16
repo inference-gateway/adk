@@ -97,14 +97,10 @@ func main() {
 
 		message := types.Message{
 			ContextID: &contextID,
-			Kind:      "request",
 			MessageID: fmt.Sprintf("msg-%d", i+1),
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: taskContent,
-				},
+				types.CreateTextPart(taskContent),
 			},
 		}
 		params := types.MessageSendParams{
@@ -194,8 +190,8 @@ func main() {
 			// Extract text from the last message parts
 			var content string
 			for _, part := range lastMessage.Parts {
-				if textPart, ok := part.(types.TextPart); ok {
-					content = textPart.Text
+				if part.Text != nil {
+					content = *part.Text
 					break
 				}
 			}

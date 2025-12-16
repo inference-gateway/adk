@@ -130,12 +130,9 @@ func main() {
 
 		// Create task message
 		taskMessage := types.Message{
-			Role: "user",
+			Role: types.RoleUser,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: message,
-				},
+				types.CreateTextPart(message),
 			},
 		}
 

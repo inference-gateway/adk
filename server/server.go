@@ -572,7 +572,6 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		message = task.Status.Message
 	} else {
 		message = &types.Message{
-			Kind:      "message",
 			MessageID: uuid.New().String(),
 			Role:      "user",
 			Parts:     []types.Part{},
@@ -603,14 +602,10 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 			zap.String("task_id", task.ID),
 			zap.String("context_id", task.ContextID))
 		updateErr := s.taskManager.UpdateError(task.ID, &types.Message{
-			Kind:      "message",
 			MessageID: uuid.New().String(),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": err.Error(),
-				},
+				types.CreateTextPart(err.Error()),
 			},
 		})
 		if updateErr != nil {

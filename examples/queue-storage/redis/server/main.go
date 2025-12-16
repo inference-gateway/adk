@@ -46,8 +46,8 @@ func (h *RedisTaskHandler) HandleTask(ctx context.Context, task *types.Task, mes
 	// Extract input from the current message being processed
 	if message != nil {
 		for _, part := range message.Parts {
-			if textPart, ok := part.(types.TextPart); ok {
-				inputContent = textPart.Text
+			if part.Text != nil {
+				inputContent = *part.Text
 				break
 			}
 		}
@@ -68,16 +68,12 @@ func (h *RedisTaskHandler) HandleTask(ctx context.Context, task *types.Task, mes
 	response := fmt.Sprintf("Task processed successfully using Redis queue storage. Benefits: persistent storage, horizontal scaling, and reliable processing. Original input: %s", inputContent)
 
 	responseMessage := types.Message{
-		Kind:      "response",
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: response,
-			},
+			types.CreateTextPart(response),
 		},
 	}
 
@@ -130,7 +126,7 @@ func main() {
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -179,4 +175,9 @@ func maskCredentials(credentials map[string]string) map[string]string {
 		}
 	}
 	return masked
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }

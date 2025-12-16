@@ -128,7 +128,7 @@ func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (
 	c.logger.Debug("sending task",
 		zap.String("method", "message/send"),
 		zap.String("message_id", params.Message.MessageID),
-		zap.String("role", params.Message.Role))
+		zap.String("role", string(params.Message.Role)))
 
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -164,7 +164,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 	c.logger.Debug("starting task streaming",
 		zap.String("method", "message/stream"),
 		zap.String("message_id", params.Message.MessageID),
-		zap.String("role", params.Message.Role))
+		zap.String("role", string(params.Message.Role)))
 
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",

@@ -4,52 +4,45 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 )
 
 func TestUnmarshalPart(t *testing.T) {
 	tests := []struct {
 		name     string
 		jsonData string
-		expected Part
+		validate func(t *testing.T, part Part)
 	}{
 		{
-			name:     "unmarshal TextPart",
-			jsonData: `{"kind": "text", "text": "Hello, world!", "metadata": {"key": "value"}}`,
-			expected: TextPart{
-				Kind:     "text",
-				Text:     "Hello, world!",
-				Metadata: map[string]any{"key": "value"},
+			name:     "unmarshal text part",
+			jsonData: `{"text": "Hello, world!", "metadata": {"key": "value"}}`,
+			validate: func(t *testing.T, part Part) {
+				require.NotNil(t, part.Text)
+				assert.Equal(t, "Hello, world!", *part.Text)
+				require.NotNil(t, part.Metadata)
+				assert.Equal(t, map[string]any{"key": "value"}, *part.Metadata)
 			},
 		},
 		{
-			name:     "unmarshal DataPart",
-			jsonData: `{"kind": "data", "data": {"result": "success"}, "metadata": {"source": "test"}}`,
-			expected: DataPart{
-				Kind:     "data",
-				Data:     map[string]any{"result": "success"},
-				Metadata: map[string]any{"source": "test"},
+			name:     "unmarshal data part",
+			jsonData: `{"data": {"data": {"result": "success"}}, "metadata": {"source": "test"}}`,
+			validate: func(t *testing.T, part Part) {
+				require.NotNil(t, part.Data)
+				assert.Equal(t, map[string]any{"result": "success"}, part.Data.Data)
+				require.NotNil(t, part.Metadata)
+				assert.Equal(t, map[string]any{"source": "test"}, *part.Metadata)
 			},
 		},
 		{
-			name:     "unmarshal FilePart with FileWithBytes",
-			jsonData: `{"kind": "file", "file": {"name": "test.txt", "mimeType": "text/plain", "bytes": "dGVzdA=="}}`,
-			expected: FilePart{
-				Kind: "file",
-				File: map[string]any{
-					"name":     "test.txt",
-					"mimeType": "text/plain",
-					"bytes":    "dGVzdA==",
-				},
-			},
-		},
-		{
-			name:     "unmarshal unknown kind as map",
-			jsonData: `{"kind": "unknown", "customField": "value"}`,
-			expected: map[string]any{
-				"kind":        "unknown",
-				"customField": "value",
+			name:     "unmarshal file part",
+			jsonData: `{"file": {"name": "test.txt", "mediaType": "text/plain", "fileWithBytes": "dGVzdA=="}}`,
+			validate: func(t *testing.T, part Part) {
+				require.NotNil(t, part.File)
+				assert.Equal(t, "test.txt", part.File.Name)
+				assert.Equal(t, "text/plain", part.File.MediaType)
+				require.NotNil(t, part.File.FileWithBytes)
+				assert.Equal(t, "dGVzdA==", *part.File.FileWithBytes)
 			},
 		},
 	}
@@ -58,7 +51,7 @@ func TestUnmarshalPart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			part, err := UnmarshalPart([]byte(tt.jsonData))
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected, part)
+			tt.validate(t, part)
 		})
 	}
 }
@@ -70,31 +63,22 @@ func TestMarshalPart(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "marshal TextPart",
-			part: TextPart{
-				Kind: "text",
-				Text: "Hello, world!",
-			},
-			expected: `{"kind":"text","text":"Hello, world!"}`,
+			name:     "marshal text part",
+			part:     CreateTextPart("Hello, world!"),
+			expected: `{"text":"Hello, world!"}`,
 		},
 		{
-			name: "marshal DataPart",
-			part: DataPart{
-				Kind: "data",
-				Data: map[string]any{"result": "success"},
-			},
-			expected: `{"kind":"data","data":{"result":"success"}}`,
+			name:     "marshal data part",
+			part:     CreateDataPart(map[string]any{"result": "success"}),
+			expected: `{"data":{"data":{"result":"success"}}}`,
 		},
 		{
-			name: "marshal FilePart",
-			part: FilePart{
-				Kind: "file",
-				File: map[string]any{
-					"name":     "test.txt",
-					"mimeType": "text/plain",
-				},
-			},
-			expected: `{"kind":"file","file":{"mimeType":"text/plain","name":"test.txt"}}`,
+			name: "marshal file part",
+			part: func() Part {
+				bytes := "dGVzdA=="
+				return CreateFilePart("test.txt", "text/plain", &bytes, nil)
+			}(),
+			expected: `{"file":{"name":"test.txt","mediaType":"text/plain","fileWithBytes":"dGVzdA=="}}`,
 		},
 	}
 
@@ -109,45 +93,45 @@ func TestMarshalPart(t *testing.T) {
 
 func TestUnmarshalParts(t *testing.T) {
 	jsonData := `[
-		{"kind": "text", "text": "Hello"},
-		{"kind": "data", "data": {"key": "value"}},
-		{"kind": "file", "file": {"name": "test.txt"}}
+		{"text": "Hello"},
+		{"data": {"data": {"key": "value"}}},
+		{"file": {"name": "test.txt", "mediaType": "text/plain"}}
 	]`
 
 	parts, err := UnmarshalParts([]byte(jsonData))
 	require.NoError(t, err)
 	require.Len(t, parts, 3)
 
-	textPart, ok := parts[0].(TextPart)
-	require.True(t, ok)
-	assert.Equal(t, "text", textPart.Kind)
-	assert.Equal(t, "Hello", textPart.Text)
+	// First part should be text
+	require.NotNil(t, parts[0].Text)
+	assert.Equal(t, "Hello", *parts[0].Text)
 
-	dataPart, ok := parts[1].(DataPart)
-	require.True(t, ok)
-	assert.Equal(t, "data", dataPart.Kind)
-	assert.Equal(t, map[string]any{"key": "value"}, dataPart.Data)
+	// Second part should be data
+	require.NotNil(t, parts[1].Data)
+	assert.Equal(t, map[string]any{"key": "value"}, parts[1].Data.Data)
 
-	filePart, ok := parts[2].(FilePart)
-	require.True(t, ok)
-	assert.Equal(t, "file", filePart.Kind)
-	assert.Equal(t, map[string]any{"name": "test.txt"}, filePart.File)
+	// Third part should be file
+	require.NotNil(t, parts[2].File)
+	assert.Equal(t, "test.txt", parts[2].File.Name)
+	assert.Equal(t, "text/plain", parts[2].File.MediaType)
 }
 
 func TestMarshalParts(t *testing.T) {
 	parts := []Part{
-		TextPart{Kind: "text", Text: "Hello"},
-		DataPart{Kind: "data", Data: map[string]any{"key": "value"}},
-		FilePart{Kind: "file", File: map[string]any{"name": "test.txt"}},
+		CreateTextPart("Hello"),
+		CreateDataPart(map[string]any{"key": "value"}),
+		func() Part {
+			return CreateFilePart("test.txt", "text/plain", nil, nil)
+		}(),
 	}
 
 	result, err := MarshalParts(parts)
 	require.NoError(t, err)
 
 	expected := `[
-		{"kind":"text","text":"Hello"},
-		{"kind":"data","data":{"key":"value"}},
-		{"kind":"file","file":{"name":"test.txt"}}
+		{"text":"Hello"},
+		{"data":{"data":{"key":"value"}}},
+		{"file":{"name":"test.txt","mediaType":"text/plain"}}
 	]`
 
 	assert.JSONEq(t, expected, string(result))
@@ -155,50 +139,57 @@ func TestMarshalParts(t *testing.T) {
 
 func TestCreateTextPart(t *testing.T) {
 	part := CreateTextPart("Hello, world!")
-	assert.Equal(t, "text", part.Kind)
-	assert.Equal(t, "Hello, world!", part.Text)
+	require.NotNil(t, part.Text)
+	assert.Equal(t, "Hello, world!", *part.Text)
 	assert.Nil(t, part.Metadata)
 
 	metadata := map[string]any{"key": "value"}
 	partWithMeta := CreateTextPart("Hello", metadata)
-	assert.Equal(t, "text", partWithMeta.Kind)
-	assert.Equal(t, "Hello", partWithMeta.Text)
-	assert.Equal(t, metadata, partWithMeta.Metadata)
+	require.NotNil(t, partWithMeta.Text)
+	assert.Equal(t, "Hello", *partWithMeta.Text)
+	require.NotNil(t, partWithMeta.Metadata)
+	assert.Equal(t, metadata, *partWithMeta.Metadata)
 }
 
 func TestCreateDataPart(t *testing.T) {
 	data := map[string]any{"result": "success"}
 	part := CreateDataPart(data)
-	assert.Equal(t, "data", part.Kind)
-	assert.Equal(t, data, part.Data)
+	require.NotNil(t, part.Data)
+	assert.Equal(t, data, part.Data.Data)
 	assert.Nil(t, part.Metadata)
 
 	metadata := map[string]any{"source": "test"}
 	partWithMeta := CreateDataPart(data, metadata)
-	assert.Equal(t, "data", partWithMeta.Kind)
-	assert.Equal(t, data, partWithMeta.Data)
-	assert.Equal(t, metadata, partWithMeta.Metadata)
+	require.NotNil(t, partWithMeta.Data)
+	assert.Equal(t, data, partWithMeta.Data.Data)
+	require.NotNil(t, partWithMeta.Metadata)
+	assert.Equal(t, metadata, *partWithMeta.Metadata)
 }
 
 func TestCreateFilePart(t *testing.T) {
-	file := map[string]any{"name": "test.txt", "mimeType": "text/plain"}
-	part := CreateFilePart(file)
-	assert.Equal(t, "file", part.Kind)
-	assert.Equal(t, file, part.File)
+	bytes := "dGVzdA=="
+	part := CreateFilePart("test.txt", "text/plain", &bytes, nil)
+	require.NotNil(t, part.File)
+	assert.Equal(t, "test.txt", part.File.Name)
+	assert.Equal(t, "text/plain", part.File.MediaType)
+	require.NotNil(t, part.File.FileWithBytes)
+	assert.Equal(t, bytes, *part.File.FileWithBytes)
 	assert.Nil(t, part.Metadata)
 
 	metadata := map[string]any{"uploaded": true}
-	partWithMeta := CreateFilePart(file, metadata)
-	assert.Equal(t, "file", partWithMeta.Kind)
-	assert.Equal(t, file, partWithMeta.File)
-	assert.Equal(t, metadata, partWithMeta.Metadata)
+	partWithMeta := CreateFilePart("test.txt", "text/plain", &bytes, nil, metadata)
+	require.NotNil(t, partWithMeta.File)
+	assert.Equal(t, "test.txt", partWithMeta.File.Name)
+	require.NotNil(t, partWithMeta.Metadata)
+	assert.Equal(t, metadata, *partWithMeta.Metadata)
 }
 
 func TestPartMarshalingRoundTrip(t *testing.T) {
+	bytes := "dGVzdA=="
 	original := []Part{
-		TextPart{Kind: "text", Text: "Hello, world!", Metadata: map[string]any{"lang": "en"}},
-		DataPart{Kind: "data", Data: map[string]any{"result": "success"}, Metadata: map[string]any{"source": "api"}},
-		FilePart{Kind: "file", File: map[string]any{"name": "test.txt", "bytes": "dGVzdA=="}, Metadata: map[string]any{"size": 4}},
+		CreateTextPart("Hello, world!", map[string]any{"lang": "en"}),
+		CreateDataPart(map[string]any{"result": "success"}, map[string]any{"source": "api"}),
+		CreateFilePart("test.txt", "text/plain", &bytes, nil, map[string]any{"size": 4}),
 	}
 
 	marshaled, err := MarshalParts(original)
@@ -209,23 +200,25 @@ func TestPartMarshalingRoundTrip(t *testing.T) {
 
 	require.Len(t, unmarshaled, 3)
 
-	textPart, ok := unmarshaled[0].(TextPart)
-	require.True(t, ok)
-	assert.Equal(t, "text", textPart.Kind)
-	assert.Equal(t, "Hello, world!", textPart.Text)
-	assert.Equal(t, map[string]any{"lang": "en"}, textPart.Metadata)
+	// Text part
+	require.NotNil(t, unmarshaled[0].Text)
+	assert.Equal(t, "Hello, world!", *unmarshaled[0].Text)
+	require.NotNil(t, unmarshaled[0].Metadata)
+	assert.Equal(t, map[string]any{"lang": "en"}, *unmarshaled[0].Metadata)
 
-	dataPart, ok := unmarshaled[1].(DataPart)
-	require.True(t, ok)
-	assert.Equal(t, "data", dataPart.Kind)
-	assert.Equal(t, map[string]any{"result": "success"}, dataPart.Data)
-	assert.Equal(t, map[string]any{"source": "api"}, dataPart.Metadata)
+	// Data part
+	require.NotNil(t, unmarshaled[1].Data)
+	assert.Equal(t, map[string]any{"result": "success"}, unmarshaled[1].Data.Data)
+	require.NotNil(t, unmarshaled[1].Metadata)
+	assert.Equal(t, map[string]any{"source": "api"}, *unmarshaled[1].Metadata)
 
-	filePart, ok := unmarshaled[2].(FilePart)
-	require.True(t, ok)
-	assert.Equal(t, "file", filePart.Kind)
-	assert.Equal(t, map[string]any{"name": "test.txt", "bytes": "dGVzdA=="}, filePart.File)
-	assert.Equal(t, map[string]any{"size": float64(4)}, filePart.Metadata)
+	// File part
+	require.NotNil(t, unmarshaled[2].File)
+	assert.Equal(t, "test.txt", unmarshaled[2].File.Name)
+	require.NotNil(t, unmarshaled[2].File.FileWithBytes)
+	assert.Equal(t, bytes, *unmarshaled[2].File.FileWithBytes)
+	require.NotNil(t, unmarshaled[2].Metadata)
+	assert.Equal(t, map[string]any{"size": float64(4)}, *unmarshaled[2].Metadata)
 }
 
 func TestMessageUnmarshalJSON(t *testing.T) {
@@ -237,63 +230,57 @@ func TestMessageUnmarshalJSON(t *testing.T) {
 		{
 			name: "message with text parts",
 			jsonData: `{
-				"kind": "message",
 				"messageId": "msg-123",
 				"role": "user",
 				"parts": [
-					{"kind": "text", "text": "Hello"},
-					{"kind": "text", "text": "World"}
+					{"text": "Hello"},
+					{"text": "World"}
 				]
 			}`,
 			validate: func(t *testing.T, msg Message) {
-				assert.Equal(t, "message", msg.Kind)
 				assert.Equal(t, "msg-123", msg.MessageID)
-				assert.Equal(t, "user", msg.Role)
+				assert.Equal(t, Role("user"), msg.Role)
 				require.Len(t, msg.Parts, 2)
 
-				textPart1, ok := msg.Parts[0].(TextPart)
-				require.True(t, ok, "First part should be TextPart")
-				assert.Equal(t, "Hello", textPart1.Text)
+				require.NotNil(t, msg.Parts[0].Text)
+				assert.Equal(t, "Hello", *msg.Parts[0].Text)
 
-				textPart2, ok := msg.Parts[1].(TextPart)
-				require.True(t, ok, "Second part should be TextPart")
-				assert.Equal(t, "World", textPart2.Text)
+				require.NotNil(t, msg.Parts[1].Text)
+				assert.Equal(t, "World", *msg.Parts[1].Text)
 			},
 		},
 		{
 			name: "message with mixed part types",
 			jsonData: `{
-				"kind": "message",
 				"messageId": "msg-456",
-				"role": "assistant",
+				"role": "ROLE_AGENT",
 				"parts": [
-					{"kind": "text", "text": "Response"},
-					{"kind": "data", "data": {"result": "success"}},
-					{"kind": "file", "file": {"name": "test.txt"}}
+					{"text": "Response"},
+					{"data": {"data": {"result": "success"}}},
+					{"file": {"name": "test.txt", "mediaType": "text/plain"}}
 				]
 			}`,
 			validate: func(t *testing.T, msg Message) {
-				assert.Equal(t, "assistant", msg.Role)
+				assert.Equal(t, RoleAgent, msg.Role)
 				require.Len(t, msg.Parts, 3)
 
-				_, ok := msg.Parts[0].(TextPart)
-				assert.True(t, ok, "First part should be TextPart")
+				require.NotNil(t, msg.Parts[0].Text)
+				assert.Equal(t, "Response", *msg.Parts[0].Text)
 
-				_, ok = msg.Parts[1].(DataPart)
-				assert.True(t, ok, "Second part should be DataPart")
+				require.NotNil(t, msg.Parts[1].Data)
+				assert.Equal(t, map[string]any{"result": "success"}, msg.Parts[1].Data.Data)
 
-				_, ok = msg.Parts[2].(FilePart)
-				assert.True(t, ok, "Third part should be FilePart")
+				require.NotNil(t, msg.Parts[2].File)
+				assert.Equal(t, "test.txt", msg.Parts[2].File.Name)
 			},
 		},
 		{
 			name: "message round-trip with typed parts",
 			jsonData: `{
-				"kind": "message",
 				"messageId": "msg-789",
-				"role": "user",
+				"role": "ROLE_USER",
 				"parts": [
-					{"kind": "text", "text": "Test message", "metadata": {"key": "value"}}
+					{"text": "Test message", "metadata": {"key": "value"}}
 				]
 			}`,
 			validate: func(t *testing.T, msg Message) {
@@ -304,10 +291,10 @@ func TestMessageUnmarshalJSON(t *testing.T) {
 				err = json.Unmarshal(marshaled, &msg2)
 				require.NoError(t, err)
 
-				textPart, ok := msg2.Parts[0].(TextPart)
-				require.True(t, ok, "Part should remain TextPart after round-trip")
-				assert.Equal(t, "Test message", textPart.Text)
-				assert.Equal(t, map[string]any{"key": "value"}, textPart.Metadata)
+				require.NotNil(t, msg2.Parts[0].Text)
+				assert.Equal(t, "Test message", *msg2.Parts[0].Text)
+				require.NotNil(t, msg2.Parts[0].Metadata)
+				assert.Equal(t, map[string]any{"key": "value"}, *msg2.Parts[0].Metadata)
 			},
 		},
 	}

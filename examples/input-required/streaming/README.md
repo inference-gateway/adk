@@ -195,7 +195,7 @@ func (h *StreamingInputRequiredTaskHandler) sendStreamingText(outputChan chan<- 
     // Split text into chunks for realistic streaming
     words := strings.Fields(text)
     for _, word := range words {
-        deltaMessage := &types.Message{Kind: "message", ...}
+        deltaMessage := &types.Message{...}
         event := types.NewDeltaEvent(deltaMessage)
         outputChan <- event
         time.Sleep(50 * time.Millisecond) // Simulate typing

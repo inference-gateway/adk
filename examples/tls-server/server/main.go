@@ -35,8 +35,8 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 	userInput := ""
 	if message != nil {
 		for _, part := range message.Parts {
-			if textPart, ok := part.(types.TextPart); ok {
-				userInput = textPart.Text
+			if part.Text != nil {
+				userInput = *part.Text
 				break
 			}
 		}
@@ -50,16 +50,12 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 
 	// Create response message
 	responseMessage := types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("msg-%s", task.ID),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: responseText,
-			},
+			types.CreateTextPart(responseText),
 		},
 	}
 
@@ -188,7 +184,7 @@ func main() {
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("https://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             stringPtr(fmt.Sprintf("https://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -230,4 +226,9 @@ func main() {
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
 	}
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }

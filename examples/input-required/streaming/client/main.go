@@ -88,7 +88,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 		MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
 		Role:      "user",
 		Parts: []types.Part{
-			types.NewTextPart(initialMessage),
+			types.CreateTextPart(initialMessage),
 		},
 	}
 
@@ -128,59 +128,53 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 
 		resultBytes, _ := json.Marshal(event.Result)
 
-		// Try to parse as Task (for delta events)
+		// Check if this is a delta event (contains message parts to stream)
 		var task types.Task
-		if err := json.Unmarshal(resultBytes, &task); err == nil && task.Kind == "task" {
+		if err := json.Unmarshal(resultBytes, &task); err == nil && task.Status.Message != nil {
 			// Handle delta message - display text in real-time
-			if task.Status.Message != nil && len(task.Status.Message.Parts) > 0 {
+			if len(task.Status.Message.Parts) > 0 {
 				text := extractMessageText(task.Status.Message)
-				fmt.Print(text)
-				streamingText.WriteString(text)
+				if text != "" {
+					fmt.Print(text)
+					streamingText.WriteString(text)
+				}
 			}
-			continue
 		}
 
-		// Try to parse as TaskStatusUpdateEvent (for status changes)
+		// Check for status updates
 		var statusUpdate types.TaskStatusUpdateEvent
-		if err := json.Unmarshal(resultBytes, &statusUpdate); err != nil {
-			logger.Debug("failed to parse event", zap.Error(err))
-			continue
-		}
+		if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && statusUpdate.TaskID != "" {
+			// Handle different task states
+			switch statusUpdate.Status.State {
+			case types.TaskStateWorking:
+				logger.Info("task started")
 
-		if statusUpdate.Kind != "status-update" {
-			continue
-		}
+			case types.TaskStateCompleted:
+				logger.Info("task completed")
+				taskCompleted = true
 
-		// Handle different task states
-		switch statusUpdate.Status.State {
-		case types.TaskStateWorking:
-			logger.Info("task started")
+			case types.TaskStateInputRequired:
+				logger.Info("input required")
+				taskInputRequired = true
+				currentTaskID = statusUpdate.TaskID
+				currentContextID = statusUpdate.ContextID
+				if statusUpdate.Status.Message != nil {
+					inputRequiredMessage = extractMessageText(statusUpdate.Status.Message)
+				}
 
-		case types.TaskStateCompleted:
-			logger.Info("task completed")
-			taskCompleted = true
+			case types.TaskStateFailed:
+				logger.Error("task failed")
+				fmt.Print("\n❌ Task failed")
+				return nil
 
-		case types.TaskStateInputRequired:
-			logger.Info("input required")
-			taskInputRequired = true
-			currentTaskID = statusUpdate.TaskID
-			currentContextID = statusUpdate.ContextID
-			if statusUpdate.Status.Message != nil {
-				inputRequiredMessage = extractMessageText(statusUpdate.Status.Message)
+			case types.TaskStateCancelled:
+				logger.Info("task canceled")
+				fmt.Print("\n🚫 Task canceled")
+				return nil
+
+			default:
+				logger.Debug("unknown state", zap.String("state", string(statusUpdate.Status.State)))
 			}
-
-		case types.TaskStateFailed:
-			logger.Error("task failed")
-			fmt.Print("\n❌ Task failed")
-			return nil
-
-		case types.TaskStateCanceled:
-			logger.Info("task canceled")
-			fmt.Print("\n🚫 Task canceled")
-			return nil
-
-		default:
-			logger.Debug("unknown state", zap.String("state", string(statusUpdate.Status.State)))
 		}
 	}
 
@@ -216,7 +210,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 			TaskID:    &currentTaskID,
 			ContextID: &currentContextID,
 			Parts: []types.Part{
-				types.NewTextPart(userResponse),
+				types.CreateTextPart(userResponse),
 			},
 		}
 
@@ -248,42 +242,36 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 
 			resultBytes, _ := json.Marshal(event.Result)
 
-			// Try to parse as Task (for delta events)
+			// Check if this is a delta event (contains message parts to stream)
 			var task types.Task
-			if err := json.Unmarshal(resultBytes, &task); err == nil && task.Kind == "task" {
+			if err := json.Unmarshal(resultBytes, &task); err == nil && task.Status.Message != nil {
 				// Handle delta message - display text in real-time
-				if task.Status.Message != nil && len(task.Status.Message.Parts) > 0 {
+				if len(task.Status.Message.Parts) > 0 {
 					text := extractMessageText(task.Status.Message)
-					fmt.Print(text)
-					continuedText.WriteString(text)
+					if text != "" {
+						fmt.Print(text)
+						continuedText.WriteString(text)
+					}
 				}
-				continue
 			}
 
-			// Try to parse as TaskStatusUpdateEvent (for status changes)
+			// Check for status updates
 			var statusUpdate types.TaskStatusUpdateEvent
-			if err := json.Unmarshal(resultBytes, &statusUpdate); err != nil {
-				logger.Debug("failed to parse continued event", zap.Error(err))
-				continue
-			}
-
-			if statusUpdate.Kind != "status-update" {
-				continue
-			}
-
-			// Handle different task states
-			switch statusUpdate.Status.State {
-			case types.TaskStateCompleted:
-				logger.Info("continued task completed")
-				fmt.Printf("\n\n✅ Conversation complete!\n")
-				if continuedText.Len() > 0 {
-					fmt.Printf("\n📝 Final response:\n%s\n", continuedText.String())
+			if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && statusUpdate.TaskID != "" {
+				// Handle different task states
+				switch statusUpdate.Status.State {
+				case types.TaskStateCompleted:
+					logger.Info("continued task completed")
+					fmt.Printf("\n\n✅ Conversation complete!\n")
+					if continuedText.Len() > 0 {
+						fmt.Printf("\n📝 Final response:\n%s\n", continuedText.String())
+					}
+					return nil
+				case types.TaskStateFailed:
+					logger.Error("continued task failed")
+					fmt.Printf("\n❌ Task failed\n\n")
+					return nil
 				}
-				return nil
-			case types.TaskStateFailed:
-				logger.Error("continued task failed")
-				fmt.Printf("\n❌ Task failed\n\n")
-				return nil
 			}
 		}
 
@@ -301,8 +289,8 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 // extractMessageText extracts text content from a message
 func extractMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
-		if textPart, ok := part.(types.TextPart); ok {
-			return textPart.Text
+		if part.Text != nil {
+			return *part.Text
 		}
 	}
 	return ""

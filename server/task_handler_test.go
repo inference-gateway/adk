@@ -27,14 +27,10 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 				Status: types.TaskStatus{
 					State: types.TaskStateSubmitted,
 					Message: &types.Message{
-						Kind:      "message",
 						MessageID: "test-msg",
 						Role:      "user",
 						Parts: []types.Part{
-							types.TextPart{
-								Kind: "text",
-								Text: "Hello from task",
-							},
+							types.CreateTextPart("Hello from task"),
 						},
 					},
 				},
@@ -75,7 +71,7 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 				assert.NotNil(t, result)
 				assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 				assert.NotNil(t, result.Status.Message)
-				assert.Equal(t, "assistant", result.Status.Message.Role)
+				assert.Equal(t, types.RoleAgent, result.Status.Message.Role)
 				assert.GreaterOrEqual(t, len(result.History), 1)
 			}
 		})
@@ -126,13 +122,9 @@ func TestDefaultBackgroundTaskHandler_InputPausing(t *testing.T) {
 				taskHandler.SetAgent(tt.agent)
 			}
 			message := &types.Message{
-				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Test message",
-					},
+					types.CreateTextPart("Test message"),
 				},
 			}
 
@@ -192,13 +184,9 @@ func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			taskHandler := server.NewDefaultStreamingTaskHandler(logger, tt.agent)
 			message := &types.Message{
-				Kind: "message",
 				Role: "user",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Test streaming message",
-					},
+					types.CreateTextPart("Test streaming message"),
 				},
 			}
 
@@ -240,14 +228,10 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	streamChan := make(chan cloudevents.Event, 1)
 
 	inputMessage := &types.Message{
-		Kind:      "input_required",
 		MessageID: "stream-input-req-123",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: "I need more information from you to continue.",
-			},
+			types.CreateTextPart("I need more information from you to continue."),
 		},
 	}
 
@@ -283,14 +267,10 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			contextID: stringPtr("existing-context"),
 			existingHistory: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						types.TextPart{
-							Kind: "text",
-							Text: "Previous message from conversation",
-						},
+						types.CreateTextPart("Previous message from conversation"),
 					},
 				},
 			},
@@ -313,25 +293,17 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			contextID: stringPtr("multi-history-context"),
 			existingHistory: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						types.TextPart{
-							Kind: "text",
-							Text: "First message",
-						},
+						types.CreateTextPart("First message"),
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "msg-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						types.TextPart{
-							Kind: "text",
-							Text: "Assistant response",
-						},
+						types.CreateTextPart("Assistant response"),
 					},
 				},
 			},
@@ -360,15 +332,11 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 			mockTaskManager.CreateTaskReturns(expectedTask)
 
 			testMessage := types.Message{
-				Kind:      "message",
 				MessageID: "test-msg",
 				Role:      "user",
 				ContextID: tt.contextID,
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Test message for context history",
-					},
+					types.CreateTextPart("Test message for context history"),
 				},
 			}
 
@@ -426,86 +394,40 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 	tests := []struct {
 		name              string
 		inputMessage      types.Message
-		expectedKind      string
 		expectedMessageID string
 		shouldGenerateID  bool
 	}{
 		{
-			name: "message without Kind and MessageID should be enriched",
+			name: "message without MessageID should be enriched",
 			inputMessage: types.Message{
 				Role: "user",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Hello without kind and messageId",
-					},
+					types.CreateTextPart("Hello without messageId"),
 				},
 			},
-			expectedKind:     "message",
 			shouldGenerateID: true,
 		},
 		{
-			name: "message with empty Kind and MessageID should be enriched",
+			name: "message with empty MessageID should be enriched",
 			inputMessage: types.Message{
-				Kind:      "",
 				MessageID: "",
 				Role:      "user",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Hello with empty kind and messageId",
-					},
+					types.CreateTextPart("Hello with empty messageId"),
 				},
 			},
-			expectedKind:     "message",
 			shouldGenerateID: true,
 		},
 		{
-			name: "message with existing Kind and MessageID should be preserved",
+			name: "message with existing MessageID should be preserved",
 			inputMessage: types.Message{
-				Kind:      "existing_kind",
 				MessageID: "existing_message_id",
 				Role:      "user",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Hello with existing kind and messageId",
-					},
+					types.CreateTextPart("Hello with existing messageId"),
 				},
 			},
-			expectedKind:      "existing_kind",
 			expectedMessageID: "existing_message_id",
-			shouldGenerateID:  false,
-		},
-		{
-			name: "message with only Kind should generate MessageID",
-			inputMessage: types.Message{
-				Kind: "custom_kind",
-				Role: "user",
-				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Hello with custom kind but no messageId",
-					},
-				},
-			},
-			expectedKind:     "custom_kind",
-			shouldGenerateID: true,
-		},
-		{
-			name: "message with only MessageID should get default Kind",
-			inputMessage: types.Message{
-				MessageID: "custom_message_id",
-				Role:      "user",
-				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Hello with custom messageId but no kind",
-					},
-				},
-			},
-			expectedKind:      "message",
-			expectedMessageID: "custom_message_id",
 			shouldGenerateID:  false,
 		},
 	}
@@ -550,8 +472,6 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 			assert.Equal(t, 1, mockTaskManager.CreateTaskCallCount())
 			_, _, enrichedMessage := mockTaskManager.CreateTaskArgsForCall(0)
 
-			assert.Equal(t, tt.expectedKind, enrichedMessage.Kind)
-
 			if tt.shouldGenerateID {
 				assert.NotEmpty(t, enrichedMessage.MessageID, "MessageID should be generated when missing")
 				assert.NotEqual(t, "", enrichedMessage.MessageID, "MessageID should not be empty")
@@ -563,8 +483,4 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 			assert.Equal(t, tt.inputMessage.Parts, enrichedMessage.Parts)
 		})
 	}
-}
-
-func stringPtr(s string) *string {
-	return &s
 }

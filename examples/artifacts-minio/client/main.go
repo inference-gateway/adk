@@ -150,8 +150,8 @@ func main() {
 	if completedTask.Status.Message != nil {
 		fmt.Println("\n📄 Response from server:")
 		for _, part := range completedTask.Status.Message.Parts {
-			if textPart, ok := part.(types.TextPart); ok {
-				fmt.Printf("   %s\n", textPart.Text)
+			if part.Text != nil {
+				fmt.Printf("   %s\n", *part.Text)
 			}
 		}
 	}
@@ -219,12 +219,9 @@ func createMessageWithFileUpload() types.Message {
 		fmt.Printf("❌ Failed to read data file: %v\n", err)
 		fmt.Println("Using default text message instead...")
 		return types.Message{
-			Role: "user",
+			Role: types.RoleUser,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: "Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations. This will be stored in MinIO cloud storage.",
-				},
+				types.CreateTextPart("Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations. This will be stored in MinIO cloud storage."),
 			},
 		}
 	}
@@ -244,20 +241,10 @@ func createMessageWithFileUpload() types.Message {
 
 	// Create message with both text and file parts
 	return types.Message{
-		Role: "user",
+		Role: types.RoleUser,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: "Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics. The report will be stored in MinIO cloud storage for scalable access.",
-			},
-			types.FilePart{
-				Kind: "file",
-				File: map[string]any{
-					"bytes":    encodedContent,
-					"mimeType": mimeType,
-					"name":     filename,
-				},
-			},
+			types.CreateTextPart("Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics. The report will be stored in MinIO cloud storage for scalable access."),
+			types.CreateFilePart(filename, mimeType, &encodedContent, nil),
 		},
 	}
 }

@@ -65,12 +65,9 @@ func main() {
 
 		// Create message with proper structure
 		message := types.Message{
-			Role: "user",
+			Role: types.RoleUser,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: prompt,
-				},
+				types.CreateTextPart(prompt),
 			},
 		}
 
@@ -136,8 +133,8 @@ func main() {
 				// Display the response
 				if task.Status.Message != nil {
 					for _, part := range task.Status.Message.Parts {
-						if textPart, ok := part.(types.TextPart); ok {
-							fmt.Printf("\nResponse: %s\n", textPart.Text)
+						if part.Text != nil {
+							fmt.Printf("\nResponse: %s\n", *part.Text)
 						}
 					}
 				}

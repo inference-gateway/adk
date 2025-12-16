@@ -419,18 +419,14 @@ func (s *InMemoryStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, o
 
 			switch sortBy {
 			case TaskSortFieldCreatedAt, TaskSortFieldUpdatedAt:
-				var time1, time2 string
-				if tasks[j].Status.Timestamp != nil {
-					time1 = *tasks[j].Status.Timestamp
-				}
-				if tasks[j+1].Status.Timestamp != nil {
-					time2 = *tasks[j+1].Status.Timestamp
-				}
-
-				if order == SortOrderAsc {
-					shouldSwap = time1 > time2
-				} else {
-					shouldSwap = time1 < time2
+				ts1 := tasks[j].Status.Timestamp
+				ts2 := tasks[j+1].Status.Timestamp
+				if ts1 != nil && ts2 != nil {
+					if order == SortOrderAsc {
+						shouldSwap = ts1.After(*ts2)
+					} else {
+						shouldSwap = ts1.Before(*ts2)
+					}
 				}
 			case TaskSortFieldState:
 				if order == SortOrderAsc {
@@ -506,7 +502,7 @@ func (s *InMemoryStorage) CleanupCompletedTasks() int {
 
 	for taskID, task := range s.deadLetterTasks {
 		switch task.Status.State {
-		case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled:
+		case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled:
 			toRemove = append(toRemove, taskID)
 			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], taskID)
 		}
@@ -621,19 +617,17 @@ func (s *InMemoryStorage) sortTasksByTimestamp(tasks []*types.Task, desc bool) {
 
 	for i := 0; i < len(tasks)-1; i++ {
 		for j := 0; j < len(tasks)-i-1; j++ {
-			var time1, time2 string
-			if tasks[j].Status.Timestamp != nil {
-				time1 = *tasks[j].Status.Timestamp
-			}
-			if tasks[j+1].Status.Timestamp != nil {
-				time2 = *tasks[j+1].Status.Timestamp
-			}
-
 			var shouldSwap bool
-			if desc {
-				shouldSwap = time1 < time2 // For descending (newest first)
-			} else {
-				shouldSwap = time1 > time2 // For ascending (oldest first)
+
+			ts1 := tasks[j].Status.Timestamp
+			ts2 := tasks[j+1].Status.Timestamp
+
+			if ts1 != nil && ts2 != nil {
+				if desc {
+					shouldSwap = ts1.Before(*ts2)
+				} else {
+					shouldSwap = ts1.After(*ts2)
+				}
 			}
 
 			if shouldSwap {

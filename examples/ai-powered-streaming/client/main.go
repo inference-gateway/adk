@@ -23,8 +23,8 @@ type Config struct {
 // extractTextFromParts extracts text from message parts
 func extractTextFromParts(parts []types.Part) string {
 	for _, part := range parts {
-		if textPart, ok := part.(types.TextPart); ok {
-			return textPart.Text
+		if part.Text != nil {
+			return *part.Text
 		}
 	}
 	return ""
@@ -74,12 +74,9 @@ func main() {
 		fmt.Printf("%d️⃣ STREAMING: %s\n", i+1, task.name)
 
 		message := types.Message{
-			Role: "user",
+			Role: types.RoleUser,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: task.text,
-				},
+				types.CreateTextPart(task.text),
 			},
 		}
 
