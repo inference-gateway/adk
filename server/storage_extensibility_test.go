@@ -26,7 +26,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					ID:        "task-1",
 					ContextID: testCtx,
 					Status: types.TaskStatus{
-						State: string(types.TaskStateSubmitted),
+						State: types.TaskStateSubmitted,
 					},
 				}
 
@@ -53,7 +53,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					ID:        "task-2",
 					ContextID: testCtx,
 					Status: types.TaskStatus{
-						State: string(types.TaskStateCompleted),
+						State: types.TaskStateCompleted,
 					},
 				}
 
@@ -78,7 +78,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					ID:        "task-3",
 					ContextID: testContext,
 					Status: types.TaskStatus{
-						State: string(types.TaskStateSubmitted),
+						State: types.TaskStateSubmitted,
 					},
 				}
 
@@ -109,7 +109,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					ID:        "task-4",
 					ContextID: "test-context-length",
 					Status: types.TaskStatus{
-						State: string(types.TaskStateSubmitted),
+						State: types.TaskStateSubmitted,
 					},
 				}
 
@@ -131,14 +131,14 @@ func TestQueueCentricOperations(t *testing.T) {
 					ID:        "task-5",
 					ContextID: testContext,
 					Status: types.TaskStatus{
-						State: string(types.TaskStateCompleted),
+						State: types.TaskStateCompleted,
 					},
 				}
 				task2 := &types.Task{
 					ID:        "task-6",
 					ContextID: testContext,
 					Status: types.TaskStatus{
-						State: string(types.TaskStateCompleted),
+						State: types.TaskStateCompleted,
 					},
 				}
 
@@ -168,7 +168,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					ID:        "active-task",
 					ContextID: testContext,
 					Status: types.TaskStatus{
-						State: string(types.TaskStateSubmitted),
+						State: types.TaskStateSubmitted,
 					},
 				}
 				err := storage.EnqueueTask(activeTask, "request-active")
@@ -180,7 +180,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					ID:        "dead-task",
 					ContextID: testContext,
 					Status: types.TaskStatus{
-						State: string(types.TaskStateCompleted),
+						State: types.TaskStateCompleted,
 					},
 				}
 				err = storage.StoreDeadLetterTask(deadTask)

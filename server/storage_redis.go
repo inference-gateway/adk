@@ -478,7 +478,7 @@ func (s *RedisStorage) ListTasksByContext(contextID string, filter TaskFilter) (
 
 // Helper method to check if a task matches the filter
 func (s *RedisStorage) matchesFilter(task *types.Task, filter TaskFilter) bool {
-	if filter.State != nil && task.Status.State != string(*filter.State) {
+	if filter.State != nil && task.Status.State != *filter.State {
 		return false
 	}
 
@@ -598,7 +598,7 @@ func (s *RedisStorage) CleanupCompletedTasks() int {
 		taskID := strings.TrimPrefix(key, deadLetterKeyPrefix)
 		if task, exists := s.GetTask(taskID); exists {
 			switch task.Status.State {
-			case string(types.TaskStateCompleted), string(types.TaskStateFailed), string(types.TaskStateCanceled):
+			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled:
 				toRemove = append(toRemove, taskID)
 				contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], taskID)
 			}
@@ -648,9 +648,9 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 		taskID := strings.TrimPrefix(key, deadLetterKeyPrefix)
 		if task, exists := s.GetTask(taskID); exists {
 			switch task.Status.State {
-			case string(types.TaskStateCompleted):
+			case types.TaskStateCompleted:
 				completedTasks = append(completedTasks, task)
-			case string(types.TaskStateFailed):
+			case types.TaskStateFailed:
 				failedTasks = append(failedTasks, task)
 			}
 		}
@@ -704,11 +704,32 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 	return len(toRemove)
 }
 
-// sortTasksByTimestamp sorts tasks by timestamp
+// sortTasksByTimestamp sorts tasks by timestamp (newest first if desc=true)
 func (s *RedisStorage) sortTasksByTimestamp(tasks []*types.Task, desc bool) {
-	// Timestamp is an empty struct, so we can't sort by it
-	// Maintain current order (no sorting)
-	return
+	if len(tasks) <= 1 {
+		return
+	}
+
+	for i := 0; i < len(tasks)-1; i++ {
+		for j := 0; j < len(tasks)-i-1; j++ {
+			var shouldSwap bool
+
+			ts1 := tasks[j].Status.Timestamp
+			ts2 := tasks[j+1].Status.Timestamp
+
+			if ts1 != nil && ts2 != nil {
+				if desc {
+					shouldSwap = ts1.Before(*ts2)
+				} else {
+					shouldSwap = ts1.After(*ts2)
+				}
+			}
+
+			if shouldSwap {
+				tasks[j], tasks[j+1] = tasks[j+1], tasks[j]
+			}
+		}
+	}
 }
 
 // GetStats provides statistics about the storage

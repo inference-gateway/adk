@@ -43,7 +43,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			completedStatusEvent := cloudevents.NewEvent()
 			completedStatusEvent.SetType(types.EventTaskStatusChanged)
 			if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-				State:   string(types.TaskStateCompleted),
+				State:   types.TaskStateCompleted,
 				Message: override,
 			}); err != nil {
 				a.logger.Error("failed to set completed status event data", zap.Error(err))
@@ -56,7 +56,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		statusEvent := cloudevents.NewEvent()
 		statusEvent.SetType(types.EventTaskStatusChanged)
 		if err := statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-			State: string(types.TaskStateWorking),
+			State: types.TaskStateWorking,
 		}); err != nil {
 			a.logger.Error("failed to set status event data", zap.Error(err))
 			return
@@ -176,7 +176,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					cancelledStatusEvent := cloudevents.NewEvent()
 					cancelledStatusEvent.SetType(types.EventTaskStatusChanged)
 					if err := cancelledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-						State: string(types.TaskStateCanceled),
+						State: types.TaskStateCancelled,
 					}); err != nil {
 						a.logger.Error("failed to set cancelled status event data", zap.Error(err))
 						return
@@ -188,7 +188,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 					interruptMessage := types.NewStreamingStatusMessage(
 						fmt.Sprintf("task-interrupted-%d", iteration),
-						string(types.TaskStateCanceled),
+						string(types.TaskStateCancelled),
 						nil,
 					)
 					interruptMessage.TaskID = taskID
@@ -206,7 +206,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						failedStatusEvent := cloudevents.NewEvent()
 						failedStatusEvent.SetType(types.EventTaskStatusChanged)
 						if err := failedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-							State: string(types.TaskStateFailed),
+							State: types.TaskStateFailed,
 						}); err != nil {
 							a.logger.Error("failed to set failed status event data", zap.Error(err))
 							return
@@ -370,8 +370,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 			if len(toolResultMessages) > 0 {
 				lastToolMessage := toolResultMessages[len(toolResultMessages)-1]
-				// Check if the message is input_required based on messageID prefix
-			if strings.HasPrefix(lastToolMessage.MessageID, "input-required") {
+				if strings.HasPrefix(lastToolMessage.MessageID, "input-required") {
 					a.logger.Debug("streaming completed - input required from user",
 						zap.Int("iteration", iteration),
 						zap.Int("final_message_count", len(currentMessages)))
@@ -396,7 +395,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				completedStatusEvent := cloudevents.NewEvent()
 				completedStatusEvent.SetType(types.EventTaskStatusChanged)
 				if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-					State:   string(types.TaskStateCompleted),
+					State:   types.TaskStateCompleted,
 					Message: finalAssistantMessage,
 				}); err != nil {
 					a.logger.Error("failed to set completed status event data", zap.Error(err))
@@ -422,7 +421,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		canceledStatusEvent := cloudevents.NewEvent()
 		canceledStatusEvent.SetType(types.EventTaskStatusChanged)
 		if err := canceledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-			State: string(types.TaskStateCanceled),
+			State: types.TaskStateCancelled,
 		}); err != nil {
 			a.logger.Error("failed to set canceled status event data", zap.Error(err))
 			return
@@ -434,7 +433,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 		interruptMessage := types.NewStreamingStatusMessage(
 			"max-iterations-reached",
-			string(types.TaskStateCanceled),
+			string(types.TaskStateCancelled),
 			nil,
 		)
 		interruptMessage.TaskID = taskID

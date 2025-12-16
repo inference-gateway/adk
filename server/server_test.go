@@ -333,7 +333,7 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 	assert.NotNil(t, agentCard)
 	assert.Equal(t, "test-agent", agentCard.Name)
 	assert.Equal(t, "A test agent", agentCard.Description)
-	assert.Equal(t, "http://test-agent:8080", agentCard.URL)
+	assert.Equal(t, "http://test-agent:8080", *agentCard.URL)
 	assert.Equal(t, "0.1.0", agentCard.Version)
 
 	assert.NotNil(t, agentCard.Capabilities.Streaming)
@@ -352,7 +352,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		ID:        "test-task",
 		ContextID: "test-context",
 		Status: types.TaskStatus{
-			State: string(types.TaskStateCompleted),
+			State: types.TaskStateCompleted,
 			Message: &types.Message{
 				MessageID: "response-msg",
 				Role:      "assistant",
@@ -395,7 +395,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		ID:        "test-task",
 		ContextID: "test-context",
 		Status: types.TaskStatus{
-			State:   string(types.TaskStateSubmitted),
+			State:   types.TaskStateSubmitted,
 			Message: originalMessage,
 		},
 	}
@@ -405,7 +405,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, string(types.TaskStateCompleted), result.Status.State)
+	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
 	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
@@ -428,7 +428,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		ID:        "test-task",
 		ContextID: "test-context",
 		Status: types.TaskStatus{
-			State: string(types.TaskStateCompleted),
+			State: types.TaskStateCompleted,
 			Message: &types.Message{
 				MessageID: "response-msg",
 				Role:      "assistant",
@@ -471,7 +471,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		ID:        "task-456",
 		ContextID: "context-789",
 		Status: types.TaskStatus{
-			State:   string(types.TaskStateSubmitted),
+			State:   types.TaskStateSubmitted,
 			Message: originalUserMessage,
 		},
 		History: []types.Message{},
@@ -488,7 +488,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, string(types.TaskStateCompleted), result.Status.State)
+	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
@@ -505,7 +505,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 	assert.Equal(t, "What is the weather like today in San Francisco?", *part.Text,
 		"Message content should be preserved exactly as sent by the client")
 
-	assert.Equal(t, "user", actualMessage.Role, "Message role should be 'user'")
+	assert.Equal(t, types.Role("user"), actualMessage.Role, "Message role should be user")
 }
 
 func TestTaskGetWithInvalidFieldName(t *testing.T) {
@@ -701,7 +701,7 @@ func TestBackgroundHandler_WithStreamingAgent(t *testing.T) {
 		ContextID: "test-context",
 		History:   []types.Message{},
 		Status: types.TaskStatus{
-			State: string(types.TaskStateSubmitted),
+			State: types.TaskStateSubmitted,
 		},
 	}
 
@@ -716,7 +716,7 @@ func TestBackgroundHandler_WithStreamingAgent(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, string(types.TaskStateCompleted), result.Status.State)
+	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 	assert.NotNil(t, result.Status.Message)
 }
 
@@ -749,7 +749,7 @@ func TestBackgroundHandler_StreamingFailure(t *testing.T) {
 		ContextID: "test-context",
 		History:   []types.Message{},
 		Status: types.TaskStatus{
-			State: string(types.TaskStateSubmitted),
+			State: types.TaskStateSubmitted,
 		},
 	}
 
@@ -764,7 +764,7 @@ func TestBackgroundHandler_StreamingFailure(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, string(types.TaskStateFailed), result.Status.State)
+	assert.Equal(t, types.TaskStateFailed, result.Status.State)
 }
 
 func TestAgentStreaming_WithToolCalls(t *testing.T) {

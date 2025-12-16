@@ -224,7 +224,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 			}
 			return nil
 
-		case types.TaskStateCanceled:
+		case types.TaskStateCancelled:
 			// Task was canceled
 			fmt.Printf("🚫 Task Canceled\n\n")
 			return nil

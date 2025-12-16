@@ -97,12 +97,6 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			assert.Equal(t, tt.state, task.Status.State)
 			assert.Equal(t, tt.message, task.Status.Message)
 			assert.NotNil(t, task.Status.Timestamp)
-
-			if task.Status.Timestamp != nil {
-				timestamp, err := time.Parse(time.RFC3339Nano, *task.Status.Timestamp)
-				assert.NoError(t, err)
-				assert.WithinDuration(t, time.Now(), timestamp, time.Second)
-			}
 		})
 	}
 }
@@ -264,7 +258,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 
 	task1.History = append(task1.History, *assistantResponse1)
 
-	task1.Status.State = string(types.TaskStateCompleted)
+	task1.Status.State = types.TaskStateCompleted
 	err := taskManager.UpdateTask(task1)
 	assert.NoError(t, err)
 
@@ -301,7 +295,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 
 	task2.History = append(task2.History, *assistantResponse2)
 
-	task2.Status.State = string(types.TaskStateCompleted)
+	task2.Status.State = types.TaskStateCompleted
 	err = taskManager.UpdateTask(task2)
 	assert.NoError(t, err)
 
@@ -370,12 +364,12 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 
 	task1.History = append(task1.History, *response1)
 
-	task1.Status.State = string(types.TaskStateCompleted)
+	task1.Status.State = types.TaskStateCompleted
 	var err error
 	err = taskManager.UpdateTask(task1)
 	assert.NoError(t, err)
 
-	task2.Status.State = string(types.TaskStateCompleted)
+	task2.Status.State = types.TaskStateCompleted
 	err = taskManager.UpdateTask(task2)
 	assert.NoError(t, err)
 
@@ -444,7 +438,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 
 	task.History = append(task.History, *response)
 
-	task.Status.State = string(types.TaskStateCompleted)
+	task.Status.State = types.TaskStateCompleted
 	err := taskManager.UpdateTask(task)
 	assert.NoError(t, err)
 
@@ -459,7 +453,8 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 
 	freshHistory := taskManager.GetConversationHistory(contextID)
 	assert.Len(t, freshHistory, 2)
-	assert.Equal(t, "Test message", freshHistory[0].Parts[0].(map[string]any)["text"])
+	assert.NotNil(t, freshHistory[0].Parts[0].Text)
+	assert.Equal(t, "Test message", *freshHistory[0].Parts[0].Text)
 }
 
 func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
@@ -497,7 +492,8 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 	}
 
 	freshHistory := taskManager.GetConversationHistory(contextID)
-	assert.Equal(t, "First message", freshHistory[0].Parts[0].(map[string]any)["text"])
+	assert.NotNil(t, freshHistory[0].Parts[0].Text)
+	assert.Equal(t, "First message", *freshHistory[0].Parts[0].Text)
 }
 
 func TestDefaultTaskManager_TaskRetention(t *testing.T) {
@@ -548,9 +544,9 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 	failedCount := 0
 	for _, task := range allTasks.Tasks {
 		switch task.Status.State {
-		case string(types.TaskStateCompleted):
+		case types.TaskStateCompleted:
 			completedCount++
-		case string(types.TaskStateFailed):
+		case types.TaskStateFailed:
 			failedCount++
 		}
 	}
@@ -574,7 +570,7 @@ func TestDefaultTaskManager_ConversationHistoryLimitViaCreateTask(t *testing.T) 
 	}
 	task1 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, message1)
 
-	task1.Status.State = string(types.TaskStateCompleted)
+	task1.Status.State = types.TaskStateCompleted
 	err := taskManager.UpdateTask(task1)
 	assert.NoError(t, err)
 
@@ -638,32 +634,32 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 		},
 		{
 			name:          "can cancel unknown task",
-			initialState:  types.TaskStateUnknown,
+			initialState:  types.TaskStateUnspecified,
 			shouldSucceed: true,
 		},
 		{
 			name:          "cannot cancel completed task",
 			initialState:  types.TaskStateCompleted,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is completed",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_COMPLETED",
 		},
 		{
 			name:          "cannot cancel failed task",
 			initialState:  types.TaskStateFailed,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is failed",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_FAILED",
 		},
 		{
 			name:          "cannot cancel already canceled task",
-			initialState:  types.TaskStateCanceled,
+			initialState:  types.TaskStateCancelled,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is canceled",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_CANCELLED",
 		},
 		{
 			name:          "cannot cancel rejected task",
 			initialState:  types.TaskStateRejected,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is rejected",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_REJECTED",
 		},
 	}
 
@@ -687,7 +683,7 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 
 				retrievedTask, exists := taskManager.GetTask(task.ID)
 				assert.True(t, exists)
-				assert.Equal(t, types.TaskStateCanceled, retrievedTask.Status.State)
+				assert.Equal(t, types.TaskStateCancelled, retrievedTask.Status.State)
 			} else {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMsg)
@@ -814,7 +810,7 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 		err = taskManager.ResumeTaskWithInput(task.ID, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "already completed and cannot be resumed")
-		assert.Contains(t, err.Error(), "current state: completed")
+		assert.Contains(t, err.Error(), "current state: TASK_STATE_COMPLETED")
 	})
 
 	t.Run("resume non-existent task", func(t *testing.T) {

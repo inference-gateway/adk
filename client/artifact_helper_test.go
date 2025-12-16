@@ -32,7 +32,7 @@ func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {
 					ID:        "task-123",
 					ContextID: "context-456",
 					Status: types.TaskStatus{
-						State: string(types.TaskStateCompleted),
+						State: types.TaskStateCompleted,
 					},
 					Artifacts: []types.Artifact{
 						{

@@ -174,7 +174,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 			fmt.Print("\n❌ Task failed")
 			return nil
 
-		case types.TaskStateCanceled:
+		case types.TaskStateCancelled:
 			logger.Info("task canceled")
 			fmt.Print("\n🚫 Task canceled")
 			return nil

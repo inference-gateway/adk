@@ -296,7 +296,7 @@ func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 
 	s.deadLetterMu.RLock()
 	for _, task := range s.deadLetterTasks {
-		if filter.State != nil && task.Status.State != string(*filter.State) {
+		if filter.State != nil && task.Status.State != *filter.State {
 			continue
 		}
 
@@ -315,7 +315,7 @@ func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 		task := queuedTask.Task
 		queueTaskIDs[task.ID] = true
 
-		if filter.State != nil && task.Status.State != string(*filter.State) {
+		if filter.State != nil && task.Status.State != *filter.State {
 			continue
 		}
 
@@ -331,7 +331,7 @@ func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 	s.activeTasksMu.RLock()
 	for _, task := range s.activeTasksMetadata {
 		task := task
-		if filter.State != nil && task.Status.State != string(*filter.State) {
+		if filter.State != nil && task.Status.State != *filter.State {
 			continue
 		}
 
@@ -383,7 +383,7 @@ func (s *InMemoryStorage) ListTasksByContext(contextID string, filter TaskFilter
 			continue
 		}
 
-		if filter.State != nil && task.Status.State != string(*filter.State) {
+		if filter.State != nil && task.Status.State != *filter.State {
 			continue
 		}
 
@@ -419,9 +419,15 @@ func (s *InMemoryStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, o
 
 			switch sortBy {
 			case TaskSortFieldCreatedAt, TaskSortFieldUpdatedAt:
-				// Timestamp is an empty struct in the schema, so we can't sort by it
-				// For now, maintain the current order
-				shouldSwap = false
+				ts1 := tasks[j].Status.Timestamp
+				ts2 := tasks[j+1].Status.Timestamp
+				if ts1 != nil && ts2 != nil {
+					if order == SortOrderAsc {
+						shouldSwap = ts1.After(*ts2)
+					} else {
+						shouldSwap = ts1.Before(*ts2)
+					}
+				}
 			case TaskSortFieldState:
 				if order == SortOrderAsc {
 					shouldSwap = string(tasks[j].Status.State) > string(tasks[j+1].Status.State)
@@ -496,7 +502,7 @@ func (s *InMemoryStorage) CleanupCompletedTasks() int {
 
 	for taskID, task := range s.deadLetterTasks {
 		switch task.Status.State {
-		case string(types.TaskStateCompleted), string(types.TaskStateFailed), string(types.TaskStateCanceled):
+		case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled:
 			toRemove = append(toRemove, taskID)
 			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], taskID)
 		}
@@ -543,9 +549,9 @@ func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int)
 
 	for _, task := range s.deadLetterTasks {
 		switch task.Status.State {
-		case string(types.TaskStateCompleted):
+		case types.TaskStateCompleted:
 			completedTasks = append(completedTasks, task)
-		case string(types.TaskStateFailed):
+		case types.TaskStateFailed:
 			failedTasks = append(failedTasks, task)
 		}
 	}
@@ -611,13 +617,17 @@ func (s *InMemoryStorage) sortTasksByTimestamp(tasks []*types.Task, desc bool) {
 
 	for i := 0; i < len(tasks)-1; i++ {
 		for j := 0; j < len(tasks)-i-1; j++ {
-			// Timestamp is an empty struct, so we can't sort by it
-			// Maintain current order
 			var shouldSwap bool
-			if desc {
-				shouldSwap = false // For descending (newest first)
-			} else {
-				shouldSwap = false // For ascending (oldest first)
+
+			ts1 := tasks[j].Status.Timestamp
+			ts2 := tasks[j+1].Status.Timestamp
+
+			if ts1 != nil && ts2 != nil {
+				if desc {
+					shouldSwap = ts1.Before(*ts2)
+				} else {
+					shouldSwap = ts1.After(*ts2)
+				}
 			}
 
 			if shouldSwap {

@@ -39,7 +39,7 @@ func (m *Message) UnmarshalJSON(data []byte) error {
 	m.Metadata = helper.Metadata
 	m.Parts = parts
 	m.ReferenceTaskIds = helper.ReferenceTaskIds
-	m.Role = helper.Role
+	m.Role = Role(helper.Role)
 	m.TaskID = helper.TaskID
 
 	return nil

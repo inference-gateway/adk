@@ -138,7 +138,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	if err != nil {
 		bth.logger.Error("agent streaming failed to start", zap.Error(err))
 
-		task.Status.State = string(types.TaskStateFailed)
+		task.Status.State = types.TaskStateFailed
 		task.Status.Message = &types.Message{
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      "assistant",
@@ -172,9 +172,9 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 					zap.String("task_id", task.ID),
 					zap.String("state", string(statusData.State)))
 
-				if statusData.State == string(types.TaskStateCompleted) ||
-					statusData.State == string(types.TaskStateFailed) ||
-					statusData.State == string(types.TaskStateCanceled) {
+				if statusData.State == types.TaskStateCompleted ||
+					statusData.State == types.TaskStateFailed ||
+					statusData.State == types.TaskStateCancelled {
 					return task, nil
 				}
 			}
@@ -196,7 +196,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 				}
 				task.History = append(task.History, inputMessage)
 
-				task.Status.State = string(types.TaskStateInputRequired)
+				task.Status.State = types.TaskStateInputRequired
 				task.Status.Message = &inputMessage
 
 				bth.logger.Info("background task paused for user input",
@@ -217,7 +217,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	}
 
 	if finalMessage != nil {
-		task.Status.State = string(types.TaskStateCompleted)
+		task.Status.State = types.TaskStateCompleted
 		task.Status.Message = finalMessage
 
 		bth.logger.Info("background task completed successfully",
@@ -229,7 +229,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	bth.logger.Warn("background task completed but no final message received",
 		zap.String("task_id", task.ID))
 
-	task.Status.State = string(types.TaskStateCompleted)
+	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = &types.Message{
 		MessageID: fmt.Sprintf("empty-response-%s", task.ID),
 		Role:      "assistant",
@@ -262,7 +262,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 		task.History = []types.Message{}
 	}
 	task.History = append(task.History, *response)
-	task.Status.State = string(types.TaskStateCompleted)
+	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = response
 
 	return task, nil
@@ -620,7 +620,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 					zap.Int("total_length", len(accumulatedText)))
 
 				task.Status.Message = &deltaMessage
-				task.Status.State = string(types.TaskStateWorking)
+				task.Status.State = types.TaskStateWorking
 
 				deltaResponse := types.JSONRPCSuccessResponse{
 					JSONRPC: "2.0",
@@ -657,7 +657,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 					TaskID:    task.ID,
 					ContextID: task.ContextID,
 					Status:    statusData,
-					Final:     statusData.State == string(types.TaskStateCompleted) || statusData.State == string(types.TaskStateFailed) || statusData.State == string(types.TaskStateCanceled),
+					Final:     statusData.State == types.TaskStateCompleted || statusData.State == types.TaskStateFailed || statusData.State == types.TaskStateCancelled,
 				}
 
 				statusResponse := types.JSONRPCSuccessResponse{
@@ -676,7 +676,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			var inputMessage types.Message
 			if err := event.DataAs(&inputMessage); err == nil {
 				task.History = append(task.History, inputMessage)
-				task.Status.State = string(types.TaskStateInputRequired)
+				task.Status.State = types.TaskStateInputRequired
 				task.Status.Message = &inputMessage
 
 				h.logger.Info("streaming task paused for user input",
@@ -687,7 +687,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 					TaskID:    task.ID,
 					ContextID: task.ContextID,
 					Status: types.TaskStatus{
-						State:   string(types.TaskStateInputRequired),
+						State:   types.TaskStateInputRequired,
 						Message: &inputMessage,
 					},
 					Final: false,
@@ -716,7 +716,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			var interruptMessage types.Message
 			if err := event.DataAs(&interruptMessage); err == nil {
 				task.History = append(task.History, interruptMessage)
-				task.Status.State = string(types.TaskStateCanceled)
+				task.Status.State = types.TaskStateCancelled
 
 				h.logger.Info("streaming task was interrupted",
 					zap.String("task_id", task.ID),
@@ -734,7 +734,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			var errorMessage types.Message
 			if err := event.DataAs(&errorMessage); err == nil {
 				task.History = append(task.History, errorMessage)
-				task.Status.State = string(types.TaskStateFailed)
+				task.Status.State = types.TaskStateFailed
 				task.Status.Message = &errorMessage
 
 				h.logger.Error("streaming task failed",
@@ -763,7 +763,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 	}
 
 	if len(task.History) > 0 {
-		task.Status.State = string(types.TaskStateCompleted)
+		task.Status.State = types.TaskStateCompleted
 		task.Status.Message = &task.History[len(task.History)-1]
 
 		if err := h.taskManager.UpdateTask(task); err != nil {

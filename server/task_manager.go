@@ -159,19 +159,20 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 		history = append(history, *message)
 	}
 
+	now := time.Now()
 	task := &types.Task{
 		ID: uuid.New().String(),
 		Status: types.TaskStatus{
-			State:     string(state),
+			State:     types.TaskState(state),
 			Message:   message,
-			Timestamp: &types.Timestamp{},
+			Timestamp: &now,
 		},
 		ContextID: contextID,
 		History:   history,
 	}
 
 	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
@@ -201,19 +202,20 @@ func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state type
 		taskHistory = append(taskHistory, *message)
 	}
 
+	now := time.Now()
 	task := &types.Task{
 		ID: uuid.New().String(),
 		Status: types.TaskStatus{
-			State:     string(state),
+			State:     types.TaskState(state),
 			Message:   message,
-			Timestamp: &types.Timestamp{},
+			Timestamp: &now,
 		},
 		ContextID: contextID,
 		History:   taskHistory,
 	}
 
 	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 		err := tm.storage.StoreDeadLetterTask(task)
 		if err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
@@ -261,8 +263,9 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 		}
 	}
 
-	task.Status.State = string(state)
-	task.Status.Timestamp = &types.Timestamp{}
+	task.Status.State = types.TaskState(state)
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	if tm.isTaskFinalState(state) {
 		tm.UnregisterTaskCancelFunc(taskID)
@@ -298,7 +301,8 @@ func (tm *DefaultTaskManager) UpdateTask(task *types.Task) error {
 		return fmt.Errorf("task cannot be nil")
 	}
 
-	task.Status.Timestamp = &types.Timestamp{}
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	if tm.isTaskFinalState(types.TaskState(task.Status.State)) {
 		tm.UnregisterTaskCancelFunc(task.ID)
@@ -336,9 +340,10 @@ func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message)
 		return NewTaskNotFoundError(taskID)
 	}
 
-	task.Status.State = string(types.TaskStateFailed)
+	task.Status.State = types.TaskStateFailed
 	task.Status.Message = message
-	task.Status.Timestamp = &types.Timestamp{}
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	tm.UnregisterTaskCancelFunc(taskID)
 
@@ -466,7 +471,7 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 		return NewTaskNotFoundError(taskID)
 	}
 
-	if !tm.isTaskCancelable(task.Status.State) {
+	if !tm.isTaskCancelable(string(task.Status.State)) {
 		return NewTaskNotCancelableError(taskID, types.TaskState(task.Status.State))
 	}
 
@@ -480,8 +485,9 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 		tm.UnregisterTaskCancelFunc(taskID)
 	}
 
-	task.Status.State = string(types.TaskStateCanceled)
-	task.Status.Timestamp = &types.Timestamp{}
+	task.Status.State = types.TaskStateCancelled
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	err := tm.storage.StoreDeadLetterTask(task)
 	if err != nil {
@@ -502,9 +508,9 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 func (tm *DefaultTaskManager) isTaskCancelable(state string) bool {
 	taskState := types.TaskState(state)
 	switch taskState {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 		return false
-	case types.TaskStateSubmitted, types.TaskStateWorking, types.TaskStateInputRequired, types.TaskStateAuthRequired, types.TaskStateUnknown:
+	case types.TaskStateSubmitted, types.TaskStateWorking, types.TaskStateInputRequired, types.TaskStateAuthRequired, types.TaskStateUnspecified:
 		return true
 	default:
 		return false
@@ -514,7 +520,7 @@ func (tm *DefaultTaskManager) isTaskCancelable(state string) bool {
 // isTaskFinalState determines if a task state is final and should move to dead letter queue
 func (tm *DefaultTaskManager) isTaskFinalState(state types.TaskState) bool {
 	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 		return true
 	default:
 		return false
@@ -547,7 +553,7 @@ func (tm *DefaultTaskManager) PollTaskStatus(taskID string, interval time.Durati
 
 			taskState := types.TaskState(task.Status.State)
 			switch taskState {
-			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
 				return task, nil
 			case types.TaskStateInputRequired:
 				return task, nil
@@ -601,12 +607,13 @@ func (tm *DefaultTaskManager) UpdateConversationHistory(contextID string, messag
 	historyCopy := make([]types.Message, len(messages))
 	copy(historyCopy, messages)
 
+	now := time.Now()
 	task := &types.Task{
 		ID: uuid.New().String(),
 		Status: types.TaskStatus{
-			State:     string(types.TaskStateCompleted),
+			State:     types.TaskStateCompleted,
 			Message:   nil,
-			Timestamp: &types.Timestamp{},
+			Timestamp: &now,
 		},
 		ContextID: contextID,
 		History:   historyCopy,
@@ -731,9 +738,10 @@ func (tm *DefaultTaskManager) PauseTaskForInput(taskID string, message *types.Me
 		return NewTaskNotFoundError(taskID)
 	}
 
-	task.Status.State = string(types.TaskStateInputRequired)
+	task.Status.State = types.TaskStateInputRequired
 	task.Status.Message = message
-	task.Status.Timestamp = &types.Timestamp{}
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	if message != nil {
 		task.History = append(task.History, *message)
@@ -764,13 +772,14 @@ func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.
 		return NewTaskNotFoundError(taskID)
 	}
 
-	if task.Status.State == string(types.TaskStateCompleted) {
+	if task.Status.State == types.TaskStateCompleted {
 		return fmt.Errorf("task %s is already completed and cannot be resumed, current state: %s", taskID, task.Status.State)
 	}
 
-	task.Status.State = string(types.TaskStateWorking)
+	task.Status.State = types.TaskStateWorking
 	task.Status.Message = message
-	task.Status.Timestamp = &types.Timestamp{}
+	now := time.Now()
+	task.Status.Timestamp = &now
 
 	if message != nil {
 		task.History = append(task.History, *message)
@@ -801,7 +810,7 @@ func (tm *DefaultTaskManager) IsTaskPaused(taskID string) (bool, error) {
 		return false, NewTaskNotFoundError(taskID)
 	}
 
-	return task.Status.State == string(types.TaskStateInputRequired), nil
+	return task.Status.State == types.TaskStateInputRequired, nil
 }
 
 // SetRetentionConfig sets the task retention configuration and starts automatic cleanup

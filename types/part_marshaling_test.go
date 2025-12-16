@@ -63,13 +63,13 @@ func TestMarshalPart(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "marshal text part",
-			part: CreateTextPart("Hello, world!"),
+			name:     "marshal text part",
+			part:     CreateTextPart("Hello, world!"),
 			expected: `{"text":"Hello, world!"}`,
 		},
 		{
-			name: "marshal data part",
-			part: CreateDataPart(map[string]any{"result": "success"}),
+			name:     "marshal data part",
+			part:     CreateDataPart(map[string]any{"result": "success"}),
 			expected: `{"data":{"data":{"result":"success"}}}`,
 		},
 		{
@@ -239,7 +239,7 @@ func TestMessageUnmarshalJSON(t *testing.T) {
 			}`,
 			validate: func(t *testing.T, msg Message) {
 				assert.Equal(t, "msg-123", msg.MessageID)
-				assert.Equal(t, "user", msg.Role)
+				assert.Equal(t, Role("user"), msg.Role)
 				require.Len(t, msg.Parts, 2)
 
 				require.NotNil(t, msg.Parts[0].Text)
@@ -261,7 +261,7 @@ func TestMessageUnmarshalJSON(t *testing.T) {
 				]
 			}`,
 			validate: func(t *testing.T, msg Message) {
-				assert.Equal(t, "assistant", msg.Role)
+				assert.Equal(t, Role("assistant"), msg.Role)
 				require.Len(t, msg.Parts, 3)
 
 				require.NotNil(t, msg.Parts[0].Text)

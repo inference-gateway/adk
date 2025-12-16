@@ -127,7 +127,7 @@ func main() {
 			case types.TaskStateFailed:
 				logger.Error("task failed", zap.Int("event", eventCount))
 
-			case types.TaskStateCanceled:
+			case types.TaskStateCancelled:
 				logger.Info("task canceled", zap.Int("event", eventCount))
 			}
 			continue

@@ -68,7 +68,7 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 		if part.Text != nil {
 			content += *part.Text
 		} else if part.Data != nil {
-			if err := c.processDataPart(part.Data.Data, role, &content, &toolCallId, &toolCalls); err != nil {
+			if err := c.processDataPart(part.Data.Data, string(role), &content, &toolCallId, &toolCalls); err != nil {
 				c.logger.Warn("failed to process DataPart",
 					zap.String("message_id", msg.MessageID),
 					zap.Error(err))
@@ -277,7 +277,7 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 
 	message := &types.Message{
 		MessageID: messageID,
-		Role:      role,
+		Role:      types.Role(role),
 		Parts:     []types.Part{},
 	}
 

@@ -1712,20 +1712,19 @@ func TestClient_ListTasks(t *testing.T) {
 					ID:        "task-1",
 					ContextID: "context-1",
 					Status: types.TaskStatus{
-						State: string(types.TaskStateCompleted),
+						State: types.TaskStateCompleted,
 					},
 				},
 				{
 					ID:        "task-2",
 					ContextID: "context-1",
 					Status: types.TaskStatus{
-						State: string(types.TaskStateWorking),
+						State: types.TaskStateWorking,
 					},
 				},
 			},
 			TotalSize: 2,
 			PageSize:  50,
-			
 		}
 
 		response := types.JSONRPCSuccessResponse{
@@ -1771,9 +1770,8 @@ func TestClient_ListTasks(t *testing.T) {
 	t.Run("list_tasks_with_filtering", func(t *testing.T) {
 		completedState := types.TaskStateCompleted
 		params := types.TaskListParams{
-			State:  &completedState,
-			Limit:  10,
-			
+			State: &completedState,
+			Limit: 10,
 		}
 
 		resp, err := a2aClient.ListTasks(context.Background(), params)

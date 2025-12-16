@@ -64,7 +64,7 @@ func (h *StaticCardTaskHandler) HandleTask(ctx context.Context, task *types.Task
 	}
 
 	task.History = append(task.History, responseMessage)
-	task.Status.State = string(types.TaskStateCompleted)
+	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = &responseMessage
 
 	return task, nil

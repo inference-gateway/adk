@@ -1,6 +1,34 @@
 // Code generated from JSON schema. DO NOT EDIT.
 package types
 
+import "time"
+
+// Identifies the sender of the message.
+type Role string
+
+// Role enum values
+const (
+	RoleAgent       Role = "ROLE_AGENT"
+	RoleUnspecified Role = "ROLE_UNSPECIFIED"
+	RoleUser        Role = "ROLE_USER"
+)
+
+// The current state of this task.
+type TaskState string
+
+// TaskState enum values
+const (
+	TaskStateAuthRequired  TaskState = "TASK_STATE_AUTH_REQUIRED"
+	TaskStateCancelled     TaskState = "TASK_STATE_CANCELLED"
+	TaskStateCompleted     TaskState = "TASK_STATE_COMPLETED"
+	TaskStateFailed        TaskState = "TASK_STATE_FAILED"
+	TaskStateInputRequired TaskState = "TASK_STATE_INPUT_REQUIRED"
+	TaskStateRejected      TaskState = "TASK_STATE_REJECTED"
+	TaskStateSubmitted     TaskState = "TASK_STATE_SUBMITTED"
+	TaskStateUnspecified   TaskState = "TASK_STATE_UNSPECIFIED"
+	TaskStateWorking       TaskState = "TASK_STATE_WORKING"
+)
+
 // Defines a security scheme using an API key.
 type APIKeySecurityScheme struct {
 	Description *string `json:"description,omitempty"`
@@ -189,14 +217,14 @@ type ListTaskPushNotificationConfigResponse struct {
 
 // Parameters for listing tasks with optional filtering criteria.
 type ListTasksRequest struct {
-	ContextID        string `json:"contextId"`
-	HistoryLength    *int   `json:"historyLength,omitempty"`
-	IncludeArtifacts *bool  `json:"includeArtifacts,omitempty"`
-	LastUpdatedAfter int    `json:"lastUpdatedAfter"`
-	PageSize         *int   `json:"pageSize,omitempty"`
-	PageToken        string `json:"pageToken"`
-	Status           string `json:"status"`
-	Tenant           string `json:"tenant"`
+	ContextID        string    `json:"contextId"`
+	HistoryLength    *int      `json:"historyLength,omitempty"`
+	IncludeArtifacts *bool     `json:"includeArtifacts,omitempty"`
+	LastUpdatedAfter int       `json:"lastUpdatedAfter"`
+	PageSize         *int      `json:"pageSize,omitempty"`
+	PageToken        string    `json:"pageToken"`
+	Status           TaskState `json:"status"`
+	Tenant           string    `json:"tenant"`
 }
 
 // Result object for tasks/list method containing an array of tasks and pagination information.
@@ -221,7 +249,7 @@ type Message struct {
 	Metadata         *Struct  `json:"metadata,omitempty"`
 	Parts            []Part   `json:"parts"`
 	ReferenceTaskIds []string `json:"referenceTaskIds,omitempty"`
-	Role             string   `json:"role"`
+	Role             Role     `json:"role"`
 	TaskID           *string  `json:"taskId,omitempty"`
 }
 
@@ -376,7 +404,7 @@ type TaskPushNotificationConfig struct {
 // A container for the status of a task
 type TaskStatus struct {
 	Message   *Message   `json:"message,omitempty"`
-	State     string     `json:"state"`
+	State     TaskState  `json:"state"`
 	Timestamp *Timestamp `json:"timestamp,omitempty"`
 }
 
@@ -390,5 +418,4 @@ type TaskStatusUpdateEvent struct {
 	TaskID    string     `json:"taskId"`
 }
 
-type Timestamp struct {
-}
+type Timestamp = time.Time

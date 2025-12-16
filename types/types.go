@@ -1,36 +1,5 @@
 package types
 
-// MessagePartKind represents the different types of message parts supported by A2A protocol.
-// Based on the A2A specification: https://google-a2a.github.io/A2A/latest/
-type MessagePartKind string
-
-// MessagePartKind enum values for the three official message part types
-const (
-	// MessagePartKindText represents a text segment within message parts
-	MessagePartKindText MessagePartKind = "text"
-
-	// MessagePartKindFile represents a file segment within message parts
-	MessagePartKindFile MessagePartKind = "file"
-
-	// MessagePartKindData represents a structured data segment within message parts
-	MessagePartKindData MessagePartKind = "data"
-)
-
-// String returns the string representation of the MessagePartKind
-func (k MessagePartKind) String() string {
-	return string(k)
-}
-
-// IsValid checks if the MessagePartKind is one of the supported values
-func (k MessagePartKind) IsValid() bool {
-	switch k {
-	case MessagePartKindText, MessagePartKindFile, MessagePartKindData:
-		return true
-	default:
-		return false
-	}
-}
-
 // Health status constants
 const (
 	HealthStatusHealthy   = "healthy"
@@ -118,22 +87,6 @@ type MessageSendParams struct {
 	Message       Message                   `json:"message"`
 	Metadata      map[string]any            `json:"metadata,omitempty"`
 }
-
-// Defines the lifecycle states of a Task.
-type TaskState string
-
-// TaskState enum values
-const (
-	TaskStateAuthRequired  TaskState = "auth-required"
-	TaskStateCanceled      TaskState = "canceled"
-	TaskStateCompleted     TaskState = "completed"
-	TaskStateFailed        TaskState = "failed"
-	TaskStateInputRequired TaskState = "input-required"
-	TaskStateRejected      TaskState = "rejected"
-	TaskStateSubmitted     TaskState = "submitted"
-	TaskStateUnknown       TaskState = "unknown"
-	TaskStateWorking       TaskState = "working"
-)
 
 // Defines parameters for querying a task, with an option to limit history length.
 type TaskQueryParams struct {

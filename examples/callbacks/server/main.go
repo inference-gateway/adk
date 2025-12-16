@@ -71,7 +71,7 @@ func (h *CallbacksTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 		},
 	}
 
-	task.Status.State = string(types.TaskStateCompleted)
+	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = &responseMessage
 	task.History = append(task.History, responseMessage)
 

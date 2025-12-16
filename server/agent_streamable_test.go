@@ -163,7 +163,7 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 				ID:        "test-task-123",
 				ContextID: "test-context-123",
 				Status: types.TaskStatus{
-					State: string(types.TaskStateWorking),
+					State: types.TaskStateWorking,
 				},
 				History: []types.Message{},
 			}
@@ -216,12 +216,11 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 				}
 			}
 
-			// Check if the message is input_required based on messageID prefix
-			if lastMessage != nil && strings.HasPrefix(lastMessage.MessageID, "input-required") {
-				task.Status.State = string(types.TaskStateInputRequired)
+			if lastMessage != nil && strings.HasPrefix(lastMessage.MessageID, "input-req") {
+				task.Status.State = types.TaskStateInputRequired
 				task.Status.Message = lastMessage
 			} else {
-				task.Status.State = string(types.TaskStateCompleted)
+				task.Status.State = types.TaskStateCompleted
 				if len(task.History) > 0 {
 					task.Status.Message = &task.History[len(task.History)-1]
 				} else {
@@ -320,7 +319,7 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 					},
 				},
 			},
-			expectedConsolidatedText: "",
+			expectedConsolidatedText: "123",
 			description:              "Should handle non-string text fields gracefully",
 		},
 	}
