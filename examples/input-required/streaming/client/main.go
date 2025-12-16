@@ -88,7 +88,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 		MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
 		Role:      "user",
 		Parts: []types.Part{
-			types.NewTextPart(initialMessage),
+			types.CreateTextPart(initialMessage),
 		},
 	}
 
@@ -216,7 +216,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 			TaskID:    &currentTaskID,
 			ContextID: &currentContextID,
 			Parts: []types.Part{
-				types.NewTextPart(userResponse),
+				types.CreateTextPart(userResponse),
 			},
 		}
 
@@ -301,8 +301,8 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 // extractMessageText extracts text content from a message
 func extractMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
-		if textPart, ok := part.(types.TextPart); ok {
-			return textPart.Text
+		if part.Text != nil {
+			return *part.Text
 		}
 	}
 	return ""

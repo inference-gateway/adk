@@ -65,12 +65,9 @@ func main() {
 
 		// Create message with proper structure
 		message := types.Message{
-			Role: "user",
+			Role: types.RoleUser,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: prompt,
-				},
+				types.CreateTextPart(prompt),
 			},
 		}
 

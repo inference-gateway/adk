@@ -87,9 +87,9 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 	// Create initial message
 	message := types.Message{
 		MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
-		Role:      "user",
+		Role:      types.RoleUser,
 		Parts: []types.Part{
-			types.NewTextPart(initialMessage),
+			types.CreateTextPart(initialMessage),
 		},
 	}
 
@@ -181,9 +181,9 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 			followUpMessage := types.Message{
 				MessageID: fmt.Sprintf("msg-%d", time.Now().UnixNano()),
 				ContextID: &contextID,
-				Role:      "user",
+				Role:      types.RoleUser,
 				Parts: []types.Part{
-					types.NewTextPart(userResponse),
+					types.CreateTextPart(userResponse),
 				},
 			}
 
@@ -244,17 +244,8 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 // extractMessageText extracts text content from a message
 func extractMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
-		// Handle typed TextPart (when created locally)
-		if textPart, ok := part.(types.TextPart); ok {
-			return textPart.Text
-		}
-		// Handle map-based parts (when deserialized from JSON)
-		if partMap, ok := part.(map[string]any); ok {
-			if kind, exists := partMap["kind"]; exists && kind == "text" {
-				if text, exists := partMap["text"].(string); exists {
-					return text
-				}
-			}
+		if part.Text != nil {
+			return *part.Text
 		}
 	}
 	return "(no text content)"

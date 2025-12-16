@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 )
 
 func TestUnmarshalPart(t *testing.T) {
@@ -253,7 +253,7 @@ func TestMessageUnmarshalJSON(t *testing.T) {
 			name: "message with mixed part types",
 			jsonData: `{
 				"messageId": "msg-456",
-				"role": "assistant",
+				"role": "ROLE_AGENT",
 				"parts": [
 					{"text": "Response"},
 					{"data": {"data": {"result": "success"}}},
@@ -261,7 +261,7 @@ func TestMessageUnmarshalJSON(t *testing.T) {
 				]
 			}`,
 			validate: func(t *testing.T, msg Message) {
-				assert.Equal(t, Role("assistant"), msg.Role)
+				assert.Equal(t, RoleAgent, msg.Role)
 				require.Len(t, msg.Parts, 3)
 
 				require.NotNil(t, msg.Parts[0].Text)
@@ -278,7 +278,7 @@ func TestMessageUnmarshalJSON(t *testing.T) {
 			name: "message round-trip with typed parts",
 			jsonData: `{
 				"messageId": "msg-789",
-				"role": "user",
+				"role": "ROLE_USER",
 				"parts": [
 					{"text": "Test message", "metadata": {"key": "value"}}
 				]

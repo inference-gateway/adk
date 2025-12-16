@@ -43,7 +43,7 @@ func (h *InputRequiredTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 func (h *InputRequiredTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	h.logger.Info("processing task with input-required demonstration",
 		zap.String("task_id", task.ID),
-		zap.String("message_role", message.Role))
+		zap.String("message_role", string(message.Role)))
 
 	// If we have an agent, use it to process the message
 	if h.agent != nil {
@@ -75,12 +75,9 @@ func (h *InputRequiredTaskHandler) processWithAgent(ctx context.Context, task *t
 		task.Status.State = types.TaskStateFailed
 		task.Status.Message = &types.Message{
 			MessageID: fmt.Sprintf("error-%s", task.ID),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: fmt.Sprintf("Failed to process task: %v", err),
-				},
+				types.CreateTextPart(fmt.Sprintf("Failed to process task: %v", err)),
 			},
 		}
 		return task, nil
@@ -139,12 +136,9 @@ func (h *InputRequiredTaskHandler) processWithAgent(ctx context.Context, task *t
 		task.Status.State = types.TaskStateFailed
 		task.Status.Message = &types.Message{
 			MessageID: fmt.Sprintf("error-%s", task.ID),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: "No response received from agent",
-				},
+				types.CreateTextPart("No response received from agent"),
 			},
 		}
 		task.History = append(task.History, *message)
@@ -164,24 +158,26 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 	// Add the incoming message to history
 	task.History = append(task.History, *message)
 
-	// Check if this is a follow-up to a previous input-required state
-	// by looking at the conversation history
-	previousContext := getPreviousContext(task.History)
-	h.logger.Info("previous context", zap.String("context", previousContext))
+	// Check if task was previously in INPUT_REQUIRED state
+	// This means the current message is a follow-up providing the requested input
+	wasInputRequired := task.Status.State == types.TaskStateInputRequired
+	h.logger.Info("task state check",
+		zap.String("current_state", string(task.Status.State)),
+		zap.Bool("was_input_required", wasInputRequired))
 
-	// If this looks like a follow-up response (short message without keywords)
-	if previousContext != "" && !contains(messageText, "weather") && !contains(messageText, "calculate") && !contains(messageText, "hello") && len(messageText) < 50 {
+	// If we were waiting for input, check what was being asked
+	if wasInputRequired {
+		previousContext := getPreviousContext(task)
+		h.logger.Info("processing follow-up input", zap.String("context", previousContext))
+
 		switch previousContext {
 		case "weather":
 			// User provided location for weather query
 			responseMessage := &types.Message{
 				MessageID: fmt.Sprintf("response-%s", task.ID),
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: fmt.Sprintf("The weather in %s is sunny and 72°F! (This is a demo response - no real weather data is fetched)", messageText),
-					},
+					types.CreateTextPart(fmt.Sprintf("The weather in %s is sunny and 72°F! (This is a demo response - no real weather data is fetched)", messageText)),
 				},
 			}
 			task.Status.State = types.TaskStateCompleted
@@ -193,12 +189,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 			// User provided calculation
 			responseMessage := &types.Message{
 				MessageID: fmt.Sprintf("response-%s", task.ID),
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: fmt.Sprintf("Based on your input '%s', here's the result! (This is a demo response)", messageText),
-					},
+					types.CreateTextPart(fmt.Sprintf("Based on your input '%s', here's the result! (This is a demo response)", messageText)),
 				},
 			}
 			task.Status.State = types.TaskStateCompleted
@@ -215,12 +208,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		if !contains(messageText, "in ") && !contains(messageText, "at ") {
 			inputMessage := &types.Message{
 				MessageID: fmt.Sprintf("input-required-%s", task.ID),
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "I'd be happy to help you with the weather! Could you please specify which location you'd like the weather for?",
-					},
+					types.CreateTextPart("I'd be happy to help you with the weather! Could you please specify which location you'd like the weather for?"),
 				},
 			}
 
@@ -235,12 +225,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		// If location is provided, give weather response
 		responseMessage := &types.Message{
 			MessageID: fmt.Sprintf("response-%s", task.ID),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: "The weather is sunny and 72°F! (This is a demo response - no real weather data is fetched)",
-				},
+				types.CreateTextPart("The weather is sunny and 72°F! (This is a demo response - no real weather data is fetched)"),
 			},
 		}
 
@@ -253,12 +240,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		if !hasNumbers(messageText) {
 			inputMessage := &types.Message{
 				MessageID: fmt.Sprintf("input-required-%s", task.ID),
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "I can help you with calculations! Could you please provide the specific numbers or equation you'd like me to calculate?",
-					},
+					types.CreateTextPart("I can help you with calculations! Could you please provide the specific numbers or equation you'd like me to calculate?"),
 				},
 			}
 
@@ -273,12 +257,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		// If numbers are provided, give calculation response
 		responseMessage := &types.Message{
 			MessageID: fmt.Sprintf("response-%s", task.ID),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: "Based on your calculation request, I can help you with that math problem! (This is a demo response)",
-				},
+				types.CreateTextPart("Based on your calculation request, I can help you with that math problem! (This is a demo response)"),
 			},
 		}
 
@@ -290,12 +271,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		// Simple greeting, no input required
 		responseMessage := &types.Message{
 			MessageID: fmt.Sprintf("response-%s", task.ID),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: "Hello! I'm an assistant that demonstrates the input-required flow. Try asking me about the weather or a calculation to see how I request additional information when needed!",
-				},
+				types.CreateTextPart("Hello! I'm an assistant that demonstrates the input-required flow. Try asking me about the weather or a calculation to see how I request additional information when needed!"),
 			},
 		}
 
@@ -307,12 +285,9 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		// For unclear requests, ask for clarification
 		inputMessage := &types.Message{
 			MessageID: fmt.Sprintf("input-required-%s", task.ID),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: "I'd be happy to help! Could you please provide more details about what you'd like me to do? For example, you could ask about the weather or request a calculation.",
-				},
+				types.CreateTextPart("I'd be happy to help! Could you please provide more details about what you'd like me to do? For example, you could ask about the weather or request a calculation."),
 			},
 		}
 
@@ -329,17 +304,8 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 // Helper functions
 func getMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
-		// Handle typed TextPart (when created locally)
-		if textPart, ok := part.(types.TextPart); ok {
-			return textPart.Text
-		}
-		// Handle map-based parts (when deserialized from JSON)
-		if partMap, ok := part.(map[string]any); ok {
-			if kind, exists := partMap["kind"]; exists && kind == "text" {
-				if text, exists := partMap["text"].(string); exists {
-					return text
-				}
-			}
+		if part.Text != nil {
+			return *part.Text
 		}
 	}
 	return ""
@@ -384,25 +350,26 @@ func findInLower(haystack, needle string) int {
 	return -1
 }
 
-// getPreviousContext analyzes the conversation history to determine
+// getPreviousContext analyzes the task's status message to determine
 // what kind of input was previously requested
-func getPreviousContext(history []types.Message) string {
-	// Look backwards through history for input_required messages
-	for i := len(history) - 1; i >= 0; i-- {
-		msg := history[i]
-		if msg.Kind == "input_required" {
-			text := getMessageText(&msg)
-			textLower := toLower(text)
-
-			// Determine what was being asked about
-			if contains(textLower, "weather") || contains(textLower, "location") {
-				return "weather"
-			}
-			if contains(textLower, "calculat") || contains(textLower, "number") {
-				return "calculate"
-			}
-		}
+func getPreviousContext(task *types.Task) string {
+	// When a task is in INPUT_REQUIRED state, the Status.Message contains
+	// the prompt that was sent to the user asking for input
+	if task.Status.Message == nil {
+		return ""
 	}
+
+	text := getMessageText(task.Status.Message)
+	textLower := toLower(text)
+
+	// Determine what was being asked about based on the input request message
+	if contains(textLower, "weather") || contains(textLower, "location") {
+		return "weather"
+	}
+	if contains(textLower, "calculat") || contains(textLower, "number") {
+		return "calculate"
+	}
+
 	return ""
 }
 
@@ -473,7 +440,7 @@ Be specific about what information you need and why it's needed to provide a com
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -524,4 +491,9 @@ Be specific about what information you need and why it's needed to provide a com
 	}
 
 	logger.Info("server shutdown complete")
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }

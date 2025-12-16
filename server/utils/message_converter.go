@@ -56,8 +56,8 @@ func (c *messageConverter) ConvertToSDK(messages []types.Message) ([]sdk.Message
 // convertSingleMessage converts a single A2A message to SDK format
 func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message, error) {
 	role := msg.Role
-	if role == "" {
-		role = "user"
+	if role == "" || role == types.RoleUnspecified {
+		role = types.RoleUser
 	}
 
 	var content string
@@ -84,15 +84,20 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 
 	var sdkRole sdk.MessageRole
 	switch role {
-	case "user":
+	case types.RoleUser:
 		sdkRole = sdk.User
-	case "assistant":
-		sdkRole = sdk.Assistant
-	case "system":
-		sdkRole = sdk.System
-	case "tool":
-		sdkRole = sdk.Tool
+	case types.RoleAgent:
+		if toolCallId != nil {
+			sdkRole = sdk.Tool
+		} else {
+			sdkRole = sdk.Assistant
+		}
+	case types.RoleUnspecified:
+		sdkRole = sdk.User
 	default:
+		c.logger.Warn("unknown A2A role, defaulting to user",
+			zap.String("role", string(role)),
+			zap.String("message_id", msg.MessageID))
 		sdkRole = sdk.User
 	}
 
@@ -117,23 +122,22 @@ func (c *messageConverter) processDataPart(
 	toolCallId **string,
 	toolCalls **[]sdk.ChatCompletionMessageToolCall,
 ) error {
-	if role == "tool" {
+	// Note: A2A spec doesn't have ROLE_TOOL, so tool results are sent as agent messages
+	// Check for tool result patterns in data
+	if id, exists := data["tool_call_id"]; exists {
+		if idStr, ok := id.(string); ok {
+			*toolCallId = &idStr
+		}
 		if result, exists := data["result"]; exists {
 			if resultStr, ok := result.(string); ok {
 				*content += resultStr
 			}
 		}
-
-		if id, exists := data["tool_call_id"]; exists {
-			if idStr, ok := id.(string); ok {
-				*toolCallId = &idStr
-			}
-		}
-
 		return nil
 	}
 
-	if role == "assistant" {
+	// Check for agent role (A2A ROLE_AGENT maps to SDK assistant)
+	if role == string(types.RoleAgent) {
 		if toolCallData, exists := data["tool_call"]; exists {
 			if err := c.extractSingleToolCall(toolCallData, toolCalls); err != nil {
 				return fmt.Errorf("failed to extract single tool call: %w", err)
@@ -272,12 +276,26 @@ func (c *messageConverter) mapToToolCall(toolCallMap map[string]any) (sdk.ChatCo
 
 // ConvertFromSDK converts SDK message response back to A2A format
 func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message, error) {
-	role := string(response.Role)
-	messageID := fmt.Sprintf("%s-%d", role, time.Now().UnixNano())
+	var a2aRole types.Role
+	sdkRoleStr := string(response.Role)
+	switch sdkRoleStr {
+	case string(sdk.User):
+		a2aRole = types.RoleUser
+	case string(sdk.Assistant):
+		a2aRole = types.RoleAgent
+	case string(sdk.Tool):
+		a2aRole = types.RoleAgent
+	case string(sdk.System):
+		a2aRole = types.RoleAgent
+	default:
+		a2aRole = types.RoleUnspecified
+	}
+
+	messageID := fmt.Sprintf("%s-%d", sdkRoleStr, time.Now().UnixNano())
 
 	message := &types.Message{
 		MessageID: messageID,
-		Role:      types.Role(role),
+		Role:      a2aRole,
 		Parts:     []types.Part{},
 	}
 
@@ -288,8 +306,8 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 		content = ""
 	}
 
-	switch role {
-	case "tool":
+	switch sdkRoleStr {
+	case string(sdk.Tool):
 		toolData := map[string]any{
 			"result": content,
 		}
@@ -306,7 +324,7 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 
 		message.Parts = append(message.Parts, types.CreateDataPart(toolData))
 
-	case "assistant":
+	case string(sdk.Assistant):
 		hasToolCalls := response.ToolCalls != nil && len(*response.ToolCalls) > 0
 
 		if content != "" {
@@ -340,7 +358,8 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 		(response.Reasoning != nil && *response.Reasoning != "")
 
 	c.logger.Debug("converted SDK message to A2A format",
-		zap.String("role", role),
+		zap.String("sdk_role", sdkRoleStr),
+		zap.String("a2a_role", string(a2aRole)),
 		zap.String("content", content),
 		zap.Bool("has_tool_calls", response.ToolCalls != nil),
 		zap.Bool("has_reasoning", hasReasoning),

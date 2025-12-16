@@ -54,12 +54,9 @@ func main() {
 
 	// Create the message
 	message := types.Message{
-		Role: "user",
+		Role: types.RoleUser,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: "Hello, this is a test message. Please respond with a greeting.",
-			},
+			types.CreateTextPart("Hello, this is a test message. Please respond with a greeting."),
 		},
 	}
 

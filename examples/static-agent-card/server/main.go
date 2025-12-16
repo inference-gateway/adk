@@ -57,7 +57,7 @@ func (h *StaticCardTaskHandler) HandleTask(ctx context.Context, task *types.Task
 		MessageID: uuid.New().String(),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
 			types.CreateTextPart(responseText),
 		},

@@ -141,7 +141,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		task.Status.State = types.TaskStateFailed
 		task.Status.Message = &types.Message{
 			MessageID: fmt.Sprintf("error-%s", task.ID),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			TaskID:    &task.ID,
 			ContextID: &task.ContextID,
 			Parts: []types.Part{
@@ -232,7 +232,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = &types.Message{
 		MessageID: fmt.Sprintf("empty-response-%s", task.ID),
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		TaskID:    &task.ID,
 		ContextID: &task.ContextID,
 		Parts: []types.Part{
@@ -250,7 +250,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 
 	response := &types.Message{
 		MessageID: fmt.Sprintf("response-%s", task.ID),
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		TaskID:    &task.ID,
 		ContextID: &task.ContextID,
 		Parts: []types.Part{
@@ -448,7 +448,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 		h.logger.Error("failed to enqueue task", zap.Error(err))
 		err := h.taskManager.UpdateError(task.ID, &types.Message{
 			MessageID: uuid.New().String(),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			TaskID:    &task.ID,
 			ContextID: &task.ContextID,
 			Parts: []types.Part{

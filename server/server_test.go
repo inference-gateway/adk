@@ -60,7 +60,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 			state:     types.TaskStateWorking,
 			message: &types.Message{
 				MessageID: "test-message-2",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Processing your request"),
 				},
@@ -355,7 +355,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 			State: types.TaskStateCompleted,
 			Message: &types.Message{
 				MessageID: "response-msg",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Hello! I received your message."),
 				},
@@ -431,7 +431,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 			State: types.TaskStateCompleted,
 			Message: &types.Message{
 				MessageID: "response-msg",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("I received your weather question and here's the answer..."),
 				},

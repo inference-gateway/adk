@@ -444,7 +444,7 @@ func TestClient_GetTask(t *testing.T) {
 								"message": map[string]any{
 									"kind":      "message",
 									"messageId": "response-msg",
-									"role":      "assistant",
+									"role":      "ROLE_AGENT",
 									"parts": []any{
 										map[string]any{
 											"kind": "text",
@@ -1324,7 +1324,7 @@ func TestClient_LargeResponses(t *testing.T) {
 					"message": map[string]any{
 						"kind":      "message",
 						"messageId": "large-response",
-						"role":      "assistant",
+						"role":      "ROLE_AGENT",
 						"parts": []any{
 							map[string]any{
 								"kind": "text",

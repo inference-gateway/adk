@@ -29,21 +29,21 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			streamingMessages: []types.Message{
 				{
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Hello "),
 					},
 				},
 				{
 					MessageID: "chunk-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("world!"),
 					},
 				},
 				{
 					MessageID: "chunk-3",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart(" How are you?"),
 					},
@@ -58,7 +58,7 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			streamingMessages: []types.Message{
 				{
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Single message response"),
 					},
@@ -73,21 +73,21 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			streamingMessages: []types.Message{
 				{
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Streaming "),
 					},
 				},
 				{
 					MessageID: "chunk-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("content..."),
 					},
 				},
 				{
 					MessageID: "assistant-final",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Final consolidated response"),
 					},
@@ -102,14 +102,14 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			streamingMessages: []types.Message{
 				{
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Processing your request..."),
 					},
 				},
 				{
 					MessageID: "input-req-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Please provide additional information"),
 					},
@@ -131,21 +131,21 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			streamingMessages: []types.Message{
 				{
 					MessageID: "user-1",
-					Role:      "user",
+					Role:      types.RoleUser,
 					Parts: []types.Part{
 						types.CreateTextPart("User message"),
 					},
 				},
 				{
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Assistant "),
 					},
 				},
 				{
 					MessageID: "chunk-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("response chunks"),
 					},
@@ -179,7 +179,7 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 
 				for i := len(allMessages) - 1; i >= 0; i-- {
 					msg := &allMessages[i]
-					if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
+					if msg.Role == types.RoleAgent && !strings.HasPrefix(msg.MessageID, "chunk-") {
 						consolidatedMessage = msg
 						break
 					}
@@ -190,7 +190,7 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					var finalMessageID string
 
 					for _, msg := range allMessages {
-						if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+						if msg.Role == types.RoleAgent && strings.HasPrefix(msg.MessageID, "chunk-") {
 							for _, part := range msg.Parts {
 								if part.Text != nil {
 									fullContent += *part.Text
@@ -203,7 +203,7 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					if fullContent != "" {
 						consolidatedMessage = &types.Message{
 							MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
-							Role:      "assistant",
+							Role:      types.RoleAgent,
 							Parts: []types.Part{
 								types.CreateTextPart(fullContent),
 							},
@@ -253,7 +253,7 @@ func TestStreamingMessageAccumulationPerformance(t *testing.T) {
 	for i := 0; i < numMessages; i++ {
 		messages[i] = types.Message{
 			MessageID: fmt.Sprintf("chunk-%d", i+1),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateTextPart(fmt.Sprintf("Message %d ", i+1)),
 			},
@@ -264,7 +264,7 @@ func TestStreamingMessageAccumulationPerformance(t *testing.T) {
 
 	var fullContent string
 	for _, msg := range messages {
-		if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+		if msg.Role == types.RoleAgent && strings.HasPrefix(msg.MessageID, "chunk-") {
 			for _, part := range msg.Parts {
 				if part.Text != nil {
 					fullContent += *part.Text
@@ -292,14 +292,14 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 			streamingMessages: []types.Message{
 				{
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart(""),
 					},
 				},
 				{
 					MessageID: "chunk-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Valid text"),
 					},
@@ -313,7 +313,7 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 			streamingMessages: []types.Message{
 				{
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("123"),
 					},
@@ -328,7 +328,7 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var fullContent string
 			for _, msg := range tt.streamingMessages {
-				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+				if msg.Role == types.RoleAgent && strings.HasPrefix(msg.MessageID, "chunk-") {
 					for _, part := range msg.Parts {
 						if part.Text != nil {
 							fullContent += *part.Text

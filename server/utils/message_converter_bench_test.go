@@ -15,14 +15,14 @@ func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {
 	messages := []types.Message{
 		{
 			MessageID: "bench-msg-1",
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
 				types.CreateTextPart("This is a benchmark test message with some content to convert."),
 			},
 		},
 		{
 			MessageID: "bench-msg-2",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateTextPart("This is a response message from the assistant."),
 			},
@@ -70,14 +70,14 @@ func BenchmarkMessageConverter_ConvertToSDK_StronglyTyped(b *testing.B) {
 	messages := []types.Message{
 		{
 			MessageID: "bench-typed-msg-1",
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
 				types.CreateTextPart("This is a strongly-typed benchmark test message."),
 			},
 		},
 		{
 			MessageID: "bench-typed-msg-2",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateTextPart("This is a strongly-typed response message."),
 			},

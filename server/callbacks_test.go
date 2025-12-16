@@ -44,7 +44,7 @@ func TestCallbackExecutor_ExecuteBeforeAgent(t *testing.T) {
 						counter.Increment()
 						return &types.Message{
 							MessageID: "test-skip",
-							Role:      "assistant",
+							Role:      types.RoleAgent,
 							Parts: []types.Part{
 								types.CreateTextPart("Execution skipped by callback"),
 							},
@@ -54,7 +54,7 @@ func TestCallbackExecutor_ExecuteBeforeAgent(t *testing.T) {
 			},
 			expected: &types.Message{
 				MessageID: "test-skip",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Execution skipped by callback"),
 				},
@@ -183,7 +183,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 						return &types.Message{
 							ReferenceTaskIds: agentOutput.ReferenceTaskIds,
 							MessageID:        "test-modified",
-							Role:             "assistant",
+							Role:             types.RoleAgent,
 							Parts: []types.Part{
 								types.CreateTextPart("Response modified by callback"),
 							},
@@ -194,7 +194,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 			agentOutput: &types.Message{
 				ReferenceTaskIds: []string{"1"},
 				MessageID:        "original",
-				Role:             "assistant",
+				Role:             types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Original response"),
 				},
@@ -202,7 +202,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 			expected: &types.Message{
 				ReferenceTaskIds: []string{"1"},
 				MessageID:        "test-modified",
-				Role:             "assistant",
+				Role:             types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Response modified by callback"),
 				},
@@ -228,13 +228,13 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 					func(ctx context.Context, callbackContext *CallbackContext, agentOutput *types.Message) *types.Message {
 						counter.Increment()
 						agentOutput.MessageID = "test-modified"
-						agentOutput.Role = "assistant"
+						agentOutput.Role = types.RoleAgent
 						return agentOutput
 					}}
 			},
 			agentOutput: &types.Message{
 				MessageID: "original",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Original response"),
 				},
@@ -245,7 +245,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				}
 				return &types.Message{
 					MessageID: "test-modified",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Original response"),
 					},
@@ -376,7 +376,7 @@ func TestCallbackExecutor_ExecuteBeforeModel(t *testing.T) {
 						return &LLMResponse{
 							Content: &types.Message{
 								MessageID: "test-blocked",
-								Role:      "assistant",
+								Role:      types.RoleAgent,
 								Parts: []types.Part{
 									types.CreateTextPart("LLM call blocked by callback"),
 								},
@@ -389,7 +389,7 @@ func TestCallbackExecutor_ExecuteBeforeModel(t *testing.T) {
 			expected: &LLMResponse{
 				Content: &types.Message{
 					MessageID: "test-blocked",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("LLM call blocked by callback"),
 					},
@@ -559,7 +559,7 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 						Content: &types.Message{
 							ReferenceTaskIds: llmResponse.Content.ReferenceTaskIds,
 							MessageID:        "test-modified",
-							Role:             "assistant",
+							Role:             types.RoleAgent,
 							Parts: []types.Part{
 								types.CreateTextPart("Response modified by callback"),
 							},
@@ -571,7 +571,7 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 				Content: &types.Message{
 					ReferenceTaskIds: []string{"1"},
 					MessageID:        "original",
-					Role:             "assistant",
+					Role:             types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Original response"),
 					},
@@ -581,7 +581,7 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 				Content: &types.Message{
 					ReferenceTaskIds: []string{"1"},
 					MessageID:        "test-modified",
-					Role:             "assistant",
+					Role:             types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Response modified by callback"),
 					},
@@ -608,14 +608,14 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 					func(ctx context.Context, callbackContext *CallbackContext, llmResponse *LLMResponse) *LLMResponse {
 						counter.Increment()
 						llmResponse.Content.MessageID = "test-modified"
-						llmResponse.Content.Role = "assistant"
+						llmResponse.Content.Role = types.RoleAgent
 						return llmResponse
 					}}
 			},
 			response: &LLMResponse{
 				Content: &types.Message{
 					MessageID: "original",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Original response"),
 					},
@@ -628,7 +628,7 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 				return &LLMResponse{
 					Content: &types.Message{
 						MessageID: "test-modified",
-						Role:      "assistant",
+						Role:      types.RoleAgent,
 						Parts: []types.Part{
 							types.CreateTextPart("Original response"),
 						},

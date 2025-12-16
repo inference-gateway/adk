@@ -31,7 +31,7 @@ func NewToolResultMessage(toolCallID string, toolName string, result any, hasErr
 func NewAssistantMessage(messageID string, parts []Part) *Message {
 	return &Message{
 		MessageID: messageID,
-		Role:      "assistant",
+		Role:      RoleAgent,
 		Parts:     parts,
 	}
 }
@@ -78,7 +78,7 @@ func NewStreamingStatusMessage(messageID, status string, metadata map[string]any
 
 	return &Message{
 		MessageID: messageID,
-		Role:      "assistant",
+		Role:      RoleAgent,
 		Parts: []Part{
 			NewDataPart(data),
 		},
@@ -89,7 +89,7 @@ func NewStreamingStatusMessage(messageID, status string, metadata map[string]any
 func NewInputRequiredMessage(toolCallID, message string) *Message {
 	return &Message{
 		MessageID: fmt.Sprintf("input-required-%s", toolCallID),
-		Role:      "assistant",
+		Role:      RoleAgent,
 		Parts: []Part{
 			NewTextPart(message),
 		},

@@ -25,7 +25,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			state:     types.TaskStateSubmitted,
 			message: &types.Message{
 				MessageID: "msg-1",
-				Role:      "user",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Test message"),
 				},
@@ -37,7 +37,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			state:     types.TaskStateWorking,
 			message: &types.Message{
 				MessageID: "msg-2",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Processing..."),
 				},
@@ -49,7 +49,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			state:     types.TaskStateCompleted,
 			message: &types.Message{
 				MessageID: "msg-3",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Task completed"),
 				},
@@ -61,7 +61,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 			state:     types.TaskStateFailed,
 			message: &types.Message{
 				MessageID: "msg-4",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Task failed"),
 				},
@@ -250,7 +250,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 
 	assistantResponse1 := &types.Message{
 		MessageID: "msg-response-1",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
 			types.CreateTextPart("It's sunny today with a temperature of 72°F."),
 		},
@@ -287,7 +287,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 
 	assistantResponse2 := &types.Message{
 		MessageID: "msg-response-2",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
 			types.CreateTextPart("Tomorrow will be partly cloudy with a high of 68°F."),
 		},
@@ -356,7 +356,7 @@ func TestDefaultTaskManager_ConversationHistoryIsolation(t *testing.T) {
 
 	response1 := &types.Message{
 		MessageID: "response-1",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
 			types.CreateTextPart("Response to context 1"),
 		},
@@ -430,7 +430,7 @@ func TestDefaultTaskManager_GetConversationHistory(t *testing.T) {
 
 	response := &types.Message{
 		MessageID: "response-1",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
 			types.CreateTextPart("Test response"),
 		},
@@ -466,14 +466,14 @@ func TestDefaultTaskManager_UpdateConversationHistory(t *testing.T) {
 	messages := []types.Message{
 		{
 			MessageID: "msg-1",
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
 				types.CreateTextPart("First message"),
 			},
 		},
 		{
 			MessageID: "msg-2",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateTextPart("First response"),
 			},
@@ -703,7 +703,7 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 	t.Run("pause existing task successfully", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
 			MessageID: "initial-msg",
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
 				types.CreateTextPart("Initial message"),
 			},
@@ -714,7 +714,7 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 
 		pauseMessage := &types.Message{
 			MessageID: "pause-msg",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateTextPart("Please provide more information"),
 			},
@@ -894,7 +894,7 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 
 	initialMessage := &types.Message{
 		MessageID: "initial-msg",
-		Role:      "user",
+		Role:      types.RoleUser,
 		Parts: []types.Part{
 			types.CreateTextPart("Process this request"),
 		},
@@ -906,7 +906,7 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 
 	pauseMessage := &types.Message{
 		MessageID: "pause-msg",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
 			types.CreateTextPart("I need more information. What is your preference?"),
 		},

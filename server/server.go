@@ -603,7 +603,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 			zap.String("context_id", task.ContextID))
 		updateErr := s.taskManager.UpdateError(task.ID, &types.Message{
 			MessageID: uuid.New().String(),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateTextPart(err.Error()),
 			},

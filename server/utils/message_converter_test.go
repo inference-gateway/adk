@@ -25,7 +25,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			input: []types.Message{
 				{
 					MessageID: "test-msg-1",
-					Role:      "user",
+					Role:      types.RoleUser,
 					Parts: []types.Part{
 						types.CreateTextPart("Hello, world!"),
 					},
@@ -44,7 +44,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			input: []types.Message{
 				{
 					MessageID: "test-msg-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Hi there!"),
 					},
@@ -59,11 +59,11 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "convert system message",
+			name: "convert agent message treated as system-like (A2A doesn't have system role)",
 			input: []types.Message{
 				{
 					MessageID: "test-msg-3",
-					Role:      "system",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("You are a helpful assistant."),
 					},
@@ -71,7 +71,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			},
 			expectedOutput: []sdk.Message{
 				func() sdk.Message {
-					msg, _ := sdk.NewTextMessage(sdk.System, "You are a helpful assistant.")
+					msg, _ := sdk.NewTextMessage(sdk.Assistant, "You are a helpful assistant.")
 					return msg
 				}(),
 			},
@@ -101,7 +101,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			input: []types.Message{
 				{
 					MessageID: "test-msg-5",
-					Role:      "user",
+					Role:      types.RoleUser,
 					Parts: []types.Part{
 						types.CreateTextPart("Part 1. "),
 						types.CreateTextPart("Part 2."),
@@ -117,11 +117,11 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "convert message with data part",
+			name: "convert message with data part (A2A doesn't have tool role, uses agent with tool_call_id)",
 			input: []types.Message{
 				{
 					MessageID: "test-msg-6",
-					Role:      "tool",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateDataPart(map[string]any{
 							"tool_call_id": "call_test_function",
@@ -148,7 +148,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			input: []types.Message{
 				{
 					MessageID: "test-msg-7",
-					Role:      "user",
+					Role:      types.RoleUser,
 					Parts: []types.Part{
 						types.CreateTextPart("Strongly typed message"),
 					},
@@ -167,7 +167,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			input: []types.Message{
 				{
 					MessageID: "test-msg-8",
-					Role:      "user",
+					Role:      types.RoleUser,
 					Parts: []types.Part{
 						types.CreateTextPart("Please analyze this file: "),
 						types.CreateFilePart("test.txt", "text/plain", stringPtr("base64encodedcontent"), nil),
@@ -187,14 +187,14 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			input: []types.Message{
 				{
 					MessageID: "test-msg-9",
-					Role:      "user",
+					Role:      types.RoleUser,
 					Parts: []types.Part{
 						types.CreateTextPart("First message"),
 					},
 				},
 				{
 					MessageID: "test-msg-10",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Second message"),
 					},
@@ -251,7 +251,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Role: "user",
+				Role: types.RoleUser,
 				Parts: []types.Part{
 					types.CreateTextPart("Hello from SDK"),
 				},
@@ -265,7 +265,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Role: "assistant",
+				Role: types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Response from assistant"),
 				},
@@ -273,13 +273,13 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "convert SDK system message",
+			name: "convert SDK system message (A2A maps to agent role)",
 			input: func() sdk.Message {
 				msg, _ := sdk.NewTextMessage(sdk.System, "System instructions")
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Role: "system",
+				Role: types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("System instructions"),
 				},
@@ -287,7 +287,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "convert SDK tool message",
+			name: "convert SDK tool message (A2A maps to agent role)",
 			input: func() sdk.Message {
 				msg := sdk.Message{
 					Role:       sdk.Tool,
@@ -297,7 +297,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Role: "tool",
+				Role: types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateDataPart(map[string]any{
 						"tool_call_id": "call_123",
@@ -328,7 +328,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Role: "assistant",
+				Role: types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("I'll help you with that"),
 					types.CreateDataPart(map[string]any{
@@ -354,7 +354,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 				return msg
 			}(),
 			expectedOutput: &types.Message{
-				Role: "assistant",
+				Role: types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart(""),
 				},
@@ -491,7 +491,7 @@ func TestMessageConverter_RoundTrip(t *testing.T) {
 
 	originalMessage := types.Message{
 		MessageID: "round-trip-test",
-		Role:      "user",
+		Role:      types.RoleUser,
 		Parts: []types.Part{
 			types.CreateTextPart("Round trip test message"),
 		},
@@ -520,7 +520,7 @@ func TestMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		messages[i] = types.Message{
 			MessageID: "perf-test-" + string(rune(i)),
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
 				types.CreateTextPart("Performance test message number " + string(rune(i))),
 			},
@@ -552,7 +552,7 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 			name: "assistant message with tool_calls in data part",
 			inputMessage: types.Message{
 				MessageID: "test-assistant-msg",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateDataPart(map[string]any{
 						"tool_calls": []sdk.ChatCompletionMessageToolCall{
@@ -585,7 +585,7 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 			name: "assistant message with only content, no tool_calls",
 			inputMessage: types.Message{
 				MessageID: "test-assistant-msg-2",
-				Role:      "assistant",
+				Role:      types.RoleAgent,
 				Parts: []types.Part{
 					types.CreateTextPart("Hello, how can I help you?"),
 				},
@@ -597,7 +597,7 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 			name: "user message with text (should not extract tool_calls)",
 			inputMessage: types.Message{
 				MessageID: "test-user-msg",
-				Role:      "user",
+				Role:      types.RoleUser,
 				Parts: []types.Part{
 					types.CreateDataPart(map[string]any{
 						"tool_calls": []sdk.ChatCompletionMessageToolCall{
@@ -643,14 +643,14 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 	messages := []types.Message{
 		{
 			MessageID: "user-msg",
-			Role:      "user",
+			Role:      types.RoleUser,
 			Parts: []types.Part{
 				types.CreateTextPart("What's on my calendar today?"),
 			},
 		},
 		{
 			MessageID: "assistant-msg",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateDataPart(map[string]any{
 					"tool_calls": []sdk.ChatCompletionMessageToolCall{
@@ -669,7 +669,7 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 		},
 		{
 			MessageID: "tool-result-msg",
-			Role:      "tool",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateDataPart(map[string]any{
 					"tool_call_id": "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",

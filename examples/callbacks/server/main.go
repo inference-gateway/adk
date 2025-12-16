@@ -65,7 +65,7 @@ func (h *CallbacksTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 		MessageID: fmt.Sprintf("msg-%s", task.ID),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
 			types.CreateTextPart(fullResponse),
 		},

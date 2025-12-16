@@ -89,7 +89,7 @@ func TestTaskCancellation(t *testing.T) {
 	t.Run("CancelAlreadyCompletedTask", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateCompleted, &types.Message{
 			MessageID: "test-message",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
 				types.CreateTextPart("Task completed"),
 			},

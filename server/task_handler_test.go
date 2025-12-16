@@ -71,7 +71,7 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 				assert.NotNil(t, result)
 				assert.Equal(t, types.TaskStateCompleted, result.Status.State)
 				assert.NotNil(t, result.Status.Message)
-				assert.Equal(t, types.Role("assistant"), result.Status.Message.Role)
+				assert.Equal(t, types.RoleAgent, result.Status.Message.Role)
 				assert.GreaterOrEqual(t, len(result.History), 1)
 			}
 		})
@@ -229,7 +229,7 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 
 	inputMessage := &types.Message{
 		MessageID: "stream-input-req-123",
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
 			types.CreateTextPart("I need more information from you to continue."),
 		},
@@ -301,7 +301,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 				},
 				{
 					MessageID: "msg-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
 						types.CreateTextPart("Assistant response"),
 					},

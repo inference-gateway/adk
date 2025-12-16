@@ -54,8 +54,8 @@ func (h *AIStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Tas
 			var deltaMsg types.Message
 			if err := cloudEvent.DataAs(&deltaMsg); err == nil {
 				for _, part := range deltaMsg.Parts {
-					if textPart, ok := part.(types.TextPart); ok {
-						fullResponse += textPart.Text
+					if part.Text != nil {
+						fullResponse += *part.Text
 					}
 				}
 			}
@@ -70,12 +70,9 @@ func (h *AIStreamingTaskHandler) HandleTask(ctx context.Context, task *types.Tas
 		MessageID: fmt.Sprintf("msg-%s", task.ID),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: fullResponse,
-			},
+			types.CreateTextPart(fullResponse),
 		},
 	}
 
@@ -257,7 +254,7 @@ func main() {
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription + " with real-time AI streaming",
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -312,4 +309,9 @@ func main() {
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
 	}
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }
