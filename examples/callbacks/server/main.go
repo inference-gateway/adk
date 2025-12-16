@@ -51,8 +51,8 @@ func (h *CallbacksTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 			var deltaMsg types.Message
 			if err := cloudEvent.DataAs(&deltaMsg); err == nil {
 				for _, part := range deltaMsg.Parts {
-					if textPart, ok := part.(types.TextPart); ok {
-						fullResponse += textPart.Text
+					if part.Text != nil {
+						fullResponse += *part.Text
 					}
 				}
 			}
@@ -67,14 +67,11 @@ func (h *CallbacksTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: fullResponse,
-			},
+			types.CreateTextPart(fullResponse),
 		},
 	}
 
-	task.Status.State = types.TaskStateCompleted
+	task.Status.State = string(types.TaskStateCompleted)
 	task.Status.Message = &responseMessage
 	task.History = append(task.History, responseMessage)
 
@@ -275,6 +272,7 @@ func main() {
 	taskHandler := NewCallbacksTaskHandler(logger)
 	taskHandler.SetAgent(agent)
 
+	url := fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithBackgroundTaskHandler(taskHandler).
 		WithStreamingTaskHandler(taskHandler).
@@ -283,7 +281,7 @@ func main() {
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             &url,
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,

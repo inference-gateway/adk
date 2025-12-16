@@ -15,7 +15,7 @@ func NewToolResultMessage(toolCallID string, toolName string, result any, hasErr
 		Parts: []Part{
 			{
 				Data: &DataPart{
-					Data: Struct{
+					Data: map[string]any{
 						"tool_call_id": toolCallID,
 						"tool_name":    toolName,
 						"result":       result,
@@ -47,7 +47,7 @@ func NewTextPart(text string) Part {
 func NewToolCallPart(toolCallID, toolName string, arguments map[string]any) Part {
 	return Part{
 		Data: &DataPart{
-			Data: Struct{
+			Data: map[string]any{
 				"tool_call": map[string]any{
 					"id":        toolCallID,
 					"name":      toolName,
@@ -62,14 +62,14 @@ func NewToolCallPart(toolCallID, toolName string, arguments map[string]any) Part
 func NewDataPart(data map[string]any) Part {
 	return Part{
 		Data: &DataPart{
-			Data: Struct(data),
+			Data: data,
 		},
 	}
 }
 
 // NewStreamingStatusMessage creates a status message for streaming
 func NewStreamingStatusMessage(messageID, status string, metadata map[string]any) *Message {
-	data := Struct{
+	data := map[string]any{
 		"status": status,
 	}
 	for k, v := range metadata {

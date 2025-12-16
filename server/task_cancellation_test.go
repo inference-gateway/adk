@@ -39,10 +39,7 @@ func TestTaskCancellation(t *testing.T) {
 			MessageID: "test-message",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Test message",
-				},
+				types.CreateTextPart("Test message"),
 			},
 		})
 
@@ -94,10 +91,7 @@ func TestTaskCancellation(t *testing.T) {
 			MessageID: "test-message",
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Task completed",
-				},
+				types.CreateTextPart("Task completed"),
 			},
 		})
 
@@ -111,10 +105,7 @@ func TestTaskCancellation(t *testing.T) {
 			MessageID: "test-message",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Test message",
-				},
+				types.CreateTextPart("Test message"),
 			},
 		})
 

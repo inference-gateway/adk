@@ -605,10 +605,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 			MessageID: uuid.New().String(),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": err.Error(),
-				},
+				types.CreateTextPart(err.Error()),
 			},
 		})
 		if updateErr != nil {

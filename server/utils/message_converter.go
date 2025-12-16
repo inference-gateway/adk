@@ -65,32 +65,20 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 	var toolCalls *[]sdk.ChatCompletionMessageToolCall
 
 	for _, part := range msg.Parts {
-		switch p := part.(type) {
-		case types.TextPart:
-			content += p.Text
-
-		case types.DataPart:
-			if err := c.processDataPart(p.Data, role, &content, &toolCallId, &toolCalls); err != nil {
+		if part.Text != nil {
+			content += *part.Text
+		} else if part.Data != nil {
+			if err := c.processDataPart(part.Data.Data, role, &content, &toolCallId, &toolCalls); err != nil {
 				c.logger.Warn("failed to process DataPart",
 					zap.String("message_id", msg.MessageID),
 					zap.Error(err))
 			}
-
-		case types.FilePart:
+		} else if part.File != nil {
 			c.logger.Debug("file part detected in message",
 				zap.String("message_id", msg.MessageID))
-
-		case map[string]any:
-			if err := c.processMapPart(p, role, &content, &toolCallId, &toolCalls); err != nil {
-				c.logger.Warn("failed to process map part",
-					zap.String("message_id", msg.MessageID),
-					zap.Error(err))
-			}
-
-		default:
-			c.logger.Warn("unsupported part type",
-				zap.String("message_id", msg.MessageID),
-				zap.String("type", fmt.Sprintf("%T", part)))
+		} else {
+			c.logger.Warn("empty part detected",
+				zap.String("message_id", msg.MessageID))
 		}
 	}
 
@@ -182,38 +170,6 @@ func (c *messageConverter) processDataPart(
 	if contentData, exists := data["content"]; exists {
 		if contentStr, ok := contentData.(string); ok {
 			*content += contentStr
-		}
-	}
-
-	return nil
-}
-
-// processMapPart handles map[string]any fallback (for backward compatibility)
-func (c *messageConverter) processMapPart(
-	partMap map[string]any,
-	role string,
-	content *string,
-	toolCallId **string,
-	toolCalls **[]sdk.ChatCompletionMessageToolCall,
-) error {
-	kind, hasKind := partMap["kind"]
-	if !hasKind {
-		return nil
-	}
-
-	switch kind {
-	case "text":
-		if text, exists := partMap["text"]; exists {
-			if textStr, ok := text.(string); ok {
-				*content += textStr
-			}
-		}
-
-	case "data":
-		if data, exists := partMap["data"]; exists {
-			if dataMap, ok := data.(map[string]any); ok {
-				return c.processDataPart(dataMap, role, content, toolCallId, toolCalls)
-			}
 		}
 	}
 
@@ -395,44 +351,26 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 
 // ValidateMessagePart validates message part structure and type
 func (c *messageConverter) ValidateMessagePart(part types.Part) error {
-	switch p := part.(type) {
-	case types.TextPart:
-		if p.Text == "" {
-			return fmt.Errorf("text part missing text field")
-		}
-		return nil
-
-	case types.DataPart:
-		if p.Data == nil {
-			return fmt.Errorf("data part missing data field")
-		}
-		return nil
-
-	case types.FilePart:
-		if p.File == nil {
-			return fmt.Errorf("file part missing file field")
-		}
-		return nil
-
-	case map[string]any:
-		kind, hasKind := p["kind"]
-		if !hasKind {
-			return fmt.Errorf("message part missing kind field")
-		}
-
-		kindStr, ok := kind.(string)
-		if !ok {
-			return fmt.Errorf("message part kind must be string")
-		}
-
-		partKind := types.MessagePartKind(kindStr)
-		if !partKind.IsValid() {
-			return fmt.Errorf("invalid message part kind: %s", kindStr)
-		}
-
-		return nil
-
-	default:
-		return fmt.Errorf("unsupported message part type: %T", part)
+	if part.Text == nil && part.Data == nil && part.File == nil {
+		return fmt.Errorf("part must have at least one field set (text, data, or file)")
 	}
+
+	if part.Text != nil && *part.Text == "" {
+		return fmt.Errorf("text part has empty text field")
+	}
+
+	if part.Data != nil && part.Data.Data == nil {
+		return fmt.Errorf("data part missing data field")
+	}
+
+	if part.File != nil {
+		if part.File.Name == "" {
+			return fmt.Errorf("file part missing name field")
+		}
+		if part.File.MediaType == "" {
+			return fmt.Errorf("file part missing mediaType field")
+		}
+	}
+
+	return nil
 }

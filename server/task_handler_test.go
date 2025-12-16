@@ -237,14 +237,10 @@ func createMockAgentWithInputRequired() server.OpenAICompatibleAgent {
 	streamChan := make(chan cloudevents.Event, 1)
 
 	inputMessage := &types.Message{
-		Kind:      "input_required",
 		MessageID: "stream-input-req-123",
 		Role:      "assistant",
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: "I need more information from you to continue.",
-			},
+			types.CreateTextPart("I need more information from you to continue."),
 		},
 	}
 

@@ -36,8 +36,8 @@ func (h *StaticCardTaskHandler) HandleTask(ctx context.Context, task *types.Task
 	userInput := ""
 	if message != nil {
 		for _, part := range message.Parts {
-			if textPart, ok := part.(types.TextPart); ok {
-				userInput = textPart.Text
+			if part.Text != nil {
+				userInput = *part.Text
 				break
 			}
 		}
@@ -59,15 +59,12 @@ func (h *StaticCardTaskHandler) HandleTask(ctx context.Context, task *types.Task
 		TaskID:    &task.ID,
 		Role:      "assistant",
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: responseText,
-			},
+			types.CreateTextPart(responseText),
 		},
 	}
 
 	task.History = append(task.History, responseMessage)
-	task.Status.State = types.TaskStateCompleted
+	task.Status.State = string(types.TaskStateCompleted)
 	task.Status.Message = &responseMessage
 
 	return task, nil

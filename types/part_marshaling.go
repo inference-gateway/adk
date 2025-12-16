@@ -79,34 +79,41 @@ func MarshalParts(parts []Part) ([]byte, error) {
 }
 
 // CreateTextPart creates a Part with text content
-func CreateTextPart(text string, metadata ...*Struct) Part {
+func CreateTextPart(text string, metadata ...map[string]any) Part {
 	part := Part{
 		Text: &text,
 	}
 	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
+		part.Metadata = &metadata[0]
 	}
 	return part
 }
 
 // CreateDataPart creates a Part with data content
-func CreateDataPart(data *DataPart, metadata ...*Struct) Part {
+func CreateDataPart(data map[string]any, metadata ...map[string]any) Part {
 	part := Part{
-		Data: data,
+		Data: &DataPart{
+			Data: data,
+		},
 	}
 	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
+		part.Metadata = &metadata[0]
 	}
 	return part
 }
 
 // CreateFilePart creates a Part with file content
-func CreateFilePart(file *FilePart, metadata ...*Struct) Part {
+func CreateFilePart(name, mediaType string, fileWithBytes *string, fileWithURI *string, metadata ...map[string]any) Part {
 	part := Part{
-		File: file,
+		File: &FilePart{
+			Name:          name,
+			MediaType:     mediaType,
+			FileWithBytes: fileWithBytes,
+			FileWithURI:   fileWithURI,
+		},
 	}
 	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
+		part.Metadata = &metadata[0]
 	}
 	return part
 }

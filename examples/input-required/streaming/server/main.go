@@ -278,7 +278,6 @@ func (h *StreamingInputRequiredTaskHandler) sendStreamingStatus(outputChan chan<
 
 func (h *StreamingInputRequiredTaskHandler) sendInputRequiredEvent(outputChan chan<- cloudevents.Event, taskID, message string) {
 	inputMessage := &types.Message{
-		Kind:      "input_required",
 		MessageID: fmt.Sprintf("input-required-%s-%d", taskID, time.Now().UnixNano()),
 		Role:      "assistant",
 		Parts: []types.Part{

@@ -32,7 +32,7 @@ func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {
 					ID:        "task-123",
 					ContextID: "context-456",
 					Status: types.TaskStatus{
-						State: types.TaskStateCompleted,
+						State: string(types.TaskStateCompleted),
 					},
 					Artifacts: []types.Artifact{
 						{
@@ -292,13 +292,13 @@ func TestArtifactHelper_GetTextArtifacts(t *testing.T) {
 					{
 						ArtifactID: "text-artifact",
 						Parts: []types.Part{
-							types.TextPart{Kind: "text", Text: "Hello"},
+							types.CreateTextPart("Hello"),
 						},
 					},
 					{
 						ArtifactID: "data-artifact",
 						Parts: []types.Part{
-							types.DataPart{Kind: "data", Data: map[string]any{"key": "value"}},
+							types.CreateDataPart(map[string]any{"key": "value"}),
 						},
 					},
 				},
@@ -337,9 +337,9 @@ func TestArtifactHelper_ExtractTextFromArtifact(t *testing.T) {
 			artifact: &types.Artifact{
 				ArtifactID: "multi-text-artifact",
 				Parts: []types.Part{
-					types.TextPart{Kind: "text", Text: "First text"},
-					types.TextPart{Kind: "text", Text: "Second text"},
-					types.DataPart{Kind: "data", Data: map[string]any{"key": "value"}},
+					types.CreateTextPart("First text"),
+					types.CreateTextPart("Second text"),
+					types.CreateDataPart(map[string]any{"key": "value"}),
 				},
 			},
 			expectedTexts: []string{"First text", "Second text"},
@@ -349,7 +349,7 @@ func TestArtifactHelper_ExtractTextFromArtifact(t *testing.T) {
 			artifact: &types.Artifact{
 				ArtifactID: "no-text",
 				Parts: []types.Part{
-					types.DataPart{Kind: "data", Data: map[string]any{}},
+					types.CreateDataPart(map[string]any{}),
 				},
 			},
 			expectedTexts: []string{},
@@ -392,14 +392,7 @@ func TestArtifactHelper_ExtractFileDataFromArtifact(t *testing.T) {
 			artifact: &types.Artifact{
 				ArtifactID: "file-artifact",
 				Parts: []types.Part{
-					types.FilePart{
-						Kind: "file",
-						File: types.FileWithBytes{
-							Name:     &fileName,
-							MIMEType: &mimeType,
-							Bytes:    encodedData,
-						},
-					},
+					types.CreateFilePart(fileName, mimeType, &encodedData, nil),
 				},
 			},
 			wantErr:   false,
@@ -418,14 +411,7 @@ func TestArtifactHelper_ExtractFileDataFromArtifact(t *testing.T) {
 			artifact: &types.Artifact{
 				ArtifactID: "uri-artifact",
 				Parts: []types.Part{
-					types.FilePart{
-						Kind: "file",
-						File: types.FileWithUri{
-							Name:     &pdfName,
-							MIMEType: &pdfMime,
-							URI:      uri,
-						},
-					},
+					types.CreateFilePart(pdfName, pdfMime, nil, &uri),
 				},
 			},
 			wantErr:   false,
@@ -444,14 +430,8 @@ func TestArtifactHelper_ExtractFileDataFromArtifact(t *testing.T) {
 			artifact: &types.Artifact{
 				ArtifactID: "multi-file",
 				Parts: []types.Part{
-					types.FilePart{
-						Kind: "file",
-						File: types.FileWithBytes{Bytes: encodedData},
-					},
-					types.FilePart{
-						Kind: "file",
-						File: types.FileWithUri{URI: uri},
-					},
+					types.CreateFilePart("", "", &encodedData, nil),
+					types.CreateFilePart("", "", nil, &uri),
 				},
 			},
 			wantErr:   false,
@@ -499,9 +479,9 @@ func TestArtifactHelper_ExtractDataFromArtifact(t *testing.T) {
 			artifact: &types.Artifact{
 				ArtifactID: "data-artifact",
 				Parts: []types.Part{
-					types.DataPart{Kind: "data", Data: data1},
-					types.DataPart{Kind: "data", Data: data2},
-					types.TextPart{Kind: "text", Text: "Should be ignored"},
+					types.CreateDataPart(data1),
+					types.CreateDataPart(data2),
+					types.CreateTextPart("Should be ignored"),
 				},
 			},
 			expectedData: []map[string]any{data1, data2},
@@ -511,7 +491,7 @@ func TestArtifactHelper_ExtractDataFromArtifact(t *testing.T) {
 			artifact: &types.Artifact{
 				ArtifactID: "no-data",
 				Parts: []types.Part{
-					types.TextPart{Kind: "text", Text: "Only text"},
+					types.CreateTextPart("Only text"),
 				},
 			},
 			expectedData: []map[string]any{},
@@ -543,13 +523,12 @@ func TestArtifactHelper_ExtractArtifactUpdateFromStreamEvent(t *testing.T) {
 		{
 			name: "valid TaskArtifactUpdateEvent",
 			event: types.TaskArtifactUpdateEvent{
-				Kind:      "artifact-update",
 				TaskID:    "task-123",
 				ContextID: "context-456",
 				Artifact: types.Artifact{
 					ArtifactID: "stream-artifact",
 					Parts: []types.Part{
-						types.TextPart{Kind: "text", Text: "Streaming content"},
+						types.CreateTextPart("Streaming content"),
 					},
 				},
 			},
@@ -698,21 +677,21 @@ func TestArtifactHelper_GetArtifactSummary(t *testing.T) {
 					{
 						ArtifactID: "artifact-1",
 						Parts: []types.Part{
-							types.TextPart{Kind: "text", Text: "Text 1"},
-							types.TextPart{Kind: "text", Text: "Text 2"},
+							types.CreateTextPart("Text 1"),
+							types.CreateTextPart("Text 2"),
 						},
 					},
 					{
 						ArtifactID: "artifact-2",
 						Parts: []types.Part{
-							types.FilePart{Kind: "file", File: types.FileWithBytes{}},
+							types.CreateFilePart("", "", stringPtr(""), nil),
 						},
 					},
 					{
 						ArtifactID: "artifact-3",
 						Parts: []types.Part{
-							types.DataPart{Kind: "data", Data: map[string]any{}},
-							types.DataPart{Kind: "data", Data: map[string]any{}},
+							types.CreateDataPart(map[string]any{}),
+							types.CreateDataPart(map[string]any{}),
 						},
 					},
 				},
@@ -1041,26 +1020,14 @@ func TestArtifactHelper_DownloadArtifact(t *testing.T) {
 		{
 			name: "single artifact with multiple files",
 			setupTask: func(t *testing.T, serverURL string) *types.Artifact {
+				bytes1 := base64.StdEncoding.EncodeToString([]byte("content1"))
+				bytes2 := base64.StdEncoding.EncodeToString([]byte("content2"))
 				return &types.Artifact{
 					ArtifactID: "artifact-123",
 					Name:       stringPtr("Test Artifact"),
 					Parts: []types.Part{
-						map[string]any{
-							"kind":     "file",
-							"filename": "file1.txt",
-							"file": map[string]any{
-								"bytes":    base64.StdEncoding.EncodeToString([]byte("content1")),
-								"mimeType": "text/plain",
-							},
-						},
-						map[string]any{
-							"kind":     "file",
-							"filename": "file2.txt",
-							"file": map[string]any{
-								"bytes":    base64.StdEncoding.EncodeToString([]byte("content2")),
-								"mimeType": "text/plain",
-							},
-						},
+						types.CreateFilePart("file1.txt", "text/plain", &bytes1, nil),
+						types.CreateFilePart("file2.txt", "text/plain", &bytes2, nil),
 					},
 				}
 			},
@@ -1075,17 +1042,11 @@ func TestArtifactHelper_DownloadArtifact(t *testing.T) {
 		{
 			name: "artifact organized by ID",
 			setupTask: func(t *testing.T, serverURL string) *types.Artifact {
+				bytes := base64.StdEncoding.EncodeToString([]byte("organized content"))
 				return &types.Artifact{
 					ArtifactID: "artifact-456",
 					Parts: []types.Part{
-						map[string]any{
-							"kind":     "file",
-							"filename": "organized.txt",
-							"file": map[string]any{
-								"bytes":    base64.StdEncoding.EncodeToString([]byte("organized content")),
-								"mimeType": "text/plain",
-							},
-						},
+						types.CreateFilePart("organized.txt", "text/plain", &bytes, nil),
 					},
 				}
 			},
@@ -1149,33 +1110,21 @@ func TestArtifactHelper_DownloadAllArtifacts(t *testing.T) {
 		{
 			name: "multiple artifacts with collision prevention",
 			setupTask: func(t *testing.T, serverURL string) *types.Task {
+				bytes1 := base64.StdEncoding.EncodeToString([]byte("# Report 1"))
+				bytes2 := base64.StdEncoding.EncodeToString([]byte("# Report 2"))
 				return &types.Task{
 					ID: "task-123",
 					Artifacts: []types.Artifact{
 						{
 							ArtifactID: "artifact-1",
 							Parts: []types.Part{
-								map[string]any{
-									"kind":     "file",
-									"filename": "report.md",
-									"file": map[string]any{
-										"bytes":    base64.StdEncoding.EncodeToString([]byte("# Report 1")),
-										"mimeType": "text/markdown",
-									},
-								},
+								types.CreateFilePart("report.md", "text/markdown", &bytes1, nil),
 							},
 						},
 						{
 							ArtifactID: "artifact-2",
 							Parts: []types.Part{
-								map[string]any{
-									"kind":     "file",
-									"filename": "report.md",
-									"file": map[string]any{
-										"bytes":    base64.StdEncoding.EncodeToString([]byte("# Report 2")),
-										"mimeType": "text/markdown",
-									},
-								},
+								types.CreateFilePart("report.md", "text/markdown", &bytes2, nil),
 							},
 						},
 					},
@@ -1199,33 +1148,21 @@ func TestArtifactHelper_DownloadAllArtifacts(t *testing.T) {
 		{
 			name: "URI and byte-based files mixed",
 			setupTask: func(t *testing.T, serverURL string) *types.Task {
+				bytesLocal := base64.StdEncoding.EncodeToString([]byte("local content"))
+				uriRemote := serverURL + "/remote"
 				return &types.Task{
 					ID: "task-456",
 					Artifacts: []types.Artifact{
 						{
 							ArtifactID: "artifact-bytes",
 							Parts: []types.Part{
-								map[string]any{
-									"kind":     "file",
-									"filename": "local.txt",
-									"file": map[string]any{
-										"bytes":    base64.StdEncoding.EncodeToString([]byte("local content")),
-										"mimeType": "text/plain",
-									},
-								},
+								types.CreateFilePart("local.txt", "text/plain", &bytesLocal, nil),
 							},
 						},
 						{
 							ArtifactID: "artifact-uri",
 							Parts: []types.Part{
-								map[string]any{
-									"kind":     "file",
-									"filename": "remote.txt",
-									"file": map[string]any{
-										"uri":      serverURL + "/remote",
-										"mimeType": "text/plain",
-									},
-								},
+								types.CreateFilePart("remote.txt", "text/plain", nil, &uriRemote),
 							},
 						},
 					},
@@ -1260,33 +1197,21 @@ func TestArtifactHelper_DownloadAllArtifacts(t *testing.T) {
 		{
 			name: "partial failure handling",
 			setupTask: func(t *testing.T, serverURL string) *types.Task {
+				bytesSuccess := base64.StdEncoding.EncodeToString([]byte("ok"))
+				uriFail := serverURL + "/fail"
 				return &types.Task{
 					ID: "task-partial",
 					Artifacts: []types.Artifact{
 						{
 							ArtifactID: "success",
 							Parts: []types.Part{
-								map[string]any{
-									"kind":     "file",
-									"filename": "success.txt",
-									"file": map[string]any{
-										"bytes":    base64.StdEncoding.EncodeToString([]byte("ok")),
-										"mimeType": "text/plain",
-									},
-								},
+								types.CreateFilePart("success.txt", "text/plain", &bytesSuccess, nil),
 							},
 						},
 						{
 							ArtifactID: "failure",
 							Parts: []types.Part{
-								map[string]any{
-									"kind":     "file",
-									"filename": "fail.txt",
-									"file": map[string]any{
-										"uri":      serverURL + "/fail",
-										"mimeType": "text/plain",
-									},
-								},
+								types.CreateFilePart("fail.txt", "text/plain", nil, &uriFail),
 							},
 						},
 					},

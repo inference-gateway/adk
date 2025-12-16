@@ -1,8 +1,6 @@
 // Code generated from JSON schema. DO NOT EDIT.
 package types
 
-import "time"
-
 // Defines a security scheme using an API key.
 type APIKeySecurityScheme struct {
 	Description *string `json:"description,omitempty"`
@@ -337,8 +335,7 @@ type StringList struct {
 	List []string `json:"list,omitempty"`
 }
 
-type Struct struct {
-}
+type Struct = map[string]any
 
 type SubscribeToTaskRequest struct {
 	Name   string `json:"name"`

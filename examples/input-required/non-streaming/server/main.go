@@ -214,7 +214,6 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		// Request location if not provided
 		if !contains(messageText, "in ") && !contains(messageText, "at ") {
 			inputMessage := &types.Message{
-				Kind:      "input_required",
 				MessageID: fmt.Sprintf("input-required-%s", task.ID),
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -253,7 +252,6 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 		// Request specific numbers if not provided
 		if !hasNumbers(messageText) {
 			inputMessage := &types.Message{
-				Kind:      "input_required",
 				MessageID: fmt.Sprintf("input-required-%s", task.ID),
 				Role:      "assistant",
 				Parts: []types.Part{
@@ -308,7 +306,6 @@ func (h *InputRequiredTaskHandler) processWithoutAgent(ctx context.Context, task
 	default:
 		// For unclear requests, ask for clarification
 		inputMessage := &types.Message{
-			Kind:      "input_required",
 			MessageID: fmt.Sprintf("input-required-%s", task.ID),
 			Role:      "assistant",
 			Parts: []types.Part{

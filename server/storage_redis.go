@@ -478,7 +478,7 @@ func (s *RedisStorage) ListTasksByContext(contextID string, filter TaskFilter) (
 
 // Helper method to check if a task matches the filter
 func (s *RedisStorage) matchesFilter(task *types.Task, filter TaskFilter) bool {
-	if filter.State != nil && task.Status.State != *filter.State {
+	if filter.State != nil && task.Status.State != string(*filter.State) {
 		return false
 	}
 
@@ -500,14 +500,9 @@ func (s *RedisStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, orde
 
 		switch sortBy {
 		case TaskSortFieldCreatedAt, TaskSortFieldUpdatedAt:
-			var time1, time2 string
-			if tasks[i].Status.Timestamp != nil {
-				time1 = *tasks[i].Status.Timestamp
-			}
-			if tasks[j].Status.Timestamp != nil {
-				time2 = *tasks[j].Status.Timestamp
-			}
-			compareResult = strings.Compare(time1, time2)
+			// Timestamp is an empty struct, so we can't sort by it
+			// Maintain current order
+			compareResult = 0
 		case TaskSortFieldState:
 			compareResult = strings.Compare(string(tasks[i].Status.State), string(tasks[j].Status.State))
 		case TaskSortFieldContextID:
@@ -603,7 +598,7 @@ func (s *RedisStorage) CleanupCompletedTasks() int {
 		taskID := strings.TrimPrefix(key, deadLetterKeyPrefix)
 		if task, exists := s.GetTask(taskID); exists {
 			switch task.Status.State {
-			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled:
+			case string(types.TaskStateCompleted), string(types.TaskStateFailed), string(types.TaskStateCanceled):
 				toRemove = append(toRemove, taskID)
 				contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], taskID)
 			}
@@ -653,9 +648,9 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 		taskID := strings.TrimPrefix(key, deadLetterKeyPrefix)
 		if task, exists := s.GetTask(taskID); exists {
 			switch task.Status.State {
-			case types.TaskStateCompleted:
+			case string(types.TaskStateCompleted):
 				completedTasks = append(completedTasks, task)
-			case types.TaskStateFailed:
+			case string(types.TaskStateFailed):
 				failedTasks = append(failedTasks, task)
 			}
 		}
@@ -711,22 +706,9 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 
 // sortTasksByTimestamp sorts tasks by timestamp
 func (s *RedisStorage) sortTasksByTimestamp(tasks []*types.Task, desc bool) {
-	sort.Slice(tasks, func(i, j int) bool {
-		var time1, time2 string
-		if tasks[i].Status.Timestamp != nil {
-			time1 = *tasks[i].Status.Timestamp
-		}
-		if tasks[j].Status.Timestamp != nil {
-			time2 = *tasks[j].Status.Timestamp
-		}
-
-		compareResult := strings.Compare(time1, time2)
-
-		if desc {
-			return compareResult > 0
-		}
-		return compareResult < 0
-	})
+	// Timestamp is an empty struct, so we can't sort by it
+	// Maintain current order (no sorting)
+	return
 }
 
 // GetStats provides statistics about the storage

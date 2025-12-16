@@ -43,7 +43,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			completedStatusEvent := cloudevents.NewEvent()
 			completedStatusEvent.SetType(types.EventTaskStatusChanged)
 			if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-				State:   types.TaskStateCompleted,
+				State:   string(types.TaskStateCompleted),
 				Message: override,
 			}); err != nil {
 				a.logger.Error("failed to set completed status event data", zap.Error(err))
@@ -56,7 +56,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		statusEvent := cloudevents.NewEvent()
 		statusEvent.SetType(types.EventTaskStatusChanged)
 		if err := statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-			State: types.TaskStateWorking,
+			State: string(types.TaskStateWorking),
 		}); err != nil {
 			a.logger.Error("failed to set status event data", zap.Error(err))
 			return
@@ -98,7 +98,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				sysMsg := &types.Message{
 					Role: "system",
 					Parts: []types.Part{
-						map[string]any{"kind": "text", "text": a.config.SystemPrompt},
+						types.CreateTextPart(a.config.SystemPrompt),
 					},
 				}
 				llmRequest.Config.SystemInstruction = sysMsg
@@ -137,11 +137,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				}
 
 				for _, part := range assistantMessage.Parts {
-					if partMap, ok := part.(map[string]any); ok {
-						if text, exists := partMap["text"].(string); exists {
-							fullContent = text
-							break
-						}
+					if part.Text != nil {
+						fullContent = *part.Text
+						break
 					}
 				}
 
@@ -178,7 +176,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					cancelledStatusEvent := cloudevents.NewEvent()
 					cancelledStatusEvent.SetType(types.EventTaskStatusChanged)
 					if err := cancelledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-						State: types.TaskStateCanceled,
+						State: string(types.TaskStateCanceled),
 					}); err != nil {
 						a.logger.Error("failed to set cancelled status event data", zap.Error(err))
 						return
@@ -208,7 +206,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						failedStatusEvent := cloudevents.NewEvent()
 						failedStatusEvent.SetType(types.EventTaskStatusChanged)
 						if err := failedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-							State: types.TaskStateFailed,
+							State: string(types.TaskStateFailed),
 						}); err != nil {
 							a.logger.Error("failed to set failed status event data", zap.Error(err))
 							return
@@ -295,10 +293,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						assistantMessage.ContextID = contextID
 
 						if fullContent != "" {
-							assistantMessage.Parts = append(assistantMessage.Parts, map[string]any{
-								"kind": "text",
-								"text": fullContent,
-							})
+							assistantMessage.Parts = append(assistantMessage.Parts, types.CreateTextPart(fullContent))
 						}
 
 						llmResponse := &LLMResponse{Content: assistantMessage}
@@ -307,11 +302,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 							assistantMessage.TaskID = taskID
 							assistantMessage.ContextID = contextID
 							for _, part := range assistantMessage.Parts {
-								if partMap, ok := part.(map[string]any); ok {
-									if text, exists := partMap["text"].(string); exists {
-										fullContent = text
-										break
-									}
+								if part.Text != nil {
+									fullContent = *part.Text
+									break
 								}
 							}
 						}
@@ -330,12 +323,9 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 								toolCalls = append(toolCalls, *toolCall)
 							}
 
-							assistantMessage.Parts = append(assistantMessage.Parts, map[string]any{
-								"kind": "data",
-								"data": map[string]any{
-									"tool_calls": toolCalls,
-								},
-							})
+							assistantMessage.Parts = append(assistantMessage.Parts, types.CreateDataPart(map[string]any{
+								"tool_calls": toolCalls,
+							}))
 
 							currentMessages = append(currentMessages, *assistantMessage)
 							iterationEvent := types.NewIterationCompletedEvent(iteration, "streaming-task", assistantMessage)
@@ -349,12 +339,10 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 							for _, toolResult := range toolResultMessages {
 								for _, part := range toolResult.Parts {
-									if partMap, ok := part.(map[string]any); ok {
-										if dataMap, exists := partMap["data"].(map[string]any); exists {
-											if toolCallID, idExists := dataMap["tool_call_id"].(string); idExists {
-												toolResults[toolCallID] = &toolResult
-												break
-											}
+									if part.Data != nil && part.Data.Data != nil {
+										if toolCallID, idExists := part.Data.Data["tool_call_id"].(string); idExists {
+											toolResults[toolCallID] = &toolResult
+											break
 										}
 									}
 								}
@@ -382,7 +370,8 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 			if len(toolResultMessages) > 0 {
 				lastToolMessage := toolResultMessages[len(toolResultMessages)-1]
-				if lastToolMessage.Kind == "input_required" {
+				// Check if the message is input_required based on messageID prefix
+			if strings.HasPrefix(lastToolMessage.MessageID, "input-required") {
 					a.logger.Debug("streaming completed - input required from user",
 						zap.Int("iteration", iteration),
 						zap.Int("final_message_count", len(currentMessages)))
@@ -407,7 +396,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 				completedStatusEvent := cloudevents.NewEvent()
 				completedStatusEvent.SetType(types.EventTaskStatusChanged)
 				if err := completedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-					State:   types.TaskStateCompleted,
+					State:   string(types.TaskStateCompleted),
 					Message: finalAssistantMessage,
 				}); err != nil {
 					a.logger.Error("failed to set completed status event data", zap.Error(err))
@@ -433,7 +422,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		canceledStatusEvent := cloudevents.NewEvent()
 		canceledStatusEvent.SetType(types.EventTaskStatusChanged)
 		if err := canceledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-			State: types.TaskStateCanceled,
+			State: string(types.TaskStateCanceled),
 		}); err != nil {
 			a.logger.Error("failed to set canceled status event data", zap.Error(err))
 			return

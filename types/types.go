@@ -150,3 +150,21 @@ type TaskListParams struct {
 	Offset    int            `json:"offset,omitempty"`
 	State     *TaskState     `json:"state,omitempty"`
 }
+
+// Parameters for task operations that require only a task ID.
+type TaskIdParams struct {
+	ID       string         `json:"id"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// TaskList represents a list of tasks with pagination info (alias for generated type)
+type TaskList = ListTasksResponse
+
+// GetTaskPushNotificationConfigParams is an alias for GetTaskPushNotificationConfigRequest
+type GetTaskPushNotificationConfigParams = GetTaskPushNotificationConfigRequest
+
+// ListTaskPushNotificationConfigParams is an alias for ListTaskPushNotificationConfigRequest
+type ListTaskPushNotificationConfigParams = ListTaskPushNotificationConfigRequest
+
+// DeleteTaskPushNotificationConfigParams is an alias for DeleteTaskPushNotificationConfigRequest
+type DeleteTaskPushNotificationConfigParams = DeleteTaskPushNotificationConfigRequest

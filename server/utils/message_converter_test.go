@@ -27,10 +27,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Hello, world!",
-						},
+						types.CreateTextPart("Hello, world!"),
 					},
 				},
 			},
@@ -49,10 +46,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-2",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Hi there!",
-						},
+						types.CreateTextPart("Hi there!"),
 					},
 				},
 			},
@@ -71,10 +65,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-3",
 					Role:      "system",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "You are a helpful assistant.",
-						},
+						types.CreateTextPart("You are a helpful assistant."),
 					},
 				},
 			},
@@ -93,10 +84,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-4",
 					Role:      "",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Default role test",
-						},
+						types.CreateTextPart("Default role test"),
 					},
 				},
 			},
@@ -115,14 +103,8 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-5",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Part 1. ",
-						},
-						map[string]any{
-							"kind": "text",
-							"text": "Part 2.",
-						},
+						types.CreateTextPart("Part 1. "),
+						types.CreateTextPart("Part 2."),
 					},
 				},
 			},
@@ -141,14 +123,11 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-6",
 					Role:      "tool",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "data",
-							"data": map[string]any{
-								"tool_call_id": "call_test_function",
-								"tool_name":    "test_function",
-								"result":       "Tool execution result",
-							},
-						},
+						types.CreateDataPart(map[string]any{
+							"tool_call_id": "call_test_function",
+							"tool_name":    "test_function",
+							"result":       "Tool execution result",
+						}),
 					},
 				},
 			},
@@ -171,10 +150,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-7",
 					Role:      "user",
 					Parts: []types.Part{
-						types.TextPart{
-							Kind: "text",
-							Text: "Strongly typed message",
-						},
+						types.CreateTextPart("Strongly typed message"),
 					},
 				},
 			},
@@ -193,18 +169,8 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-8",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Please analyze this file: ",
-						},
-						types.FilePart{
-							Kind: "file",
-							File: map[string]any{
-								"name":     "test.txt",
-								"mimeType": "text/plain",
-								"bytes":    "base64encodedcontent",
-							},
-						},
+						types.CreateTextPart("Please analyze this file: "),
+						types.CreateFilePart("test.txt", "text/plain", stringPtr("base64encodedcontent"), nil),
 					},
 				},
 			},
@@ -223,20 +189,14 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					MessageID: "test-msg-9",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "First message",
-						},
+						types.CreateTextPart("First message"),
 					},
 				},
 				{
 					MessageID: "test-msg-10",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Second message",
-						},
+						types.CreateTextPart("Second message"),
 					},
 				},
 			},
@@ -293,10 +253,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			expectedOutput: &types.Message{
 				Role: "user",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Hello from SDK",
-					},
+					types.CreateTextPart("Hello from SDK"),
 				},
 			},
 			expectError: false,
@@ -310,10 +267,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			expectedOutput: &types.Message{
 				Role: "assistant",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "Response from assistant",
-					},
+					types.CreateTextPart("Response from assistant"),
 				},
 			},
 			expectError: false,
@@ -327,10 +281,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			expectedOutput: &types.Message{
 				Role: "system",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "System instructions",
-					},
+					types.CreateTextPart("System instructions"),
 				},
 			},
 			expectError: false,
@@ -348,14 +299,11 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			expectedOutput: &types.Message{
 				Role: "tool",
 				Parts: []types.Part{
-					types.DataPart{
-						Kind: "data",
-						Data: map[string]any{
-							"tool_call_id": "call_123",
-							"tool_name":    "",
-							"result":       "Tool response",
-						},
-					},
+					types.CreateDataPart(map[string]any{
+						"tool_call_id": "call_123",
+						"tool_name":    "",
+						"result":       "Tool response",
+					}),
 				},
 			},
 			expectError: false,
@@ -382,25 +330,19 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			expectedOutput: &types.Message{
 				Role: "assistant",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "I'll help you with that",
-					},
-					types.DataPart{
-						Kind: "data",
-						Data: map[string]any{
-							"tool_calls": []sdk.ChatCompletionMessageToolCall{
-								{
-									Id:   "call_123",
-									Type: "function",
-									Function: sdk.ChatCompletionMessageToolCallFunction{
-										Name:      "get_weather",
-										Arguments: `{"location": "New York"}`,
-									},
+					types.CreateTextPart("I'll help you with that"),
+					types.CreateDataPart(map[string]any{
+						"tool_calls": []sdk.ChatCompletionMessageToolCall{
+							{
+								Id:   "call_123",
+								Type: "function",
+								Function: sdk.ChatCompletionMessageToolCallFunction{
+									Name:      "get_weather",
+									Arguments: `{"location": "New York"}`,
 								},
 							},
 						},
-					},
+					}),
 				},
 			},
 			expectError: false,
@@ -414,10 +356,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			expectedOutput: &types.Message{
 				Role: "assistant",
 				Parts: []types.Part{
-					types.TextPart{
-						Kind: "text",
-						Text: "",
-					},
+					types.CreateTextPart(""),
 				},
 			},
 			expectError: false,
@@ -434,45 +373,30 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedOutput.Kind, result.Kind)
 			assert.Equal(t, tt.expectedOutput.Role, result.Role)
 			assert.Equal(t, len(tt.expectedOutput.Parts), len(result.Parts))
 
 			for i, expectedPart := range tt.expectedOutput.Parts {
-				switch expectedPart := expectedPart.(type) {
-				case types.TextPart:
-					resultPart, ok := result.Parts[i].(types.TextPart)
-					require.True(t, ok, "Expected result part to be TextPart")
-					assert.Equal(t, expectedPart.Kind, resultPart.Kind)
-					assert.Equal(t, expectedPart.Text, resultPart.Text)
-					assert.Equal(t, expectedPart.Metadata, resultPart.Metadata)
-				case types.DataPart:
-					resultPart, ok := result.Parts[i].(types.DataPart)
-					require.True(t, ok, "Expected result part to be DataPart")
-					assert.Equal(t, expectedPart.Kind, resultPart.Kind)
-					assert.Equal(t, expectedPart.Data, resultPart.Data)
-					assert.Equal(t, expectedPart.Metadata, resultPart.Metadata)
-				case types.FilePart:
-					resultPart, ok := result.Parts[i].(types.FilePart)
-					require.True(t, ok, "Expected result part to be FilePart")
-					assert.Equal(t, expectedPart.Kind, resultPart.Kind)
-					assert.Equal(t, expectedPart.File, resultPart.File)
-					assert.Equal(t, expectedPart.Metadata, resultPart.Metadata)
-				case map[string]any:
-					resultPartMap, ok := result.Parts[i].(map[string]any)
-					require.True(t, ok, "Expected result part to be map[string]any")
-					assert.Equal(t, expectedPart["kind"], resultPartMap["kind"])
+				resultPart := result.Parts[i]
 
-					switch expectedPart["kind"] {
-					case "text":
-						assert.Equal(t, expectedPart["text"], resultPartMap["text"])
-					case "data":
-						expectedData := expectedPart["data"].(map[string]any)
-						resultData := resultPartMap["data"].(map[string]any)
-						assert.Equal(t, expectedData, resultData)
-					}
-				default:
-					t.Errorf("Unexpected part type: %T", expectedPart)
+				if expectedPart.Text != nil {
+					require.NotNil(t, resultPart.Text, "Expected result part to have Text")
+					assert.Equal(t, *expectedPart.Text, *resultPart.Text)
+				}
+
+				if expectedPart.Data != nil {
+					require.NotNil(t, resultPart.Data, "Expected result part to have Data")
+					assert.Equal(t, expectedPart.Data.Data, resultPart.Data.Data)
+				}
+
+				if expectedPart.File != nil {
+					require.NotNil(t, resultPart.File, "Expected result part to have File")
+					assert.Equal(t, expectedPart.File.Name, resultPart.File.Name)
+					assert.Equal(t, expectedPart.File.MediaType, resultPart.File.MediaType)
+				}
+
+				if expectedPart.Metadata != nil {
+					assert.Equal(t, expectedPart.Metadata, resultPart.Metadata)
 				}
 			}
 		})
@@ -490,121 +414,58 @@ func TestMessageConverter_ValidateMessagePart(t *testing.T) {
 		errorMsg    string
 	}{
 		{
-			name: "valid strongly-typed text part",
-			input: types.TextPart{
-				Kind: "text",
-				Text: "Valid text",
-			},
+			name:        "valid text part",
+			input:       types.CreateTextPart("Valid text"),
 			expectError: false,
 		},
 		{
-			name: "valid strongly-typed file part",
-			input: types.FilePart{
-				Kind: "file",
-				File: map[string]any{
-					"name":     "test.txt",
-					"mimeType": "text/plain",
+			name:        "valid file part",
+			input:       types.CreateFilePart("test.txt", "text/plain", nil, nil),
+			expectError: false,
+		},
+		{
+			name: "valid data part",
+			input: types.CreateDataPart(map[string]any{
+				"key": "value",
+			}),
+			expectError: false,
+		},
+		{
+			name:        "invalid text part (empty text)",
+			input:       types.CreateTextPart(""),
+			expectError: true,
+			errorMsg:    "text part has empty text field",
+		},
+		{
+			name: "invalid file part (missing name)",
+			input: types.Part{
+				File: &types.FilePart{
+					Name:      "",
+					MediaType: "text/plain",
 				},
 			},
-			expectError: false,
+			expectError: true,
+			errorMsg:    "file part missing name",
 		},
 		{
-			name: "valid strongly-typed data part",
-			input: types.DataPart{
-				Kind: "data",
-				Data: map[string]any{
-					"key": "value",
+			name: "invalid data part (nil data)",
+			input: types.Part{
+				Data: &types.DataPart{
+					Data: nil,
 				},
-			},
-			expectError: false,
-		},
-		{
-			name: "invalid strongly-typed text part (missing text)",
-			input: types.TextPart{
-				Kind: "text",
-				Text: "",
-			},
-			expectError: true,
-			errorMsg:    "text part missing text field",
-		},
-		{
-			name: "invalid strongly-typed file part (missing file)",
-			input: types.FilePart{
-				Kind: "file",
-				File: nil,
-			},
-			expectError: true,
-			errorMsg:    "file part missing file field",
-		},
-		{
-			name: "invalid strongly-typed data part (missing data)",
-			input: types.DataPart{
-				Kind: "data",
-				Data: nil,
 			},
 			expectError: true,
 			errorMsg:    "data part missing data field",
 		},
 		{
-			name: "valid map-based text part",
-			input: map[string]any{
-				"kind": "text",
-				"text": "Valid text content",
-			},
-			expectError: false,
-		},
-		{
-			name: "valid map-based data part",
-			input: map[string]any{
-				"kind": "data",
-				"data": map[string]any{
-					"result": "some result",
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "valid map-based file part",
-			input: map[string]any{
-				"kind": "file",
-				"file": map[string]any{
-					"name":     "test.txt",
-					"mimeType": "text/plain",
-				},
-			},
-			expectError: false,
-		},
-		{
-			name: "invalid map-based part (missing kind)",
-			input: map[string]any{
-				"text": "Missing kind field",
+			name: "invalid part with no fields set",
+			input: types.Part{
+				Text: nil,
+				Data: nil,
+				File: nil,
 			},
 			expectError: true,
-			errorMsg:    "message part missing kind field",
-		},
-		{
-			name: "invalid map-based part (non-string kind)",
-			input: map[string]any{
-				"kind": 123,
-				"text": "Invalid kind type",
-			},
-			expectError: true,
-			errorMsg:    "message part kind must be string",
-		},
-		{
-			name: "invalid map-based part (invalid kind value)",
-			input: map[string]any{
-				"kind": "invalid_kind",
-				"text": "Invalid kind value",
-			},
-			expectError: true,
-			errorMsg:    "invalid message part kind: invalid_kind",
-		},
-		{
-			name:        "unsupported part type",
-			input:       "unsupported string part",
-			expectError: true,
-			errorMsg:    "unsupported message part type",
+			errorMsg:    "part must have at least one field set",
 		},
 	}
 
@@ -632,10 +493,7 @@ func TestMessageConverter_RoundTrip(t *testing.T) {
 		MessageID: "round-trip-test",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Round trip test message",
-			},
+			types.CreateTextPart("Round trip test message"),
 		},
 	}
 
@@ -646,14 +504,12 @@ func TestMessageConverter_RoundTrip(t *testing.T) {
 	convertedMessage, err := converter.ConvertFromSDK(sdkMessages[0])
 	require.NoError(t, err)
 
-	assert.Equal(t, originalMessage.Kind, convertedMessage.Kind)
 	assert.Equal(t, originalMessage.Role, convertedMessage.Role)
 	assert.Len(t, convertedMessage.Parts, 1)
 
-	convertedPart, ok := convertedMessage.Parts[0].(types.TextPart)
-	require.True(t, ok, "Expected converted part to be TextPart")
-	assert.Equal(t, "text", convertedPart.Kind)
-	assert.Equal(t, "Round trip test message", convertedPart.Text)
+	convertedPart := convertedMessage.Parts[0]
+	require.NotNil(t, convertedPart.Text, "Expected converted part to have Text")
+	assert.Equal(t, "Round trip test message", *convertedPart.Text)
 }
 
 func TestMessageConverter_PerformanceWithManyMessages(t *testing.T) {
@@ -666,10 +522,7 @@ func TestMessageConverter_PerformanceWithManyMessages(t *testing.T) {
 			MessageID: "perf-test-" + string(rune(i)),
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Performance test message number " + string(rune(i)),
-				},
+				types.CreateTextPart("Performance test message number " + string(rune(i))),
 			},
 		}
 	}
@@ -701,22 +554,19 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 				MessageID: "test-assistant-msg",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "data",
-						"data": map[string]any{
-							"tool_calls": []sdk.ChatCompletionMessageToolCall{
-								{
-									Id:   "call_123",
-									Type: sdk.ChatCompletionToolType("function"),
-									Function: sdk.ChatCompletionMessageToolCallFunction{
-										Name:      "test_tool",
-										Arguments: `{"param":"value"}`,
-									},
+					types.CreateDataPart(map[string]any{
+						"tool_calls": []sdk.ChatCompletionMessageToolCall{
+							{
+								Id:   "call_123",
+								Type: sdk.ChatCompletionToolType("function"),
+								Function: sdk.ChatCompletionMessageToolCallFunction{
+									Name:      "test_tool",
+									Arguments: `{"param":"value"}`,
 								},
 							},
-							"content": "I'll help you with that.",
 						},
-					},
+						"content": "I'll help you with that.",
+					}),
 				},
 			},
 			expectedToolCalls: &[]sdk.ChatCompletionMessageToolCall{
@@ -737,10 +587,7 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 				MessageID: "test-assistant-msg-2",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello, how can I help you?",
-					},
+					types.CreateTextPart("Hello, how can I help you?"),
 				},
 			},
 			expectedToolCalls: nil,
@@ -752,18 +599,15 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 				MessageID: "test-user-msg",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "data",
-						"data": map[string]any{
-							"tool_calls": []sdk.ChatCompletionMessageToolCall{
-								{
-									Id:   "call_456",
-									Type: sdk.ChatCompletionToolType("function"),
-								},
+					types.CreateDataPart(map[string]any{
+						"tool_calls": []sdk.ChatCompletionMessageToolCall{
+							{
+								Id:   "call_456",
+								Type: sdk.ChatCompletionToolType("function"),
 							},
-							"result": "User content",
 						},
-					},
+						"result": "User content",
+					}),
 				},
 			},
 			expectedToolCalls: nil,
@@ -801,46 +645,37 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 			MessageID: "user-msg",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "What's on my calendar today?",
-				},
+				types.CreateTextPart("What's on my calendar today?"),
 			},
 		},
 		{
 			MessageID: "assistant-msg",
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "data",
-					"data": map[string]any{
-						"tool_calls": []sdk.ChatCompletionMessageToolCall{
-							{
-								Id:   "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
-								Type: sdk.ChatCompletionToolType("function"),
-								Function: sdk.ChatCompletionMessageToolCallFunction{
-									Name:      "list_calendar_events",
-									Arguments: `{"start_date":"2025-06-16","end_date":"2025-06-16"}`,
-								},
+				types.CreateDataPart(map[string]any{
+					"tool_calls": []sdk.ChatCompletionMessageToolCall{
+						{
+							Id:   "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
+							Type: sdk.ChatCompletionToolType("function"),
+							Function: sdk.ChatCompletionMessageToolCallFunction{
+								Name:      "list_calendar_events",
+								Arguments: `{"start_date":"2025-06-16","end_date":"2025-06-16"}`,
 							},
 						},
-						"content": "",
 					},
-				},
+					"content": "",
+				}),
 			},
 		},
 		{
 			MessageID: "tool-result-msg",
 			Role:      "tool",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "data",
-					"data": map[string]any{
-						"tool_call_id": "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
-						"tool_name":    "list_calendar_events",
-						"result":       `{"message":"Found 0 events between 2025-06-16 00:00 and 2025-06-16 23:59","success":true}`,
-					},
-				},
+				types.CreateDataPart(map[string]any{
+					"tool_call_id": "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
+					"tool_name":    "list_calendar_events",
+					"result":       `{"message":"Found 0 events between 2025-06-16 00:00 and 2025-06-16 23:59","success":true}`,
+				}),
 			},
 		},
 	}

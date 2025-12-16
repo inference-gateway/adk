@@ -302,10 +302,7 @@ func TestClient_SendTask(t *testing.T) {
 					MessageID: "test-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Hello, world!",
-						},
+						types.CreateTextPart("Hello, world!"),
 					},
 				},
 			},
@@ -357,10 +354,7 @@ func TestClient_SendTask(t *testing.T) {
 					MessageID: "test-msg-500",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "This should fail",
-						},
+						types.CreateTextPart("This should fail"),
 					},
 				},
 			},
@@ -383,10 +377,7 @@ func TestClient_SendTask(t *testing.T) {
 					MessageID: "test-msg-invalid",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Invalid response test",
-						},
+						types.CreateTextPart("Invalid response test"),
 					},
 				},
 			},
@@ -781,10 +772,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					MessageID: "stream-msg-1",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Stream this message",
-						},
+						types.CreateTextPart("Stream this message"),
 					},
 				},
 			},
@@ -805,10 +793,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					MessageID: "stream-error",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "This should fail",
-						},
+						types.CreateTextPart("This should fail"),
 					},
 				},
 			},
@@ -830,10 +815,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					MessageID: "stream-invalid",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Invalid stream test",
-						},
+						types.CreateTextPart("Invalid stream test"),
 					},
 				},
 			},
@@ -857,10 +839,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					MessageID: "stream-empty",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Empty stream test",
-						},
+						types.CreateTextPart("Empty stream test"),
 					},
 				},
 			},
@@ -1029,10 +1008,7 @@ func TestClient_RetryMechanism(t *testing.T) {
 					MessageID: "retry-test",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Testing retry mechanism",
-						},
+						types.CreateTextPart("Testing retry mechanism"),
 					},
 				},
 			}
@@ -1147,10 +1123,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 					MessageID: "context-test",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Testing context cancellation",
-						},
+						types.CreateTextPart("Testing context cancellation"),
 					},
 				},
 			}
@@ -1308,10 +1281,7 @@ func TestClient_HeadersAndAuthentication(t *testing.T) {
 					MessageID: "header-test",
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Testing headers",
-						},
+						types.CreateTextPart("Testing headers"),
 					},
 				},
 			}
@@ -1382,10 +1352,7 @@ func TestClient_LargeResponses(t *testing.T) {
 			MessageID: "large-test",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Request large response",
-				},
+				types.CreateTextPart("Request large response"),
 			},
 		},
 	}
@@ -1428,10 +1395,7 @@ func TestClient_ConcurrentRequests(t *testing.T) {
 					MessageID: fmt.Sprintf("concurrent-msg-%d", index),
 					Role:      "user",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": fmt.Sprintf("Concurrent request %d", index),
-						},
+						types.CreateTextPart(fmt.Sprintf("Concurrent request %d", index)),
 					},
 				},
 			}
@@ -1473,7 +1437,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 						Name:        "test-agent",
 						Description: "A test agent for demonstration",
 						Version:     "0.1.0",
-						URL:         "https://example.com",
+						URL:         &[]string{"https://example.com"}[0],
 						Capabilities: types.AgentCapabilities{
 							Streaming:              &[]bool{true}[0],
 							PushNotifications:      &[]bool{false}[0],
@@ -1496,7 +1460,7 @@ func TestClient_GetAgentCard(t *testing.T) {
 				Name:        "test-agent",
 				Description: "A test agent for demonstration",
 				Version:     "0.1.0",
-				URL:         "https://example.com",
+				URL:         &[]string{"https://example.com"}[0],
 				Capabilities: types.AgentCapabilities{
 					Streaming:              &[]bool{true}[0],
 					PushNotifications:      &[]bool{false}[0],
@@ -1748,22 +1712,20 @@ func TestClient_ListTasks(t *testing.T) {
 					ID:        "task-1",
 					ContextID: "context-1",
 					Status: types.TaskStatus{
-						State: types.TaskStateCompleted,
+						State: string(types.TaskStateCompleted),
 					},
-					Kind: "task",
 				},
 				{
 					ID:        "task-2",
 					ContextID: "context-1",
 					Status: types.TaskStatus{
-						State: types.TaskStateWorking,
+						State: string(types.TaskStateWorking),
 					},
-					Kind: "task",
 				},
 			},
-			Total:  2,
-			Limit:  50,
-			Offset: 0,
+			TotalSize: 2,
+			PageSize:  50,
+			
 		}
 
 		response := types.JSONRPCSuccessResponse{
@@ -1784,8 +1746,7 @@ func TestClient_ListTasks(t *testing.T) {
 
 	t.Run("successful_tasks_list", func(t *testing.T) {
 		params := types.TaskListParams{
-			Limit:  50,
-			Offset: 0,
+			Limit: 50,
 		}
 
 		resp, err := a2aClient.ListTasks(context.Background(), params)
@@ -1801,9 +1762,8 @@ func TestClient_ListTasks(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 2, len(taskList.Tasks))
-		assert.Equal(t, 2, taskList.Total)
-		assert.Equal(t, 50, taskList.Limit)
-		assert.Equal(t, 0, taskList.Offset)
+		assert.Equal(t, 2, taskList.TotalSize)
+		assert.Equal(t, 50, taskList.PageSize)
 		assert.Equal(t, "task-1", taskList.Tasks[0].ID)
 		assert.Equal(t, types.TaskStateCompleted, taskList.Tasks[0].Status.State)
 	})
@@ -1813,7 +1773,7 @@ func TestClient_ListTasks(t *testing.T) {
 		params := types.TaskListParams{
 			State:  &completedState,
 			Limit:  10,
-			Offset: 0,
+			
 		}
 
 		resp, err := a2aClient.ListTasks(context.Background(), params)
