@@ -553,7 +553,3 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 		})
 	}
 }
-
-func stringPtr(s string) *string {
-	return &s
-}

@@ -23,7 +23,7 @@ func createTestAgentCard() types.AgentCard {
 	return types.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
-		URL:         "http://test-agent:8080",
+		URL:         stringPtr("http://test-agent:8080"),
 		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
 			Streaming:              boolPtr(true),
@@ -33,11 +33,6 @@ func createTestAgentCard() types.AgentCard {
 		DefaultInputModes:  []string{"text/plain"},
 		DefaultOutputModes: []string{"text/plain"},
 	}
-}
-
-// boolPtr returns a pointer to a boolean value
-func boolPtr(b bool) *bool {
-	return &b
 }
 
 func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
@@ -55,10 +50,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 				MessageID: "test-message-1",
 				Role:      "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello world",
-					},
+					types.CreateTextPart("Hello world"),
 				},
 			},
 		},
@@ -70,10 +62,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 				MessageID: "test-message-2",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Processing your request",
-					},
+					types.CreateTextPart("Processing your request"),
 				},
 			},
 		},
@@ -274,7 +263,7 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 	testAgentCard := types.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
-		URL:         "http://test-agent:8080",
+		URL:         stringPtr("http://test-agent:8080"),
 		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
 			Streaming:              &cfg.CapabilitiesConfig.Streaming,
@@ -320,7 +309,7 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 	testAgentCard := types.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
-		URL:         "http://test-agent:8080",
+		URL:         stringPtr("http://test-agent:8080"),
 		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
 			Streaming:              &[]bool{true}[0],
@@ -412,7 +401,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		ID:        "test-task",
 		ContextID: "test-context",
 		Status: types.TaskStatus{
-			State:   types.TaskStateSubmitted,
+			State:   string(types.TaskStateSubmitted),
 			Message: originalMessage,
 		},
 	}
@@ -422,7 +411,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
+	assert.Equal(t, string(types.TaskStateCompleted), result.Status.State)
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
 	_, actualTask, actualMessage := mockTaskHandler.HandleTaskArgsForCall(0)
@@ -433,10 +422,8 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	assert.Len(t, actualMessage.Parts, 1)
 
 	part := actualMessage.Parts[0]
-	partMap, ok := part.(map[string]any)
-	assert.True(t, ok)
-	assert.Equal(t, "text", partMap["kind"])
-	assert.Equal(t, "What is the weather like today?", partMap["text"])
+	assert.NotNil(t, part.Text)
+	assert.Equal(t, "What is the weather like today?", *part.Text)
 }
 
 func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {

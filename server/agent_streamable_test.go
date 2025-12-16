@@ -216,7 +216,8 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 				}
 			}
 
-			if lastMessage != nil && lastMessage.Kind == "input_required" {
+			// Check if the message is input_required based on messageID prefix
+			if lastMessage != nil && strings.HasPrefix(lastMessage.MessageID, "input-required") {
 				task.Status.State = string(types.TaskStateInputRequired)
 				task.Status.Message = lastMessage
 			} else {
@@ -255,10 +256,7 @@ func TestStreamingMessageAccumulationPerformance(t *testing.T) {
 			MessageID: fmt.Sprintf("chunk-%d", i+1),
 			Role:      "assistant",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": fmt.Sprintf("Message %d ", i+1),
-				},
+				types.CreateTextPart(fmt.Sprintf("Message %d ", i+1)),
 			},
 		}
 	}
@@ -297,19 +295,14 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-						},
+						types.CreateTextPart(""),
 					},
 				},
 				{
 					MessageID: "chunk-2",
 					Role:      "assistant",
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Valid text",
-						},
+						types.CreateTextPart("Valid text"),
 					},
 				},
 			},
@@ -323,7 +316,7 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 					MessageID: "chunk-1",
 					Role:      "assistant",
 					Parts: []types.Part{
-						types.CreateTextPart(123),
+						types.CreateTextPart("123"),
 					},
 				},
 			},
