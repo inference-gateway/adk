@@ -215,7 +215,6 @@ func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData
 		MIMEType: &filePart.MediaType,
 	}
 
-	// Check if it's a bytes-based file
 	if filePart.FileWithBytes != nil && *filePart.FileWithBytes != "" {
 		data, err := base64.StdEncoding.DecodeString(*filePart.FileWithBytes)
 		if err != nil {
@@ -225,7 +224,6 @@ func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData
 		return fileData, nil
 	}
 
-	// Check if it's a URI-based file
 	if filePart.FileWithURI != nil && *filePart.FileWithURI != "" {
 		fileData.URI = filePart.FileWithURI
 		return fileData, nil
@@ -460,7 +458,7 @@ func (ah *ArtifactHelper) DownloadAllArtifacts(ctx context.Context, task *types.
 }
 
 // downloadFromURI downloads content from a URI
-func (ah *ArtifactHelper) downloadFromURI(ctx context.Context, uri string, client *http.Client) ([]byte, error) {
+func (ah *ArtifactHelper) downloadFromURI(ctx context.Context, uri string, client *http.Client) (data []byte, err error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", uri, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -470,13 +468,17 @@ func (ah *ArtifactHelper) downloadFromURI(ctx context.Context, uri string, clien
 	if err != nil {
 		return nil, fmt.Errorf("failed to download from %s: %w", uri, err)
 	}
-	defer resp.Body.Close() //nolint:errcheck
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close response body: %w", closeErr)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	data, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -485,12 +487,16 @@ func (ah *ArtifactHelper) downloadFromURI(ctx context.Context, uri string, clien
 }
 
 // writeFile writes data to a file and returns the number of bytes written
-func (ah *ArtifactHelper) writeFile(filePath string, data []byte) (int64, error) {
+func (ah *ArtifactHelper) writeFile(filePath string, data []byte) (bytesWritten int64, err error) {
 	file, err := os.Create(filePath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close() //nolint:errcheck
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("failed to close file: %w", closeErr)
+		}
+	}()
 
 	n, err := file.Write(data)
 	if err != nil {
