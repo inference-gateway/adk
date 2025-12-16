@@ -352,15 +352,12 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		ID:        "test-task",
 		ContextID: "test-context",
 		Status: types.TaskStatus{
-			State: types.TaskStateCompleted,
+			State: string(types.TaskStateCompleted),
 			Message: &types.Message{
 				MessageID: "response-msg",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello! I received your message.",
-					},
+					types.CreateTextPart("Hello! I received your message."),
 				},
 			},
 		},
@@ -390,10 +387,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		MessageID: "original-msg",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "What is the weather like today?",
-			},
+			types.CreateTextPart("What is the weather like today?"),
 		},
 	}
 
@@ -434,15 +428,12 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		ID:        "test-task",
 		ContextID: "test-context",
 		Status: types.TaskStatus{
-			State: types.TaskStateCompleted,
+			State: string(types.TaskStateCompleted),
 			Message: &types.Message{
 				MessageID: "response-msg",
 				Role:      "assistant",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "I received your weather question and here's the answer...",
-					},
+					types.CreateTextPart("I received your weather question and here's the answer..."),
 				},
 			},
 		},
@@ -472,10 +463,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		MessageID: "user-msg-123",
 		Role:      "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "What is the weather like today in San Francisco?",
-			},
+			types.CreateTextPart("What is the weather like today in San Francisco?"),
 		},
 	}
 
@@ -483,7 +471,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		ID:        "task-456",
 		ContextID: "context-789",
 		Status: types.TaskStatus{
-			State:   types.TaskStateSubmitted,
+			State:   string(types.TaskStateSubmitted),
 			Message: originalUserMessage,
 		},
 		History: []types.Message{},
@@ -500,7 +488,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
+	assert.Equal(t, string(types.TaskStateCompleted), result.Status.State)
 
 	assert.Equal(t, 1, mockTaskHandler.HandleTaskCallCount())
 
@@ -513,10 +501,8 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 	assert.Len(t, actualMessage.Parts, 1, "Should have exactly one message part")
 
 	part := actualMessage.Parts[0]
-	partMap, ok := part.(map[string]any)
-	assert.True(t, ok, "Message part should be a map")
-	assert.Equal(t, "text", partMap["kind"], "Message part should be of kind 'text'")
-	assert.Equal(t, "What is the weather like today in San Francisco?", partMap["text"],
+	assert.NotNil(t, part.Text, "Message part should have text")
+	assert.Equal(t, "What is the weather like today in San Francisco?", *part.Text,
 		"Message content should be preserved exactly as sent by the client")
 
 	assert.Equal(t, "user", actualMessage.Role, "Message role should be 'user'")
@@ -659,10 +645,7 @@ func TestAgentStreamingIntegration_SimpleResponse(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Say hello",
-				},
+				types.CreateTextPart("Say hello"),
 			},
 		},
 	}
@@ -718,17 +701,14 @@ func TestBackgroundHandler_WithStreamingAgent(t *testing.T) {
 		ContextID: "test-context",
 		History:   []types.Message{},
 		Status: types.TaskStatus{
-			State: types.TaskStateSubmitted,
+			State: string(types.TaskStateSubmitted),
 		},
 	}
 
 	message := &types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Complete this task",
-			},
+			types.CreateTextPart("Complete this task"),
 		},
 	}
 
@@ -736,7 +716,7 @@ func TestBackgroundHandler_WithStreamingAgent(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, types.TaskStateCompleted, result.Status.State)
+	assert.Equal(t, string(types.TaskStateCompleted), result.Status.State)
 	assert.NotNil(t, result.Status.Message)
 }
 
@@ -769,17 +749,14 @@ func TestBackgroundHandler_StreamingFailure(t *testing.T) {
 		ContextID: "test-context",
 		History:   []types.Message{},
 		Status: types.TaskStatus{
-			State: types.TaskStateSubmitted,
+			State: string(types.TaskStateSubmitted),
 		},
 	}
 
 	message := &types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "This will fail",
-			},
+			types.CreateTextPart("This will fail"),
 		},
 	}
 
@@ -787,7 +764,7 @@ func TestBackgroundHandler_StreamingFailure(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, types.TaskStateFailed, result.Status.State)
+	assert.Equal(t, string(types.TaskStateFailed), result.Status.State)
 }
 
 func TestAgentStreaming_WithToolCalls(t *testing.T) {
@@ -862,10 +839,7 @@ func TestAgentStreaming_WithToolCalls(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Use the tool",
-				},
+				types.CreateTextPart("Use the tool"),
 			},
 		},
 	}
