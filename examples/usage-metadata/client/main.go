@@ -84,7 +84,7 @@ func main() {
 
 		// Create message
 		message := types.Message{
-			Role:  "user",
+			Role:  types.RoleUser,
 			Parts: []types.Part{types.NewTextPart(tc.prompt)},
 		}
 
