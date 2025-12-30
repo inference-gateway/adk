@@ -74,7 +74,7 @@ func main() {
 	fmt.Println("\n╔════════════════════════════════════════════════════════╗")
 	fmt.Println("║          Usage Metadata Example Client                ║")
 	fmt.Println("║  Demonstrating Token Usage & Execution Metrics        ║")
-	fmt.Println("╚════════════════════════════════════════════════════════╝\n")
+	fmt.Println("╚════════════════════════════════════════════════════════╝")
 
 	for i, tc := range testCases {
 		fmt.Printf("\n┌─────────────────────────────────────────────────────┐\n")
@@ -84,13 +84,8 @@ func main() {
 
 		// Create message
 		message := types.Message{
-			Role: "user",
-			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: tc.prompt,
-				},
-			},
+			Role:  "user",
+			Parts: []types.Part{types.NewTextPart(tc.prompt)},
 		}
 
 		// Send the task
@@ -149,20 +144,24 @@ func main() {
 			}
 
 			if task.Status.State == types.TaskStateCompleted {
-				fmt.Println(" ✓\n")
+				fmt.Println(" ✓")
 
 				// Display response
 				if task.Status.Message != nil {
 					fmt.Println("Response:")
 					for _, part := range task.Status.Message.Parts {
-						if textPart, ok := part.(types.TextPart); ok {
-							fmt.Printf("  %s\n", textPart.Text)
+						if part.Text != nil {
+							fmt.Printf("  %s\n", *part.Text)
 						}
 					}
 				}
 
 				// Display usage metadata
-				displayUsageMetadata(task.Metadata)
+				var metadata map[string]any
+				if task.Metadata != nil {
+					metadata = *task.Metadata
+				}
+				displayUsageMetadata(metadata)
 				break
 			} else if task.Status.State == types.TaskStateFailed {
 				fmt.Println(" ✗")
@@ -174,7 +173,7 @@ func main() {
 
 	fmt.Println("\n═══════════════════════════════════════════════════════")
 	fmt.Println("All test cases completed!")
-	fmt.Println("═══════════════════════════════════════════════════════\n")
+	fmt.Println("═══════════════════════════════════════════════════════")
 }
 
 // displayUsageMetadata formats and displays the usage metadata from a task

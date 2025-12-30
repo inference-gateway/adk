@@ -173,6 +173,7 @@ func main() {
 
 	// Build and start server with default handlers
 	// The default handlers automatically track and populate usage metadata
+	agentURL := fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithDefaultBackgroundTaskHandler().
 		WithDefaultStreamingTaskHandler().
@@ -181,7 +182,7 @@ func main() {
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             &agentURL,
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
