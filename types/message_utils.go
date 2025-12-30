@@ -11,7 +11,7 @@ import (
 func NewToolResultMessage(toolCallID string, toolName string, result any, hasError bool) *Message {
 	return &Message{
 		MessageID: fmt.Sprintf("tool-result-%s", toolCallID),
-		Role:      "tool",
+		Role:      RoleAgent,
 		Parts: []Part{
 			{
 				Data: &DataPart{
