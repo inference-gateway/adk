@@ -45,7 +45,7 @@ func (h *StreamingInputRequiredTaskHandler) GetAgent() server.OpenAICompatibleAg
 func (h *StreamingInputRequiredTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
 	h.logger.Info("processing streaming task with input-required demonstration",
 		zap.String("task_id", task.ID),
-		zap.String("message_role", message.Role))
+		zap.String("message_role", string(message.Role)))
 
 	outputChan := make(chan cloudevents.Event, 100)
 
@@ -144,12 +144,18 @@ func (h *StreamingInputRequiredTaskHandler) processWithoutAgentStreaming(ctx con
 	h.sendStreamingStatus(outputChan, task.ID, "Analyzing your request...")
 	time.Sleep(500 * time.Millisecond)
 
-	// Check if this is a follow-up to a previous input-required state
-	previousContext := getPreviousContext(task.History)
-	h.logger.Info("previous context", zap.String("context", previousContext))
+	// Check if task was previously in INPUT_REQUIRED state
+	// This means the current message is a follow-up providing the requested input
+	wasInputRequired := task.Status.State == types.TaskStateInputRequired
+	h.logger.Info("task state check",
+		zap.String("current_state", string(task.Status.State)),
+		zap.Bool("was_input_required", wasInputRequired))
 
-	// If this looks like a follow-up response (short message without keywords)
-	if previousContext != "" && !contains(messageText, "weather") && !contains(messageText, "calculate") && !contains(messageText, "hello") && len(messageText) < 50 {
+	// If we were waiting for input, check what was being asked
+	if wasInputRequired {
+		previousContext := getPreviousContext(task)
+		h.logger.Info("processing follow-up input", zap.String("context", previousContext))
+
 		switch previousContext {
 		case "weather":
 			// User provided location for weather query
@@ -235,14 +241,10 @@ func (h *StreamingInputRequiredTaskHandler) sendStreamingText(outputChan chan<- 
 		}
 
 		deltaMessage := &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("delta-%s-%d", taskID, time.Now().UnixNano()),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				types.TextPart{
-					Kind: "text",
-					Text: chunk,
-				},
+				types.CreateTextPart(chunk),
 			},
 		}
 
@@ -258,16 +260,12 @@ func (h *StreamingInputRequiredTaskHandler) sendStreamingText(outputChan chan<- 
 
 func (h *StreamingInputRequiredTaskHandler) sendStreamingStatus(outputChan chan<- cloudevents.Event, taskID, status string) {
 	statusMessage := &types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("status-%s-%d", taskID, time.Now().UnixNano()),
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "data",
-				"data": map[string]any{
-					"status": status,
-				},
-			},
+			types.CreateDataPart(map[string]any{
+				"status": status,
+			}),
 		},
 	}
 
@@ -280,14 +278,10 @@ func (h *StreamingInputRequiredTaskHandler) sendStreamingStatus(outputChan chan<
 
 func (h *StreamingInputRequiredTaskHandler) sendInputRequiredEvent(outputChan chan<- cloudevents.Event, taskID, message string) {
 	inputMessage := &types.Message{
-		Kind:      "input_required",
 		MessageID: fmt.Sprintf("input-required-%s-%d", taskID, time.Now().UnixNano()),
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: message,
-			},
+			types.CreateTextPart(message),
 		},
 	}
 
@@ -337,17 +331,8 @@ func (h *StreamingInputRequiredTaskHandler) sendErrorEvent(outputChan chan<- clo
 // Helper functions (same as non-streaming version)
 func getMessageText(message *types.Message) string {
 	for _, part := range message.Parts {
-		// Handle typed TextPart (when created locally)
-		if textPart, ok := part.(types.TextPart); ok {
-			return textPart.Text
-		}
-		// Handle map-based parts (when deserialized from JSON)
-		if partMap, ok := part.(map[string]any); ok {
-			if kind, exists := partMap["kind"]; exists && kind == "text" {
-				if text, exists := partMap["text"].(string); exists {
-					return text
-				}
-			}
+		if part.Text != nil {
+			return *part.Text
 		}
 	}
 	return ""
@@ -358,25 +343,26 @@ func contains(text, substr string) bool {
 		findInLower(toLower(text), toLower(substr)) >= 0
 }
 
-// getPreviousContext analyzes the conversation history to determine
+// getPreviousContext analyzes the task's status message to determine
 // what kind of input was previously requested
-func getPreviousContext(history []types.Message) string {
-	// Look backwards through history for input_required messages
-	for i := len(history) - 1; i >= 0; i-- {
-		msg := history[i]
-		if msg.Kind == "input_required" {
-			text := getMessageText(&msg)
-			textLower := toLower(text)
-
-			// Determine what was being asked about
-			if contains(textLower, "weather") || contains(textLower, "location") {
-				return "weather"
-			}
-			if contains(textLower, "calculat") || contains(textLower, "number") {
-				return "calculate"
-			}
-		}
+func getPreviousContext(task *types.Task) string {
+	// When a task is in INPUT_REQUIRED state, the Status.Message contains
+	// the prompt that was sent to the user asking for input
+	if task.Status.Message == nil {
+		return ""
 	}
+
+	text := getMessageText(task.Status.Message)
+	textLower := toLower(text)
+
+	// Determine what was being asked about based on the input request message
+	if contains(textLower, "weather") || contains(textLower, "location") {
+		return "weather"
+	}
+	if contains(textLower, "calculat") || contains(textLower, "number") {
+		return "calculate"
+	}
+
 	return ""
 }
 
@@ -480,7 +466,7 @@ Be specific about what information you need and why it's needed to provide a com
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -531,4 +517,9 @@ Be specific about what information you need and why it's needed to provide a com
 	}
 
 	logger.Info("server shutdown complete")
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }

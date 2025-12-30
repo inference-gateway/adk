@@ -412,7 +412,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		agentCard := types.AgentCard{
 			Name:        "test-agent",
 			Description: "A test agent",
-			URL:         "http://test-agent:8080",
+			URL:         stringPtr("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              boolPtr(false), // Streaming disabled, but still need background handler
@@ -435,7 +435,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		agentCard := types.AgentCard{
 			Name:        "test-agent",
 			Description: "A test agent",
-			URL:         "http://test-agent:8080",
+			URL:         stringPtr("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              boolPtr(true), // Streaming enabled
@@ -459,7 +459,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		agentCard := types.AgentCard{
 			Name:        "test-agent",
 			Description: "A test agent",
-			URL:         "http://test-agent:8080",
+			URL:         stringPtr("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              boolPtr(false), // Streaming disabled
@@ -483,7 +483,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		agentCard := types.AgentCard{
 			Name:        "test-agent",
 			Description: "A test agent",
-			URL:         "http://test-agent:8080",
+			URL:         stringPtr("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              boolPtr(true), // Streaming enabled

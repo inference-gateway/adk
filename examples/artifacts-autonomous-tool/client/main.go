@@ -128,12 +128,9 @@ func processPrompt(ctx context.Context, a2aClient client.A2AClient, prompt, down
 // sendTask sends a message and returns the task ID
 func sendTask(ctx context.Context, a2aClient client.A2AClient, prompt string) (string, error) {
 	message := types.Message{
-		Role: "user",
+		Role: types.RoleUser,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: prompt,
-			},
+			types.CreateTextPart(prompt),
 		},
 	}
 
@@ -225,8 +222,8 @@ func displayResponse(task *types.Task) {
 	}
 
 	for _, part := range task.Status.Message.Parts {
-		if textPart, ok := part.(types.TextPart); ok {
-			fmt.Printf("\nResponse: %s\n", textPart.Text)
+		if part.Text != nil {
+			fmt.Printf("\nResponse: %s\n", *part.Text)
 		}
 	}
 }

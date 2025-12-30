@@ -20,7 +20,6 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 		task := &types.Task{
 			ID:        "task-1",
 			ContextID: "context-1",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 			History:   []types.Message{},
 		}
@@ -41,7 +40,6 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 		task := &types.Task{
 			ID:        "task-2",
 			ContextID: "context-2",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateWorking},
 			History:   []types.Message{},
 		}
@@ -67,7 +65,6 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 		task := &types.Task{
 			ID:        "task-3",
 			ContextID: "context-3",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateCompleted},
 			History:   []types.Message{},
 		}
@@ -89,7 +86,6 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 		workingTask := &types.Task{
 			ID:        "working-task",
 			ContextID: "context-working",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateWorking},
 			History:   []types.Message{},
 		}
@@ -97,7 +93,6 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 		completedTask := &types.Task{
 			ID:        "completed-task",
 			ContextID: "context-completed",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateCompleted},
 			History:   []types.Message{},
 		}
@@ -132,7 +127,6 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 			task := &types.Task{
 				ID:        fmt.Sprintf("queue-task-%d", i),
 				ContextID: fmt.Sprintf("context-%d", i),
-				Kind:      "task",
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			}
@@ -163,7 +157,6 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 		task1 := &types.Task{
 			ID:        "ctx-task-1",
 			ContextID: "context-alpha",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateWorking},
 			History:   []types.Message{},
 		}
@@ -171,7 +164,6 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 		task2 := &types.Task{
 			ID:        "ctx-task-2",
 			ContextID: "context-beta",
-			Kind:      "task",
 			Status:    types.TaskStatus{State: types.TaskStateCompleted},
 			History:   []types.Message{},
 		}

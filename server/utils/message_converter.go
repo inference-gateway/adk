@@ -56,8 +56,8 @@ func (c *messageConverter) ConvertToSDK(messages []types.Message) ([]sdk.Message
 // convertSingleMessage converts a single A2A message to SDK format
 func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message, error) {
 	role := msg.Role
-	if role == "" {
-		role = "user"
+	if role == "" || role == types.RoleUnspecified {
+		role = types.RoleUser
 	}
 
 	var content string
@@ -65,46 +65,39 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 	var toolCalls *[]sdk.ChatCompletionMessageToolCall
 
 	for _, part := range msg.Parts {
-		switch p := part.(type) {
-		case types.TextPart:
-			content += p.Text
-
-		case types.DataPart:
-			if err := c.processDataPart(p.Data, role, &content, &toolCallId, &toolCalls); err != nil {
+		if part.Text != nil {
+			content += *part.Text
+		} else if part.Data != nil {
+			if err := c.processDataPart(part.Data.Data, string(role), &content, &toolCallId, &toolCalls); err != nil {
 				c.logger.Warn("failed to process DataPart",
 					zap.String("message_id", msg.MessageID),
 					zap.Error(err))
 			}
-
-		case types.FilePart:
+		} else if part.File != nil {
 			c.logger.Debug("file part detected in message",
 				zap.String("message_id", msg.MessageID))
-
-		case map[string]any:
-			if err := c.processMapPart(p, role, &content, &toolCallId, &toolCalls); err != nil {
-				c.logger.Warn("failed to process map part",
-					zap.String("message_id", msg.MessageID),
-					zap.Error(err))
-			}
-
-		default:
-			c.logger.Warn("unsupported part type",
-				zap.String("message_id", msg.MessageID),
-				zap.String("type", fmt.Sprintf("%T", part)))
+		} else {
+			c.logger.Warn("empty part detected",
+				zap.String("message_id", msg.MessageID))
 		}
 	}
 
 	var sdkRole sdk.MessageRole
 	switch role {
-	case "user":
+	case types.RoleUser:
 		sdkRole = sdk.User
-	case "assistant":
-		sdkRole = sdk.Assistant
-	case "system":
-		sdkRole = sdk.System
-	case "tool":
-		sdkRole = sdk.Tool
+	case types.RoleAgent:
+		if toolCallId != nil {
+			sdkRole = sdk.Tool
+		} else {
+			sdkRole = sdk.Assistant
+		}
+	case types.RoleUnspecified:
+		sdkRole = sdk.User
 	default:
+		c.logger.Warn("unknown A2A role, defaulting to user",
+			zap.String("role", string(role)),
+			zap.String("message_id", msg.MessageID))
 		sdkRole = sdk.User
 	}
 
@@ -129,23 +122,22 @@ func (c *messageConverter) processDataPart(
 	toolCallId **string,
 	toolCalls **[]sdk.ChatCompletionMessageToolCall,
 ) error {
-	if role == "tool" {
+	// Note: A2A spec doesn't have ROLE_TOOL, so tool results are sent as agent messages
+	// Check for tool result patterns in data
+	if id, exists := data["tool_call_id"]; exists {
+		if idStr, ok := id.(string); ok {
+			*toolCallId = &idStr
+		}
 		if result, exists := data["result"]; exists {
 			if resultStr, ok := result.(string); ok {
 				*content += resultStr
 			}
 		}
-
-		if id, exists := data["tool_call_id"]; exists {
-			if idStr, ok := id.(string); ok {
-				*toolCallId = &idStr
-			}
-		}
-
 		return nil
 	}
 
-	if role == "assistant" {
+	// Check for agent role (A2A ROLE_AGENT maps to SDK assistant)
+	if role == string(types.RoleAgent) {
 		if toolCallData, exists := data["tool_call"]; exists {
 			if err := c.extractSingleToolCall(toolCallData, toolCalls); err != nil {
 				return fmt.Errorf("failed to extract single tool call: %w", err)
@@ -182,38 +174,6 @@ func (c *messageConverter) processDataPart(
 	if contentData, exists := data["content"]; exists {
 		if contentStr, ok := contentData.(string); ok {
 			*content += contentStr
-		}
-	}
-
-	return nil
-}
-
-// processMapPart handles map[string]any fallback (for backward compatibility)
-func (c *messageConverter) processMapPart(
-	partMap map[string]any,
-	role string,
-	content *string,
-	toolCallId **string,
-	toolCalls **[]sdk.ChatCompletionMessageToolCall,
-) error {
-	kind, hasKind := partMap["kind"]
-	if !hasKind {
-		return nil
-	}
-
-	switch kind {
-	case "text":
-		if text, exists := partMap["text"]; exists {
-			if textStr, ok := text.(string); ok {
-				*content += textStr
-			}
-		}
-
-	case "data":
-		if data, exists := partMap["data"]; exists {
-			if dataMap, ok := data.(map[string]any); ok {
-				return c.processDataPart(dataMap, role, content, toolCallId, toolCalls)
-			}
 		}
 	}
 
@@ -316,13 +276,26 @@ func (c *messageConverter) mapToToolCall(toolCallMap map[string]any) (sdk.ChatCo
 
 // ConvertFromSDK converts SDK message response back to A2A format
 func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message, error) {
-	role := string(response.Role)
-	messageID := fmt.Sprintf("%s-%d", role, time.Now().UnixNano())
+	var a2aRole types.Role
+	sdkRoleStr := string(response.Role)
+	switch sdkRoleStr {
+	case string(sdk.User):
+		a2aRole = types.RoleUser
+	case string(sdk.Assistant):
+		a2aRole = types.RoleAgent
+	case string(sdk.Tool):
+		a2aRole = types.RoleAgent
+	case string(sdk.System):
+		a2aRole = types.RoleAgent
+	default:
+		a2aRole = types.RoleUnspecified
+	}
+
+	messageID := fmt.Sprintf("%s-%d", sdkRoleStr, time.Now().UnixNano())
 
 	message := &types.Message{
-		Kind:      "message",
 		MessageID: messageID,
-		Role:      role,
+		Role:      a2aRole,
 		Parts:     []types.Part{},
 	}
 
@@ -333,8 +306,8 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 		content = ""
 	}
 
-	switch role {
-	case "tool":
+	switch sdkRoleStr {
+	case string(sdk.Tool):
 		toolData := map[string]any{
 			"result": content,
 		}
@@ -351,7 +324,7 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 
 		message.Parts = append(message.Parts, types.CreateDataPart(toolData))
 
-	case "assistant":
+	case string(sdk.Assistant):
 		hasToolCalls := response.ToolCalls != nil && len(*response.ToolCalls) > 0
 
 		if content != "" {
@@ -385,7 +358,8 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 		(response.Reasoning != nil && *response.Reasoning != "")
 
 	c.logger.Debug("converted SDK message to A2A format",
-		zap.String("role", role),
+		zap.String("sdk_role", sdkRoleStr),
+		zap.String("a2a_role", string(a2aRole)),
 		zap.String("content", content),
 		zap.Bool("has_tool_calls", response.ToolCalls != nil),
 		zap.Bool("has_reasoning", hasReasoning),
@@ -396,44 +370,26 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 
 // ValidateMessagePart validates message part structure and type
 func (c *messageConverter) ValidateMessagePart(part types.Part) error {
-	switch p := part.(type) {
-	case types.TextPart:
-		if p.Text == "" {
-			return fmt.Errorf("text part missing text field")
-		}
-		return nil
-
-	case types.DataPart:
-		if p.Data == nil {
-			return fmt.Errorf("data part missing data field")
-		}
-		return nil
-
-	case types.FilePart:
-		if p.File == nil {
-			return fmt.Errorf("file part missing file field")
-		}
-		return nil
-
-	case map[string]any:
-		kind, hasKind := p["kind"]
-		if !hasKind {
-			return fmt.Errorf("message part missing kind field")
-		}
-
-		kindStr, ok := kind.(string)
-		if !ok {
-			return fmt.Errorf("message part kind must be string")
-		}
-
-		partKind := types.MessagePartKind(kindStr)
-		if !partKind.IsValid() {
-			return fmt.Errorf("invalid message part kind: %s", kindStr)
-		}
-
-		return nil
-
-	default:
-		return fmt.Errorf("unsupported message part type: %T", part)
+	if part.Text == nil && part.Data == nil && part.File == nil {
+		return fmt.Errorf("part must have at least one field set (text, data, or file)")
 	}
+
+	if part.Text != nil && *part.Text == "" {
+		return fmt.Errorf("text part has empty text field")
+	}
+
+	if part.Data != nil && part.Data.Data == nil {
+		return fmt.Errorf("data part missing data field")
+	}
+
+	if part.File != nil {
+		if part.File.Name == "" {
+			return fmt.Errorf("file part missing name field")
+		}
+		if part.File.MediaType == "" {
+			return fmt.Errorf("file part missing mediaType field")
+		}
+	}
+
+	return nil
 }
