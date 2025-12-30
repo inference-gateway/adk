@@ -96,6 +96,7 @@ For complete working examples, see the [examples](./examples/) directory:
 - **[Artifacts - Default Handlers](./examples/artifacts-with-default-handlers/)** - Artifacts with default handlers
 - **[Queue Storage](./examples/queue-storage/)** - Memory and Redis storage backends
 - **[TLS Server](./examples/tls-server/)** - Secure HTTPS with TLS configuration
+- **[Usage Metadata](./examples/usage-metadata/)** - Token usage and execution metrics tracking
 
 #### Getting Started
 
@@ -122,6 +123,7 @@ Each example includes its own README with setup instructions and usage details.
 - 📨 **Push Notifications**: Webhook notifications for real-time task state updates
 - ⏸️ **Task Pausing**: Built-in support for input-required state pausing and resumption
 - 🗄️ **Multiple Storage Backends**: Support for in-memory and Redis storage with horizontal scaling
+- 📊 **Usage Metadata**: Automatic tracking of LLM token consumption and execution metrics
 
 ### Developer Experience
 
@@ -384,6 +386,7 @@ Configure your A2A agent using environment variables. All configuration is optio
 | `AGENT_CLIENT_MAX_TOKENS`                     | `4096`  | Maximum tokens per response                  |
 | `AGENT_CLIENT_TEMPERATURE`                    | `0.7`   | LLM temperature (0.0-2.0)                    |
 | `AGENT_CLIENT_SYSTEM_PROMPT`                  | -       | System prompt for the agent                  |
+| `AGENT_CLIENT_ENABLE_USAGE_METADATA`          | `true`  | Track token usage and execution metrics      |
 
 #### Agent Capabilities
 
@@ -525,6 +528,7 @@ For detailed implementation examples and patterns, see the [examples](./examples
 - **[Agent Configuration](./examples/static-agent-card/)** - JSON-based agent metadata management
 - **[Task Handling](./examples/default-handlers/)** - Built-in and custom task processing
 - **[Streaming](./examples/streaming/)** - Real-time response handling
+- **[Usage Metadata](./examples/usage-metadata/)** - Tracking token consumption and execution metrics for cost monitoring and performance analysis
 
 ## 🌐 A2A Ecosystem
 
