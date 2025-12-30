@@ -13,7 +13,7 @@ const (
 	RoleUser        Role = "ROLE_USER"
 )
 
-// The current state of this task.
+// Filter tasks by their current status state.
 type TaskState string
 
 // TaskState enum values
