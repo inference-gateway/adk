@@ -3,8 +3,9 @@ package server
 import (
 	"testing"
 
+	assert "github.com/stretchr/testify/assert"
+
 	sdk "github.com/inference-gateway/sdk"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewUsageTracker(t *testing.T) {
