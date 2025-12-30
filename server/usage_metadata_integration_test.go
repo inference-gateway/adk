@@ -64,10 +64,7 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 			{
 				Role: "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Hello, can you help me?",
-					},
+					types.NewTextPart("Hello, can you help me?"),
 				},
 			},
 		},
@@ -79,15 +76,15 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 
 	require.NotNil(t, resultTask.Metadata, "Task metadata should not be nil")
 
-	assert.Contains(t, resultTask.Metadata, "usage", "Metadata should contain 'usage' field")
-	usageMap, ok := resultTask.Metadata["usage"].(map[string]any)
+	assert.Contains(t, *resultTask.Metadata, "usage", "Metadata should contain 'usage' field")
+	usageMap, ok := (*resultTask.Metadata)["usage"].(map[string]any)
 	require.True(t, ok, "Usage should be a map")
 	assert.Equal(t, int64(100), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(50), usageMap["completion_tokens"])
 	assert.Equal(t, int64(150), usageMap["total_tokens"])
 
-	assert.Contains(t, resultTask.Metadata, "execution_stats", "Metadata should contain 'execution_stats' field")
-	execStats, ok := resultTask.Metadata["execution_stats"].(map[string]any)
+	assert.Contains(t, *resultTask.Metadata, "execution_stats", "Metadata should contain 'execution_stats' field")
+	execStats, ok := (*resultTask.Metadata)["execution_stats"].(map[string]any)
 	require.True(t, ok, "Execution stats should be a map")
 	assert.Greater(t, execStats["iterations"], 0, "Should have at least one iteration")
 	assert.GreaterOrEqual(t, execStats["messages"], 0, "Should have message count")
@@ -144,10 +141,7 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 			{
 				Role: "user",
 				Parts: []types.Part{
-					map[string]any{
-						"kind": "text",
-						"text": "Can you assist me?",
-					},
+					types.NewTextPart("Can you assist me?"),
 				},
 			},
 		},
@@ -174,15 +168,15 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 
 	require.NotNil(t, task.Metadata, "Task metadata should not be nil")
 
-	assert.Contains(t, task.Metadata, "usage", "Metadata should contain 'usage' field")
-	usageMap, ok := task.Metadata["usage"].(map[string]any)
+	assert.Contains(t, *task.Metadata, "usage", "Metadata should contain 'usage' field")
+	usageMap, ok := (*task.Metadata)["usage"].(map[string]any)
 	require.True(t, ok, "Usage should be a map")
 	assert.Equal(t, int64(200), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(75), usageMap["completion_tokens"])
 	assert.Equal(t, int64(275), usageMap["total_tokens"])
 
-	assert.Contains(t, task.Metadata, "execution_stats", "Metadata should contain 'execution_stats' field")
-	execStats, ok := task.Metadata["execution_stats"].(map[string]any)
+	assert.Contains(t, *task.Metadata, "execution_stats", "Metadata should contain 'execution_stats' field")
+	execStats, ok := (*task.Metadata)["execution_stats"].(map[string]any)
 	require.True(t, ok, "Execution stats should be a map")
 	assert.Greater(t, execStats["iterations"], 0, "Should have at least one iteration")
 }

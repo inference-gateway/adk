@@ -348,7 +348,7 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 				if err := event.DataAs(&statusData); err == nil {
 					if statusData.State == types.TaskStateCompleted ||
 						statusData.State == types.TaskStateFailed ||
-						statusData.State == types.TaskStateCanceled {
+						statusData.State == types.TaskStateCancelled {
 						sth.populateTaskMetadata(task, usageTracker)
 					}
 				}
@@ -1048,12 +1048,13 @@ func (bth *DefaultBackgroundTaskHandler) populateTaskMetadata(task *types.Task, 
 	}
 
 	if task.Metadata == nil {
-		task.Metadata = make(map[string]any)
+		m := make(map[string]any)
+		task.Metadata = &m
 	}
 
 	metadata := usageTracker.GetMetadata()
 	for key, value := range metadata {
-		task.Metadata[key] = value
+		(*task.Metadata)[key] = value
 	}
 
 	bth.logger.Debug("populated task metadata with usage statistics",
@@ -1072,12 +1073,13 @@ func (sth *DefaultStreamingTaskHandler) populateTaskMetadata(task *types.Task, u
 	}
 
 	if task.Metadata == nil {
-		task.Metadata = make(map[string]any)
+		m := make(map[string]any)
+		task.Metadata = &m
 	}
 
 	metadata := usageTracker.GetMetadata()
 	for key, value := range metadata {
-		task.Metadata[key] = value
+		(*task.Metadata)[key] = value
 	}
 
 	sth.logger.Debug("populated task metadata with usage statistics",
