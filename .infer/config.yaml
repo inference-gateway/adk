@@ -290,7 +290,7 @@ scm:
     delete_local_branch: false
 storage:
   enabled: true
-  type: sqlite
+  type: jsonl
   sqlite:
     path: .infer/conversations.db
   postgres:
@@ -305,6 +305,8 @@ storage:
     port: 6379
     password: ""
     db: 0
+  jsonl:
+    path: .infer/conversations
 conversation:
   title_generation:
     enabled: true
@@ -386,6 +388,12 @@ chat:
           - shift+tab
         description: cycle agent mode (Standard/Plan/Auto-Accept)
         category: mode
+        enabled: true
+      navigation_go_back_in_time:
+        keys:
+          - esc,esc
+        description: go back in time to previous message (double ESC)
+        category: navigation
         enabled: true
       navigation_page_down:
         keys:
@@ -612,3 +620,8 @@ compact:
   enabled: true
   auto_at: 80
   keep_first_messages: 2
+web:
+  enabled: false
+  port: 3000
+  host: localhost
+  session_inactivity_mins: 5
