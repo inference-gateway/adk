@@ -25,7 +25,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				task := &types.Task{
 					ID:        "task-1",
 					ContextID: testCtx,
-					Kind:      "task",
 					Status: types.TaskStatus{
 						State: types.TaskStateSubmitted,
 					},
@@ -53,7 +52,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				task := &types.Task{
 					ID:        "task-2",
 					ContextID: testCtx,
-					Kind:      "task",
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},
@@ -79,7 +77,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				task := &types.Task{
 					ID:        "task-3",
 					ContextID: testContext,
-					Kind:      "task",
 					Status: types.TaskStatus{
 						State: types.TaskStateSubmitted,
 					},
@@ -111,7 +108,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				task := &types.Task{
 					ID:        "task-4",
 					ContextID: "test-context-length",
-					Kind:      "task",
 					Status: types.TaskStatus{
 						State: types.TaskStateSubmitted,
 					},
@@ -134,7 +130,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				task1 := &types.Task{
 					ID:        "task-5",
 					ContextID: testContext,
-					Kind:      "task",
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},
@@ -142,7 +137,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				task2 := &types.Task{
 					ID:        "task-6",
 					ContextID: testContext,
-					Kind:      "task",
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},
@@ -173,7 +167,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				activeTask := &types.Task{
 					ID:        "active-task",
 					ContextID: testContext,
-					Kind:      "task",
 					Status: types.TaskStatus{
 						State: types.TaskStateSubmitted,
 					},
@@ -186,7 +179,6 @@ func TestQueueCentricOperations(t *testing.T) {
 				deadTask := &types.Task{
 					ID:        "dead-task",
 					ContextID: testContext,
-					Kind:      "task",
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},

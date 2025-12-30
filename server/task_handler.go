@@ -140,16 +140,12 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 
 		task.Status.State = types.TaskStateFailed
 		task.Status.Message = &types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("error-%s", task.ID),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			TaskID:    &task.ID,
 			ContextID: &task.ContextID,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": fmt.Sprintf("Failed to start agent: %s", err.Error()),
-				},
+				types.CreateTextPart(fmt.Sprintf("Failed to start agent: %s", err.Error())),
 			},
 		}
 		return task, nil
@@ -178,7 +174,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 
 				if statusData.State == types.TaskStateCompleted ||
 					statusData.State == types.TaskStateFailed ||
-					statusData.State == types.TaskStateCanceled {
+					statusData.State == types.TaskStateCancelled {
 					return task, nil
 				}
 			}
@@ -189,7 +185,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 				finalMessage = &iterationMessage
 				bth.logger.Debug("captured iteration message",
 					zap.String("task_id", task.ID),
-					zap.String("message_kind", iterationMessage.Kind))
+					zap.String("message_id", iterationMessage.MessageID))
 			}
 
 		case types.EventInputRequired:
@@ -235,16 +231,12 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 
 	task.Status.State = types.TaskStateCompleted
 	task.Status.Message = &types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("empty-response-%s", task.ID),
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		TaskID:    &task.ID,
 		ContextID: &task.ContextID,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Task completed",
-			},
+			types.CreateTextPart("Task completed"),
 		},
 	}
 
@@ -257,16 +249,12 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 		zap.String("task_id", task.ID))
 
 	response := &types.Message{
-		Kind:      "message",
 		MessageID: fmt.Sprintf("response-%s", task.ID),
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		TaskID:    &task.ID,
 		ContextID: &task.ContextID,
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "I received your message. I'm a default polling task handler without AI capabilities. To enable AI responses with automatic input-required pausing, configure an OpenAI-compatible agent.",
-			},
+			types.CreateTextPart("I received your message. I'm a default polling task handler without AI capabilities. To enable AI responses with automatic input-required pausing, configure an OpenAI-compatible agent."),
 		},
 	}
 
@@ -364,9 +352,6 @@ func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, p
 	}
 
 	enrichedMessage := params.Message
-	if enrichedMessage.Kind == "" {
-		enrichedMessage.Kind = "message"
-	}
 	if enrichedMessage.MessageID == "" {
 		enrichedMessage.MessageID = uuid.New().String()
 	}
@@ -462,16 +447,12 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 	if err != nil {
 		h.logger.Error("failed to enqueue task", zap.Error(err))
 		err := h.taskManager.UpdateError(task.ID, &types.Message{
-			Kind:      "message",
 			MessageID: uuid.New().String(),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			TaskID:    &task.ID,
 			ContextID: &task.ContextID,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Failed to queue task for processing. Please try again later.",
-				},
+				types.CreateTextPart("Failed to queue task for processing. Please try again later."),
 			},
 		})
 		if err != nil {
@@ -589,7 +570,6 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		message = task.Status.Message
 	} else {
 		message = &types.Message{
-			Kind:      "message",
 			MessageID: uuid.New().String(),
 			Role:      "user",
 			Parts:     []types.Part{},
@@ -631,8 +611,8 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			var deltaMessage types.Message
 			if err := event.DataAs(&deltaMessage); err == nil {
 				for _, part := range deltaMessage.Parts {
-					if textPart, ok := part.(types.TextPart); ok {
-						accumulatedText += textPart.Text
+					if part.Text != nil {
+						accumulatedText += *part.Text
 					}
 				}
 				h.logger.Debug("accumulated delta text",
@@ -674,11 +654,10 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				task.Status.State = statusData.State
 
 				statusUpdate := types.TaskStatusUpdateEvent{
-					Kind:      "status-update",
 					TaskID:    task.ID,
 					ContextID: task.ContextID,
 					Status:    statusData,
-					Final:     statusData.State == types.TaskStateCompleted || statusData.State == types.TaskStateFailed || statusData.State == types.TaskStateCanceled,
+					Final:     statusData.State == types.TaskStateCompleted || statusData.State == types.TaskStateFailed || statusData.State == types.TaskStateCancelled,
 				}
 
 				statusResponse := types.JSONRPCSuccessResponse{
@@ -705,7 +684,6 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 					zap.String("context_id", task.ContextID))
 
 				statusUpdate := types.TaskStatusUpdateEvent{
-					Kind:      "status-update",
 					TaskID:    task.ID,
 					ContextID: task.ContextID,
 					Status: types.TaskStatus{
@@ -738,7 +716,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			var interruptMessage types.Message
 			if err := event.DataAs(&interruptMessage); err == nil {
 				task.History = append(task.History, interruptMessage)
-				task.Status.State = types.TaskStateCanceled
+				task.Status.State = types.TaskStateCancelled
 
 				h.logger.Info("streaming task was interrupted",
 					zap.String("task_id", task.ID),
@@ -895,7 +873,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSO
 		return
 	}
 
-	h.logger.Info("tasks listed successfully", zap.Int("count", len(taskList.Tasks)), zap.Int("total", taskList.Total))
+	h.logger.Info("tasks listed successfully", zap.Int("count", len(taskList.Tasks)), zap.Int("total", taskList.TotalSize))
 	h.responseSender.SendSuccess(c, req.ID, taskList)
 }
 
@@ -916,7 +894,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.C
 	}
 
 	h.logger.Info("setting push notification config for task",
-		zap.String("task_id", params.TaskID),
+		zap.String("task_name", params.Name),
 		zap.String("url", params.PushNotificationConfig.URL))
 
 	config, err := h.taskManager.SetTaskPushNotificationConfig(params)
@@ -926,7 +904,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.C
 		return
 	}
 
-	h.logger.Info("push notification config set successfully", zap.String("task_id", params.TaskID))
+	h.logger.Info("push notification config set successfully", zap.String("task_name", params.Name))
 	h.responseSender.SendSuccess(c, req.ID, config)
 }
 
@@ -946,7 +924,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 		return
 	}
 
-	h.logger.Info("getting push notification config for task", zap.String("task_id", params.ID))
+	h.logger.Info("getting push notification config for task", zap.String("task_name", params.Name))
 
 	config, err := h.taskManager.GetTaskPushNotificationConfig(params)
 	if err != nil {
@@ -955,7 +933,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 		return
 	}
 
-	h.logger.Info("push notification config retrieved successfully", zap.String("task_id", params.ID))
+	h.logger.Info("push notification config retrieved successfully", zap.String("task_name", params.Name))
 	h.responseSender.SendSuccess(c, req.ID, config)
 }
 
@@ -975,7 +953,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 		return
 	}
 
-	h.logger.Info("listing push notification configs for task", zap.String("task_id", params.ID))
+	h.logger.Info("listing push notification configs for task", zap.String("parent", params.Parent))
 
 	configs, err := h.taskManager.ListTaskPushNotificationConfigs(params)
 	if err != nil {
@@ -985,7 +963,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 	}
 
 	h.logger.Info("push notification configs listed successfully",
-		zap.String("task_id", params.ID),
+		zap.String("parent", params.Parent),
 		zap.Int("count", len(configs)))
 	h.responseSender.SendSuccess(c, req.ID, configs)
 }
@@ -1007,8 +985,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	}
 
 	h.logger.Info("deleting push notification config",
-		zap.String("task_id", params.ID),
-		zap.String("config_id", params.PushNotificationConfigID))
+		zap.String("task_name", params.Name))
 
 	err = h.taskManager.DeleteTaskPushNotificationConfig(params)
 	if err != nil {
@@ -1018,7 +995,6 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	}
 
 	h.logger.Info("push notification config deleted successfully",
-		zap.String("task_id", params.ID),
-		zap.String("config_id", params.PushNotificationConfigID))
+		zap.String("task_name", params.Name))
 	h.responseSender.SendSuccess(c, req.ID, nil)
 }

@@ -54,20 +54,16 @@ func extractMessageContent(message *types.Message) (string, string, string) {
 
 	for _, part := range message.Parts {
 		// Extract text content
-		if textPart, ok := part.(types.TextPart); ok {
-			userText = textPart.Text
+		if part.Text != nil {
+			userText = *part.Text
 		}
 
 		// Extract file content
-		if filePart, ok := part.(types.FilePart); ok {
-			if fileData, ok := filePart.File.(map[string]any); ok {
-				if name, ok := fileData["name"].(string); ok {
-					fileName = name
-				}
-				if bytes, ok := fileData["bytes"].(string); ok {
-					if decoded, err := base64.StdEncoding.DecodeString(bytes); err == nil {
-						fileContent = string(decoded)
-					}
+		if part.File != nil {
+			fileName = part.File.Name
+			if part.File.FileWithBytes != nil {
+				if decoded, err := base64.StdEncoding.DecodeString(*part.File.FileWithBytes); err == nil {
+					fileContent = string(decoded)
 				}
 			}
 		}
@@ -160,16 +156,12 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	responseText := fmt.Sprintf("I've created an analysis report for your request: \"%s\". The report has been saved as an artifact in MinIO cloud storage and is available for download.", userText)
 
 	responseMessage := types.Message{
-		Kind:      "message",
 		MessageID: uuid.New().String(),
 		ContextID: &task.ContextID,
 		TaskID:    &task.ID,
-		Role:      "assistant",
+		Role:      types.RoleAgent,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: responseText,
-			},
+			types.CreateTextPart(responseText),
 		},
 	}
 
@@ -313,7 +305,7 @@ func main() {
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -369,4 +361,9 @@ func main() {
 	if err := artifactsServer.Stop(shutdownCtx); err != nil {
 		logger.Error("artifacts server shutdown error", zap.Error(err))
 	}
+}
+
+// stringPtr returns a pointer to a string value
+func stringPtr(s string) *string {
+	return &s
 }

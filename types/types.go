@@ -1,36 +1,5 @@
 package types
 
-// MessagePartKind represents the different types of message parts supported by A2A protocol.
-// Based on the A2A specification: https://google-a2a.github.io/A2A/latest/
-type MessagePartKind string
-
-// MessagePartKind enum values for the three official message part types
-const (
-	// MessagePartKindText represents a text segment within message parts
-	MessagePartKindText MessagePartKind = "text"
-
-	// MessagePartKindFile represents a file segment within message parts
-	MessagePartKindFile MessagePartKind = "file"
-
-	// MessagePartKindData represents a structured data segment within message parts
-	MessagePartKindData MessagePartKind = "data"
-)
-
-// String returns the string representation of the MessagePartKind
-func (k MessagePartKind) String() string {
-	return string(k)
-}
-
-// IsValid checks if the MessagePartKind is one of the supported values
-func (k MessagePartKind) IsValid() bool {
-	switch k {
-	case MessagePartKindText, MessagePartKindFile, MessagePartKindData:
-		return true
-	default:
-		return false
-	}
-}
-
 // Health status constants
 const (
 	HealthStatusHealthy   = "healthy"
@@ -56,3 +25,99 @@ const (
 const (
 	ToolInputRequired = "input_required"
 )
+
+// A discriminated union representing all possible JSON-RPC 2.0 responses
+// for the A2A specification methods.
+type JSONRPCResponse any
+
+// Represents a successful JSON-RPC 2.0 Response object.
+type JSONRPCSuccessResponse struct {
+	ID      any    `json:"id"`
+	JSONRPC string `json:"jsonrpc"`
+	Result  any    `json:"result"`
+}
+
+// An error indicating that the server received invalid JSON.
+type JSONParseError struct {
+	Code    int    `json:"code"`
+	Data    *any   `json:"data,omitempty"`
+	Message string `json:"message"`
+}
+
+// Represents a JSON-RPC 2.0 Error object, included in an error response.
+type JSONRPCError struct {
+	Code    int    `json:"code"`
+	Data    *any   `json:"data,omitempty"`
+	Message string `json:"message"`
+}
+
+// Represents a JSON-RPC 2.0 Error Response object.
+type JSONRPCErrorResponse struct {
+	Error   any    `json:"error"`
+	ID      any    `json:"id"`
+	JSONRPC string `json:"jsonrpc"`
+}
+
+// Defines the base structure for any JSON-RPC 2.0 request, response, or notification.
+type JSONRPCMessage struct {
+	ID      *any   `json:"id,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+}
+
+// Represents a JSON-RPC 2.0 Request object.
+type JSONRPCRequest struct {
+	ID      *any           `json:"id,omitempty"`
+	JSONRPC string         `json:"jsonrpc"`
+	Method  string         `json:"method"`
+	Params  map[string]any `json:"params,omitempty"`
+}
+
+// Defines configuration options for a `message/send` or `message/stream` request.
+type MessageSendConfiguration struct {
+	AcceptedOutputModes    []string                `json:"acceptedOutputModes,omitempty"`
+	Blocking               *bool                   `json:"blocking,omitempty"`
+	HistoryLength          *int                    `json:"historyLength,omitempty"`
+	PushNotificationConfig *PushNotificationConfig `json:"pushNotificationConfig,omitempty"`
+}
+
+// Defines the parameters for a request to send a message to an agent. This can be used
+// to create a new task, continue an existing one, or restart a task.
+type MessageSendParams struct {
+	Configuration *MessageSendConfiguration `json:"configuration,omitempty"`
+	Message       Message                   `json:"message"`
+	Metadata      map[string]any            `json:"metadata,omitempty"`
+}
+
+// Defines parameters for querying a task, with an option to limit history length.
+type TaskQueryParams struct {
+	HistoryLength *int           `json:"historyLength,omitempty"`
+	ID            string         `json:"id"`
+	Metadata      map[string]any `json:"metadata,omitempty"`
+}
+
+// Parameters for listing tasks with optional filtering and pagination.
+type TaskListParams struct {
+	ContextID *string        `json:"contextId,omitempty"`
+	Limit     int            `json:"limit,omitempty"`
+	Metadata  map[string]any `json:"metadata,omitempty"`
+	Offset    int            `json:"offset,omitempty"`
+	State     *TaskState     `json:"state,omitempty"`
+}
+
+// Parameters for task operations that require only a task ID.
+type TaskIdParams struct {
+	ID       string         `json:"id"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// TaskList represents a list of tasks with pagination info (alias for generated type)
+type TaskList = ListTasksResponse
+
+// GetTaskPushNotificationConfigParams is an alias for GetTaskPushNotificationConfigRequest
+type GetTaskPushNotificationConfigParams = GetTaskPushNotificationConfigRequest
+
+// ListTaskPushNotificationConfigParams is an alias for ListTaskPushNotificationConfigRequest
+type ListTaskPushNotificationConfigParams = ListTaskPushNotificationConfigRequest
+
+// DeleteTaskPushNotificationConfigParams is an alias for DeleteTaskPushNotificationConfigRequest
+type DeleteTaskPushNotificationConfigParams = DeleteTaskPushNotificationConfigRequest

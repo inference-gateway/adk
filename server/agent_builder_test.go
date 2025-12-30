@@ -32,10 +32,7 @@ func TestAgentBuilder_Build_WithDefaults(t *testing.T) {
 	message := &types.Message{
 		Role: "user",
 		Parts: []types.Part{
-			map[string]any{
-				"kind": "text",
-				"text": "Hello",
-			},
+			types.CreateTextPart("Hello"),
 		},
 	}
 

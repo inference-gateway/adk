@@ -5,13 +5,12 @@ import (
 	"fmt"
 )
 
-// MessageWithTypedParts is a wrapper for Message that ensures Parts are properly unmarshaled
+// messageUnmarshalHelper is a wrapper for Message that ensures Parts are properly unmarshaled
 type messageUnmarshalHelper struct {
 	ContextID        *string           `json:"contextId,omitempty"`
 	Extensions       []string          `json:"extensions,omitempty"`
-	Kind             string            `json:"kind"`
 	MessageID        string            `json:"messageId"`
-	Metadata         map[string]any    `json:"metadata,omitempty"`
+	Metadata         *Struct           `json:"metadata,omitempty"`
 	Parts            []json.RawMessage `json:"parts"`
 	ReferenceTaskIds []string          `json:"referenceTaskIds,omitempty"`
 	Role             string            `json:"role"`
@@ -36,12 +35,11 @@ func (m *Message) UnmarshalJSON(data []byte) error {
 
 	m.ContextID = helper.ContextID
 	m.Extensions = helper.Extensions
-	m.Kind = helper.Kind
 	m.MessageID = helper.MessageID
 	m.Metadata = helper.Metadata
 	m.Parts = parts
 	m.ReferenceTaskIds = helper.ReferenceTaskIds
-	m.Role = helper.Role
+	m.Role = Role(helper.Role)
 	m.TaskID = helper.TaskID
 
 	return nil
@@ -49,43 +47,11 @@ func (m *Message) UnmarshalJSON(data []byte) error {
 
 // UnmarshalPart unmarshals a single Part from JSON with proper type handling
 func UnmarshalPart(data []byte) (Part, error) {
-	var temp struct {
-		Kind string `json:"kind"`
+	var part Part
+	if err := json.Unmarshal(data, &part); err != nil {
+		return Part{}, fmt.Errorf("failed to unmarshal Part: %w", err)
 	}
-
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal part kind: %w", err)
-	}
-
-	switch temp.Kind {
-	case "text":
-		var textPart TextPart
-		if err := json.Unmarshal(data, &textPart); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal TextPart: %w", err)
-		}
-		return textPart, nil
-
-	case "data":
-		var dataPart DataPart
-		if err := json.Unmarshal(data, &dataPart); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal DataPart: %w", err)
-		}
-		return dataPart, nil
-
-	case "file":
-		var filePart FilePart
-		if err := json.Unmarshal(data, &filePart); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal FilePart: %w", err)
-		}
-		return filePart, nil
-
-	default:
-		var mapPart map[string]any
-		if err := json.Unmarshal(data, &mapPart); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal as map[string]any: %w", err)
-		}
-		return mapPart, nil
-	}
+	return part, nil
 }
 
 // UnmarshalParts is a utility function to unmarshal a slice of Parts with proper type handling
@@ -112,38 +78,42 @@ func MarshalParts(parts []Part) ([]byte, error) {
 	return json.Marshal(parts)
 }
 
-// CreateTextPart creates a properly typed TextPart
-func CreateTextPart(text string, metadata ...map[string]any) TextPart {
-	part := TextPart{
-		Kind: "text",
-		Text: text,
+// CreateTextPart creates a Part with text content
+func CreateTextPart(text string, metadata ...map[string]any) Part {
+	part := Part{
+		Text: &text,
 	}
 	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
+		part.Metadata = &metadata[0]
 	}
 	return part
 }
 
-// CreateDataPart creates a properly typed DataPart
-func CreateDataPart(data map[string]any, metadata ...map[string]any) DataPart {
-	part := DataPart{
-		Kind: "data",
-		Data: data,
+// CreateDataPart creates a Part with data content
+func CreateDataPart(data map[string]any, metadata ...map[string]any) Part {
+	part := Part{
+		Data: &DataPart{
+			Data: data,
+		},
 	}
 	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
+		part.Metadata = &metadata[0]
 	}
 	return part
 }
 
-// CreateFilePart creates a properly typed FilePart
-func CreateFilePart(file any, metadata ...map[string]any) FilePart {
-	part := FilePart{
-		Kind: "file",
-		File: file,
+// CreateFilePart creates a Part with file content
+func CreateFilePart(name, mediaType string, fileWithBytes *string, fileWithURI *string, metadata ...map[string]any) Part {
+	part := Part{
+		File: &FilePart{
+			Name:          name,
+			MediaType:     mediaType,
+			FileWithBytes: fileWithBytes,
+			FileWithURI:   fileWithURI,
+		},
 	}
 	if len(metadata) > 0 {
-		part.Metadata = metadata[0]
+		part.Metadata = &metadata[0]
 	}
 	return part
 }

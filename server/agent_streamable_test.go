@@ -28,36 +28,24 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "streaming_chunks_accumulated_correctly",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Hello ",
-						},
+						types.CreateTextPart("Hello "),
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "world!",
-						},
+						types.CreateTextPart("world!"),
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-3",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": " How are you?",
-						},
+						types.CreateTextPart(" How are you?"),
 					},
 				},
 			},
@@ -69,14 +57,10 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "single_streaming_message",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Single message response",
-						},
+						types.CreateTextPart("Single message response"),
 					},
 				},
 			},
@@ -88,36 +72,24 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "consolidated_message_with_final_assistant_message",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Streaming ",
-						},
+						types.CreateTextPart("Streaming "),
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "content...",
-						},
+						types.CreateTextPart("content..."),
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "assistant-final",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Final consolidated response",
-						},
+						types.CreateTextPart("Final consolidated response"),
 					},
 				},
 			},
@@ -129,25 +101,17 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "input_required_message_handling",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Processing your request...",
-						},
+						types.CreateTextPart("Processing your request..."),
 					},
 				},
 				{
-					Kind:      "input_required",
 					MessageID: "input-req-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Please provide additional information",
-						},
+						types.CreateTextPart("Please provide additional information"),
 					},
 				},
 			},
@@ -166,36 +130,24 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 			name: "mixed_chunk_and_non_chunk_messages",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "user-1",
-					Role:      "user",
+					Role:      types.RoleUser,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "User message",
-						},
+						types.CreateTextPart("User message"),
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Assistant ",
-						},
+						types.CreateTextPart("Assistant "),
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "response chunks",
-						},
+						types.CreateTextPart("response chunks"),
 					},
 				},
 			},
@@ -227,7 +179,7 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 
 				for i := len(allMessages) - 1; i >= 0; i-- {
 					msg := &allMessages[i]
-					if msg.Role == "assistant" && !strings.HasPrefix(msg.MessageID, "chunk-") {
+					if msg.Role == types.RoleAgent && !strings.HasPrefix(msg.MessageID, "chunk-") {
 						consolidatedMessage = msg
 						break
 					}
@@ -238,12 +190,10 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 					var finalMessageID string
 
 					for _, msg := range allMessages {
-						if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+						if msg.Role == types.RoleAgent && strings.HasPrefix(msg.MessageID, "chunk-") {
 							for _, part := range msg.Parts {
-								if partMap, ok := part.(map[string]any); ok {
-									if text, exists := partMap["text"].(string); exists {
-										fullContent += text
-									}
+								if part.Text != nil {
+									fullContent += *part.Text
 								}
 							}
 							finalMessageID = msg.MessageID
@@ -252,14 +202,10 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 
 					if fullContent != "" {
 						consolidatedMessage = &types.Message{
-							Kind:      "message",
 							MessageID: strings.Replace(finalMessageID, "chunk-", "assistant-", 1),
-							Role:      "assistant",
+							Role:      types.RoleAgent,
 							Parts: []types.Part{
-								map[string]any{
-									"kind": "text",
-									"text": fullContent,
-								},
+								types.CreateTextPart(fullContent),
 							},
 						}
 					}
@@ -270,7 +216,7 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 				}
 			}
 
-			if lastMessage != nil && lastMessage.Kind == "input_required" {
+			if lastMessage != nil && strings.HasPrefix(lastMessage.MessageID, "input-req") {
 				task.Status.State = types.TaskStateInputRequired
 				task.Status.Message = lastMessage
 			} else {
@@ -288,14 +234,10 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 				parts := task.Status.Message.Parts
 				require.NotEmpty(t, parts, "Status message should have parts")
 
-				if partMap, ok := parts[0].(map[string]any); ok {
-					if text, exists := partMap["text"].(string); exists {
-						assert.Equal(t, tt.expectedConsolidatedText, text, "Consolidated text should match expected")
-					} else {
-						t.Fatalf("Status message part should contain text field")
-					}
+				if parts[0].Text != nil {
+					assert.Equal(t, tt.expectedConsolidatedText, *parts[0].Text, "Consolidated text should match expected")
 				} else {
-					t.Fatalf("Status message part should be a map")
+					t.Fatalf("Status message part should contain text field")
 				}
 			} else if tt.expectedConsolidatedText == "" && len(allMessages) == 0 {
 				assert.Nil(t, task.Status.Message, "Status message should be nil for empty message list")
@@ -310,14 +252,10 @@ func TestStreamingMessageAccumulationPerformance(t *testing.T) {
 
 	for i := 0; i < numMessages; i++ {
 		messages[i] = types.Message{
-			Kind:      "message",
 			MessageID: fmt.Sprintf("chunk-%d", i+1),
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": fmt.Sprintf("Message %d ", i+1),
-				},
+				types.CreateTextPart(fmt.Sprintf("Message %d ", i+1)),
 			},
 		}
 	}
@@ -326,12 +264,10 @@ func TestStreamingMessageAccumulationPerformance(t *testing.T) {
 
 	var fullContent string
 	for _, msg := range messages {
-		if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+		if msg.Role == types.RoleAgent && strings.HasPrefix(msg.MessageID, "chunk-") {
 			for _, part := range msg.Parts {
-				if partMap, ok := part.(map[string]any); ok {
-					if text, exists := partMap["text"].(string); exists {
-						fullContent += text
-					}
+				if part.Text != nil {
+					fullContent += *part.Text
 				}
 			}
 		}
@@ -355,24 +291,17 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 			name: "malformed_message_parts",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-						},
+						types.CreateTextPart(""),
 					},
 				},
 				{
-					Kind:      "message",
 					MessageID: "chunk-2",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": "Valid text",
-						},
+						types.CreateTextPart("Valid text"),
 					},
 				},
 			},
@@ -383,18 +312,14 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 			name: "non_string_text_field",
 			streamingMessages: []types.Message{
 				{
-					Kind:      "message",
 					MessageID: "chunk-1",
-					Role:      "assistant",
+					Role:      types.RoleAgent,
 					Parts: []types.Part{
-						map[string]any{
-							"kind": "text",
-							"text": 123,
-						},
+						types.CreateTextPart("123"),
 					},
 				},
 			},
-			expectedConsolidatedText: "",
+			expectedConsolidatedText: "123",
 			description:              "Should handle non-string text fields gracefully",
 		},
 	}
@@ -403,12 +328,10 @@ func TestStreamingMessageAccumulationEdgeCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var fullContent string
 			for _, msg := range tt.streamingMessages {
-				if msg.Role == "assistant" && strings.HasPrefix(msg.MessageID, "chunk-") {
+				if msg.Role == types.RoleAgent && strings.HasPrefix(msg.MessageID, "chunk-") {
 					for _, part := range msg.Parts {
-						if partMap, ok := part.(map[string]any); ok {
-							if text, exists := partMap["text"].(string); exists {
-								fullContent += text
-							}
+						if part.Text != nil {
+							fullContent += *part.Text
 						}
 					}
 				}
@@ -884,7 +807,7 @@ func TestRunWithStream_ContextCancellation(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Hello"},
+				types.CreateTextPart("Hello"),
 			},
 		},
 	}
@@ -954,7 +877,7 @@ func TestRunWithStream_WithInputRequiredTool(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Hello"},
+				types.CreateTextPart("Hello"),
 			},
 		},
 	}
@@ -1038,7 +961,7 @@ func TestRunWithStream_MaxIterationsReached(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Keep calling the tool"},
+				types.CreateTextPart("Keep calling the tool"),
 			},
 		},
 	}
@@ -1121,7 +1044,7 @@ func TestRunWithStream_ToolExecutionError(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Execute the failing tool"},
+				types.CreateTextPart("Execute the failing tool"),
 			},
 		},
 	}
@@ -1204,7 +1127,7 @@ func TestRunWithStream_InvalidToolArguments(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Test"},
+				types.CreateTextPart("Test"),
 			},
 		},
 	}
@@ -1259,7 +1182,7 @@ func TestRunWithStream_WithSystemPrompt(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Hello"},
+				types.CreateTextPart("Hello"),
 			},
 		},
 	}
@@ -1354,7 +1277,7 @@ func TestRunWithStream_MultipleIterations(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Run iterations"},
+				types.CreateTextPart("Run iterations"),
 			},
 		},
 	}
@@ -1439,7 +1362,7 @@ func TestRunWithStream_AllEventTypesEmitted(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Execute tool"},
+				types.CreateTextPart("Execute tool"),
 			},
 		},
 	}
@@ -1524,7 +1447,7 @@ func TestRunWithStream_ToolFailedEventEmitted(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Execute failing tool"},
+				types.CreateTextPart("Execute failing tool"),
 			},
 		},
 	}
@@ -1569,7 +1492,7 @@ func TestRunWithStream_StreamFailedEventEmitted(t *testing.T) {
 		{
 			Role: "user",
 			Parts: []types.Part{
-				map[string]any{"kind": "text", "text": "Trigger error"},
+				types.CreateTextPart("Trigger error"),
 			},
 		},
 	}

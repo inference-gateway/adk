@@ -44,11 +44,16 @@ type TaskUpdateNotification struct {
 
 // SendTaskUpdate sends a push notification about a task update
 func (s *HTTPPushNotificationSender) SendTaskUpdate(ctx context.Context, config types.PushNotificationConfig, task *types.Task) error {
+	timestamp := ""
+	if task.Status.Timestamp != nil {
+		timestamp = time.Now().Format(time.RFC3339)
+	}
+
 	notification := TaskUpdateNotification{
 		Type:      "task_update",
 		TaskID:    task.ID,
 		State:     string(task.Status.State),
-		Timestamp: *task.Status.Timestamp,
+		Timestamp: timestamp,
 		Task:      task,
 	}
 

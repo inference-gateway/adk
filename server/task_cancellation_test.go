@@ -36,14 +36,10 @@ func TestTaskCancellation(t *testing.T) {
 
 	t.Run("CancelTaskActuallyCancelsContext", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
-			Kind:      "message",
 			MessageID: "test-message",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Test message",
-				},
+				types.CreateTextPart("Test message"),
 			},
 		})
 
@@ -76,7 +72,7 @@ func TestTaskCancellation(t *testing.T) {
 
 		updatedTask, exists := taskManager.GetTask(task.ID)
 		assert.True(t, exists, "Task should exist")
-		assert.Equal(t, types.TaskStateCanceled, updatedTask.Status.State, "Task state should be cancelled")
+		assert.Equal(t, types.TaskStateCancelled, updatedTask.Status.State, "Task state should be cancelled")
 
 		taskManager.runningTasksMu.RLock()
 		_, exists = taskManager.runningTasks[task.ID]
@@ -92,14 +88,10 @@ func TestTaskCancellation(t *testing.T) {
 
 	t.Run("CancelAlreadyCompletedTask", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateCompleted, &types.Message{
-			Kind:      "message",
 			MessageID: "test-message",
-			Role:      "assistant",
+			Role:      types.RoleAgent,
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Task completed",
-				},
+				types.CreateTextPart("Task completed"),
 			},
 		})
 
@@ -110,14 +102,10 @@ func TestTaskCancellation(t *testing.T) {
 
 	t.Run("CancelTaskWithoutRegisteredCancelFunc", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, &types.Message{
-			Kind:      "message",
 			MessageID: "test-message",
 			Role:      "user",
 			Parts: []types.Part{
-				map[string]any{
-					"kind": "text",
-					"text": "Test message",
-				},
+				types.CreateTextPart("Test message"),
 			},
 		})
 
@@ -126,6 +114,6 @@ func TestTaskCancellation(t *testing.T) {
 
 		updatedTask, exists := taskManager.GetTask(task.ID)
 		assert.True(t, exists, "Task should exist")
-		assert.Equal(t, types.TaskStateCanceled, updatedTask.Status.State, "Task state should be cancelled")
+		assert.Equal(t, types.TaskStateCancelled, updatedTask.Status.State, "Task state should be cancelled")
 	})
 }

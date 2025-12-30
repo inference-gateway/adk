@@ -146,10 +146,7 @@ func (as *ArtifactServiceImpl) CreateTextArtifact(name, description, text string
 		Name:        &name,
 		Description: &description,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: text,
-			},
+			types.CreateTextPart(text),
 		},
 	}
 }
@@ -165,31 +162,21 @@ func (as *ArtifactServiceImpl) CreateFileArtifact(name, description, filename st
 		return types.Artifact{}, fmt.Errorf("failed to store artifact: %w", err)
 	}
 
-	fileWithURI := types.FileWithUri{
-		Name:     &filename,
-		MIMEType: mimeType,
-		URI:      uri,
-	}
-
 	return types.Artifact{
 		ArtifactID:  artifactID,
 		Name:        &name,
 		Description: &description,
 		Parts: []types.Part{
-			types.FilePart{
-				Kind: "file",
-				File: fileWithURI,
-			},
+			types.CreateFilePart(filename, *mimeType, nil, &uri),
 		},
 	}, nil
 }
 
 // CreateFileArtifactFromURI creates a file artifact from an existing URI
 func (as *ArtifactServiceImpl) CreateFileArtifactFromURI(name, description, filename, uri string, mimeType *string) types.Artifact {
-	fileWithURI := types.FileWithUri{
-		Name:     &filename,
-		MIMEType: mimeType,
-		URI:      uri,
+	mediaType := "application/octet-stream"
+	if mimeType != nil {
+		mediaType = *mimeType
 	}
 
 	return types.Artifact{
@@ -197,10 +184,7 @@ func (as *ArtifactServiceImpl) CreateFileArtifactFromURI(name, description, file
 		Name:        &name,
 		Description: &description,
 		Parts: []types.Part{
-			types.FilePart{
-				Kind: "file",
-				File: fileWithURI,
-			},
+			types.CreateFilePart(filename, mediaType, nil, &uri),
 		},
 	}
 }
@@ -212,10 +196,7 @@ func (as *ArtifactServiceImpl) CreateDataArtifact(name, description string, data
 		Name:        &name,
 		Description: &description,
 		Parts: []types.Part{
-			types.DataPart{
-				Kind: "data",
-				Data: data,
-			},
+			types.CreateDataPart(data),
 		},
 	}
 }
@@ -262,27 +243,24 @@ func (as *ArtifactServiceImpl) GetArtifactsByType(task *types.Task, partKind str
 
 	for _, artifact := range task.Artifacts {
 		for _, part := range artifact.Parts {
-			switch p := part.(type) {
-			case types.TextPart:
-				if p.Kind == partKind {
-					matchingArtifacts = append(matchingArtifacts, artifact)
-					break
+			matched := false
+			switch partKind {
+			case "text":
+				if part.Text != nil {
+					matched = true
 				}
-			case types.FilePart:
-				if p.Kind == partKind {
-					matchingArtifacts = append(matchingArtifacts, artifact)
-					break
+			case "file":
+				if part.File != nil {
+					matched = true
 				}
-			case types.DataPart:
-				if p.Kind == partKind {
-					matchingArtifacts = append(matchingArtifacts, artifact)
-					break
+			case "data":
+				if part.Data != nil {
+					matched = true
 				}
-			case map[string]any:
-				if kind, ok := p["kind"].(string); ok && kind == partKind {
-					matchingArtifacts = append(matchingArtifacts, artifact)
-					break
-				}
+			}
+			if matched {
+				matchingArtifacts = append(matchingArtifacts, artifact)
+				break
 			}
 		}
 	}
@@ -311,41 +289,25 @@ func (as *ArtifactServiceImpl) ValidateArtifact(artifact types.Artifact) error {
 
 // validatePart validates a single part of an artifact
 func (as *ArtifactServiceImpl) validatePart(part types.Part) error {
-	switch p := part.(type) {
-	case types.TextPart:
-		if p.Kind != "text" {
-			return fmt.Errorf("text part must have kind 'text', got '%s'", p.Kind)
-		}
-		if p.Text == "" {
+	// Check which field is populated
+	if part.Text != nil {
+		if *part.Text == "" {
 			return fmt.Errorf("text part must have non-empty text content")
 		}
-	case types.FilePart:
-		if p.Kind != "file" {
-			return fmt.Errorf("file part must have kind 'file', got '%s'", p.Kind)
-		}
-		if p.File == nil {
-			return fmt.Errorf("file part must have non-nil file content")
-		}
-	case types.DataPart:
-		if p.Kind != "data" {
-			return fmt.Errorf("data part must have kind 'data', got '%s'", p.Kind)
-		}
-		if p.Data == nil {
+		return nil
+	}
+	if part.File != nil {
+		// File part is valid if the pointer is not nil
+		return nil
+	}
+	if part.Data != nil {
+		if part.Data.Data == nil {
 			return fmt.Errorf("data part must have non-nil data content")
 		}
-	case map[string]any:
-		kind, exists := p["kind"].(string)
-		if !exists {
-			return fmt.Errorf("part must have a 'kind' field")
-		}
-		if kind == "" {
-			return fmt.Errorf("part kind cannot be empty")
-		}
-	default:
-		return fmt.Errorf("unsupported part type: %T", part)
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("part must have at least one populated field (text, file, or data)")
 }
 
 // GetMimeTypeFromExtension returns a MIME type based on file extension
@@ -390,7 +352,6 @@ func (as *ArtifactServiceImpl) GetMimeTypeFromExtension(filename string) *string
 // CreateTaskArtifactUpdateEvent creates an artifact update event for streaming
 func (as *ArtifactServiceImpl) CreateTaskArtifactUpdateEvent(taskID, contextID string, artifact types.Artifact, append, lastChunk *bool) types.TaskArtifactUpdateEvent {
 	return types.TaskArtifactUpdateEvent{
-		Kind:      "artifact-update",
 		TaskID:    taskID,
 		ContextID: contextID,
 		Artifact:  artifact,

@@ -57,12 +57,9 @@ func main() {
 
 	// Create message with proper structure for streaming
 	message := types.Message{
-		Role: "user",
+		Role: types.RoleUser,
 		Parts: []types.Part{
-			types.TextPart{
-				Kind: "text",
-				Text: "Please write a detailed explanation about machine learning. Stream your response as you generate it.",
-			},
+			types.CreateTextPart("Please write a detailed explanation about machine learning. Stream your response as you generate it."),
 		},
 	}
 
@@ -75,7 +72,11 @@ func main() {
 		},
 	}
 
-	logger.Info("sending streaming request", zap.String("prompt", message.Parts[0].(types.TextPart).Text))
+	promptText := ""
+	if message.Parts[0].Text != nil {
+		promptText = *message.Parts[0].Text
+	}
+	logger.Info("sending streaming request", zap.String("prompt", promptText))
 
 	// Test streaming
 	eventChan, err := a2aClient.SendTaskStreaming(ctx, params)
@@ -104,9 +105,9 @@ func main() {
 			// Handle delta message
 			if task.Status.Message != nil && len(task.Status.Message.Parts) > 0 {
 				for _, part := range task.Status.Message.Parts {
-					if textPart, ok := part.(types.TextPart); ok {
-						fmt.Print(textPart.Text)
-						finalResponse += textPart.Text
+					if part.Text != nil {
+						fmt.Print(*part.Text)
+						finalResponse += *part.Text
 					}
 				}
 			}
@@ -127,7 +128,7 @@ func main() {
 			case types.TaskStateFailed:
 				logger.Error("task failed", zap.Int("event", eventCount))
 
-			case types.TaskStateCanceled:
+			case types.TaskStateCancelled:
 				logger.Info("task canceled", zap.Int("event", eventCount))
 			}
 			continue

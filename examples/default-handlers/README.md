@@ -132,7 +132,7 @@ Response:
   "status": {
     "state": "completed",
     "message": {
-      "role": "assistant",
+      "role": "ROLE_AGENT",
       "parts": [
         {
           "kind": "text",
