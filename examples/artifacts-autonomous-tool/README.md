@@ -139,7 +139,7 @@ This will:
 
 #### Prerequisites
 
-- Go 1.25+
+- Go 1.26+
 - An LLM API key (OpenAI, Anthropic, etc.)
 - Access to an Inference Gateway or direct LLM endpoint
 

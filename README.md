@@ -553,7 +553,7 @@ This ADK is part of the broader Inference Gateway ecosystem:
 
 ## 📋 Requirements
 
-- **Go**: 1.25 or later
+- **Go**: 1.26 or later
 - **Dependencies**: See [go.mod](./go.mod) for full dependency list
 
 ## 🐳 Docker Support
@@ -561,7 +561,7 @@ This ADK is part of the broader Inference Gateway ecosystem:
 Build and run your A2A agent application in a container. Here's an example Dockerfile for an application using the ADK:
 
 ```dockerfile
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Build arguments for agent metadata
 ARG AGENT_NAME="My A2A Agent"
