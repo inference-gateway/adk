@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.17.0](https://github.com/inference-gateway/adk/compare/v0.16.2...v0.17.0) (2025-12-30)
+
+### ✨ Features
+
+* **metadata:** Add token usage and execution metrics to A2A task responses ([#127](https://github.com/inference-gateway/adk/issues/127)) ([1f49f97](https://github.com/inference-gateway/adk/commit/1f49f9706c4337098abced1892a5cae8a0220cbf)), closes [#126](https://github.com/inference-gateway/adk/issues/126)
+
+### ♻️ Improvements
+
+* Migrate to the latest A2A proto schema ([#129](https://github.com/inference-gateway/adk/issues/129)) ([02c2bc1](https://github.com/inference-gateway/adk/commit/02c2bc12ca4ab723d2ef364fb9752c9c9ef26438))
+
+### 👷 CI
+
+* Bump generator tool to 0.2.2 ([fc58ab9](https://github.com/inference-gateway/adk/commit/fc58ab9ff47f4b33a9c964f603337a24d9c57a97))
+
+### 🔧 Miscellaneous
+
+* **deps:** Bump claude-code 2.0.65 to 2.0.76 ([47f0a79](https://github.com/inference-gateway/adk/commit/47f0a79a0dce8b18b77560f075621442e5e3e8b1))
+* **deps:** Bump generator tool ([659aec4](https://github.com/inference-gateway/adk/commit/659aec4eaae1d4a378f66ed94e9a5ae46c2edfe8))
+* **deps:** Update dependencies and infer configuration ([#128](https://github.com/inference-gateway/adk/issues/128)) ([0fa9d33](https://github.com/inference-gateway/adk/commit/0fa9d335467c6422d7d5e4db5fdfdadcd14f8a40))
+* **deps:** Update infer config ([76589af](https://github.com/inference-gateway/adk/commit/76589afa18e73867313d1b52c29a051a987faac4))
+
 ## [0.16.2](https://github.com/inference-gateway/adk/compare/v0.16.1...v0.16.2) (2025-12-13)
 
 ### ♻️ Improvements
