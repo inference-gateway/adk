@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.17.1](https://github.com/inference-gateway/adk/compare/v0.17.0...v0.17.1) (2026-04-17)
+
+### 🔧 Miscellaneous
+
+* **deps:** Bump Go to 1.26 and update tooling dependencies ([#130](https://github.com/inference-gateway/adk/issues/130)) ([6383a3d](https://github.com/inference-gateway/adk/commit/6383a3d078f2a32bad0843b7b738f55137f3fd48))
+
 ## [0.17.0](https://github.com/inference-gateway/adk/compare/v0.16.2...v0.17.0) (2025-12-30)
 
 ### ✨ Features
