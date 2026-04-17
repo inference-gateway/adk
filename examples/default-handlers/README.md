@@ -40,7 +40,7 @@ This approach provides:
 
 ### Prerequisites
 
-- Go 1.25 or later
+- Go 1.26 or later
 - Docker and Docker Compose (optional)
 
 ### Option 1: Using Docker Compose (Recommended)

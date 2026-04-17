@@ -2,19 +2,21 @@ version = 1
 
 [install]
 go.pkg-path = "go"
-go.version = "^1.25.4"
+go.version = "^1.26.1"
 golangci-lint.pkg-path = "golangci-lint"
-golangci-lint.version = "^2.7.2"
+golangci-lint.version = "^2.11.4"
 prettier.pkg-path = "prettier"
 prettier.version = "3.6.2"
 claude-code.pkg-path = "claude-code"
-claude-code.version = "^2.0.76"
+claude-code.version = "^2.1.104"
 gh.pkg-path = "gh"
-gh.version = "^2.83.2"
+gh.version = "^2.89.0"
 markdownlint-cli2.pkg-path = "markdownlint-cli2"
-markdownlint-cli2.version = "0.18.1"
+markdownlint-cli2.version = "0.21.0"
 mockgen.pkg-path = "mockgen"
 mockgen.version = "0.6.0"
+go-task.pkg-path = "go-task"
+go-task.version = "3.48.0"
 
 [hook]
 on-activate = """

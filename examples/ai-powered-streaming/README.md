@@ -78,7 +78,7 @@ server.NewA2AServerBuilder(cfg.A2A, logger).
 
 - **LLM Provider**: This example requires an AI provider (OpenAI, Anthropic, etc.)
 - **API Key**: Valid API key for your chosen provider
-- **Go 1.25+**: For building and running the example
+- **Go 1.26+**: For building and running the example
 - **Streaming Enabled**: Server must have streaming capabilities enabled
 
 ## Configuration
