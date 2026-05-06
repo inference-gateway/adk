@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.17.2](https://github.com/inference-gateway/adk/compare/v0.17.1...v0.17.2) (2026-05-06)
+
+### ♻️ Improvements
+
+* Rename deepseek-chat to deepseek-v4-flash in all examples ([2f269fe](https://github.com/inference-gateway/adk/commit/2f269fe9abc4b3c78585786d1b37a190caf44ffd))
+
 ## [0.17.1](https://github.com/inference-gateway/adk/compare/v0.17.0...v0.17.1) (2026-04-17)
 
 ### 🔧 Miscellaneous
