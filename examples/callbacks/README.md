@@ -93,7 +93,7 @@ The server will be available at `http://localhost:8080` (port can be configured 
 ```bash
 export A2A_SERVER_PORT=8081
 export A2A_AGENT_CLIENT_PROVIDER=deepseek
-export A2A_AGENT_CLIENT_MODEL=deepseek-chat
+export A2A_AGENT_CLIENT_MODEL=deepseek-v4-flash
 export A2A_AGENT_CLIENT_API_KEY=your-deepseek-api-key
 export A2A_AGENT_CLIENT_BASE_URL=http://localhost:8080/v1 # Inference Gateway URL - you need to run it separately
 ```

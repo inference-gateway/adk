@@ -72,7 +72,7 @@ DEEPSEEK_API_KEY=your_deepseek_api_key_here
 
 # Configure agent
 A2A_AGENT_CLIENT_PROVIDER=deepseek
-A2A_AGENT_CLIENT_MODEL=deepseek-chat
+A2A_AGENT_CLIENT_MODEL=deepseek-v4-flash
 
 # Usage metadata is enabled by default
 A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA=true
@@ -97,7 +97,7 @@ This will:
 ```bash
 cd server
 export A2A_AGENT_CLIENT_PROVIDER=deepseek
-export A2A_AGENT_CLIENT_MODEL=deepseek-chat
+export A2A_AGENT_CLIENT_MODEL=deepseek-v4-flash
 export A2A_AGENT_CLIENT_BASE_URL=http://localhost:8080/v1
 export A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA=true
 go run main.go

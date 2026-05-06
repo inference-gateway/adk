@@ -39,7 +39,7 @@ services:
       A2A_CAPABILITIES_STREAMING: ${A2A_CAPABILITIES_STREAMING:-true}
       A2A_AGENT_CLIENT_BASE_URL: ${A2A_AGENT_CLIENT_BASE_URL:-http://gateway:8080/v1}
       A2A_AGENT_CLIENT_PROVIDER: ${A2A_AGENT_CLIENT_PROVIDER:-deepseek}
-      A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL:-deepseek-chat}
+      A2A_AGENT_CLIENT_MODEL: ${A2A_AGENT_CLIENT_MODEL:-deepseek-v4-flash}
     healthcheck:
       test:
         - CMD

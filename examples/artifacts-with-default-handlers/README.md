@@ -97,7 +97,7 @@ This example requires an LLM provider to be configured. To set up AI-powered res
 
    # For DeepSeek
    A2A_AGENT_CLIENT_PROVIDER=deepseek
-   A2A_AGENT_CLIENT_MODEL=deepseek-chat
+   A2A_AGENT_CLIENT_MODEL=deepseek-v4-flash
    DEEPSEEK_API_KEY=your-deepseek-key
    ```
 
