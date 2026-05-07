@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.17.3](https://github.com/inference-gateway/adk/compare/v0.17.2...v0.17.3) (2026-05-07)
+
+### 👷 CI
+
+* **deps:** Bump golangci-lint to latest ([3569be5](https://github.com/inference-gateway/adk/commit/3569be5b741830d7d2cdf9a28238526b51273e0b))
+* Update golangci-lint installation script to use the new URL and bump version to v2.12.2 ([361783f](https://github.com/inference-gateway/adk/commit/361783fa25c9b06cfb6e111be669f9fa94beada4))
+
+### 🔧 Miscellaneous
+
+* **workflow:** Pin claude-code-action to v1.0.114 and update system prompt instructions ([ecbd8d4](https://github.com/inference-gateway/adk/commit/ecbd8d41ce30c2b4b7c19155a6caef4cd8c60c9c))
+
 ## [0.17.2](https://github.com/inference-gateway/adk/compare/v0.17.1...v0.17.2) (2026-05-06)
 
 ### ♻️ Improvements
