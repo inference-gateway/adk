@@ -10,6 +10,13 @@ import (
 )
 
 type FakeA2AProtocolHandler struct {
+	HandleGetAuthenticatedExtendedCardStub        func(*gin.Context, types.JSONRPCRequest, *types.AgentCard)
+	handleGetAuthenticatedExtendedCardMutex       sync.RWMutex
+	handleGetAuthenticatedExtendedCardArgsForCall []struct {
+		arg1 *gin.Context
+		arg2 types.JSONRPCRequest
+		arg3 *types.AgentCard
+	}
 	HandleMessageSendStub        func(*gin.Context, types.JSONRPCRequest)
 	handleMessageSendMutex       sync.RWMutex
 	handleMessageSendArgsForCall []struct {
@@ -65,8 +72,49 @@ type FakeA2AProtocolHandler struct {
 		arg1 *gin.Context
 		arg2 types.JSONRPCRequest
 	}
+	HandleTaskResubscribeStub        func(*gin.Context, types.JSONRPCRequest, server.StreamableTaskHandler)
+	handleTaskResubscribeMutex       sync.RWMutex
+	handleTaskResubscribeArgsForCall []struct {
+		arg1 *gin.Context
+		arg2 types.JSONRPCRequest
+		arg3 server.StreamableTaskHandler
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(arg1 *gin.Context, arg2 types.JSONRPCRequest, arg3 *types.AgentCard) {
+	fake.handleGetAuthenticatedExtendedCardMutex.Lock()
+	fake.handleGetAuthenticatedExtendedCardArgsForCall = append(fake.handleGetAuthenticatedExtendedCardArgsForCall, struct {
+		arg1 *gin.Context
+		arg2 types.JSONRPCRequest
+		arg3 *types.AgentCard
+	}{arg1, arg2, arg3})
+	stub := fake.HandleGetAuthenticatedExtendedCardStub
+	fake.recordInvocation("HandleGetAuthenticatedExtendedCard", []interface{}{arg1, arg2, arg3})
+	fake.handleGetAuthenticatedExtendedCardMutex.Unlock()
+	if stub != nil {
+		fake.HandleGetAuthenticatedExtendedCardStub(arg1, arg2, arg3)
+	}
+}
+
+func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCardCallCount() int {
+	fake.handleGetAuthenticatedExtendedCardMutex.RLock()
+	defer fake.handleGetAuthenticatedExtendedCardMutex.RUnlock()
+	return len(fake.handleGetAuthenticatedExtendedCardArgsForCall)
+}
+
+func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCardCalls(stub func(*gin.Context, types.JSONRPCRequest, *types.AgentCard)) {
+	fake.handleGetAuthenticatedExtendedCardMutex.Lock()
+	defer fake.handleGetAuthenticatedExtendedCardMutex.Unlock()
+	fake.HandleGetAuthenticatedExtendedCardStub = stub
+}
+
+func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCardArgsForCall(i int) (*gin.Context, types.JSONRPCRequest, *types.AgentCard) {
+	fake.handleGetAuthenticatedExtendedCardMutex.RLock()
+	defer fake.handleGetAuthenticatedExtendedCardMutex.RUnlock()
+	argsForCall := fake.handleGetAuthenticatedExtendedCardArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeA2AProtocolHandler) HandleMessageSend(arg1 *gin.Context, arg2 types.JSONRPCRequest) {
@@ -367,9 +415,45 @@ func (fake *FakeA2AProtocolHandler) HandleTaskPushNotificationConfigSetArgsForCa
 	return argsForCall.arg1, argsForCall.arg2
 }
 
+func (fake *FakeA2AProtocolHandler) HandleTaskResubscribe(arg1 *gin.Context, arg2 types.JSONRPCRequest, arg3 server.StreamableTaskHandler) {
+	fake.handleTaskResubscribeMutex.Lock()
+	fake.handleTaskResubscribeArgsForCall = append(fake.handleTaskResubscribeArgsForCall, struct {
+		arg1 *gin.Context
+		arg2 types.JSONRPCRequest
+		arg3 server.StreamableTaskHandler
+	}{arg1, arg2, arg3})
+	stub := fake.HandleTaskResubscribeStub
+	fake.recordInvocation("HandleTaskResubscribe", []interface{}{arg1, arg2, arg3})
+	fake.handleTaskResubscribeMutex.Unlock()
+	if stub != nil {
+		fake.HandleTaskResubscribeStub(arg1, arg2, arg3)
+	}
+}
+
+func (fake *FakeA2AProtocolHandler) HandleTaskResubscribeCallCount() int {
+	fake.handleTaskResubscribeMutex.RLock()
+	defer fake.handleTaskResubscribeMutex.RUnlock()
+	return len(fake.handleTaskResubscribeArgsForCall)
+}
+
+func (fake *FakeA2AProtocolHandler) HandleTaskResubscribeCalls(stub func(*gin.Context, types.JSONRPCRequest, server.StreamableTaskHandler)) {
+	fake.handleTaskResubscribeMutex.Lock()
+	defer fake.handleTaskResubscribeMutex.Unlock()
+	fake.HandleTaskResubscribeStub = stub
+}
+
+func (fake *FakeA2AProtocolHandler) HandleTaskResubscribeArgsForCall(i int) (*gin.Context, types.JSONRPCRequest, server.StreamableTaskHandler) {
+	fake.handleTaskResubscribeMutex.RLock()
+	defer fake.handleTaskResubscribeMutex.RUnlock()
+	argsForCall := fake.handleTaskResubscribeArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
 func (fake *FakeA2AProtocolHandler) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.handleGetAuthenticatedExtendedCardMutex.RLock()
+	defer fake.handleGetAuthenticatedExtendedCardMutex.RUnlock()
 	fake.handleMessageSendMutex.RLock()
 	defer fake.handleMessageSendMutex.RUnlock()
 	fake.handleMessageStreamMutex.RLock()
@@ -388,6 +472,8 @@ func (fake *FakeA2AProtocolHandler) Invocations() map[string][][]interface{} {
 	defer fake.handleTaskPushNotificationConfigListMutex.RUnlock()
 	fake.handleTaskPushNotificationConfigSetMutex.RLock()
 	defer fake.handleTaskPushNotificationConfigSetMutex.RUnlock()
+	fake.handleTaskResubscribeMutex.RLock()
+	defer fake.handleTaskResubscribeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -19,6 +19,7 @@ import (
 type A2AClient interface {
 	// Agent discovery
 	GetAgentCard(ctx context.Context) (*types.AgentCard, error)
+	GetAuthenticatedExtendedCard(ctx context.Context, params types.GetAuthenticatedExtendedCardParams) (*types.JSONRPCSuccessResponse, error)
 	GetHealth(ctx context.Context) (*HealthResponse, error)
 
 	// Task operations
@@ -27,6 +28,13 @@ type A2AClient interface {
 	GetTask(ctx context.Context, params types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error)
 	ListTasks(ctx context.Context, params types.TaskListParams) (*types.JSONRPCSuccessResponse, error)
 	CancelTask(ctx context.Context, params types.TaskIdParams) (*types.JSONRPCSuccessResponse, error)
+	ResubscribeTask(ctx context.Context, params types.TaskResubscriptionParams) (<-chan types.JSONRPCSuccessResponse, error)
+
+	// Push notification configuration
+	SetTaskPushNotificationConfig(ctx context.Context, params types.TaskPushNotificationConfig) (*types.JSONRPCSuccessResponse, error)
+	GetTaskPushNotificationConfig(ctx context.Context, params types.GetTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
+	ListTaskPushNotificationConfig(ctx context.Context, params types.ListTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
+	DeleteTaskPushNotificationConfig(ctx context.Context, params types.DeleteTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
 
 	// Configuration
 	SetTimeout(timeout time.Duration)
@@ -378,6 +386,205 @@ func (c *Client) ListTasks(ctx context.Context, params types.TaskListParams) (*t
 
 	c.logger.Debug("tasks listed successfully")
 	return &resp, nil
+}
+
+// doJSONRPCCall is a helper that marshals a params struct, issues a JSON-RPC call, and
+// returns the decoded JSONRPCSuccessResponse. It centralizes the boilerplate used by
+// every JSON-RPC method on the client (struct marshal → map[string]any → request).
+func (c *Client) doJSONRPCCall(ctx context.Context, method string, params any) (*types.JSONRPCSuccessResponse, error) {
+	req := types.JSONRPCRequest{
+		JSONRPC: "2.0",
+		Method:  method,
+		Params:  make(map[string]any),
+	}
+
+	if params != nil {
+		paramsBytes, err := json.Marshal(params)
+		if err != nil {
+			c.logger.Error("failed to marshal params", zap.Error(err), zap.String("method", method))
+			return nil, fmt.Errorf("failed to marshal params: %w", err)
+		}
+
+		var paramsMap map[string]any
+		if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
+			c.logger.Error("failed to unmarshal params to map", zap.Error(err), zap.String("method", method))
+			return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
+		}
+		req.Params = paramsMap
+	}
+
+	var resp types.JSONRPCSuccessResponse
+	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
+		c.logger.Error("json-rpc call failed", zap.Error(err), zap.String("method", method))
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+// SetTaskPushNotificationConfig registers (or replaces) the push notification configuration
+// attached to a task via the `tasks/pushNotificationConfig/set` JSON-RPC method.
+func (c *Client) SetTaskPushNotificationConfig(ctx context.Context, params types.TaskPushNotificationConfig) (*types.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("setting task push notification config",
+		zap.String("method", "tasks/pushNotificationConfig/set"),
+		zap.String("task_name", params.Name),
+		zap.String("url", params.PushNotificationConfig.URL))
+	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/set", params)
+}
+
+// GetTaskPushNotificationConfig retrieves the push notification configuration for a task via
+// the `tasks/pushNotificationConfig/get` JSON-RPC method.
+func (c *Client) GetTaskPushNotificationConfig(ctx context.Context, params types.GetTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("getting task push notification config",
+		zap.String("method", "tasks/pushNotificationConfig/get"),
+		zap.String("task_name", params.Name))
+	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/get", params)
+}
+
+// ListTaskPushNotificationConfig lists push notification configurations for a task via the
+// `tasks/pushNotificationConfig/list` JSON-RPC method.
+func (c *Client) ListTaskPushNotificationConfig(ctx context.Context, params types.ListTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("listing task push notification configs",
+		zap.String("method", "tasks/pushNotificationConfig/list"),
+		zap.String("parent", params.Parent))
+	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/list", params)
+}
+
+// DeleteTaskPushNotificationConfig deletes a push notification configuration for a task via
+// the `tasks/pushNotificationConfig/delete` JSON-RPC method.
+func (c *Client) DeleteTaskPushNotificationConfig(ctx context.Context, params types.DeleteTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("deleting task push notification config",
+		zap.String("method", "tasks/pushNotificationConfig/delete"),
+		zap.String("task_name", params.Name))
+	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/delete", params)
+}
+
+// GetAuthenticatedExtendedCard fetches the authenticated/extended agent card via the
+// `agent/getAuthenticatedExtendedCard` JSON-RPC method. Unlike GetAgentCard (which hits
+// the public HTTP endpoint), this call goes through the JSON-RPC route and is subject to
+// the server's authentication middleware.
+func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context, params types.GetAuthenticatedExtendedCardParams) (*types.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("retrieving authenticated extended agent card",
+		zap.String("method", "agent/getAuthenticatedExtendedCard"),
+		zap.String("tenant", params.Tenant))
+	return c.doJSONRPCCall(ctx, "agent/getAuthenticatedExtendedCard", params)
+}
+
+// ResubscribeTask re-subscribes to a streaming task via the `tasks/resubscribe` JSON-RPC
+// method, returning a channel of streaming responses. The channel is closed when the
+// stream ends (either because the server sent `[DONE]`, the response body closed, or the
+// supplied context was cancelled).
+func (c *Client) ResubscribeTask(ctx context.Context, params types.TaskResubscriptionParams) (<-chan types.JSONRPCSuccessResponse, error) {
+	c.logger.Debug("resubscribing to task",
+		zap.String("method", "tasks/resubscribe"),
+		zap.String("task_name", params.Name))
+
+	req := types.JSONRPCRequest{
+		JSONRPC: "2.0",
+		Method:  "tasks/resubscribe",
+		Params:  make(map[string]any),
+	}
+
+	paramsBytes, err := json.Marshal(params)
+	if err != nil {
+		c.logger.Error("failed to marshal params", zap.Error(err))
+		return nil, fmt.Errorf("failed to marshal params: %w", err)
+	}
+
+	var paramsMap map[string]any
+	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
+		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
+		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
+	}
+	req.Params = paramsMap
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		c.logger.Error("failed to marshal request", zap.Error(err))
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.getA2AEndpointURL(), bytes.NewBuffer(body))
+	if err != nil {
+		c.logger.Error("failed to create request", zap.Error(err))
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	c.setHeaders(httpReq)
+	httpReq.Header.Set("Accept", "text/event-stream")
+
+	httpResp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		c.logger.Error("failed to send resubscribe request", zap.Error(err))
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		if closeErr := httpResp.Body.Close(); closeErr != nil {
+			c.logger.Warn("failed to close response body", zap.Error(closeErr))
+		}
+		c.logger.Error("unexpected status code", zap.Int("status_code", httpResp.StatusCode))
+		return nil, fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)
+	}
+
+	eventChan := make(chan types.JSONRPCSuccessResponse, 100)
+
+	go func() {
+		defer func() {
+			if closeErr := httpResp.Body.Close(); closeErr != nil {
+				c.logger.Warn("failed to close response body", zap.Error(closeErr))
+			}
+			close(eventChan)
+		}()
+
+		scanner := bufio.NewScanner(httpResp.Body)
+		eventCount := 0
+		for {
+			select {
+			case <-ctx.Done():
+				c.logger.Debug("resubscribe context cancelled", zap.Int("events_received", eventCount))
+				return
+			default:
+				if !scanner.Scan() {
+					if err := scanner.Err(); err != nil {
+						c.logger.Error("failed to scan response", zap.Error(err), zap.Int("events_received", eventCount))
+						return
+					}
+					c.logger.Debug("resubscribe stream completed", zap.Int("events_received", eventCount))
+					return
+				}
+
+				line := scanner.Text()
+				if line == "" || !strings.HasPrefix(line, "data: ") {
+					continue
+				}
+
+				if strings.TrimSpace(line) == "data: [DONE]" {
+					c.logger.Debug("received resubscribe termination signal", zap.Int("events_received", eventCount))
+					return
+				}
+
+				jsonData := strings.TrimPrefix(line, "data: ")
+
+				var event types.JSONRPCSuccessResponse
+				if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
+					c.logger.Error("failed to decode event", zap.Error(err), zap.String("json_data", jsonData))
+					return
+				}
+
+				eventCount++
+
+				select {
+				case eventChan <- event:
+				case <-ctx.Done():
+					c.logger.Debug("resubscribe context cancelled while sending event", zap.Int("events_received", eventCount))
+					return
+				}
+			}
+		}
+	}()
+
+	return eventChan, nil
 }
 
 // GetAgentCard retrieves the agent card information via HTTP GET to .well-known/agent-card.json

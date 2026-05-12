@@ -49,6 +49,15 @@ type A2AProtocolHandler interface {
 
 	// HandleTaskPushNotificationConfigDelete processes tasks/pushNotificationConfig/delete requests
 	HandleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest)
+
+	// HandleTaskResubscribe processes tasks/resubscribe requests, re-attaching a streaming
+	// subscription for an existing task and emitting its current state via SSE.
+	HandleTaskResubscribe(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler)
+
+	// HandleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests,
+	// returning the authenticated/extended agent card (the same card object the unauthenticated
+	// `.well-known/agent-card.json` endpoint exposes, but served over JSON-RPC).
+	HandleGetAuthenticatedExtendedCard(c *gin.Context, req types.JSONRPCRequest, agentCard *types.AgentCard)
 }
 
 // TaskHandler defines how to handle task processing
@@ -1035,6 +1044,225 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	h.logger.Info("push notification config deleted successfully",
 		zap.String("task_name", params.Name))
 	h.responseSender.SendSuccess(c, req.ID, nil)
+}
+
+// HandleTaskResubscribe processes tasks/resubscribe requests.
+//
+// The request body is a `SubscribeToTaskRequest` carrying the task name (ID).
+// If the task does not exist, an SSE error response is returned. If it does, the
+// current task state is emitted as a JSON-RPC streaming response followed by the
+// `[DONE]` terminator. When the task is still in a working state, the streaming
+// handler is invoked to continue delivering live events for the task.
+func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler) {
+	var params types.TaskResubscriptionParams
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		h.logger.Error("failed to marshal params", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+		return
+	}
+
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		h.logger.Error("failed to parse tasks/resubscribe request", zap.Error(err))
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+		return
+	}
+
+	if params.Name == "" {
+		h.logger.Error("tasks/resubscribe missing task name")
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "task name is required")
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Headers", "Cache-Control")
+
+	task, exists := h.taskManager.GetTask(params.Name)
+	if !exists {
+		h.logger.Error("task not found for resubscribe", zap.String("task_id", params.Name))
+		errorResponse := types.JSONRPCErrorResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &types.JSONRPCError{
+				Code:    int(ErrInvalidParams),
+				Message: "task not found",
+			},
+		}
+		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+		}
+		return
+	}
+
+	h.logger.Info("resubscribing to task",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID),
+		zap.String("state", string(task.Status.State)))
+
+	statusUpdate := types.TaskStatusUpdateEvent{
+		TaskID:    task.ID,
+		ContextID: task.ContextID,
+		Status:    task.Status,
+		Final:     task.Status.State == types.TaskStateCompleted || task.Status.State == types.TaskStateFailed || task.Status.State == types.TaskStateCancelled,
+	}
+
+	initialResponse := types.JSONRPCSuccessResponse{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result:  statusUpdate,
+	}
+
+	if err := h.writeStreamingResponse(c, &initialResponse); err != nil {
+		h.logger.Error("failed to write initial resubscribe status", zap.Error(err))
+		return
+	}
+
+	if task.Status.State != types.TaskStateWorking && task.Status.State != types.TaskStateSubmitted {
+		if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+			h.logger.Error("failed to write stream termination signal", zap.Error(err))
+		} else {
+			c.Writer.Flush()
+		}
+		return
+	}
+
+	if streamingHandler == nil {
+		h.logger.Warn("no streaming handler configured; resubscribe will end after sending current state",
+			zap.String("task_id", task.ID))
+		if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+			h.logger.Error("failed to write stream termination signal", zap.Error(err))
+		} else {
+			c.Writer.Flush()
+		}
+		return
+	}
+
+	var message *types.Message
+	if task.Status.Message != nil {
+		message = task.Status.Message
+	} else {
+		message = &types.Message{
+			MessageID: uuid.New().String(),
+			Role:      "user",
+			Parts:     []types.Part{},
+		}
+	}
+
+	ctx := c.Request.Context()
+	taskCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if defaultTM, ok := h.taskManager.(*DefaultTaskManager); ok {
+		defaultTM.RegisterTaskCancelFunc(task.ID, cancel)
+	}
+
+	eventsChan, err := streamingHandler.HandleStreamingTask(taskCtx, task, message)
+	if err != nil {
+		h.logger.Error("failed to resume streaming task",
+			zap.Error(err),
+			zap.String("task_id", task.ID))
+		errorResponse := types.JSONRPCErrorResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &types.JSONRPCError{
+				Code:    int(ErrInternalError),
+				Message: err.Error(),
+			},
+		}
+		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
+			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
+		}
+		return
+	}
+
+	for event := range eventsChan {
+		switch event.Type() {
+		case types.EventDelta:
+			var deltaMessage types.Message
+			if err := event.DataAs(&deltaMessage); err == nil {
+				task.Status.Message = &deltaMessage
+				task.Status.State = types.TaskStateWorking
+				deltaResponse := types.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  *task,
+				}
+				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
+					h.logger.Error("failed to write delta", zap.Error(err))
+					return
+				}
+			}
+
+		case types.EventTaskStatusChanged:
+			var statusData types.TaskStatus
+			if err := event.DataAs(&statusData); err == nil {
+				task.Status.State = statusData.State
+				statusEvent := types.TaskStatusUpdateEvent{
+					TaskID:    task.ID,
+					ContextID: task.ContextID,
+					Status:    statusData,
+					Final:     statusData.State == types.TaskStateCompleted || statusData.State == types.TaskStateFailed || statusData.State == types.TaskStateCancelled,
+				}
+				statusResponse := types.JSONRPCSuccessResponse{
+					JSONRPC: "2.0",
+					ID:      req.ID,
+					Result:  statusEvent,
+				}
+				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
+					h.logger.Error("failed to write status change", zap.Error(err))
+					return
+				}
+			}
+		}
+	}
+
+	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+		h.logger.Error("failed to write stream termination signal", zap.Error(err))
+	} else {
+		c.Writer.Flush()
+	}
+
+	h.logger.Info("task resubscribe completed",
+		zap.String("task_id", task.ID),
+		zap.String("context_id", task.ContextID))
+}
+
+// HandleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests.
+//
+// The handler returns the configured agent card to the caller. Because access to this
+// endpoint is gated by the JSON-RPC route (which is itself protected by the configured
+// authentication middleware when enabled), reaching this method implies the caller has
+// successfully authenticated.
+func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Context, req types.JSONRPCRequest, agentCard *types.AgentCard) {
+	if agentCard == nil {
+		h.logger.Error("no agent card configured for agent/getAuthenticatedExtendedCard")
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), "agent card not configured")
+		return
+	}
+
+	// We don't need to parse params strictly (the schema only carries an optional tenant),
+	// but we still attempt to so the handler surfaces malformed input as invalid params.
+	if req.Params != nil {
+		var params types.GetAuthenticatedExtendedCardParams
+		paramsBytes, err := json.Marshal(req.Params)
+		if err != nil {
+			h.logger.Error("failed to marshal params", zap.Error(err))
+			h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
+			return
+		}
+		if err := json.Unmarshal(paramsBytes, &params); err != nil {
+			h.logger.Error("failed to parse agent/getAuthenticatedExtendedCard request", zap.Error(err))
+			h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
+			return
+		}
+		h.logger.Info("returning authenticated extended agent card", zap.String("tenant", params.Tenant))
+	} else {
+		h.logger.Info("returning authenticated extended agent card")
+	}
+
+	h.responseSender.SendSuccess(c, req.ID, *agentCard)
 }
 
 // populateTaskMetadata populates task metadata with usage statistics if enabled
