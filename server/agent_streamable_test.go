@@ -355,12 +355,9 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						ID:    "call_abc123",
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_abc123"),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "get_weather",
 							Arguments: `{"location":"New York"}`,
 						},
@@ -369,8 +366,8 @@ func TestToolCallAccumulator(t *testing.T) {
 			},
 			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "call_abc123",
-					Type: "function",
+					ID:   "call_abc123",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "get_weather",
 						Arguments: `{"location":"New York"}`,
@@ -385,12 +382,9 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						ID:    "call_xyz789",
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_xyz789"),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "search_database",
 							Arguments: `{"query":`,
 						},
@@ -399,10 +393,7 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `"user data",`,
 						},
 					},
@@ -410,10 +401,7 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `"limit":100}`,
 						},
 					},
@@ -421,8 +409,8 @@ func TestToolCallAccumulator(t *testing.T) {
 			},
 			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "call_xyz789",
-					Type: "function",
+					ID:   "call_xyz789",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "search_database",
 						Arguments: `{"query":"user data","limit":100}`,
@@ -437,11 +425,8 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "calculate_sum",
 							Arguments: `{"a":5,`,
 						},
@@ -450,11 +435,8 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						ID:    "call_late_id",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_late_id"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `"b":10}`,
 						},
 					},
@@ -462,8 +444,8 @@ func TestToolCallAccumulator(t *testing.T) {
 			},
 			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "call_late_id",
-					Type: "function",
+					ID:   "call_late_id",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "calculate_sum",
 						Arguments: `{"a":5,"b":10}`,
@@ -478,24 +460,18 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						ID:    "call_first",
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_first"),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "get_time",
 							Arguments: `{"timezone":`,
 						},
 					},
 					{
 						Index: 1,
-						ID:    "call_second",
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_second"),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "get_date",
 							Arguments: `{"format":`,
 						},
@@ -504,19 +480,13 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `"UTC"}`,
 						},
 					},
 					{
 						Index: 1,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `"ISO8601"}`,
 						},
 					},
@@ -524,16 +494,16 @@ func TestToolCallAccumulator(t *testing.T) {
 			},
 			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "call_first",
-					Type: "function",
+					ID:   "call_first",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "get_time",
 						Arguments: `{"timezone":"UTC"}`,
 					},
 				},
 				{
-					Id:   "call_second",
-					Type: "function",
+					ID:   "call_second",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "get_date",
 						Arguments: `{"format":"ISO8601"}`,
@@ -548,12 +518,9 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						ID:    "call_with_gaps",
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_with_gaps"),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name: "process_data",
 						},
 					},
@@ -562,10 +529,7 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `{"input":"test"}`,
 						},
 					},
@@ -573,8 +537,8 @@ func TestToolCallAccumulator(t *testing.T) {
 			},
 			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "call_with_gaps",
-					Type: "function",
+					ID:   "call_with_gaps",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "process_data",
 						Arguments: `{"input":"test"}`,
@@ -589,12 +553,9 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						ID:    "call_name_later",
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_name_later"),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `{"param":`,
 						},
 					},
@@ -602,10 +563,7 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "delayed_function",
 							Arguments: `"value"}`,
 						},
@@ -614,8 +572,8 @@ func TestToolCallAccumulator(t *testing.T) {
 			},
 			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "call_name_later",
-					Type: "function",
+					ID:   "call_name_later",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "delayed_function",
 						Arguments: `{"param":"value"}`,
@@ -630,12 +588,9 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						ID:    "call_complex",
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_complex"),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "process_order",
 							Arguments: `{"items":[`,
 						},
@@ -644,10 +599,7 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `{"id":1,"qty":2},`,
 						},
 					},
@@ -655,10 +607,7 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `{"id":2,"qty":1}],`,
 						},
 					},
@@ -666,10 +615,7 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Arguments: `"total":99.99}`,
 						},
 					},
@@ -677,8 +623,8 @@ func TestToolCallAccumulator(t *testing.T) {
 			},
 			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "call_complex",
-					Type: "function",
+					ID:   "call_complex",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "process_order",
 						Arguments: `{"items":[{"id":1,"qty":2},{"id":2,"qty":1}],"total":99.99}`,
@@ -693,11 +639,8 @@ func TestToolCallAccumulator(t *testing.T) {
 				{
 					{
 						Index: 0,
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "anonymous_function",
 							Arguments: `{"data":"test"}`,
 						},
@@ -706,8 +649,8 @@ func TestToolCallAccumulator(t *testing.T) {
 			},
 			expectedToolCalls: []sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "",
-					Type: "function",
+					ID:   "",
+					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "anonymous_function",
 						Arguments: `{"data":"test"}`,
@@ -728,23 +671,25 @@ func TestToolCallAccumulator(t *testing.T) {
 
 					if toolCallAccumulator[key] == nil {
 						toolCallAccumulator[key] = &sdk.ChatCompletionMessageToolCall{
-							Type:     "function",
+							Type:     sdk.ChatCompletionToolType("function"),
 							Function: sdk.ChatCompletionMessageToolCallFunction{},
 						}
 					}
 
 					toolCall := toolCallAccumulator[key]
-					if toolCallChunk.ID != "" {
-						toolCall.Id = toolCallChunk.ID
+					if toolCallChunk.ID != nil && *toolCallChunk.ID != "" {
+						toolCall.ID = *toolCallChunk.ID
 					}
-					if toolCallChunk.Function.Name != "" {
-						toolCall.Function.Name = toolCallChunk.Function.Name
-					}
-					if toolCallChunk.Function.Arguments != "" {
-						if toolCall.Function.Arguments == "" {
-							toolCall.Function.Arguments = toolCallChunk.Function.Arguments
-						} else {
-							toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+					if toolCallChunk.Function != nil {
+						if toolCallChunk.Function.Name != "" {
+							toolCall.Function.Name = toolCallChunk.Function.Name
+						}
+						if toolCallChunk.Function.Arguments != "" {
+							if toolCall.Function.Arguments == "" {
+								toolCall.Function.Arguments = toolCallChunk.Function.Arguments
+							} else {
+								toolCall.Function.Arguments += toolCallChunk.Function.Arguments
+							}
 						}
 					}
 				}
@@ -762,7 +707,7 @@ func TestToolCallAccumulator(t *testing.T) {
 				"Number of tool calls should match expected")
 
 			for i, expected := range tt.expectedToolCalls {
-				assert.Equal(t, expected.Id, actualToolCalls[i].Id,
+				assert.Equal(t, expected.ID, actualToolCalls[i].ID,
 					"Tool call ID should match")
 				assert.Equal(t, expected.Type, actualToolCalls[i].Type,
 					"Tool call type should match")
@@ -842,12 +787,9 @@ func TestRunWithStream_WithInputRequiredTool(t *testing.T) {
 			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 				{
 					Index: 0,
-					ID:    "call_input",
-					Type:  "function",
-					Function: struct {
-						Name      string `json:"name,omitempty"`
-						Arguments string `json:"arguments,omitempty"`
-					}{
+					ID:    new("call_input"),
+					Type:  new("function"),
+					Function: &sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "input_required",
 						Arguments: `{"message":"Please provide more details"}`,
 					},
@@ -856,7 +798,7 @@ func TestRunWithStream_WithInputRequiredTool(t *testing.T) {
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
 						FinishReason: "tool_calls",
 					},
 				},
@@ -910,12 +852,9 @@ func TestRunWithStream_MaxIterationsReached(t *testing.T) {
 			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 				{
 					Index: 0,
-					ID:    fmt.Sprintf("call_%d", time.Now().UnixNano()),
-					Type:  "function",
-					Function: struct {
-						Name      string `json:"name,omitempty"`
-						Arguments string `json:"arguments,omitempty"`
-					}{
+					ID:    new(fmt.Sprintf("call_%d", time.Now().UnixNano())),
+					Type:  new("function"),
+					Function: &sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "test_tool",
 						Arguments: `{"param":"value"}`,
 					},
@@ -924,7 +863,7 @@ func TestRunWithStream_MaxIterationsReached(t *testing.T) {
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
 						FinishReason: "tool_calls",
 					},
 				},
@@ -994,12 +933,9 @@ func TestRunWithStream_ToolExecutionError(t *testing.T) {
 			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 				{
 					Index: 0,
-					ID:    "call_fail",
-					Type:  "function",
-					Function: struct {
-						Name      string `json:"name,omitempty"`
-						Arguments string `json:"arguments,omitempty"`
-					}{
+					ID:    new("call_fail"),
+					Type:  new("function"),
+					Function: &sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "failing_tool",
 						Arguments: `{"param":"value"}`,
 					},
@@ -1008,7 +944,7 @@ func TestRunWithStream_ToolExecutionError(t *testing.T) {
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
 						FinishReason: "tool_calls",
 					},
 				},
@@ -1077,12 +1013,9 @@ func TestRunWithStream_InvalidToolArguments(t *testing.T) {
 			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 				{
 					Index: 0,
-					ID:    "call_invalid",
-					Type:  "function",
-					Function: struct {
-						Name      string `json:"name,omitempty"`
-						Arguments string `json:"arguments,omitempty"`
-					}{
+					ID:    new("call_invalid"),
+					Type:  new("function"),
+					Function: &sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "test_tool",
 						Arguments: `{invalid json`,
 					},
@@ -1091,7 +1024,7 @@ func TestRunWithStream_InvalidToolArguments(t *testing.T) {
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
 						FinishReason: "tool_calls",
 					},
 				},
@@ -1217,12 +1150,9 @@ func TestRunWithStream_MultipleIterations(t *testing.T) {
 				toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 					{
 						Index: 0,
-						ID:    fmt.Sprintf("call_%d", callCount),
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new(fmt.Sprintf("call_%d", callCount)),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "iteration_tool",
 							Arguments: `{"iteration":` + fmt.Sprintf("%d", callCount) + `}`,
 						},
@@ -1231,7 +1161,7 @@ func TestRunWithStream_MultipleIterations(t *testing.T) {
 				responseChan <- &sdk.CreateChatCompletionStreamResponse{
 					Choices: []sdk.ChatCompletionStreamChoice{
 						{
-							Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+							Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
 							FinishReason: "tool_calls",
 						},
 					},
@@ -1311,12 +1241,9 @@ func TestRunWithStream_AllEventTypesEmitted(t *testing.T) {
 			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 				{
 					Index: 0,
-					ID:    "call_success",
-					Type:  "function",
-					Function: struct {
-						Name      string `json:"name,omitempty"`
-						Arguments string `json:"arguments,omitempty"`
-					}{
+					ID:    new("call_success"),
+					Type:  new("function"),
+					Function: &sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "success_tool",
 						Arguments: `{"param":"value"}`,
 					},
@@ -1325,7 +1252,7 @@ func TestRunWithStream_AllEventTypesEmitted(t *testing.T) {
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
 						FinishReason: "tool_calls",
 					},
 				},
@@ -1396,12 +1323,9 @@ func TestRunWithStream_ToolFailedEventEmitted(t *testing.T) {
 			toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 				{
 					Index: 0,
-					ID:    "call_fail",
-					Type:  "function",
-					Function: struct {
-						Name      string `json:"name,omitempty"`
-						Arguments string `json:"arguments,omitempty"`
-					}{
+					ID:    new("call_fail"),
+					Type:  new("function"),
+					Function: &sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "fail_tool",
 						Arguments: `{"param":"value"}`,
 					},
@@ -1410,7 +1334,7 @@ func TestRunWithStream_ToolFailedEventEmitted(t *testing.T) {
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks},
+						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
 						FinishReason: "tool_calls",
 					},
 				},

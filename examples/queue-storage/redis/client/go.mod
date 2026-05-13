@@ -1,6 +1,6 @@
 module github.com/inference-gateway/adk/examples/queue-storage/redis/client
 
-go 1.26.1
+go 1.26.2
 
 replace github.com/inference-gateway/adk => ../../../../
 

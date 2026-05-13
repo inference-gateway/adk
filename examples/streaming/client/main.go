@@ -67,7 +67,7 @@ func main() {
 	params := types.MessageSendParams{
 		Message: message,
 		Configuration: &types.MessageSendConfiguration{
-			Blocking:            boolPtr(false),
+			Blocking:            new(false),
 			AcceptedOutputModes: []string{"text/plain"},
 		},
 	}
@@ -139,9 +139,4 @@ func main() {
 
 	logger.Info("streaming completed", zap.Int("total_events", eventCount))
 	fmt.Printf("\n\nFinal streamed response:\n%s\n", finalResponse)
-}
-
-// boolPtr returns a pointer to a boolean value
-func boolPtr(b bool) *bool {
-	return &b
 }

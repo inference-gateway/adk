@@ -255,7 +255,7 @@ func main() {
 			Name:            server.BuildAgentName,
 			Description:     server.BuildAgentDescription,
 			Version:         server.BuildAgentVersion,
-			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
+			URL:             new(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "3.0.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -297,9 +297,4 @@ func main() {
 	if err := a2aServer.Stop(shutdownCtx); err != nil {
 		logger.Error("shutdown error", zap.Error(err))
 	}
-}
-
-// stringPtr returns a pointer to a string value
-func stringPtr(s string) *string {
-	return &s
 }

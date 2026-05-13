@@ -85,20 +85,20 @@ func TestCallbackExecutor_ExecuteBeforeAgent(t *testing.T) {
 					func(ctx context.Context, callbackContext *CallbackContext) *types.Message {
 						counter.Increment()
 						return &types.Message{
-							ContextID: stringPtr("1"),
+							ContextID: new("1"),
 						}
 					},
 					func(ctx context.Context, callbackContext *CallbackContext) *types.Message {
 						counter.Increment()
 						t.Errorf("this callback should not be called")
 						return &types.Message{
-							ContextID: stringPtr("2"),
+							ContextID: new("2"),
 						}
 					},
 				}
 			},
 			expected: &types.Message{
-				ContextID: stringPtr("1"),
+				ContextID: new("1"),
 			},
 			expectedCallbackCalls: 1,
 		},
@@ -1088,9 +1088,4 @@ func TestCallbackExecutor_ExecuteAfterTool(t *testing.T) {
 			assert.Equal(t, tt.expectedCallbackCalls, counter.Get())
 		})
 	}
-}
-
-// Helper function for pointer conversion
-func stringPtr(s string) *string {
-	return &s
 }

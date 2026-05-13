@@ -99,7 +99,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 	params := types.MessageSendParams{
 		Message: message,
 		Configuration: &types.MessageSendConfiguration{
-			Blocking:            boolPtr(false),
+			Blocking:            new(false),
 			AcceptedOutputModes: []string{"text/plain"},
 		},
 	}
@@ -221,7 +221,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 		followUpParams := types.MessageSendParams{
 			Message: followUpMessage,
 			Configuration: &types.MessageSendConfiguration{
-				Blocking:            boolPtr(false),
+				Blocking:            new(false),
 				AcceptedOutputModes: []string{"text/plain"},
 			},
 		}
@@ -294,9 +294,4 @@ func extractMessageText(message *types.Message) string {
 		}
 	}
 	return ""
-}
-
-// boolPtr returns a pointer to a boolean value
-func boolPtr(b bool) *bool {
-	return &b
 }

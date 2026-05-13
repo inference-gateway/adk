@@ -135,7 +135,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 				func() sdk.Message {
 					msg := sdk.Message{
 						Role:       sdk.Tool,
-						ToolCallId: stringPtr("call_test_function"),
+						ToolCallID: new("call_test_function"),
 					}
 					_ = msg.Content.FromMessageContent0("Tool execution result")
 					return msg
@@ -170,7 +170,7 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 					Role:      types.RoleUser,
 					Parts: []types.Part{
 						types.CreateTextPart("Please analyze this file: "),
-						types.CreateFilePart("test.txt", "text/plain", stringPtr("base64encodedcontent"), nil),
+						types.CreateFilePart("test.txt", "text/plain", new("base64encodedcontent"), nil),
 					},
 				},
 			},
@@ -291,7 +291,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			input: func() sdk.Message {
 				msg := sdk.Message{
 					Role:       sdk.Tool,
-					ToolCallId: func() *string { s := "call_123"; return &s }(),
+					ToolCallID: func() *string { s := "call_123"; return &s }(),
 				}
 				_ = msg.Content.FromMessageContent0("Tool response")
 				return msg
@@ -315,7 +315,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 					Role: sdk.Assistant,
 					ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
 						{
-							Id:   "call_123",
+							ID:   "call_123",
 							Type: "function",
 							Function: sdk.ChatCompletionMessageToolCallFunction{
 								Name:      "get_weather",
@@ -334,7 +334,7 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 					types.CreateDataPart(map[string]any{
 						"tool_calls": []sdk.ChatCompletionMessageToolCall{
 							{
-								Id:   "call_123",
+								ID:   "call_123",
 								Type: "function",
 								Function: sdk.ChatCompletionMessageToolCallFunction{
 									Name:      "get_weather",
@@ -557,7 +557,7 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 					types.CreateDataPart(map[string]any{
 						"tool_calls": []sdk.ChatCompletionMessageToolCall{
 							{
-								Id:   "call_123",
+								ID:   "call_123",
 								Type: sdk.ChatCompletionToolType("function"),
 								Function: sdk.ChatCompletionMessageToolCallFunction{
 									Name:      "test_tool",
@@ -571,7 +571,7 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 			},
 			expectedToolCalls: &[]sdk.ChatCompletionMessageToolCall{
 				{
-					Id:   "call_123",
+					ID:   "call_123",
 					Type: sdk.ChatCompletionToolType("function"),
 					Function: sdk.ChatCompletionMessageToolCallFunction{
 						Name:      "test_tool",
@@ -602,7 +602,7 @@ func TestMessageConverter_ConvertToSDK_ToolCalls(t *testing.T) {
 					types.CreateDataPart(map[string]any{
 						"tool_calls": []sdk.ChatCompletionMessageToolCall{
 							{
-								Id:   "call_456",
+								ID:   "call_456",
 								Type: sdk.ChatCompletionToolType("function"),
 							},
 						},
@@ -655,7 +655,7 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 				types.CreateDataPart(map[string]any{
 					"tool_calls": []sdk.ChatCompletionMessageToolCall{
 						{
-							Id:   "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
+							ID:   "call_0_2e5a532f-06e2-4ced-8434-31e25019e144",
 							Type: sdk.ChatCompletionToolType("function"),
 							Function: sdk.ChatCompletionMessageToolCallFunction{
 								Name:      "list_calendar_events",
@@ -689,7 +689,7 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 	userContent, _ := userMsg.Content.AsMessageContent0()
 	assert.Equal(t, "What's on my calendar today?", userContent)
 	assert.Nil(t, userMsg.ToolCalls)
-	assert.Nil(t, userMsg.ToolCallId)
+	assert.Nil(t, userMsg.ToolCallID)
 
 	assistantMsg := result[1]
 	assert.Equal(t, sdk.Assistant, assistantMsg.Role)
@@ -699,7 +699,7 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 	require.Len(t, *assistantMsg.ToolCalls, 1)
 
 	toolCall := (*assistantMsg.ToolCalls)[0]
-	assert.Equal(t, "call_0_2e5a532f-06e2-4ced-8434-31e25019e144", toolCall.Id)
+	assert.Equal(t, "call_0_2e5a532f-06e2-4ced-8434-31e25019e144", toolCall.ID)
 	assert.Equal(t, sdk.ChatCompletionToolType("function"), toolCall.Type)
 	assert.Equal(t, "list_calendar_events", toolCall.Function.Name)
 	assert.Equal(t, `{"start_date":"2025-06-16","end_date":"2025-06-16"}`, toolCall.Function.Arguments)
@@ -709,10 +709,6 @@ func TestMessageConverter_ConvertToSDK_ToolCallsSequence(t *testing.T) {
 	toolContent, _ := toolMsg.Content.AsMessageContent0()
 	assert.Contains(t, toolContent, "Found 0 events between 2025-06-16 00:00 and 2025-06-16 23:59")
 	assert.Nil(t, toolMsg.ToolCalls)
-	require.NotNil(t, toolMsg.ToolCallId)
-	assert.Equal(t, "call_0_2e5a532f-06e2-4ced-8434-31e25019e144", *toolMsg.ToolCallId)
-}
-
-func stringPtr(s string) *string {
-	return &s
+	require.NotNil(t, toolMsg.ToolCallID)
+	assert.Equal(t, "call_0_2e5a532f-06e2-4ced-8434-31e25019e144", *toolMsg.ToolCallID)
 }
