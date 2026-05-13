@@ -5,7 +5,7 @@ go 1.26.2
 replace github.com/inference-gateway/adk => ../../..
 
 require (
-	github.com/cloudevents/sdk-go/v2 v2.15.2
+	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/inference-gateway/adk v0.13.1
 	github.com/sethvargo/go-envconfig v1.3.0
 	go.uber.org/zap v1.27.0
@@ -76,7 +76,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.43.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.22.0 // indirect
