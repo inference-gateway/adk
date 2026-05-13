@@ -103,7 +103,7 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 
 	sdkMsg := sdk.Message{
 		Role:       sdkRole,
-		ToolCallId: toolCallId,
+		ToolCallID: toolCallId,
 		ToolCalls:  toolCalls,
 	}
 
@@ -245,7 +245,7 @@ func (c *messageConverter) mapToToolCall(toolCallMap map[string]any) (sdk.ChatCo
 
 	if id, exists := toolCallMap["id"]; exists {
 		if idStr, ok := id.(string); ok {
-			toolCall.Id = idStr
+			toolCall.ID = idStr
 		}
 	}
 
@@ -312,8 +312,8 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 			"result": content,
 		}
 
-		if response.ToolCallId != nil {
-			toolData["tool_call_id"] = *response.ToolCallId
+		if response.ToolCallID != nil {
+			toolData["tool_call_id"] = *response.ToolCallID
 		}
 
 		if response.ToolCalls != nil && len(*response.ToolCalls) > 0 {

@@ -255,7 +255,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 	}{
 		{
 			name:                            "new context without history should use CreateTask",
-			contextID:                       stringPtr("new-context"),
+			contextID:                       new("new-context"),
 			existingHistory:                 []types.Message{},
 			expectGetHistoryCall:            true,
 			expectCreateTaskCall:            true,
@@ -264,7 +264,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 		},
 		{
 			name:      "existing context with history should use CreateTaskWithHistory",
-			contextID: stringPtr("existing-context"),
+			contextID: new("existing-context"),
 			existingHistory: []types.Message{
 				{
 					MessageID: "msg-1",
@@ -290,7 +290,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 		},
 		{
 			name:      "context with multiple history messages should use CreateTaskWithHistory",
-			contextID: stringPtr("multi-history-context"),
+			contextID: new("multi-history-context"),
 			existingHistory: []types.Message{
 				{
 					MessageID: "msg-1",

@@ -23,12 +23,12 @@ func createTestAgentCard() types.AgentCard {
 	return types.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
-		URL:         stringPtr("http://test-agent:8080"),
+		URL:         new("http://test-agent:8080"),
 		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
-			Streaming:              boolPtr(true),
-			PushNotifications:      boolPtr(true),
-			StateTransitionHistory: boolPtr(true),
+			Streaming:              new(true),
+			PushNotifications:      new(true),
+			StateTransitionHistory: new(true),
 		},
 		DefaultInputModes:  []string{"text/plain"},
 		DefaultOutputModes: []string{"text/plain"},
@@ -263,7 +263,7 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 	testAgentCard := types.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
-		URL:         stringPtr("http://test-agent:8080"),
+		URL:         new("http://test-agent:8080"),
 		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
 			Streaming:              &cfg.CapabilitiesConfig.Streaming,
@@ -309,7 +309,7 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 	testAgentCard := types.AgentCard{
 		Name:        "test-agent",
 		Description: "A test agent",
-		URL:         stringPtr("http://test-agent:8080"),
+		URL:         new("http://test-agent:8080"),
 		Version:     "0.1.0",
 		Capabilities: types.AgentCapabilities{
 			Streaming:              &[]bool{true}[0],
@@ -785,12 +785,9 @@ func TestAgentStreaming_WithToolCalls(t *testing.T) {
 				toolCallChunks := []sdk.ChatCompletionMessageToolCallChunk{
 					{
 						Index: 0,
-						ID:    "call_123",
-						Type:  "function",
-						Function: struct {
-							Name      string `json:"name,omitempty"`
-							Arguments string `json:"arguments,omitempty"`
-						}{
+						ID:    new("call_123"),
+						Type:  new("function"),
+						Function: &sdk.ChatCompletionMessageToolCallFunction{
 							Name:      "test_tool",
 							Arguments: `{"arg":"value"}`,
 						},
@@ -798,7 +795,7 @@ func TestAgentStreaming_WithToolCalls(t *testing.T) {
 				}
 				responseChan <- &sdk.CreateChatCompletionStreamResponse{
 					Choices: []sdk.ChatCompletionStreamChoice{
-						{Delta: sdk.ChatCompletionStreamResponseDelta{ToolCalls: toolCallChunks}},
+						{Delta: sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks}},
 					},
 				}
 			} else {

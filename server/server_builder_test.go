@@ -412,12 +412,12 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		agentCard := types.AgentCard{
 			Name:        "test-agent",
 			Description: "A test agent",
-			URL:         stringPtr("http://test-agent:8080"),
+			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              boolPtr(false), // Streaming disabled, but still need background handler
-				PushNotifications:      boolPtr(false),
-				StateTransitionHistory: boolPtr(false),
+				Streaming:              new(false), // Streaming disabled, but still need background handler
+				PushNotifications:      new(false),
+				StateTransitionHistory: new(false),
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
@@ -435,12 +435,12 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		agentCard := types.AgentCard{
 			Name:        "test-agent",
 			Description: "A test agent",
-			URL:         stringPtr("http://test-agent:8080"),
+			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              boolPtr(true), // Streaming enabled
-				PushNotifications:      boolPtr(false),
-				StateTransitionHistory: boolPtr(false),
+				Streaming:              new(true), // Streaming enabled
+				PushNotifications:      new(false),
+				StateTransitionHistory: new(false),
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
@@ -459,12 +459,12 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		agentCard := types.AgentCard{
 			Name:        "test-agent",
 			Description: "A test agent",
-			URL:         stringPtr("http://test-agent:8080"),
+			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              boolPtr(false), // Streaming disabled
-				PushNotifications:      boolPtr(false),
-				StateTransitionHistory: boolPtr(false),
+				Streaming:              new(false), // Streaming disabled
+				PushNotifications:      new(false),
+				StateTransitionHistory: new(false),
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
@@ -483,12 +483,12 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		agentCard := types.AgentCard{
 			Name:        "test-agent",
 			Description: "A test agent",
-			URL:         stringPtr("http://test-agent:8080"),
+			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              boolPtr(true), // Streaming enabled
-				PushNotifications:      boolPtr(false),
-				StateTransitionHistory: boolPtr(false),
+				Streaming:              new(true), // Streaming enabled
+				PushNotifications:      new(false),
+				StateTransitionHistory: new(false),
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},

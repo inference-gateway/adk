@@ -37,7 +37,7 @@ func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {
 					Artifacts: []types.Artifact{
 						{
 							ArtifactID: "artifact-1",
-							Name:       stringPtr("Test Artifact"),
+							Name:       new("Test Artifact"),
 							Parts: []types.Part{
 								types.CreateTextPart("Hello, World!"),
 							},
@@ -102,14 +102,14 @@ func TestArtifactHelper_ExtractArtifactsFromTask(t *testing.T) {
 				Artifacts: []types.Artifact{
 					{
 						ArtifactID: "artifact-1",
-						Name:       stringPtr("Artifact 1"),
+						Name:       new("Artifact 1"),
 						Parts: []types.Part{
 							types.CreateTextPart("Content 1"),
 						},
 					},
 					{
 						ArtifactID: "artifact-2",
-						Name:       stringPtr("Artifact 2"),
+						Name:       new("Artifact 2"),
 						Parts: []types.Part{
 							types.CreateTextPart("Content 2"),
 						},
@@ -150,8 +150,8 @@ func TestArtifactHelper_GetArtifactByID(t *testing.T) {
 
 	task := &types.Task{
 		Artifacts: []types.Artifact{
-			{ArtifactID: "artifact-1", Name: stringPtr("Artifact 1")},
-			{ArtifactID: "artifact-2", Name: stringPtr("Artifact 2")},
+			{ArtifactID: "artifact-1", Name: new("Artifact 1")},
+			{ArtifactID: "artifact-2", Name: new("Artifact 2")},
 		},
 	}
 
@@ -208,7 +208,7 @@ func TestArtifactHelper_GetArtifactsByType(t *testing.T) {
 			{
 				ArtifactID: "file-artifact",
 				Parts: []types.Part{
-					types.CreateFilePart("test.txt", "text/plain", stringPtr("dGVzdA=="), nil),
+					types.CreateFilePart("test.txt", "text/plain", new("dGVzdA=="), nil),
 				},
 			},
 			{
@@ -684,7 +684,7 @@ func TestArtifactHelper_GetArtifactSummary(t *testing.T) {
 					{
 						ArtifactID: "artifact-2",
 						Parts: []types.Part{
-							types.CreateFilePart("", "", stringPtr(""), nil),
+							types.CreateFilePart("", "", new(""), nil),
 						},
 					},
 					{
@@ -723,9 +723,9 @@ func TestArtifactHelper_FilterArtifactsByName(t *testing.T) {
 
 	task := &types.Task{
 		Artifacts: []types.Artifact{
-			{ArtifactID: "artifact-1", Name: stringPtr("User Report")},
-			{ArtifactID: "artifact-2", Name: stringPtr("System Log")},
-			{ArtifactID: "artifact-3", Name: stringPtr("User Guide")},
+			{ArtifactID: "artifact-1", Name: new("User Report")},
+			{ArtifactID: "artifact-2", Name: new("System Log")},
+			{ArtifactID: "artifact-3", Name: new("User Guide")},
 			{ArtifactID: "artifact-4", Name: nil},
 		},
 	}
@@ -794,8 +794,8 @@ func TestFileData_Methods(t *testing.T) {
 		{
 			name: "data file",
 			file: FileData{
-				Name:     stringPtr("test.txt"),
-				MIMEType: stringPtr("text/plain"),
+				Name:     new("test.txt"),
+				MIMEType: new("text/plain"),
 				Data:     []byte("test content"),
 			},
 			expectedIsDataFile: true,
@@ -806,8 +806,8 @@ func TestFileData_Methods(t *testing.T) {
 		{
 			name: "URI file",
 			file: FileData{
-				Name:     stringPtr("remote.pdf"),
-				MIMEType: stringPtr("application/pdf"),
+				Name:     new("remote.pdf"),
+				MIMEType: new("application/pdf"),
 				URI:      &uri,
 			},
 			expectedIsDataFile: false,
@@ -833,11 +833,6 @@ func TestFileData_Methods(t *testing.T) {
 			assert.Equal(t, tt.expectedMIMEType, tt.file.GetMIMEType())
 		})
 	}
-}
-
-// Helper function for creating string pointers
-func stringPtr(s string) *string {
-	return &s
 }
 
 // Integration tests for artifact download functionality
@@ -1024,7 +1019,7 @@ func TestArtifactHelper_DownloadArtifact(t *testing.T) {
 				bytes2 := base64.StdEncoding.EncodeToString([]byte("content2"))
 				return &types.Artifact{
 					ArtifactID: "artifact-123",
-					Name:       stringPtr("Test Artifact"),
+					Name:       new("Test Artifact"),
 					Parts: []types.Part{
 						types.CreateFilePart("file1.txt", "text/plain", &bytes1, nil),
 						types.CreateFilePart("file2.txt", "text/plain", &bytes2, nil),

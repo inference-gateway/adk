@@ -127,7 +127,7 @@ func main() {
 			Name:            cfg.A2A.AgentName,
 			Description:     cfg.A2A.AgentDescription,
 			Version:         cfg.A2A.AgentVersion,
-			URL:             stringPtr(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
+			URL:             new(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
 				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
@@ -159,9 +159,4 @@ func main() {
 	// Wait for shutdown signal
 	<-ctx.Done()
 	logger.Info("shutting down server")
-}
-
-// stringPtr returns a pointer to a string value
-func stringPtr(s string) *string {
-	return &s
 }

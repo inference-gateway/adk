@@ -83,7 +83,7 @@ func main() {
 		params := types.MessageSendParams{
 			Message: message,
 			Configuration: &types.MessageSendConfiguration{
-				Blocking:            boolPtr(false),
+				Blocking:            new(false),
 				AcceptedOutputModes: []string{"text/plain"},
 			},
 		}
@@ -134,9 +134,4 @@ func main() {
 	}
 
 	fmt.Println("✅ Demo completed!")
-}
-
-// boolPtr returns a pointer to a boolean value
-func boolPtr(b bool) *bool {
-	return &b
 }

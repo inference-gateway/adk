@@ -432,18 +432,13 @@ func createTestAgentCard() types.AgentCard {
         URL:         "http://test-agent:8080",
         Version:     "0.1.0",
         Capabilities: types.AgentCapabilities{
-            Streaming:              boolPtr(true),
-            PushNotifications:      boolPtr(true),
-            StateTransitionHistory: boolPtr(true),
+            Streaming:              new(true),
+            PushNotifications:      new(true),
+            StateTransitionHistory: new(true),
         },
         DefaultInputModes:  []string{"text/plain"},
         DefaultOutputModes: []string{"text/plain"},
     }
-}
-
-// boolPtr returns a pointer to a boolean value
-func boolPtr(b bool) *bool {
-    return &b
 }
 
 // setupTestServer creates a test A2A server with mocked dependencies

@@ -109,7 +109,7 @@ uriArtifact := artifactHelper.CreateFileArtifactFromURI(
     "Link to documentation",
     "docs.html",
     "https://example.com/docs.html",
-    stringPtr("text/html"),
+    new("text/html"),
 )
 ```
 
@@ -298,8 +298,8 @@ func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *type
             task.ID,
             task.ContextID,
             artifact,
-            boolPtr(false), // append
-            boolPtr(false), // lastChunk
+            new(false), // append
+            new(false), // lastChunk
         )
 
         eventsChan <- &server.ArtifactUpdateStreamEvent{
