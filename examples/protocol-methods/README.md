@@ -6,16 +6,16 @@ runnable companion to the snippets in the root [`README.md`](../../README.md).
 
 ## Methods demonstrated
 
-| Method                                   | Where in the client                       |
-| ---------------------------------------- | ----------------------------------------- |
-| `agent/getAuthenticatedExtendedCard`     | `demonstrateAuthenticatedExtendedCard`    |
-| `tasks/list` (with pagination)           | `demonstrateListTasks`                    |
-| `tasks/pushNotificationConfig/set`       | `demonstratePushNotificationConfig`       |
-| `tasks/pushNotificationConfig/get`       | `demonstratePushNotificationConfig`       |
-| `tasks/pushNotificationConfig/list`      | `demonstratePushNotificationConfig`       |
-| `tasks/pushNotificationConfig/delete`    | `demonstratePushNotificationConfig`       |
-| `tasks/cancel`                           | `demonstrateCancel`                       |
-| `tasks/resubscribe`                      | `demonstrateResubscribe`                  |
+| Method                                | Where in the client                    |
+| ------------------------------------- | -------------------------------------- |
+| `agent/getAuthenticatedExtendedCard`  | `demonstrateAuthenticatedExtendedCard` |
+| `tasks/list` (with pagination)        | `demonstrateListTasks`                 |
+| `tasks/pushNotificationConfig/set`    | `demonstratePushNotificationConfig`    |
+| `tasks/pushNotificationConfig/get`    | `demonstratePushNotificationConfig`    |
+| `tasks/pushNotificationConfig/list`   | `demonstratePushNotificationConfig`    |
+| `tasks/pushNotificationConfig/delete` | `demonstratePushNotificationConfig`    |
+| `tasks/cancel`                        | `demonstrateCancel`                    |
+| `tasks/resubscribe`                   | `demonstrateResubscribe`               |
 
 ## How it works
 
@@ -68,11 +68,11 @@ go run main.go
 
 ## Configuration
 
-| Variable      | Purpose                                                                                  | Default                          |
-| ------------- | ---------------------------------------------------------------------------------------- | -------------------------------- |
-| `SERVER_URL`  | A2A server base URL                                                                       | `http://localhost:8080`          |
-| `WEBHOOK_URL` | URL passed to `tasks/pushNotificationConfig/set` (the URL does not need to be reachable) | `http://localhost:9000/webhook`  |
-| `ENVIRONMENT` | Controls log verbosity                                                                    | `development`                    |
+| Variable      | Purpose                                                                                  | Default                         |
+| ------------- | ---------------------------------------------------------------------------------------- | ------------------------------- |
+| `SERVER_URL`  | A2A server base URL                                                                      | `http://localhost:8080`         |
+| `WEBHOOK_URL` | URL passed to `tasks/pushNotificationConfig/set` (the URL does not need to be reachable) | `http://localhost:9000/webhook` |
+| `ENVIRONMENT` | Controls log verbosity                                                                   | `development`                   |
 
 ## Expected Output
 
