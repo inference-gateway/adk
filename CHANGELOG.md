@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.1](https://github.com/inference-gateway/adk/compare/v0.18.0...v0.18.1) (2026-05-13)
+
+### 👷 CI
+
+* **deps:** Bump actions/create-github-app-token from 3.1.1 to 3.2.0 ([#139](https://github.com/inference-gateway/adk/issues/139)) ([c0380a0](https://github.com/inference-gateway/adk/commit/c0380a01c6ef9ab477abc815ed1b8ab35e5c6e56))
+* **deps:** Bump actions/setup-node from 6.3.0 to 6.4.0 ([#140](https://github.com/inference-gateway/adk/issues/140)) ([92db606](https://github.com/inference-gateway/adk/commit/92db6064dfd36d23955059ea5dd343dec96a7466))
+* **deps:** Bump anthropics/claude-code-action from 1.0.114 to 1.0.121 ([#138](https://github.com/inference-gateway/adk/issues/138)) ([051c0df](https://github.com/inference-gateway/adk/commit/051c0dfc1c2e1232062a1ad00ed81f7e2d546085))
+* Fix deprecation warning ([bf6c03a](https://github.com/inference-gateway/adk/commit/bf6c03add7bb9482d1e0784b5e4d55c0fccc3dbc))
+
+### 🔧 Miscellaneous
+
+* Configure Dependabot for gomod and GitHub Actions ([51846a8](https://github.com/inference-gateway/adk/commit/51846a8d7fc509901fccd9e6d55feb1a612f213f))
+
+### 🔨 Miscellaneous
+
+* **deps:** Bump github.com/cloudevents/sdk-go/v2 from 2.15.2 to 2.16.2 ([#145](https://github.com/inference-gateway/adk/issues/145)) ([e633efa](https://github.com/inference-gateway/adk/commit/e633efa9a4b69ddb443c23da40e1151e4095a914))
+* **deps:** Bump github.com/coreos/go-oidc/v3 from 3.14.1 to 3.18.0 ([#143](https://github.com/inference-gateway/adk/issues/143)) ([8f62fba](https://github.com/inference-gateway/adk/commit/8f62fba1dbc6e82ce551537668a126a9c4f60368))
+* **deps:** Bump github.com/gin-gonic/gin from 1.10.1 to 1.12.0 ([#144](https://github.com/inference-gateway/adk/issues/144)) ([c8cc742](https://github.com/inference-gateway/adk/commit/c8cc742ab70e02823acd8a461fa2a1217136d62d))
+* **deps:** Bump github.com/minio/minio-go/v7 from 7.0.78 to 7.1.0 ([#142](https://github.com/inference-gateway/adk/issues/142)) ([4944c11](https://github.com/inference-gateway/adk/commit/4944c118b183377b3fafcc00f27e9b73321500b2))
+* **deps:** Bump go.opentelemetry.io/otel/metric from 1.36.0 to 1.43.0 ([#141](https://github.com/inference-gateway/adk/issues/141)) ([16d6ffb](https://github.com/inference-gateway/adk/commit/16d6ffb9656ebb15d2175ae7830cdbddfc81eb82))
+
 ## [0.18.0](https://github.com/inference-gateway/adk/compare/v0.17.3...v0.18.0) (2026-05-13)
 
 ### ✨ Features
