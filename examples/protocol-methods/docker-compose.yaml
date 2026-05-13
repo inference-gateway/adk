@@ -46,6 +46,13 @@ services:
     networks:
       - a2a-network
 
+  webhook-sink:
+    image: mendhak/http-https-echo:latest
+    environment:
+      HTTP_PORT: 9000
+    networks:
+      - a2a-network
+
   a2a-debugger:
     image: ghcr.io/inference-gateway/a2a-debugger:latest
     pull_policy: always

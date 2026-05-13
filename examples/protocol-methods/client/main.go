@@ -19,9 +19,8 @@ import (
 type Config struct {
 	Environment string `env:"ENVIRONMENT,default=development"`
 	ServerURL   string `env:"SERVER_URL,default=http://localhost:8080"`
-	// WebhookURL is the URL the server is asked to POST push notifications to.
-	// It does not need to be reachable for this example: we only use it to
-	// demonstrate the `tasks/pushNotificationConfig/*` round-trip.
+	// WebhookURL is the URL the server POSTs push notifications to.
+	// In Docker Compose this points to the webhook-sink service.
 	WebhookURL string `env:"WEBHOOK_URL,default=http://localhost:9000/webhook"`
 }
 
@@ -114,10 +113,12 @@ func demonstrateListTasks(ctx context.Context, a2a client.A2AClient, logger *zap
 	}
 }
 
-// demonstratePushNotificationConfig runs the full set/get/list/delete cycle
-// against a single task.
-func demonstratePushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID, webhookURL string, logger *zap.Logger) {
-	fmt.Println("\n=== tasks/pushNotificationConfig/{set,get,list,delete} ===")
+// setupPushNotificationConfig registers a webhook and demonstrates the
+// set/get/list config methods. It intentionally does NOT delete the config so
+// that the webhook is still active when the task completes and a real push
+// notification is delivered to the webhook-sink.
+func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID, webhookURL string, logger *zap.Logger) {
+	fmt.Println("\n=== tasks/pushNotificationConfig/{set,get,list} ===")
 
 	configID := uuid.New().String()
 	authToken := "demo-shared-secret"
@@ -161,14 +162,54 @@ func demonstratePushNotificationConfig(ctx context.Context, a2a client.A2AClient
 	listBytes, _ := json.MarshalIndent(listResp.Result, "", "  ")
 	fmt.Printf("list → \n%s\n", string(listBytes))
 
-	// 4. delete: tear the config down.
+	fmt.Println("(keeping config alive so the webhook receives a notification when the task completes)")
+}
+
+// waitForTaskAndCleanupPushConfig polls the task until it reaches a terminal
+// state, then deletes the push notification config. By the time this function
+// returns, the webhook-sink should have received at least one notification.
+func waitForTaskAndCleanupPushConfig(ctx context.Context, a2a client.A2AClient, taskID string, logger *zap.Logger) {
+	fmt.Println("\n=== waiting for push notification delivery ===")
+
+	// Poll until the task reaches a terminal state.
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Error("context cancelled while waiting for task", zap.String("task_id", taskID))
+			return
+		case <-ticker.C:
+			resp, err := a2a.GetTask(ctx, types.TaskQueryParams{ID: taskID})
+			if err != nil {
+				logger.Error("failed to get task", zap.Error(err))
+				continue
+			}
+			taskBytes, _ := json.Marshal(resp.Result)
+			var task types.Task
+			if err := json.Unmarshal(taskBytes, &task); err != nil {
+				logger.Error("failed to decode task", zap.Error(err))
+				continue
+			}
+			if task.Status.State == types.TaskStateCompleted ||
+				task.Status.State == types.TaskStateFailed ||
+				task.Status.State == types.TaskStateCancelled {
+				fmt.Printf("task %s reached terminal state: %s\n", taskID, task.Status.State)
+				fmt.Println("→ webhook-sink should have received a push notification")
+				goto cleanup
+			}
+		}
+	}
+
+cleanup:
+	fmt.Println("\n=== tasks/pushNotificationConfig/delete ===")
 	if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigParams{
 		Name: taskID,
 	}); err != nil {
 		logger.Error("failed to delete push notification config", zap.Error(err))
 		return
 	}
-	fmt.Printf("delete → webhook for task %s removed\n", taskID)
+	fmt.Printf("delete → webhook config for task %s removed\n", taskID)
 }
 
 // demonstrateCancel cancels an in-flight task via `tasks/cancel`.
@@ -223,11 +264,18 @@ func demonstrateResubscribe(ctx context.Context, a2a client.A2AClient, logger *z
 			logger.Warn("stream closed before first event")
 			return
 		}
-		// The first envelope carries the freshly-created Task object.
+		// The first envelope carries a TaskStatusUpdateEvent (with taskId),
+		// not a full Task object (with id). Try both to be robust.
 		resultBytes, _ := json.Marshal(evt.Result)
 		var task types.Task
 		if err := json.Unmarshal(resultBytes, &task); err == nil && task.ID != "" {
 			taskID = task.ID
+		}
+		if taskID == "" {
+			var statusUpdate types.TaskStatusUpdateEvent
+			if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && statusUpdate.TaskID != "" {
+				taskID = statusUpdate.TaskID
+			}
 		}
 	}
 
@@ -320,14 +368,20 @@ func main() {
 	// 3. List tasks with pagination.
 	demonstrateListTasks(ctx, a2a, logger)
 
-	// 4. Run the push notification config family against the first task.
-	demonstratePushNotificationConfig(ctx, a2a, submitted[0].ID, cfg.WebhookURL, logger)
+	// 4. Register a push notification webhook for the first task.
+	//    The config stays active so the webhook-sink receives a real notification
+	//    when the task completes (it has a ~6 s processing delay).
+	setupPushNotificationConfig(ctx, a2a, submitted[0].ID, cfg.WebhookURL, logger)
 
 	// 5. Cancel a different task (it's still working, so the cancel sticks).
 	demonstrateCancel(ctx, a2a, submitted[1].ID, logger)
 
 	// 6. Open and resubscribe to a streaming task.
 	demonstrateResubscribe(ctx, a2a, logger)
+
+	// 7. Wait for the first task to finish so the push notification is
+	//    delivered, then clean up the config.
+	waitForTaskAndCleanupPushConfig(ctx, a2a, submitted[0].ID, logger)
 
 	fmt.Println("\nAll protocol method demonstrations completed.")
 }

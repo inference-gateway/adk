@@ -301,6 +301,15 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 
 	server := NewA2AServer(&b.cfg, b.logger, telemetryInstance)
 
+	pushEnabled := b.agentCard != nil &&
+		b.agentCard.Capabilities.PushNotifications != nil &&
+		*b.agentCard.Capabilities.PushNotifications
+	if pushEnabled {
+		if tm, ok := server.taskManager.(*DefaultTaskManager); ok {
+			tm.SetNotificationSender(NewHTTPPushNotificationSender(b.logger))
+		}
+	}
+
 	if b.agent != nil {
 		server.SetAgent(b.agent)
 		b.logger.Info("configured openai-compatible agent for optional use by task handler")
