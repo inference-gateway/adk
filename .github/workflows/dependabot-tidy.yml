@@ -19,6 +19,8 @@ jobs:
         with:
           client-id: ${{ secrets.BOT_MAINTAINER_APP_ID }}
           private-key: ${{ secrets.BOT_MAINTAINER_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout PR branch
         uses: actions/checkout@v6.0.2
