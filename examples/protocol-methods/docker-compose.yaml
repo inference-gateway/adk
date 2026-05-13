@@ -42,14 +42,22 @@ services:
         condition: service_healthy
     environment:
       SERVER_URL: http://server:8080
-      WEBHOOK_URL: http://webhook-sink:9000/webhook
+      WEBHOOK_URL_1: http://webhook-sink-1:9000/webhook
+      WEBHOOK_URL_2: http://webhook-sink-2:9001/webhook
     networks:
       - a2a-network
 
-  webhook-sink:
+  webhook-sink-1:
     image: mendhak/http-https-echo:latest
     environment:
       HTTP_PORT: 9000
+    networks:
+      - a2a-network
+
+  webhook-sink-2:
+    image: mendhak/http-https-echo:latest
+    environment:
+      HTTP_PORT: 9001
     networks:
       - a2a-network
 

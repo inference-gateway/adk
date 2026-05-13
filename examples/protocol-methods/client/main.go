@@ -19,9 +19,11 @@ import (
 type Config struct {
 	Environment string `env:"ENVIRONMENT,default=development"`
 	ServerURL   string `env:"SERVER_URL,default=http://localhost:8080"`
-	// WebhookURL is the URL the server POSTs push notifications to.
-	// In Docker Compose this points to the webhook-sink service.
-	WebhookURL string `env:"WEBHOOK_URL,default=http://localhost:9000/webhook"`
+	// WebhookURL1 and WebhookURL2 are the URLs the server POSTs push
+	// notifications to. Two sinks demonstrate that the server fans out
+	// notifications to every registered webhook.
+	WebhookURL1 string `env:"WEBHOOK_URL_1,default=http://localhost:9000/webhook"`
+	WebhookURL2 string `env:"WEBHOOK_URL_2,default=http://localhost:9001/webhook"`
 }
 
 // submitTask sends a single message/send request and returns the created task.
@@ -113,33 +115,35 @@ func demonstrateListTasks(ctx context.Context, a2a client.A2AClient, logger *zap
 	}
 }
 
-// setupPushNotificationConfig registers a webhook and demonstrates the
-// set/get/list config methods. It intentionally does NOT delete the config so
-// that the webhook is still active when the task completes and a real push
-// notification is delivered to the webhook-sink.
-func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID, webhookURL string, logger *zap.Logger) {
+// setupPushNotificationConfig registers two webhooks and demonstrates the
+// set/get/list config methods. It intentionally does NOT delete the configs so
+// that both webhooks are still active when the task completes and real push
+// notifications are delivered to both webhook sinks.
+func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID string, webhookURLs []string, logger *zap.Logger) {
 	fmt.Println("\n=== tasks/pushNotificationConfig/{set,get,list} ===")
 
-	configID := uuid.New().String()
 	authToken := "demo-shared-secret"
 
-	// 1. set: register a push notification webhook for this task.
-	setResp, err := a2a.SetTaskPushNotificationConfig(ctx, types.TaskPushNotificationConfig{
-		Name: taskID,
-		PushNotificationConfig: types.PushNotificationConfig{
-			ID:    &configID,
-			URL:   webhookURL,
-			Token: &authToken,
-		},
-	})
-	if err != nil {
-		logger.Error("failed to set push notification config", zap.Error(err))
-		return
+	// 1. set: register a push notification webhook for each URL.
+	for i, url := range webhookURLs {
+		configID := uuid.New().String()
+		setResp, err := a2a.SetTaskPushNotificationConfig(ctx, types.TaskPushNotificationConfig{
+			Name: taskID,
+			PushNotificationConfig: types.PushNotificationConfig{
+				ID:    &configID,
+				URL:   url,
+				Token: &authToken,
+			},
+		})
+		if err != nil {
+			logger.Error("failed to set push notification config", zap.Error(err), zap.String("url", url))
+			return
+		}
+		setBytes, _ := json.MarshalIndent(setResp.Result, "", "  ")
+		fmt.Printf("set[%d] → registered webhook %s for task %s\n%s\n", i+1, url, taskID, string(setBytes))
 	}
-	setBytes, _ := json.MarshalIndent(setResp.Result, "", "  ")
-	fmt.Printf("set → registered webhook for task %s\n%s\n", taskID, string(setBytes))
 
-	// 2. get: read the config we just registered.
+	// 2. get: read back the first config to verify the round-trip.
 	getResp, err := a2a.GetTaskPushNotificationConfig(ctx, types.GetTaskPushNotificationConfigParams{
 		Name: taskID,
 	})
@@ -150,8 +154,7 @@ func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, task
 	getBytes, _ := json.MarshalIndent(getResp.Result, "", "  ")
 	fmt.Printf("get → \n%s\n", string(getBytes))
 
-	// 3. list: show every config attached to this task. With one registration
-	// the result is a single-element slice, but the API supports many.
+	// 3. list: show every config attached to this task — should contain both.
 	listResp, err := a2a.ListTaskPushNotificationConfig(ctx, types.ListTaskPushNotificationConfigParams{
 		Parent: taskID,
 	})
@@ -162,7 +165,7 @@ func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, task
 	listBytes, _ := json.MarshalIndent(listResp.Result, "", "  ")
 	fmt.Printf("list → \n%s\n", string(listBytes))
 
-	fmt.Println("(keeping config alive so the webhook receives a notification when the task completes)")
+	fmt.Printf("(keeping %d configs alive so both webhook sinks receive notifications)\n", len(webhookURLs))
 }
 
 // waitForTaskAndCleanupPushConfig polls the task until it reaches a terminal
@@ -373,7 +376,7 @@ func main() {
 	// 4. Register a push notification webhook for the first task.
 	//    The config stays active so the webhook-sink receives a real notification
 	//    when the task completes (it has a ~6 s processing delay).
-	setupPushNotificationConfig(ctx, a2a, submitted[0].ID, cfg.WebhookURL, logger)
+	setupPushNotificationConfig(ctx, a2a, submitted[0].ID, []string{cfg.WebhookURL1, cfg.WebhookURL2}, logger)
 
 	// 5. Cancel a different task (it's still working, so the cancel sticks).
 	demonstrateCancel(ctx, a2a, submitted[1].ID, logger)
