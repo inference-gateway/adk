@@ -196,12 +196,14 @@ func waitForTaskAndCleanupPushConfig(ctx context.Context, a2a client.A2AClient, 
 				task.Status.State == types.TaskStateCancelled {
 				fmt.Printf("task %s reached terminal state: %s\n", taskID, task.Status.State)
 				fmt.Println("→ webhook-sink should have received a push notification")
-				goto cleanup
+				deletePushNotificationConfig(ctx, a2a, taskID, logger)
+				return
 			}
 		}
 	}
+}
 
-cleanup:
+func deletePushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID string, logger *zap.Logger) {
 	fmt.Println("\n=== tasks/pushNotificationConfig/delete ===")
 	if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigParams{
 		Name: taskID,
