@@ -97,6 +97,7 @@ For complete working examples, see the [examples](./examples/) directory:
 - **[Queue Storage](./examples/queue-storage/)** - Memory and Redis storage backends
 - **[TLS Server](./examples/tls-server/)** - Secure HTTPS with TLS configuration
 - **[Usage Metadata](./examples/usage-metadata/)** - Token usage and execution metrics tracking
+- **[Protocol Methods](./examples/protocol-methods/)** - End-to-end walk-through of `tasks/cancel`, `tasks/list`, `tasks/pushNotificationConfig/{set,get,list,delete}`, `tasks/resubscribe`, and `agent/getAuthenticatedExtendedCard`
 
 #### Getting Started
 
@@ -344,6 +345,150 @@ Client interface for communicating with A2A servers. Supports:
 - Custom configuration
 
 See [client examples](./examples/client/) for usage patterns.
+
+#### A2A JSON-RPC Methods
+
+Beyond `message/send`, `message/stream`, and `tasks/get`, the client exposes
+every method in the A2A JSON-RPC surface. Each snippet below is runnable
+against any ADK-built server; see [`examples/protocol-methods/`](./examples/protocol-methods/)
+for an end-to-end demo that ties them all together.
+
+##### `tasks/cancel`
+
+Cancel an in-flight task. Works for tasks in any non-terminal state
+(`SUBMITTED`, `WORKING`, `INPUT_REQUIRED`, `AUTH_REQUIRED`, `UNSPECIFIED`).
+
+```go
+resp, err := a2a.CancelTask(ctx, types.TaskIdParams{ID: taskID})
+if err != nil {
+    log.Fatalf("cancel failed: %v", err)
+}
+
+taskBytes, _ := json.Marshal(resp.Result)
+var task types.Task
+_ = json.Unmarshal(taskBytes, &task)
+log.Printf("cancelled task %s → state=%s", task.ID, task.Status.State)
+```
+
+##### `tasks/list`
+
+List tasks the server knows about. `Limit` controls page size (server caps
+the limit at 100; default is 50) and `Offset` controls where the page starts.
+Iterate until `offset >= TotalSize` to walk the full result set.
+
+```go
+const pageSize = 20
+offset := 0
+for {
+    resp, err := a2a.ListTasks(ctx, types.TaskListParams{
+        Limit:  pageSize,
+        Offset: offset,
+    })
+    if err != nil {
+        log.Fatalf("list failed: %v", err)
+    }
+
+    listBytes, _ := json.Marshal(resp.Result)
+    var list types.TaskList
+    _ = json.Unmarshal(listBytes, &list)
+
+    for _, t := range list.Tasks {
+        log.Printf("  task %s [%s]", t.ID, t.Status.State)
+    }
+
+    offset += len(list.Tasks)
+    if len(list.Tasks) == 0 || offset >= list.TotalSize {
+        break
+    }
+}
+```
+
+You can also filter by `ContextID` or by `State` (e.g. only
+`TASK_STATE_COMPLETED`); both fields are optional pointers on
+`TaskListParams`.
+
+##### `tasks/pushNotificationConfig/{set,get,list,delete}`
+
+Register, inspect, and remove webhook callbacks the server will POST to as a
+task changes state. The four methods share a common identifier (`task.ID`)
+and form a complete CRUD cycle.
+
+```go
+configID := uuid.New().String()
+authToken := "shared-secret"
+
+// set: register a webhook for the task.
+if _, err := a2a.SetTaskPushNotificationConfig(ctx, types.TaskPushNotificationConfig{
+    Name: taskID,
+    PushNotificationConfig: types.PushNotificationConfig{
+        ID:    &configID,
+        URL:   "https://example.com/webhook",
+        Token: &authToken,
+    },
+}); err != nil {
+    log.Fatalf("set failed: %v", err)
+}
+
+// get: read the active config.
+if _, err := a2a.GetTaskPushNotificationConfig(ctx, types.GetTaskPushNotificationConfigParams{
+    Name: taskID,
+}); err != nil {
+    log.Fatalf("get failed: %v", err)
+}
+
+// list: enumerate every config attached to a task.
+if _, err := a2a.ListTaskPushNotificationConfig(ctx, types.ListTaskPushNotificationConfigParams{
+    Parent: taskID,
+}); err != nil {
+    log.Fatalf("list failed: %v", err)
+}
+
+// delete: tear the config down.
+if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigParams{
+    Name: taskID,
+}); err != nil {
+    log.Fatalf("delete failed: %v", err)
+}
+```
+
+Server-side push notifications require `CapabilitiesConfig.PushNotifications`
+to be `true` on the server.
+
+##### `tasks/resubscribe`
+
+Re-attach to a streaming task after the original SSE connection has dropped.
+The server first re-emits the current task state, then forwards any further
+streaming events as they happen.
+
+```go
+events, err := a2a.ResubscribeTask(ctx, types.TaskResubscriptionParams{
+    Name: taskID,
+})
+if err != nil {
+    log.Fatalf("resubscribe failed: %v", err)
+}
+for evt := range events {
+    payload, _ := json.Marshal(evt.Result)
+    log.Printf("event: %s", string(payload))
+}
+```
+
+##### `agent/getAuthenticatedExtendedCard`
+
+The JSON-RPC counterpart to the public `.well-known/agent-card.json`
+endpoint. The response is the same `AgentCard` object, but the call passes
+through the JSON-RPC route and is therefore subject to the server's
+authentication middleware — useful when the extended card should only be
+visible to authenticated callers.
+
+```go
+resp, err := a2a.GetAuthenticatedExtendedCard(ctx, types.GetAuthenticatedExtendedCardParams{})
+if err != nil {
+    log.Fatalf("authenticated card fetch failed: %v", err)
+}
+cardBytes, _ := json.MarshalIndent(resp.Result, "", "  ")
+log.Println(string(cardBytes))
+```
 
 #### Agent Health Monitoring
 
