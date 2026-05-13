@@ -1,0 +1,42 @@
+---
+name: Dependabot Tidy
+
+on:
+  pull_request_target:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  tidy:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Mint GitHub App token
+        id: token
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          client-id: ${{ secrets.BOT_MAINTAINER_APP_ID }}
+          private-key: ${{ secrets.BOT_MAINTAINER_APP_PRIVATE_KEY }}
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ steps.token.outputs.token }}
+          persist-credentials: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v6.4.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Tidy all Go modules
+        run: find . -name 'go.mod' -execdir go mod tidy \;
+
+      - name: Commit and push tidy results
+        uses: stefanzweifel/git-auto-commit-action@v7.1.0
+        with:
+          commit_message: 'chore: Tidy example modules after dependabot bump'
