@@ -708,6 +708,10 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		s.protocolHandler.HandleTaskPushNotificationConfigList(c, req)
 	case "tasks/pushNotificationConfig/delete":
 		s.protocolHandler.HandleTaskPushNotificationConfigDelete(c, req)
+	case "tasks/resubscribe":
+		s.protocolHandler.HandleTaskResubscribe(c, req, s.streamingTaskHandler)
+	case "agent/getAuthenticatedExtendedCard":
+		s.protocolHandler.HandleGetAuthenticatedExtendedCard(c, req, s.customAgentCard)
 	default:
 		s.logger.Warn("unknown method requested", zap.String("method", req.Method))
 		s.responseSender.SendError(c, req.ID, int(ErrMethodNotFound), "method not found")

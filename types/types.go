@@ -121,3 +121,9 @@ type ListTaskPushNotificationConfigParams = ListTaskPushNotificationConfigReques
 
 // DeleteTaskPushNotificationConfigParams is an alias for DeleteTaskPushNotificationConfigRequest
 type DeleteTaskPushNotificationConfigParams = DeleteTaskPushNotificationConfigRequest
+
+// TaskResubscriptionParams is an alias for SubscribeToTaskRequest
+type TaskResubscriptionParams = SubscribeToTaskRequest
+
+// GetAuthenticatedExtendedCardParams is an alias for GetExtendedAgentCardRequest
+type GetAuthenticatedExtendedCardParams = GetExtendedAgentCardRequest

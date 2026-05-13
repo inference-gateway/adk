@@ -2073,6 +2073,273 @@ func TestClient_GetHealth_WithCustomUserAgent(t *testing.T) {
 	assert.Equal(t, "healthy", resp.Status)
 }
 
+func TestClient_SetTaskPushNotificationConfig(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+
+		var req types.JSONRPCRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, "2.0", req.JSONRPC)
+		assert.Equal(t, "tasks/pushNotificationConfig/set", req.Method)
+		assert.Equal(t, "task-1", req.Params["name"])
+
+		response := types.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: map[string]any{
+				"name": "task-1",
+				"pushNotificationConfig": map[string]any{
+					"url": "https://example.com/webhook",
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		require.NoError(t, json.NewEncoder(w).Encode(response))
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+	resp, err := c.SetTaskPushNotificationConfig(context.Background(), types.TaskPushNotificationConfig{
+		Name: "task-1",
+		PushNotificationConfig: types.PushNotificationConfig{
+			URL: "https://example.com/webhook",
+		},
+	})
+
+	assert.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "2.0", resp.JSONRPC)
+}
+
+func TestClient_GetTaskPushNotificationConfig(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req types.JSONRPCRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, "tasks/pushNotificationConfig/get", req.Method)
+		assert.Equal(t, "task-1", req.Params["name"])
+
+		response := types.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: map[string]any{
+				"name": "task-1",
+				"pushNotificationConfig": map[string]any{
+					"url": "https://example.com/webhook",
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		require.NoError(t, json.NewEncoder(w).Encode(response))
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+	resp, err := c.GetTaskPushNotificationConfig(context.Background(), types.GetTaskPushNotificationConfigParams{
+		Name: "task-1",
+	})
+
+	assert.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func TestClient_ListTaskPushNotificationConfig(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req types.JSONRPCRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, "tasks/pushNotificationConfig/list", req.Method)
+		assert.Equal(t, "tasks/task-1", req.Params["parent"])
+
+		response := types.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: map[string]any{
+				"configs":       []any{},
+				"nextPageToken": "",
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		require.NoError(t, json.NewEncoder(w).Encode(response))
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+	resp, err := c.ListTaskPushNotificationConfig(context.Background(), types.ListTaskPushNotificationConfigParams{
+		Parent: "tasks/task-1",
+	})
+
+	assert.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func TestClient_DeleteTaskPushNotificationConfig(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req types.JSONRPCRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, "tasks/pushNotificationConfig/delete", req.Method)
+		assert.Equal(t, "task-1", req.Params["name"])
+
+		response := types.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result:  nil,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		require.NoError(t, json.NewEncoder(w).Encode(response))
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+	resp, err := c.DeleteTaskPushNotificationConfig(context.Background(), types.DeleteTaskPushNotificationConfigParams{
+		Name: "task-1",
+	})
+
+	assert.NoError(t, err)
+	require.NotNil(t, resp)
+}
+
+func TestClient_GetAuthenticatedExtendedCard(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+
+		var req types.JSONRPCRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, "agent/getAuthenticatedExtendedCard", req.Method)
+
+		response := types.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Result: map[string]any{
+				"name":               "extended-agent",
+				"description":        "Authenticated extended card",
+				"version":            "1.0.0",
+				"protocolVersion":    "1.0",
+				"defaultInputModes":  []any{"text/plain"},
+				"defaultOutputModes": []any{"text/plain"},
+				"skills":             []any{},
+				"capabilities":       map[string]any{},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		require.NoError(t, json.NewEncoder(w).Encode(response))
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+	resp, err := c.GetAuthenticatedExtendedCard(context.Background(), types.GetAuthenticatedExtendedCardParams{
+		Tenant: "tenant-1",
+	})
+
+	assert.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, "2.0", resp.JSONRPC)
+}
+
+func TestClient_ResubscribeTask(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "text/event-stream", r.Header.Get("Accept"))
+
+		var req types.JSONRPCRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, "tasks/resubscribe", req.Method)
+		assert.Equal(t, "task-resub-1", req.Params["name"])
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+
+		events := []types.JSONRPCSuccessResponse{
+			{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result: map[string]any{
+					"taskId":    "task-resub-1",
+					"contextId": "ctx-1",
+					"status": map[string]any{
+						"state": "working",
+					},
+					"final": false,
+				},
+			},
+			{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result: map[string]any{
+					"taskId":    "task-resub-1",
+					"contextId": "ctx-1",
+					"status": map[string]any{
+						"state": "completed",
+					},
+					"final": true,
+				},
+			},
+		}
+		for _, event := range events {
+			eventBytes, err := json.Marshal(event)
+			require.NoError(t, err)
+			_, _ = w.Write([]byte("data: "))
+			_, _ = w.Write(eventBytes)
+			_, _ = w.Write([]byte("\n\n"))
+			if flusher, ok := w.(http.Flusher); ok {
+				flusher.Flush()
+			}
+		}
+		_, _ = w.Write([]byte("data: [DONE]\n\n"))
+		if flusher, ok := w.(http.Flusher); ok {
+			flusher.Flush()
+		}
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	eventChan, err := c.ResubscribeTask(ctx, types.TaskResubscriptionParams{
+		Name: "task-resub-1",
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, eventChan)
+
+	eventCount := 0
+	timeout := time.After(500 * time.Millisecond)
+eventLoop:
+	for {
+		select {
+		case _, ok := <-eventChan:
+			if !ok {
+				break eventLoop
+			}
+			eventCount++
+		case <-timeout:
+			break eventLoop
+		}
+	}
+	assert.Equal(t, 2, eventCount)
+}
+
+func TestClient_ResubscribeTask_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("bad request"))
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+	eventChan, err := c.ResubscribeTask(context.Background(), types.TaskResubscriptionParams{
+		Name: "missing-task",
+	})
+
+	assert.Error(t, err)
+	assert.Nil(t, eventChan)
+	assert.Contains(t, err.Error(), "unexpected status code: 400")
+}
+
 func TestClient_GetHealth_WithConstants(t *testing.T) {
 	tests := []struct {
 		name     string
