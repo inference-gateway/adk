@@ -35,7 +35,8 @@ examples/
 ├── artifacts-autonomous-tool/ # LLM autonomously creates artifacts via create_artifact tool
 ├── queue-storage/             # Queue storage backends (in-memory and Redis)
 ├── tls-example/               # TLS-enabled server with HTTPS communication
-└── usage-metadata/            # Token usage and execution metrics tracking
+├── usage-metadata/            # Token usage and execution metrics tracking
+└── protocol-methods/          # Full A2A JSON-RPC surface (cancel, list, pushNotificationConfig, resubscribe, authenticated card)
 ```
 
 ## 🚀 Quick Start
@@ -191,6 +192,18 @@ Demonstrates automatic token usage and execution metrics tracking in task respon
 - Configuration options for enabling/disabling usage tracking
 - Cost monitoring and performance analysis use cases
 
+#### `protocol-methods/`
+
+End-to-end walk-through of every A2A JSON-RPC method beyond `message/send`,
+`message/stream`, and `tasks/get`. Useful as a reference when you need to
+call one of these methods directly from your own client.
+
+- `tasks/cancel` against an in-flight task
+- `tasks/list` with paginated iteration
+- `tasks/pushNotificationConfig/{set,get,list,delete}` round-trip
+- `tasks/resubscribe` after a dropped streaming connection
+- `agent/getAuthenticatedExtendedCard` via JSON-RPC
+
 ## 🔧 Configuration
 
 All examples follow a consistent environment variable pattern with the `A2A_` prefix:
@@ -231,6 +244,7 @@ See each example's README for specific configuration details.
 12. **`queue-storage/`** - Learn different queue storage backends for scaling
 13. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 14. **`usage-metadata/`** - Track token usage and execution metrics for cost monitoring
+15. **`protocol-methods/`** - Exercise the rest of the A2A JSON-RPC surface (cancel, list, pushNotificationConfig, resubscribe, authenticated card)
 
 ---
 
