@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.0](https://github.com/inference-gateway/adk/compare/v0.17.3...v0.18.0) (2026-05-13)
+
+### ✨ Features
+
+* **a2a:** Implement missing A2A JSON-RPC methods ([#134](https://github.com/inference-gateway/adk/issues/134)) ([0c71b87](https://github.com/inference-gateway/adk/commit/0c71b8725070d86569d13a676f573ca5e72f84f4)), closes [#132](https://github.com/inference-gateway/adk/issues/132)
+
+### ♻️ Improvements
+
+* Delete .github/copilot-instructions.md ([f1c96f2](https://github.com/inference-gateway/adk/commit/f1c96f26b8b4ad97485b93cd9cb4c29c1551c921))
+
+### 👷 CI
+
+* Enable commit signing for Claude Code action ([4369a37](https://github.com/inference-gateway/adk/commit/4369a3760bcb46e2ce1c7dcb113e75f7ecef00e5))
+
+### 📚 Documentation
+
+* **examples:** Add protocol-methods example covering remaining A2A JSON-RPC methods ([#135](https://github.com/inference-gateway/adk/issues/135)) ([2af77ad](https://github.com/inference-gateway/adk/commit/2af77ad999e768b50cc37c34129aeef1af619b94)), closes [#133](https://github.com/inference-gateway/adk/issues/133)
+
+### 🔧 Miscellaneous
+
+* Add CODEOWNERS file for repository ownership ([45591f7](https://github.com/inference-gateway/adk/commit/45591f7a6ed5cd64e81bb9fa5c88fb7d7b46a377))
+* **deps:** Bump inference-gateway/sdk to v1.16.3 and golang to 1.26.2 ([#137](https://github.com/inference-gateway/adk/issues/137)) ([7da8f01](https://github.com/inference-gateway/adk/commit/7da8f01459bff7453b304c6219d59fabf636aec9))
+* Remove outdated issue templates for bug reports, feature requests, and refactor requests ([735917c](https://github.com/inference-gateway/adk/commit/735917cc50bc08235aa1d81d591f62943a8692a3))
+
 ## [0.17.3](https://github.com/inference-gateway/adk/compare/v0.17.2...v0.17.3) (2026-05-07)
 
 ### 👷 CI
