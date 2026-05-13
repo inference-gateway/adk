@@ -62,8 +62,8 @@ github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/inference-gateway/sdk v1.14.0 h1:7Lb/aWAOLBNEGjSRifOyt/G4eBsmWO8ffx+gf6e3tPQ=
-github.com/inference-gateway/sdk v1.14.0/go.mod h1:2r2k+E38WtScmJk6e0GYCaUAbm48pH0oXcmIrVu/xhs=
+github.com/inference-gateway/sdk v1.16.0 h1:yzUn42aSyg9EQz3ttRW/eWwTAyiZyl8Qp68jBubBPIg=
+github.com/inference-gateway/sdk v1.16.0/go.mod h1:2r2k+E38WtScmJk6e0GYCaUAbm48pH0oXcmIrVu/xhs=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/juju/gnuflag v0.0.0-20171113085948-2ce1bb71843d/go.mod h1:2PavIy+JPciBPrBUjwbNvtwB6RQlve+hkpll6QSNmOE=
