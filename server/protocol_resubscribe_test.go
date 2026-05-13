@@ -61,7 +61,6 @@ func TestProtocolHandler_HandleTaskResubscribe_TaskNotFound(t *testing.T) {
 
 	body := w.Body.String()
 	assert.Contains(t, body, "task not found", "error message should be surfaced via SSE")
-	// Errors from the streaming pipeline are written via SSE, so the body has the data: prefix.
 	assert.Contains(t, body, "data: ")
 }
 
