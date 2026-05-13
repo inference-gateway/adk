@@ -107,16 +107,13 @@ func TestProtocolHandler_HandleTaskResubscribe_CompletedTaskEmitsFinalState(t *t
 	streamingHandler := &mocks.FakeStreamableTaskHandler{}
 	h.HandleTaskResubscribe(c, req, streamingHandler)
 
-	// Streaming handler is not invoked because the task is in a terminal state.
 	assert.Equal(t, 0, streamingHandler.HandleStreamingTaskCallCount(),
 		"streaming handler should not be invoked for terminal tasks")
 
 	body := w.Body.String()
-	// SSE envelope: a single data event followed by [DONE].
 	require.Contains(t, body, "data: ")
 	require.Contains(t, body, "[DONE]")
 
-	// The first SSE event should be a JSON-RPC success response carrying the current task state.
 	chunks := strings.Split(body, "data: ")
 	require.GreaterOrEqual(t, len(chunks), 2, "expected at least one data event before [DONE]")
 	firstEvent := strings.TrimSpace(chunks[1])
@@ -142,7 +139,6 @@ func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandle
 	}
 	taskManager.GetTaskReturns(workingTask, true)
 
-	// Streaming handler emits a single status-changed event signaling completion.
 	streamingHandler := &mocks.FakeStreamableTaskHandler{}
 	events := make(chan cloudevents.Event, 1)
 	statusEvent := cloudevents.NewEvent()
@@ -171,7 +167,6 @@ func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandle
 
 	body := w.Body.String()
 	assert.Contains(t, body, "[DONE]", "stream should terminate with [DONE]")
-	// Two events should have been emitted: the initial status snapshot and the live status change.
 	assert.GreaterOrEqual(t, strings.Count(body, "data: "), 2)
 }
 

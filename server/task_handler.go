@@ -1242,8 +1242,6 @@ func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Co
 		return
 	}
 
-	// We don't need to parse params strictly (the schema only carries an optional tenant),
-	// but we still attempt to so the handler surfaces malformed input as invalid params.
 	if req.Params != nil {
 		var params types.GetAuthenticatedExtendedCardParams
 		paramsBytes, err := json.Marshal(req.Params)
