@@ -6,11 +6,15 @@ updates:
     schedule:
       interval: weekly
     groups:
-      opentelemetry:
+      gomod:
         patterns:
-          - "go.opentelemetry.io/*"
+          - "*"
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
