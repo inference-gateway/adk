@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.2](https://github.com/inference-gateway/adk/compare/v0.18.1...v0.18.2) (2026-05-14)
+
+### 🐛 Bug Fixes
+
+* **ci:** Give tidy task after dependabot more permissions ([8f37229](https://github.com/inference-gateway/adk/commit/8f372291a19b95a753ce654aa74ffb482b857189))
+
+### 👷 CI
+
+* **dependabot:** Add dependabot to help with dependecies upgrades ([048d826](https://github.com/inference-gateway/adk/commit/048d826f6a776a1788964f8da0c1ba6a39365c14))
+
+### 🔧 Miscellaneous
+
+* **dev-deps:** Add infer to flox manifest ([7c81a69](https://github.com/inference-gateway/adk/commit/7c81a69a5540b12dba048349e01b2d528d978798))
+
+### 🔨 Miscellaneous
+
+* **deps:** Bump anthropics/claude-code-action ([#149](https://github.com/inference-gateway/adk/issues/149)) ([58b2815](https://github.com/inference-gateway/adk/commit/58b2815b9998e3a2a91049308bdae34554ebb416))
+* **deps:** Bump the gomod group with 2 updates ([#150](https://github.com/inference-gateway/adk/issues/150)) ([00b24b2](https://github.com/inference-gateway/adk/commit/00b24b2d932a1c92551e76beec0b15601a154ecb))
+
 ## [0.18.1](https://github.com/inference-gateway/adk/compare/v0.18.0...v0.18.1) (2026-05-13)
 
 ### 👷 CI
