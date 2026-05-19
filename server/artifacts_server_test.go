@@ -9,17 +9,24 @@ import (
 	"testing"
 	"time"
 
+	gin "github.com/gin-gonic/gin"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 	zaptest "go.uber.org/zap/zaptest"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
 
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"
-	mocks "github.com/inference-gateway/adk/server/mocks"
 )
 
+func init() {
+	gin.SetMode(gin.TestMode)
+}
+
 func TestNewArtifactsServer(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{
@@ -40,7 +47,7 @@ func TestNewArtifactsServer(t *testing.T) {
 }
 
 func TestArtifactsServer_WithMockService(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{
@@ -54,7 +61,7 @@ func TestArtifactsServer_WithMockService(t *testing.T) {
 }
 
 func TestArtifactsServer_StartWithoutService(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{
@@ -72,7 +79,7 @@ func TestArtifactsServer_StartWithoutService(t *testing.T) {
 }
 
 func TestArtifactsServer_HealthEndpoint(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{
@@ -112,7 +119,7 @@ func TestArtifactsServer_HealthEndpoint(t *testing.T) {
 }
 
 func TestArtifactsServer_ArtifactDownload(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{
@@ -157,7 +164,7 @@ func TestArtifactsServer_ArtifactDownload(t *testing.T) {
 }
 
 func TestArtifactsServer_ArtifactNotFound(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{
@@ -193,7 +200,7 @@ func TestArtifactsServer_ArtifactNotFound(t *testing.T) {
 }
 
 func TestArtifactsServer_BadRequest(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{
@@ -221,7 +228,7 @@ func TestArtifactsServer_BadRequest(t *testing.T) {
 }
 
 func TestArtifactsServer_StorageError(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	cfg := &config.ArtifactsConfig{
 		Enable: true,
 		ServerConfig: config.ArtifactsServerConfig{

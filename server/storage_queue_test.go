@@ -6,13 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inference-gateway/adk/types"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
+	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
+	zaptest "go.uber.org/zap/zaptest"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestInMemoryStorage_QueueOperations(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	storage := NewInMemoryStorage(logger, 10)
 
 	task := &types.Task{
@@ -134,7 +136,7 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 }
 
 func TestInMemoryStorage_ConcurrentQueueOperations(t *testing.T) {
-	logger := zaptest.NewLogger(t)
+	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
 	storage := NewInMemoryStorage(logger, 10)
 
 	t.Run("Concurrent Enqueue and Dequeue", func(t *testing.T) {

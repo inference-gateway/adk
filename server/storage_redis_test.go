@@ -9,11 +9,13 @@ import (
 	redis "github.com/redis/go-redis/v9"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+	zap "go.uber.org/zap"
 	zaptest "go.uber.org/zap/zaptest"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
 
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"
-	mocks "github.com/inference-gateway/adk/server/mocks"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -33,7 +35,7 @@ func newTestRedisStorage(t *testing.T) (*server.RedisStorage, *mocks.FakeRedisCl
 	fakeClient := &mocks.FakeRedisClient{}
 	fakePipe := &mocks.FakeRedisPipeliner{}
 	fakeClient.PipelineReturns(fakePipe)
-	storage := server.NewRedisStorageForTest(fakeClient, zaptest.NewLogger(t), config.QueueConfig{URL: "redis://fake"})
+	storage := server.NewRedisStorageForTest(fakeClient, zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel)), config.QueueConfig{URL: "redis://fake"})
 	return storage, fakeClient, fakePipe
 }
 
