@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.3](https://github.com/inference-gateway/adk/compare/v0.18.2...v0.18.3) (2026-05-19)
+
+### 🐛 Bug Fixes
+
+* Apply reasoning content also to streaming ([99ebbbe](https://github.com/inference-gateway/adk/commit/99ebbbe622ffec23a088f3e8f9a8ab65b370dba1))
+
+### 👷 CI
+
+* Remove noisy comments ([572f761](https://github.com/inference-gateway/adk/commit/572f76185429d55dae8e08d2f9697f09ea6b7301))
+
+### 🔧 Miscellaneous
+
+* **deps:** Bump dev dependecies to latest ([08b74c3](https://github.com/inference-gateway/adk/commit/08b74c300f142077c8ccb4a0c7517af596f6bbe6))
+* **deps:** Bump SDK to latest ([0a03d94](https://github.com/inference-gateway/adk/commit/0a03d9467cf7d0d7a01857bb58441f1a60ba62d5))
+* Init infer CLI ([fb335a1](https://github.com/inference-gateway/adk/commit/fb335a14f22585040f3719f8b2169c825679e3c5))
+* Run task tidy ([4eff2b4](https://github.com/inference-gateway/adk/commit/4eff2b4dfd35fd181aa0d061c8dfe54cc676f795))
+
+### ✅ Miscellaneous
+
+* Redis backend storage ([dea6b0a](https://github.com/inference-gateway/adk/commit/dea6b0aa2b634dc9b4c95457165da25c9f928cd1))
+* Reduce noise during testing ([122ed72](https://github.com/inference-gateway/adk/commit/122ed723a30ef0caf3b2bf51db838fa71f49dc4f))
+
 ## [0.18.2](https://github.com/inference-gateway/adk/compare/v0.18.1...v0.18.2) (2026-05-14)
 
 ### 🐛 Bug Fixes
