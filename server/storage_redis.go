@@ -15,6 +15,42 @@ import (
 	"go.uber.org/zap"
 )
 
+// RedisClient is the subset of *redis.Client methods used by RedisStorage.
+// Defined as an interface so tests can drive RedisStorage against a counterfeiter fake
+// instead of requiring a live Redis server.
+type RedisClient interface {
+	Pipeline() RedisPipeliner
+	Publish(ctx context.Context, channel string, message any) *redis.IntCmd
+	BRPop(ctx context.Context, timeout time.Duration, keys ...string) *redis.StringSliceCmd
+	LLen(ctx context.Context, key string) *redis.IntCmd
+	Del(ctx context.Context, keys ...string) *redis.IntCmd
+	Get(ctx context.Context, key string) *redis.StringCmd
+	Exists(ctx context.Context, keys ...string) *redis.IntCmd
+	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
+	Keys(ctx context.Context, pattern string) *redis.StringSliceCmd
+	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
+	Ping(ctx context.Context) *redis.StatusCmd
+	Close() error
+}
+
+// RedisPipeliner is the subset of redis.Pipeliner methods used by RedisStorage.
+type RedisPipeliner interface {
+	LPush(ctx context.Context, key string, values ...any) *redis.IntCmd
+	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
+	SAdd(ctx context.Context, key string, members ...any) *redis.IntCmd
+	Del(ctx context.Context, keys ...string) *redis.IntCmd
+	SRem(ctx context.Context, key string, members ...any) *redis.IntCmd
+	Exec(ctx context.Context) ([]redis.Cmder, error)
+}
+
+// realRedisClient adapts *redis.Client to RedisClient. Only Pipeline() needs adapting,
+// because *redis.Client.Pipeline() returns redis.Pipeliner (superset of RedisPipeliner).
+type realRedisClient struct{ *redis.Client }
+
+func (c *realRedisClient) Pipeline() RedisPipeliner {
+	return c.Client.Pipeline()
+}
+
 // RedisStorageFactory implements StorageFactory for Redis storage
 type RedisStorageFactory struct{}
 
@@ -76,7 +112,7 @@ func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config config.Q
 		zap.Int("db", opt.DB))
 
 	return &RedisStorage{
-		client: client,
+		client: &realRedisClient{client},
 		logger: logger,
 		config: config,
 	}, nil
@@ -84,7 +120,7 @@ func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config config.Q
 
 // RedisStorage implements Storage interface using Redis
 type RedisStorage struct {
-	client *redis.Client
+	client RedisClient
 	logger *zap.Logger
 	config config.QueueConfig
 }

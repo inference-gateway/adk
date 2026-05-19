@@ -1,485 +1,563 @@
-package server
+package server_test
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"testing"
-	"time"
 
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/adk/types"
-	"github.com/redis/go-redis/v9"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
+	redis "github.com/redis/go-redis/v9"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+	zaptest "go.uber.org/zap/zaptest"
+
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
+	mocks "github.com/inference-gateway/adk/server/mocks"
+	types "github.com/inference-gateway/adk/types"
 )
 
-// Helper function to get Redis URL for testing
-func getTestRedisURL() string {
-	testURLs := []string{
-		"redis://localhost:6379/15",
-		"redis://127.0.0.1:6379/15",
-	}
+// Mirror the (unexported) key constants from storage_redis.go.
+// Tests pin the wire format; renaming a prefix in production is a
+// breaking change and should fail these tests.
+const (
+	testTaskQueueKey        = "a2a:queue"
+	testActiveTaskKeyPrefix = "a2a:active:"
+	testDeadLetterKeyPrefix = "a2a:deadletter:"
+	testContextTasksPrefix  = "a2a:context:"
+	testQueueNotifyChannel  = "a2a:queue:notify"
+)
 
-	for _, url := range testURLs {
-		opt, err := redis.ParseURL(url)
-		if err != nil {
-			continue
-		}
-		client := redis.NewClient(opt)
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err = client.Ping(ctx).Err()
-		cancel()
-		_ = client.Close()
-		if err == nil {
-			return url
-		}
-	}
-
-	return ""
-}
-
-// Helper function to skip test if Redis is not available
-func requireRedis(t *testing.T) string {
-	url := getTestRedisURL()
-	if url == "" {
-		t.Skip("Redis not available for integration tests")
-	}
-	return url
-}
-
-// Helper function to clean up Redis test data
-func cleanupRedisTestData(t *testing.T, url string) {
-	opt, err := redis.ParseURL(url)
-	require.NoError(t, err)
-
-	client := redis.NewClient(opt)
-	defer func() { _ = client.Close() }()
-
-	err = client.FlushDB(context.Background()).Err()
-	require.NoError(t, err)
+func newTestRedisStorage(t *testing.T) (*server.RedisStorage, *mocks.FakeRedisClient, *mocks.FakeRedisPipeliner) {
+	t.Helper()
+	fakeClient := &mocks.FakeRedisClient{}
+	fakePipe := &mocks.FakeRedisPipeliner{}
+	fakeClient.PipelineReturns(fakePipe)
+	storage := server.NewRedisStorageForTest(fakeClient, zaptest.NewLogger(t), config.QueueConfig{URL: "redis://fake"})
+	return storage, fakeClient, fakePipe
 }
 
 func TestRedisStorageFactory(t *testing.T) {
-	factory := &RedisStorageFactory{}
+	factory := &server.RedisStorageFactory{}
 
 	assert.Equal(t, "redis", factory.SupportedProvider())
 
-	cfg := config.QueueConfig{
-		Provider: "redis",
-	}
+	cfg := config.QueueConfig{Provider: "redis"}
 	err := factory.ValidateConfig(cfg)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "URL is required")
 
 	cfg.URL = "redis://localhost:6379"
-	err = factory.ValidateConfig(cfg)
-	assert.NoError(t, err)
-}
-
-func TestRedisStorageFactoryCreateStorage(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
-
-	factory := &RedisStorageFactory{}
-	logger := zaptest.NewLogger(t)
-
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
-	}
-
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
-	require.NoError(t, err)
-	assert.NotNil(t, storage)
-
-	redisStorage, ok := storage.(*RedisStorage)
-	assert.True(t, ok)
-	assert.NotNil(t, redisStorage.client)
-}
-
-func TestRedisStorageFactoryWithOptions(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
-
-	factory := &RedisStorageFactory{}
-	logger := zaptest.NewLogger(t)
-
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
-		Options: map[string]string{
-			"db":          "15",
-			"max_retries": "5",
-			"timeout":     "10s",
-		},
-		Credentials: map[string]string{
-			"username": "test",
-			"password": "test123",
-		},
-	}
-
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
-	if err != nil {
-		t.Logf("Expected auth error for test Redis: %v", err)
-		return
-	}
-
-	require.NoError(t, err)
-	assert.NotNil(t, storage)
+	assert.NoError(t, factory.ValidateConfig(cfg))
 }
 
 func TestRedisStorageFactoryWithInvalidURL(t *testing.T) {
-	factory := &RedisStorageFactory{}
+	factory := &server.RedisStorageFactory{}
 	logger := zaptest.NewLogger(t)
 
-	cfg := config.QueueConfig{
+	storage, err := factory.CreateStorage(context.Background(), config.QueueConfig{
 		Provider: "redis",
 		URL:      "invalid-url",
-	}
-
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
+	}, logger)
 	assert.Error(t, err)
 	assert.Nil(t, storage)
 	assert.Contains(t, err.Error(), "invalid Redis URL")
 }
 
-func TestRedisStorageBasicOperations(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
-
-	logger := zaptest.NewLogger(t)
-	factory := &RedisStorageFactory{}
-
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
-	}
-
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
-	require.NoError(t, err)
+func TestRedisStorageEnqueueTask(t *testing.T) {
+	storage, fakeClient, fakePipe := newTestRedisStorage(t)
 
 	task := &types.Task{
 		ID:        "test-task-1",
 		ContextID: "test-context",
-		Status: types.TaskStatus{
-			State: types.TaskStateSubmitted,
-		},
-		History: []types.Message{},
+		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
+		History:   []types.Message{},
 	}
 
-	err = storage.EnqueueTask(task, "request-123")
-	require.NoError(t, err)
+	fakePipe.ExecReturns(nil, nil)
+	fakeClient.PublishReturns(redis.NewIntResult(1, nil))
+	fakeClient.LLenReturns(redis.NewIntResult(1, nil))
 
-	assert.Equal(t, 1, storage.GetQueueLength())
+	require.NoError(t, storage.EnqueueTask(task, "request-123"))
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	require.Equal(t, 1, fakePipe.LPushCallCount())
+	_, gotQueueKey, gotQueueValues := fakePipe.LPushArgsForCall(0)
+	assert.Equal(t, testTaskQueueKey, gotQueueKey)
+	require.Len(t, gotQueueValues, 1)
 
-	queuedTask, err := storage.DequeueTask(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, task.ID, queuedTask.Task.ID)
-	assert.Equal(t, "request-123", queuedTask.RequestID)
+	var enqueued server.QueuedTask
+	require.NoError(t, json.Unmarshal(gotQueueValues[0].([]byte), &enqueued))
+	assert.Equal(t, task.ID, enqueued.Task.ID)
+	assert.Equal(t, "request-123", enqueued.RequestID)
 
-	assert.Equal(t, 0, storage.GetQueueLength())
+	require.Equal(t, 1, fakePipe.SetCallCount())
+	_, gotActiveKey, gotActiveValue, _ := fakePipe.SetArgsForCall(0)
+	assert.Equal(t, testActiveTaskKeyPrefix+task.ID, gotActiveKey)
+
+	var storedTask types.Task
+	require.NoError(t, json.Unmarshal(gotActiveValue.([]byte), &storedTask))
+	assert.Equal(t, task.ID, storedTask.ID)
+
+	require.Equal(t, 1, fakePipe.ExecCallCount())
+
+	require.Equal(t, 1, fakeClient.PublishCallCount())
+	_, gotChannel, gotMessage := fakeClient.PublishArgsForCall(0)
+	assert.Equal(t, testQueueNotifyChannel, gotChannel)
+	assert.Equal(t, "task_added", gotMessage)
 }
 
-func TestRedisStorageActiveTaskOperations(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
+func TestRedisStorageEnqueueNilTask(t *testing.T) {
+	storage, _, _ := newTestRedisStorage(t)
+	err := storage.EnqueueTask(nil, "request-1")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "task cannot be nil")
+}
 
-	logger := zaptest.NewLogger(t)
-	factory := &RedisStorageFactory{}
+func TestRedisStorageEnqueueTaskPipelineExecError(t *testing.T) {
+	storage, _, fakePipe := newTestRedisStorage(t)
+	fakePipe.ExecReturns(nil, errors.New("boom"))
 
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
-	}
+	err := storage.EnqueueTask(&types.Task{ID: "t", ContextID: "c"}, "r")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to enqueue task")
+}
 
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
-	require.NoError(t, err)
+func TestRedisStorageDequeueTask(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
 
-	task := &types.Task{
-		ID:        "test-task-2",
-		ContextID: "test-context",
-		Status: types.TaskStatus{
-			State: types.TaskStateSubmitted,
+	queued := server.QueuedTask{
+		Task: &types.Task{
+			ID:        "test-task-1",
+			ContextID: "test-context",
+			Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 		},
-		History: []types.Message{},
+		RequestID: "request-123",
 	}
-
-	err = storage.CreateActiveTask(task)
+	data, err := json.Marshal(queued)
 	require.NoError(t, err)
 
-	retrieved, err := storage.GetActiveTask(task.ID)
-	require.NoError(t, err)
-	assert.Equal(t, task.ID, retrieved.ID)
-	assert.Equal(t, task.ContextID, retrieved.ContextID)
+	fakeClient.BRPopReturns(redis.NewStringSliceResult([]string{testTaskQueueKey, string(data)}, nil))
+	fakeClient.LLenReturns(redis.NewIntResult(0, nil))
 
-	task.Status.State = types.TaskStateWorking
-	err = storage.UpdateActiveTask(task)
+	got, err := storage.DequeueTask(context.Background())
 	require.NoError(t, err)
+	assert.Equal(t, "test-task-1", got.Task.ID)
+	assert.Equal(t, "request-123", got.RequestID)
 
-	retrieved, err = storage.GetActiveTask(task.ID)
-	require.NoError(t, err)
-	assert.Equal(t, types.TaskStateWorking, retrieved.Status.State)
+	require.Equal(t, 1, fakeClient.BRPopCallCount())
+	_, _, gotKeys := fakeClient.BRPopArgsForCall(0)
+	assert.Equal(t, []string{testTaskQueueKey}, gotKeys)
+}
 
-	err = storage.CreateActiveTask(task)
+func TestRedisStorageDequeueTaskContextCancelled(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.BRPopReturns(redis.NewStringSliceResult(nil, redis.Nil))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := storage.DequeueTask(ctx)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestRedisStorageGetQueueLength(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.LLenReturns(redis.NewIntResult(7, nil))
+
+	assert.Equal(t, 7, storage.GetQueueLength())
+
+	require.Equal(t, 1, fakeClient.LLenCallCount())
+	_, key := fakeClient.LLenArgsForCall(0)
+	assert.Equal(t, testTaskQueueKey, key)
+}
+
+func TestRedisStorageClearQueue(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.LLenReturns(redis.NewIntResult(3, nil))
+	fakeClient.DelReturns(redis.NewIntResult(1, nil))
+
+	require.NoError(t, storage.ClearQueue())
+
+	require.Equal(t, 1, fakeClient.DelCallCount())
+	_, keys := fakeClient.DelArgsForCall(0)
+	assert.Equal(t, []string{testTaskQueueKey}, keys)
+}
+
+func TestRedisStorageCreateActiveTask(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.ExistsReturns(redis.NewIntResult(0, nil))
+	fakeClient.SetReturns(redis.NewStatusResult("OK", nil))
+
+	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
+	require.NoError(t, storage.CreateActiveTask(task))
+
+	require.Equal(t, 1, fakeClient.ExistsCallCount())
+	_, existsKeys := fakeClient.ExistsArgsForCall(0)
+	assert.Equal(t, []string{testActiveTaskKeyPrefix + "t1"}, existsKeys)
+
+	require.Equal(t, 1, fakeClient.SetCallCount())
+	_, setKey, setValue, _ := fakeClient.SetArgsForCall(0)
+	assert.Equal(t, testActiveTaskKeyPrefix+"t1", setKey)
+
+	var stored types.Task
+	require.NoError(t, json.Unmarshal(setValue.([]byte), &stored))
+	assert.Equal(t, "t1", stored.ID)
+}
+
+func TestRedisStorageCreateActiveTaskAlreadyExists(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.ExistsReturns(redis.NewIntResult(1, nil))
+
+	err := storage.CreateActiveTask(&types.Task{ID: "t1", ContextID: "c1"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already exists")
+	assert.Equal(t, 0, fakeClient.SetCallCount())
+}
 
-	_, err = storage.GetActiveTask("non-existent")
+func TestRedisStorageCreateActiveTaskNil(t *testing.T) {
+	storage, _, _ := newTestRedisStorage(t)
+	err := storage.CreateActiveTask(nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "task cannot be nil")
+}
+
+func TestRedisStorageUpdateActiveTask(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.ExistsReturns(redis.NewIntResult(1, nil))
+	fakeClient.SetReturns(redis.NewStatusResult("OK", nil))
+
+	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateWorking}}
+	require.NoError(t, storage.UpdateActiveTask(task))
+
+	require.Equal(t, 1, fakeClient.SetCallCount())
+	_, setKey, _, _ := fakeClient.SetArgsForCall(0)
+	assert.Equal(t, testActiveTaskKeyPrefix+"t1", setKey)
+}
+
+func TestRedisStorageUpdateActiveTaskNotFound(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.ExistsReturns(redis.NewIntResult(0, nil))
+
+	err := storage.UpdateActiveTask(&types.Task{ID: "t1", ContextID: "c1"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+	assert.Equal(t, 0, fakeClient.SetCallCount())
+}
+
+func TestRedisStorageGetActiveTask(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateWorking}}
+	data, err := json.Marshal(task)
+	require.NoError(t, err)
+	fakeClient.GetReturns(redis.NewStringResult(string(data), nil))
+
+	got, err := storage.GetActiveTask("t1")
+	require.NoError(t, err)
+	assert.Equal(t, "t1", got.ID)
+	assert.Equal(t, types.TaskStateWorking, got.Status.State)
+
+	require.Equal(t, 1, fakeClient.GetCallCount())
+	_, key := fakeClient.GetArgsForCall(0)
+	assert.Equal(t, testActiveTaskKeyPrefix+"t1", key)
+}
+
+func TestRedisStorageGetActiveTaskNotFound(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.GetReturns(redis.NewStringResult("", redis.Nil))
+
+	_, err := storage.GetActiveTask("missing")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 }
 
-func TestRedisStorageDeadLetterOperations(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
-
-	logger := zaptest.NewLogger(t)
-	factory := &RedisStorageFactory{}
-
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
-	}
-
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
-	require.NoError(t, err)
+func TestRedisStorageStoreDeadLetterTask(t *testing.T) {
+	storage, _, fakePipe := newTestRedisStorage(t)
+	fakePipe.ExecReturns(nil, nil)
 
 	task := &types.Task{
-		ID:        "test-task-3",
-		ContextID: "test-context",
-		Status: types.TaskStatus{
-			State: types.TaskStateCompleted,
-		},
-		History: []types.Message{
-			{
-				Role:      "user",
-				MessageID: "msg-1",
-				Parts: []types.Part{
-					types.CreateTextPart("test message"),
-				},
-			},
-		},
+		ID:        "t1",
+		ContextID: "c1",
+		Status:    types.TaskStatus{State: types.TaskStateCompleted},
 	}
+	require.NoError(t, storage.StoreDeadLetterTask(task))
 
-	err = storage.StoreDeadLetterTask(task)
-	require.NoError(t, err)
+	require.Equal(t, 1, fakePipe.SetCallCount())
+	_, setKey, _, _ := fakePipe.SetArgsForCall(0)
+	assert.Equal(t, testDeadLetterKeyPrefix+"t1", setKey)
 
-	retrieved, exists := storage.GetTask(task.ID)
-	assert.True(t, exists)
-	assert.Equal(t, task.ID, retrieved.ID)
-	assert.Equal(t, task.ContextID, retrieved.ContextID)
-	assert.Equal(t, types.TaskStateCompleted, retrieved.Status.State)
-	assert.Len(t, retrieved.History, 1)
+	require.Equal(t, 1, fakePipe.SAddCallCount())
+	_, sAddKey, sAddMembers := fakePipe.SAddArgsForCall(0)
+	assert.Equal(t, testContextTasksPrefix+"c1", sAddKey)
+	assert.Equal(t, []any{"t1"}, sAddMembers)
 
-	retrieved, exists = storage.GetTaskByContextAndID(task.ContextID, task.ID)
-	assert.True(t, exists)
-	assert.Equal(t, task.ID, retrieved.ID)
+	require.Equal(t, 1, fakePipe.DelCallCount())
+	_, delKeys := fakePipe.DelArgsForCall(0)
+	assert.Equal(t, []string{testActiveTaskKeyPrefix + "t1"}, delKeys)
 
-	_, exists = storage.GetTaskByContextAndID("wrong-context", task.ID)
-	assert.False(t, exists)
-
-	err = storage.DeleteTask(task.ID)
-	require.NoError(t, err)
-
-	_, exists = storage.GetTask(task.ID)
-	assert.False(t, exists)
+	require.Equal(t, 1, fakePipe.ExecCallCount())
 }
 
-func TestRedisStorageListOperations(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
+func TestRedisStorageStoreDeadLetterTaskNil(t *testing.T) {
+	storage, _, _ := newTestRedisStorage(t)
+	err := storage.StoreDeadLetterTask(nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "task cannot be nil")
+}
 
-	logger := zaptest.NewLogger(t)
-	factory := &RedisStorageFactory{}
-
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
-	}
-
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
+func TestRedisStorageGetTask(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}}
+	data, err := json.Marshal(task)
 	require.NoError(t, err)
+	fakeClient.GetReturns(redis.NewStringResult(string(data), nil))
+
+	got, ok := storage.GetTask("t1")
+	require.True(t, ok)
+	assert.Equal(t, "t1", got.ID)
+
+	_, key := fakeClient.GetArgsForCall(0)
+	assert.Equal(t, testDeadLetterKeyPrefix+"t1", key)
+}
+
+func TestRedisStorageGetTaskMiss(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.GetReturns(redis.NewStringResult("", redis.Nil))
+
+	_, ok := storage.GetTask("missing")
+	assert.False(t, ok)
+}
+
+func TestRedisStorageGetTaskByContextAndID(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}}
+	data, err := json.Marshal(task)
+	require.NoError(t, err)
+	fakeClient.GetReturns(redis.NewStringResult(string(data), nil))
+
+	got, ok := storage.GetTaskByContextAndID("c1", "t1")
+	require.True(t, ok)
+	assert.Equal(t, "t1", got.ID)
+
+	_, ok = storage.GetTaskByContextAndID("wrong-context", "t1")
+	assert.False(t, ok)
+}
+
+func TestRedisStorageDeleteTask(t *testing.T) {
+	storage, fakeClient, fakePipe := newTestRedisStorage(t)
+
+	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}}
+	data, err := json.Marshal(task)
+	require.NoError(t, err)
+	fakeClient.GetReturns(redis.NewStringResult(string(data), nil))
+	fakePipe.ExecReturns(nil, nil)
+
+	require.NoError(t, storage.DeleteTask("t1"))
+
+	require.Equal(t, 1, fakePipe.DelCallCount())
+	_, delKeys := fakePipe.DelArgsForCall(0)
+	assert.Equal(t, []string{testDeadLetterKeyPrefix + "t1"}, delKeys)
+
+	require.Equal(t, 1, fakePipe.SRemCallCount())
+	_, sRemKey, sRemMembers := fakePipe.SRemArgsForCall(0)
+	assert.Equal(t, testContextTasksPrefix+"c1", sRemKey)
+	assert.Equal(t, []any{"t1"}, sRemMembers)
+}
+
+func TestRedisStorageDeleteTaskNotFound(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.GetReturns(redis.NewStringResult("", redis.Nil))
+
+	err := storage.DeleteTask("missing")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestRedisStorageListTasks(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
 
 	tasks := []*types.Task{
-		{
-			ID:        "task-1",
-			ContextID: "context-1",
-			Status:    types.TaskStatus{State: types.TaskStateCompleted},
-			History:   []types.Message{{Role: "user", MessageID: "msg1", Parts: []types.Part{types.CreateTextPart("msg1")}}},
-		},
-		{
-			ID:        "task-2",
-			ContextID: "context-1",
-			Status:    types.TaskStatus{State: types.TaskStateFailed},
-			History:   []types.Message{{Role: "user", MessageID: "msg2", Parts: []types.Part{types.CreateTextPart("msg2")}}},
-		},
-		{
-			ID:        "task-3",
-			ContextID: "context-2",
-			Status:    types.TaskStatus{State: types.TaskStateCompleted},
-			History:   []types.Message{{Role: "user", MessageID: "msg3", Parts: []types.Part{types.CreateTextPart("msg3")}}},
-		},
+		{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}},
+		{ID: "t2", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateFailed}},
+		{ID: "t3", ContextID: "c2", Status: types.TaskStatus{State: types.TaskStateCompleted}},
 	}
 
+	deadLetterKeys := make([]string, 0, len(tasks))
+	taskByDeadLetterKey := map[string]*types.Task{}
 	for _, task := range tasks {
-		err = storage.StoreDeadLetterTask(task)
-		require.NoError(t, err)
+		key := testDeadLetterKeyPrefix + task.ID
+		deadLetterKeys = append(deadLetterKeys, key)
+		taskByDeadLetterKey[key] = task
 	}
 
-	allTasks, err := storage.ListTasks(TaskFilter{})
+	fakeClient.KeysStub = func(_ context.Context, pattern string) *redis.StringSliceCmd {
+		switch pattern {
+		case testDeadLetterKeyPrefix + "*":
+			return redis.NewStringSliceResult(deadLetterKeys, nil)
+		case testActiveTaskKeyPrefix + "*":
+			return redis.NewStringSliceResult(nil, nil)
+		}
+		return redis.NewStringSliceResult(nil, nil)
+	}
+
+	fakeClient.GetStub = func(_ context.Context, key string) *redis.StringCmd {
+		if task, ok := taskByDeadLetterKey[key]; ok {
+			data, err := json.Marshal(task)
+			require.NoError(t, err)
+			return redis.NewStringResult(string(data), nil)
+		}
+		return redis.NewStringResult("", redis.Nil)
+	}
+
+	all, err := storage.ListTasks(server.TaskFilter{})
 	require.NoError(t, err)
-	assert.Len(t, allTasks, 3)
+	assert.Len(t, all, 3)
 
 	completedState := types.TaskStateCompleted
-	completedTasks, err := storage.ListTasks(TaskFilter{State: &completedState})
+	completed, err := storage.ListTasks(server.TaskFilter{State: &completedState})
 	require.NoError(t, err)
-	assert.Len(t, completedTasks, 2)
+	assert.Len(t, completed, 2)
 
-	context1 := "context-1"
-	context1Tasks, err := storage.ListTasks(TaskFilter{ContextID: &context1})
+	context1 := "c1"
+	context1Tasks, err := storage.ListTasks(server.TaskFilter{ContextID: &context1})
 	require.NoError(t, err)
 	assert.Len(t, context1Tasks, 2)
 
-	context1TasksByContext, err := storage.ListTasksByContext("context-1", TaskFilter{})
+	page1, err := storage.ListTasks(server.TaskFilter{Limit: 2, Offset: 0})
 	require.NoError(t, err)
-	assert.Len(t, context1TasksByContext, 2)
+	assert.Len(t, page1, 2)
 
-	context2TasksByContext, err := storage.ListTasksByContext("context-2", TaskFilter{})
+	page2, err := storage.ListTasks(server.TaskFilter{Limit: 2, Offset: 2})
 	require.NoError(t, err)
-	assert.Len(t, context2TasksByContext, 1)
-
-	paginatedTasks, err := storage.ListTasks(TaskFilter{Limit: 2, Offset: 0})
-	require.NoError(t, err)
-	assert.Len(t, paginatedTasks, 2)
-
-	paginatedTasks, err = storage.ListTasks(TaskFilter{Limit: 2, Offset: 2})
-	require.NoError(t, err)
-	assert.Len(t, paginatedTasks, 1)
+	assert.Len(t, page2, 1)
 }
 
-func TestRedisStorageContextOperations(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
+func TestRedisStorageListTasksByContext(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
 
-	logger := zaptest.NewLogger(t)
-	factory := &RedisStorageFactory{}
+	fakeClient.SMembersReturns(redis.NewStringSliceResult([]string{"t1", "t2"}, nil))
 
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
+	taskByID := map[string]*types.Task{
+		"t1": {ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}},
+		"t2": {ID: "t2", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateFailed}},
+	}
+	fakeClient.GetStub = func(_ context.Context, key string) *redis.StringCmd {
+		taskID := key[len(testDeadLetterKeyPrefix):]
+		if task, ok := taskByID[taskID]; ok {
+			data, err := json.Marshal(task)
+			require.NoError(t, err)
+			return redis.NewStringResult(string(data), nil)
+		}
+		return redis.NewStringResult("", redis.Nil)
 	}
 
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
+	got, err := storage.ListTasksByContext("c1", server.TaskFilter{})
 	require.NoError(t, err)
+	assert.Len(t, got, 2)
 
-	task1 := &types.Task{
-		ID:        "task-1",
-		ContextID: "context-1",
-		Status:    types.TaskStatus{State: types.TaskStateCompleted},
-	}
-	task2 := &types.Task{
-		ID:        "task-2",
-		ContextID: "context-2",
-		Status:    types.TaskStatus{State: types.TaskStateCompleted},
-	}
+	_, sMembersKey := fakeClient.SMembersArgsForCall(0)
+	assert.Equal(t, testContextTasksPrefix+"c1", sMembersKey)
+}
 
-	err = storage.StoreDeadLetterTask(task1)
-	require.NoError(t, err)
-	err = storage.StoreDeadLetterTask(task2)
-	require.NoError(t, err)
+func TestRedisStorageGetContexts(t *testing.T) {
+	storage, fakeClient, _ := newTestRedisStorage(t)
+	fakeClient.KeysReturns(redis.NewStringSliceResult([]string{
+		testContextTasksPrefix + "c1",
+		testContextTasksPrefix + "c2",
+	}, nil))
 
 	contexts := storage.GetContexts()
-	assert.Len(t, contexts, 2)
-	assert.Contains(t, contexts, "context-1")
-	assert.Contains(t, contexts, "context-2")
+	assert.ElementsMatch(t, []string{"c1", "c2"}, contexts)
 
-	contextsWithTasks := storage.GetContextsWithTasks()
-	assert.Equal(t, contexts, contextsWithTasks)
-
-	err = storage.DeleteContextAndTasks("context-1")
-	require.NoError(t, err)
-
-	contexts = storage.GetContexts()
-	assert.Len(t, contexts, 1)
-	assert.Contains(t, contexts, "context-2")
-
-	_, exists := storage.GetTask("task-1")
-	assert.False(t, exists)
-
-	_, exists = storage.GetTask("task-2")
-	assert.True(t, exists)
+	_, pattern := fakeClient.KeysArgsForCall(0)
+	assert.Equal(t, testContextTasksPrefix+"*", pattern)
 }
 
-func TestRedisStorageClearQueue(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
+func TestRedisStorageDeleteContextAndTasks(t *testing.T) {
+	storage, fakeClient, fakePipe := newTestRedisStorage(t)
 
-	logger := zaptest.NewLogger(t)
-	factory := &RedisStorageFactory{}
+	fakeClient.SMembersReturns(redis.NewStringSliceResult([]string{"t1", "t2"}, nil))
+	fakePipe.ExecReturns(nil, nil)
 
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
+	require.NoError(t, storage.DeleteContextAndTasks("c1"))
+
+	// Expect 2 dead-letter Del + 2 active Del + 1 context Del = 5
+	require.Equal(t, 5, fakePipe.DelCallCount())
+
+	var deletedKeys []string
+	for i := 0; i < fakePipe.DelCallCount(); i++ {
+		_, keys := fakePipe.DelArgsForCall(i)
+		deletedKeys = append(deletedKeys, keys...)
 	}
+	assert.ElementsMatch(t, []string{
+		testDeadLetterKeyPrefix + "t1",
+		testActiveTaskKeyPrefix + "t1",
+		testDeadLetterKeyPrefix + "t2",
+		testActiveTaskKeyPrefix + "t2",
+		testContextTasksPrefix + "c1",
+	}, deletedKeys)
 
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
-	require.NoError(t, err)
+	require.Equal(t, 1, fakePipe.ExecCallCount())
+}
 
-	task := &types.Task{
-		ID:        "test-task",
-		ContextID: "test-context",
-		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
-	}
+func TestRedisStorageDeleteContextNoTasks(t *testing.T) {
+	storage, fakeClient, fakePipe := newTestRedisStorage(t)
+	fakeClient.SMembersReturns(redis.NewStringSliceResult(nil, nil))
 
-	err = storage.EnqueueTask(task, "request-1")
-	require.NoError(t, err)
-	assert.Equal(t, 1, storage.GetQueueLength())
-
-	err = storage.ClearQueue()
-	require.NoError(t, err)
-	assert.Equal(t, 0, storage.GetQueueLength())
+	require.NoError(t, storage.DeleteContextAndTasks("c1"))
+	assert.Equal(t, 0, fakePipe.ExecCallCount())
 }
 
 func TestRedisStorageGetStats(t *testing.T) {
-	url := requireRedis(t)
-	defer cleanupRedisTestData(t, url)
-
-	logger := zaptest.NewLogger(t)
-	factory := &RedisStorageFactory{}
-
-	cfg := config.QueueConfig{
-		Provider: "redis",
-		URL:      url,
-	}
-
-	storage, err := factory.CreateStorage(context.Background(), cfg, logger)
-	require.NoError(t, err)
+	storage, fakeClient, _ := newTestRedisStorage(t)
 
 	completedTask := &types.Task{
 		ID:        "completed-task",
-		ContextID: "context-1",
+		ContextID: "c1",
 		Status:    types.TaskStatus{State: types.TaskStateCompleted},
-		History:   []types.Message{{Role: "user", MessageID: "msg1", Parts: []types.Part{types.CreateTextPart("msg1")}}},
+		History:   []types.Message{{Role: "user", MessageID: "m1", Parts: []types.Part{types.CreateTextPart("hi")}}},
 	}
 	failedTask := &types.Task{
 		ID:        "failed-task",
-		ContextID: "context-2",
+		ContextID: "c2",
 		Status:    types.TaskStatus{State: types.TaskStateFailed},
-		History:   []types.Message{{Role: "user", MessageID: "msg2", Parts: []types.Part{types.CreateTextPart("msg2")}}},
+		History:   []types.Message{{Role: "user", MessageID: "m2", Parts: []types.Part{types.CreateTextPart("oh no")}}},
 	}
 
-	err = storage.StoreDeadLetterTask(completedTask)
-	require.NoError(t, err)
-	err = storage.StoreDeadLetterTask(failedTask)
-	require.NoError(t, err)
+	deadLetterKeys := []string{
+		testDeadLetterKeyPrefix + "completed-task",
+		testDeadLetterKeyPrefix + "failed-task",
+	}
+	tasksByKey := map[string]*types.Task{
+		deadLetterKeys[0]: completedTask,
+		deadLetterKeys[1]: failedTask,
+	}
+
+	fakeClient.KeysStub = func(_ context.Context, pattern string) *redis.StringSliceCmd {
+		switch pattern {
+		case testDeadLetterKeyPrefix + "*":
+			return redis.NewStringSliceResult(deadLetterKeys, nil)
+		case testContextTasksPrefix + "*":
+			return redis.NewStringSliceResult([]string{
+				testContextTasksPrefix + "c1",
+				testContextTasksPrefix + "c2",
+			}, nil)
+		}
+		return redis.NewStringSliceResult(nil, nil)
+	}
+
+	fakeClient.GetStub = func(_ context.Context, key string) *redis.StringCmd {
+		if task, ok := tasksByKey[key]; ok {
+			data, err := json.Marshal(task)
+			require.NoError(t, err)
+			return redis.NewStringResult(string(data), nil)
+		}
+		return redis.NewStringResult("", redis.Nil)
+	}
 
 	stats := storage.GetStats()
 	assert.Equal(t, 2, stats.TotalTasks)
-	assert.Equal(t, 1, stats.TasksByState["completed"])
-	assert.Equal(t, 1, stats.TasksByState["failed"])
+	assert.Equal(t, 1, stats.TasksByState[string(types.TaskStateCompleted)])
+	assert.Equal(t, 1, stats.TasksByState[string(types.TaskStateFailed)])
 	assert.Equal(t, 2, stats.TotalContexts)
 	assert.Equal(t, 2, stats.ContextsWithTasks)
 	assert.Equal(t, float64(1), stats.AverageTasksPerContext)

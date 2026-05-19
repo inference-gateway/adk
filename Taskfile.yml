@@ -70,6 +70,8 @@ tasks:
       - task: generate:mock:a2a-protocol-handler
       - task: generate:mock:task-manager
       - task: generate:mock:storage
+      - task: generate:mock:redis-client
+      - task: generate:mock:redis-pipeliner
       - task: generate:mock:response-sender
       - task: generate:mock:oidc-authenticator
       - task: generate:mock:task-result-processor
@@ -157,6 +159,24 @@ tasks:
       - server/mocks/fake_storage.go
     cmds:
       - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_storage.go server Storage
+
+  generate:mock:redis-client:
+    desc: 'Generate mock for RedisClient interface'
+    sources:
+      - server/storage_redis.go
+    generates:
+      - server/mocks/fake_redis_client.go
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_redis_client.go server RedisClient
+
+  generate:mock:redis-pipeliner:
+    desc: 'Generate mock for RedisPipeliner interface'
+    sources:
+      - server/storage_redis.go
+    generates:
+      - server/mocks/fake_redis_pipeliner.go
+    cmds:
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_redis_pipeliner.go server RedisPipeliner
 
   generate:mock:response-sender:
     desc: 'Generate mock for ResponseSender interface'
