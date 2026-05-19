@@ -127,6 +127,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 			}
 
 			var fullContent string
+			var fullReasoningContent string
 			toolCallAccumulator := make(map[string]*sdk.ChatCompletionMessageToolCall)
 			var assistantMessage *types.Message
 			var toolResultMessages []types.Message
@@ -271,6 +272,12 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 					}
 
+					if choice.Delta.ReasoningContent != nil && *choice.Delta.ReasoningContent != "" {
+						fullReasoningContent += *choice.Delta.ReasoningContent
+					} else if choice.Delta.Reasoning != nil && *choice.Delta.Reasoning != "" {
+						fullReasoningContent += *choice.Delta.Reasoning
+					}
+
 					if choice.Delta.ToolCalls != nil {
 						for _, toolCallChunk := range *choice.Delta.ToolCalls {
 							key := fmt.Sprintf("%d", toolCallChunk.Index)
@@ -311,6 +318,14 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 						if fullContent != "" {
 							assistantMessage.Parts = append(assistantMessage.Parts, types.CreateTextPart(fullContent))
+						}
+
+						// Preserve reasoning_content so the next iteration can echo it
+						// back to thinking-mode providers (e.g. deepseek) that require it.
+						if fullReasoningContent != "" {
+							assistantMessage.Parts = append(assistantMessage.Parts, types.CreateDataPart(map[string]any{
+								"reasoning_content": fullReasoningContent,
+							}))
 						}
 
 						llmResponse := &LLMResponse{Content: assistantMessage}

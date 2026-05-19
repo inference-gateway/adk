@@ -63,12 +63,13 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 	var content string
 	var toolCallId *string
 	var toolCalls *[]sdk.ChatCompletionMessageToolCall
+	var reasoningContent *string
 
 	for _, part := range msg.Parts {
 		if part.Text != nil {
 			content += *part.Text
 		} else if part.Data != nil {
-			if err := c.processDataPart(part.Data.Data, string(role), &content, &toolCallId, &toolCalls); err != nil {
+			if err := c.processDataPart(part.Data.Data, string(role), &content, &toolCallId, &toolCalls, &reasoningContent); err != nil {
 				c.logger.Warn("failed to process DataPart",
 					zap.String("message_id", msg.MessageID),
 					zap.Error(err))
@@ -102,9 +103,10 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 	}
 
 	sdkMsg := sdk.Message{
-		Role:       sdkRole,
-		ToolCallID: toolCallId,
-		ToolCalls:  toolCalls,
+		Role:             sdkRole,
+		ToolCallID:       toolCallId,
+		ToolCalls:        toolCalls,
+		ReasoningContent: reasoningContent,
 	}
 
 	if err := sdkMsg.Content.FromMessageContent0(content); err != nil {
@@ -121,9 +123,8 @@ func (c *messageConverter) processDataPart(
 	content *string,
 	toolCallId **string,
 	toolCalls **[]sdk.ChatCompletionMessageToolCall,
+	reasoningContent **string,
 ) error {
-	// Note: A2A spec doesn't have ROLE_TOOL, so tool results are sent as agent messages
-	// Check for tool result patterns in data
 	if id, exists := data["tool_call_id"]; exists {
 		if idStr, ok := id.(string); ok {
 			*toolCallId = &idStr
@@ -136,8 +137,19 @@ func (c *messageConverter) processDataPart(
 		return nil
 	}
 
-	// Check for agent role (A2A ROLE_AGENT maps to SDK assistant)
 	if role == string(types.RoleAgent) {
+		if rc, exists := data["reasoning_content"]; exists {
+			if rcStr, ok := rc.(string); ok && rcStr != "" {
+				s := rcStr
+				*reasoningContent = &s
+			}
+		} else if r, exists := data["reasoning"]; exists {
+			if rStr, ok := r.(string); ok && rStr != "" {
+				s := rStr
+				*reasoningContent = &s
+			}
+		}
+
 		if toolCallData, exists := data["tool_call"]; exists {
 			if err := c.extractSingleToolCall(toolCallData, toolCalls); err != nil {
 				return fmt.Errorf("failed to extract single tool call: %w", err)
@@ -339,9 +351,13 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 		}
 
 		if response.ReasoningContent != nil && *response.ReasoningContent != "" {
-			message.Parts = append(message.Parts, types.CreateTextPart(*response.ReasoningContent))
+			message.Parts = append(message.Parts, types.CreateDataPart(map[string]any{
+				"reasoning_content": *response.ReasoningContent,
+			}))
 		} else if response.Reasoning != nil && *response.Reasoning != "" {
-			message.Parts = append(message.Parts, types.CreateTextPart(*response.Reasoning))
+			message.Parts = append(message.Parts, types.CreateDataPart(map[string]any{
+				"reasoning": *response.Reasoning,
+			}))
 		}
 
 	default:

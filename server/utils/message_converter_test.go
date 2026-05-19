@@ -361,6 +361,71 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name: "convert SDK assistant message with reasoning_content",
+			input: func() sdk.Message {
+				reasoning := "Step 1: pick a tool. Step 2: call it."
+				msg := sdk.Message{
+					Role:             sdk.Assistant,
+					ReasoningContent: &reasoning,
+				}
+				_ = msg.Content.FromMessageContent0("Sure, let me check.")
+				return msg
+			}(),
+			expectedOutput: &types.Message{
+				Role: types.RoleAgent,
+				Parts: []types.Part{
+					types.CreateTextPart("Sure, let me check."),
+					types.CreateDataPart(map[string]any{
+						"reasoning_content": "Step 1: pick a tool. Step 2: call it.",
+					}),
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "convert SDK assistant message with tool_calls and reasoning_content",
+			input: func() sdk.Message {
+				reasoning := "Need weather for NYC."
+				msg := sdk.Message{
+					Role:             sdk.Assistant,
+					ReasoningContent: &reasoning,
+					ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
+						{
+							ID:   "call_abc",
+							Type: "function",
+							Function: sdk.ChatCompletionMessageToolCallFunction{
+								Name:      "get_weather",
+								Arguments: `{"location": "NYC"}`,
+							},
+						},
+					},
+				}
+				_ = msg.Content.FromMessageContent0("")
+				return msg
+			}(),
+			expectedOutput: &types.Message{
+				Role: types.RoleAgent,
+				Parts: []types.Part{
+					types.CreateDataPart(map[string]any{
+						"tool_calls": []sdk.ChatCompletionMessageToolCall{
+							{
+								ID:   "call_abc",
+								Type: "function",
+								Function: sdk.ChatCompletionMessageToolCallFunction{
+									Name:      "get_weather",
+									Arguments: `{"location": "NYC"}`,
+								},
+							},
+						},
+					}),
+					types.CreateDataPart(map[string]any{
+						"reasoning_content": "Need weather for NYC.",
+					}),
+				},
+			},
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -510,6 +575,55 @@ func TestMessageConverter_RoundTrip(t *testing.T) {
 	convertedPart := convertedMessage.Parts[0]
 	require.NotNil(t, convertedPart.Text, "Expected converted part to have Text")
 	assert.Equal(t, "Round trip test message", *convertedPart.Text)
+}
+
+// Round-trips a Deepseek-style assistant turn (content + tool_calls +
+// reasoning_content) through ConvertFromSDK -> ConvertToSDK. Regression
+// guard for thinking-mode providers that 400 if reasoning_content is
+// dropped between iterations.
+func TestMessageConverter_RoundTrip_ReasoningContent(t *testing.T) {
+	logger := zap.NewNop()
+	converter := NewMessageConverter(logger)
+
+	reasoning := "User wants NYC weather. Call get_weather."
+	original := sdk.Message{
+		Role:             sdk.Assistant,
+		ReasoningContent: &reasoning,
+		ToolCalls: &[]sdk.ChatCompletionMessageToolCall{
+			{
+				ID:   "call_xyz",
+				Type: "function",
+				Function: sdk.ChatCompletionMessageToolCallFunction{
+					Name:      "get_weather",
+					Arguments: `{"location": "NYC"}`,
+				},
+			},
+		},
+	}
+	require.NoError(t, original.Content.FromMessageContent0("Checking the weather."))
+
+	a2aMsg, err := converter.ConvertFromSDK(original)
+	require.NoError(t, err)
+	require.NotNil(t, a2aMsg)
+
+	roundTripped, err := converter.ConvertToSDK([]types.Message{*a2aMsg})
+	require.NoError(t, err)
+	require.Len(t, roundTripped, 1)
+
+	got := roundTripped[0]
+	assert.Equal(t, sdk.Assistant, got.Role)
+
+	content, _ := got.Content.AsMessageContent0()
+	assert.Equal(t, "Checking the weather.", content,
+		"reasoning_content must not leak into Content")
+
+	require.NotNil(t, got.ReasoningContent, "ReasoningContent must survive round-trip")
+	assert.Equal(t, reasoning, *got.ReasoningContent)
+
+	require.NotNil(t, got.ToolCalls)
+	require.Len(t, *got.ToolCalls, 1)
+	assert.Equal(t, "call_xyz", (*got.ToolCalls)[0].ID)
+	assert.Equal(t, "get_weather", (*got.ToolCalls)[0].Function.Name)
 }
 
 func TestMessageConverter_PerformanceWithManyMessages(t *testing.T) {
