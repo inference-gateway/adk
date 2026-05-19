@@ -7,7 +7,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
-	github.com/inference-gateway/sdk v1.16.3
+	github.com/inference-gateway/sdk v1.16.4
 	github.com/minio/minio-go/v7 v7.1.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.19.0
