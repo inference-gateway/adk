@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.18.4](https://github.com/inference-gateway/adk/compare/v0.18.3...v0.18.4) (2026-05-21)
+
+### 🐛 Bug Fixes
+
+* Include error details in streaming failed events ([#153](https://github.com/inference-gateway/adk/issues/153)) ([4990939](https://github.com/inference-gateway/adk/commit/4990939aeadd4a771bdb719b0b1a0b937b799cea))
+
+### 👷 CI
+
+* **deps:** Bump anthropics/claude-code-action ([#151](https://github.com/inference-gateway/adk/issues/151)) ([77dea3a](https://github.com/inference-gateway/adk/commit/77dea3a8e41749fb7593e51028223f04be58594b))
+* **deps:** Update golangci-lint and task installation methods in CI workflows ([6b1bf09](https://github.com/inference-gateway/adk/commit/6b1bf096f9de9a1921b44c2b452acb3a63605cee))
+
+### 🔧 Miscellaneous
+
+* **deps:** Bump infer CLI to version 0.109.10 ([e5c9808](https://github.com/inference-gateway/adk/commit/e5c98083eb273c0ad45693ec1f179324140523d0))
+
 ## [0.18.3](https://github.com/inference-gateway/adk/compare/v0.18.2...v0.18.3) (2026-05-19)
 
 ### 🐛 Bug Fixes
