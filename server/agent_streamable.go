@@ -213,10 +213,22 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					if streamErr != nil {
 						a.logger.Error("streaming failed", zap.Error(streamErr))
 
+						errorText := streamErr.Error()
+
+						errorMessage := types.NewStreamingStatusMessage(
+							fmt.Sprintf("streaming-error-%d", iteration),
+							string(types.TaskStateFailed),
+							map[string]any{"error": errorText},
+						)
+						errorMessage.Parts = append(errorMessage.Parts, types.NewTextPart(errorText))
+						errorMessage.TaskID = taskID
+						errorMessage.ContextID = contextID
+
 						failedStatusEvent := cloudevents.NewEvent()
 						failedStatusEvent.SetType(types.EventTaskStatusChanged)
 						if err := failedStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-							State: types.TaskStateFailed,
+							State:   types.TaskStateFailed,
+							Message: errorMessage,
 						}); err != nil {
 							a.logger.Error("failed to set failed status event data", zap.Error(err))
 							return
@@ -226,13 +238,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						default:
 						}
 
-						errorMessage := types.NewStreamingStatusMessage(
-							fmt.Sprintf("streaming-error-%d", iteration),
-							string(types.TaskStateFailed),
-							nil,
-						)
-						errorMessage.TaskID = taskID
-						errorMessage.ContextID = contextID
 						select {
 						case outputChan <- types.NewMessageEvent(types.EventStreamFailed, errorMessage.MessageID, errorMessage):
 						default:

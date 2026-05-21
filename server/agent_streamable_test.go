@@ -1425,9 +1425,48 @@ func TestRunWithStream_StreamFailedEventEmitted(t *testing.T) {
 	require.NoError(t, err)
 
 	eventTypes := make(map[string]int)
+	var streamFailedMsg *types.Message
+	var failedTaskStatus *types.TaskStatus
 	for event := range eventChan {
 		eventTypes[event.Type()]++
+		switch event.Type() {
+		case types.EventStreamFailed:
+			var msg types.Message
+			require.NoError(t, event.DataAs(&msg))
+			streamFailedMsg = &msg
+		case types.EventTaskStatusChanged:
+			var status types.TaskStatus
+			require.NoError(t, event.DataAs(&status))
+			if status.State == types.TaskStateFailed {
+				failedTaskStatus = &status
+			}
+		}
 	}
 
 	assert.Greater(t, eventTypes[types.EventStreamFailed], 0, "Should emit stream.failed event on error")
+
+	require.NotNil(t, streamFailedMsg, "stream.failed event must carry a message payload")
+	var streamFailedText, streamFailedData string
+	for _, p := range streamFailedMsg.Parts {
+		if p.Text != nil {
+			streamFailedText = *p.Text
+		}
+		if p.Data != nil {
+			if e, ok := p.Data.Data["error"].(string); ok {
+				streamFailedData = e
+			}
+		}
+	}
+	assert.Contains(t, streamFailedText, "streaming connection error", "stream.failed message must carry the underlying error as a TextPart")
+	assert.Contains(t, streamFailedData, "streaming connection error", "stream.failed message must carry the underlying error in the DataPart \"error\" key")
+
+	require.NotNil(t, failedTaskStatus, "task.status.changed event with TaskStateFailed must be emitted")
+	require.NotNil(t, failedTaskStatus.Message, "failed TaskStatus must include a Message describing the error")
+	var failedStatusText string
+	for _, p := range failedTaskStatus.Message.Parts {
+		if p.Text != nil {
+			failedStatusText = *p.Text
+		}
+	}
+	assert.Contains(t, failedStatusText, "streaming connection error", "TaskStatus.Message must carry the underlying error as a TextPart")
 }
