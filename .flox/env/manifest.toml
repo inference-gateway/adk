@@ -17,7 +17,7 @@ mockgen.pkg-path = "mockgen"
 mockgen.version = "0.6.0"
 go-task.pkg-path = "go-task"
 go-task.version = "3.48.0"
-infer.flake = "github:inference-gateway/cli/v0.109.10"
+infer.flake = "github:inference-gateway/cli/v0.109.11"
 
 [hook]
 on-activate = """
