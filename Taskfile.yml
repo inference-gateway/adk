@@ -40,7 +40,7 @@ tasks:
   lint:examples:
     desc: 'Run markdownlint on all examples'
     cmds:
-      - markdownlint-cli2 --fix examples/**.md
+      - markdownlint --fix 'examples/**/*.md'
 
   test:
     desc: 'Run tests'
