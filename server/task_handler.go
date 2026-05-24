@@ -126,6 +126,19 @@ func (bth *DefaultBackgroundTaskHandler) GetAgent() OpenAICompatibleAgent {
 	return bth.agent
 }
 
+// SetEnableUsageMetadata toggles whether usage metadata (token counts and
+// execution statistics) is attached to the task's metadata when the task
+// reaches a terminal state.
+func (bth *DefaultBackgroundTaskHandler) SetEnableUsageMetadata(enabled bool) {
+	bth.enableUsageMetadata = enabled
+}
+
+// IsUsageMetadataEnabled reports whether the handler will attach usage
+// metadata to completed tasks.
+func (bth *DefaultBackgroundTaskHandler) IsUsageMetadataEnabled() bool {
+	return bth.enableUsageMetadata
+}
+
 // HandleTask processes a task with optimized logic for background scenarios
 func (bth *DefaultBackgroundTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
 	if bth.agent != nil {
@@ -318,6 +331,19 @@ func (sth *DefaultStreamingTaskHandler) SetAgent(agent OpenAICompatibleAgent) {
 // GetAgent returns the configured agent
 func (sth *DefaultStreamingTaskHandler) GetAgent() OpenAICompatibleAgent {
 	return sth.agent
+}
+
+// SetEnableUsageMetadata toggles whether usage metadata (token counts and
+// execution statistics) is attached to the task's metadata when the task
+// reaches a terminal state.
+func (sth *DefaultStreamingTaskHandler) SetEnableUsageMetadata(enabled bool) {
+	sth.enableUsageMetadata = enabled
+}
+
+// IsUsageMetadataEnabled reports whether the handler will attach usage
+// metadata to completed tasks.
+func (sth *DefaultStreamingTaskHandler) IsUsageMetadataEnabled() bool {
+	return sth.enableUsageMetadata
 }
 
 // HandleStreamingTask processes a task and returns a channel of CloudEvents

@@ -4,13 +4,16 @@ import (
 	"testing"
 	"time"
 
-	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
-	mocks "github.com/inference-gateway/adk/server/mocks"
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
 	zap "go.uber.org/zap"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestA2AServerBuilder_BasicConstruction(t *testing.T) {
@@ -187,6 +190,51 @@ func TestNewDefaultA2AServer(t *testing.T) {
 	a2aServer := server.NewDefaultA2AServer(nil)
 
 	assert.NotNil(t, a2aServer)
+}
+
+// TestA2AServerBuilder_UsageMetadataWiring confirms the EnableUsageMetadata
+// flag on AgentConfig is propagated to the default task handlers so that
+// callers can actually disable usage metadata via configuration.
+func TestA2AServerBuilder_UsageMetadataWiring(t *testing.T) {
+	tests := []struct {
+		name    string
+		enabled bool
+	}{
+		{name: "metadata enabled", enabled: true},
+		{name: "metadata disabled", enabled: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.Config{
+				AgentName:    "test-agent",
+				ServerConfig: config.ServerConfig{Port: "8080"},
+				AgentConfig: config.AgentConfig{
+					SystemPrompt:                "You are a test assistant.",
+					MaxChatCompletionIterations: 10,
+					EnableUsageMetadata:         tt.enabled,
+				},
+				CapabilitiesConfig: config.CapabilitiesConfig{
+					Streaming: true,
+				},
+			}
+			logger := zap.NewNop()
+
+			a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+				WithDefaultTaskHandlers().
+				WithAgentCard(createTestAgentCard()).
+				Build()
+			require.NoError(t, err)
+
+			bg, ok := a2aServer.GetBackgroundTaskHandler().(*server.DefaultBackgroundTaskHandler)
+			require.True(t, ok, "expected DefaultBackgroundTaskHandler")
+			assert.Equal(t, tt.enabled, bg.IsUsageMetadataEnabled())
+
+			st, ok := a2aServer.GetStreamingTaskHandler().(*server.DefaultStreamingTaskHandler)
+			require.True(t, ok, "expected DefaultStreamingTaskHandler")
+			assert.Equal(t, tt.enabled, st.IsUsageMetadataEnabled())
+		})
+	}
 }
 
 func TestCustomA2AServer(t *testing.T) {
@@ -415,7 +463,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(false), // Streaming disabled, but still need background handler
+				Streaming:              new(false),
 				PushNotifications:      new(false),
 				StateTransitionHistory: new(false),
 			},
@@ -438,7 +486,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(true), // Streaming enabled
+				Streaming:              new(true),
 				PushNotifications:      new(false),
 				StateTransitionHistory: new(false),
 			},
@@ -448,7 +496,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 
 		_, err := server.NewA2AServerBuilder(cfg, logger).
 			WithAgentCard(agentCard).
-			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}). // Only background handler
+			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}).
 			Build()
 
 		require.Error(t, err)
@@ -462,7 +510,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(false), // Streaming disabled
+				Streaming:              new(false),
 				PushNotifications:      new(false),
 				StateTransitionHistory: new(false),
 			},
@@ -472,7 +520,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 
 		serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
 			WithAgentCard(agentCard).
-			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}). // Only background handler is enough
+			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}).
 			Build()
 
 		require.NoError(t, err)
@@ -486,7 +534,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(true), // Streaming enabled
+				Streaming:              new(true),
 				PushNotifications:      new(false),
 				StateTransitionHistory: new(false),
 			},

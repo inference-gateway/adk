@@ -181,6 +181,139 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 	assert.Greater(t, execStats["iterations"], 0, "Should have at least one iteration")
 }
 
+// TestUsageMetadata_BackgroundTaskHandler_Disabled verifies that when the
+// EnableUsageMetadata flag is false on the background handler, no usage
+// metadata is attached to the completed task.
+func TestUsageMetadata_BackgroundTaskHandler_Disabled(t *testing.T) {
+	logger := zap.NewNop()
+
+	mockLLMClient := &MockLLMClient{
+		streamResponses: []*sdk.CreateChatCompletionStreamResponse{
+			{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta: sdk.ChatCompletionStreamResponseDelta{
+							Content: "Disabled response.",
+						},
+					},
+				},
+			},
+			{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: ""},
+						FinishReason: "stop",
+					},
+				},
+				Usage: &sdk.CompletionUsage{
+					PromptTokens:     10,
+					CompletionTokens: 5,
+					TotalTokens:      15,
+				},
+			},
+		},
+	}
+
+	agent := NewOpenAICompatibleAgentWithConfig(logger, &config.AgentConfig{
+		MaxChatCompletionIterations: 10,
+		SystemPrompt:                "You are a test assistant",
+	})
+	agent.SetLLMClient(mockLLMClient)
+
+	handler := NewDefaultBackgroundTaskHandler(logger, agent)
+	require.True(t, handler.IsUsageMetadataEnabled(), "default should be enabled")
+	handler.SetEnableUsageMetadata(false)
+	require.False(t, handler.IsUsageMetadataEnabled(), "should be disabled after setter")
+
+	task := &types.Task{
+		ID:        "test-task-disabled",
+		ContextID: "test-context-disabled",
+		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
+		History: []types.Message{
+			{
+				Role:  "user",
+				Parts: []types.Part{types.NewTextPart("Hello")},
+			},
+		},
+	}
+
+	resultTask, err := handler.HandleTask(context.Background(), task, nil)
+	require.NoError(t, err)
+	require.NotNil(t, resultTask)
+
+	if resultTask.Metadata != nil {
+		assert.NotContains(t, *resultTask.Metadata, "usage", "usage metadata should not be attached when disabled")
+		assert.NotContains(t, *resultTask.Metadata, "execution_stats", "execution_stats should not be attached when disabled")
+	}
+}
+
+// TestUsageMetadata_StreamingTaskHandler_Disabled verifies the streaming
+// handler honors the disabled flag.
+func TestUsageMetadata_StreamingTaskHandler_Disabled(t *testing.T) {
+	logger := zap.NewNop()
+
+	mockLLMClient := &MockLLMClient{
+		streamResponses: []*sdk.CreateChatCompletionStreamResponse{
+			{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Disabled streaming."},
+					},
+				},
+			},
+			{
+				Choices: []sdk.ChatCompletionStreamChoice{
+					{
+						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: ""},
+						FinishReason: "stop",
+					},
+				},
+				Usage: &sdk.CompletionUsage{
+					PromptTokens:     20,
+					CompletionTokens: 10,
+					TotalTokens:      30,
+				},
+			},
+		},
+	}
+
+	agent := NewOpenAICompatibleAgentWithConfig(logger, &config.AgentConfig{
+		MaxChatCompletionIterations: 10,
+		SystemPrompt:                "You are a test assistant",
+	})
+	agent.SetLLMClient(mockLLMClient)
+
+	handler := NewDefaultStreamingTaskHandler(logger, agent)
+	require.True(t, handler.IsUsageMetadataEnabled(), "default should be enabled")
+	handler.SetEnableUsageMetadata(false)
+	require.False(t, handler.IsUsageMetadataEnabled(), "should be disabled after setter")
+
+	task := &types.Task{
+		ID:        "test-streaming-disabled",
+		ContextID: "test-streaming-context-disabled",
+		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
+		History: []types.Message{
+			{
+				Role:  "user",
+				Parts: []types.Part{types.NewTextPart("Hello")},
+			},
+		},
+	}
+
+	eventChan, err := handler.HandleStreamingTask(context.Background(), task, nil)
+	require.NoError(t, err)
+	require.NotNil(t, eventChan)
+
+	for event := range eventChan {
+		_ = event
+	}
+
+	if task.Metadata != nil {
+		assert.NotContains(t, *task.Metadata, "usage", "usage metadata should not be attached when disabled")
+		assert.NotContains(t, *task.Metadata, "execution_stats", "execution_stats should not be attached when disabled")
+	}
+}
+
 // MockLLMClient is a simple mock for testing
 type MockLLMClient struct {
 	streamResponses []*sdk.CreateChatCompletionStreamResponse

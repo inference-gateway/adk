@@ -171,9 +171,146 @@ func main() {
 		}
 	}
 
+	// ────────────────────────────────────────────────────────────────
+	// Streaming demo: the EnableUsageMetadata flag also applies to the
+	// default streaming task handler. After the stream finishes, we
+	// fetch the final task snapshot and read Task.Metadata.
+	// ────────────────────────────────────────────────────────────────
+	fmt.Printf("\n┌─────────────────────────────────────────────────────┐\n")
+	fmt.Printf("│ Streaming Test: Usage Metadata via stream           │\n")
+	fmt.Printf("└─────────────────────────────────────────────────────┘\n")
+	runStreamingDemo(ctx, a2aClient, logger)
+
 	fmt.Println("\n═══════════════════════════════════════════════════════")
 	fmt.Println("All test cases completed!")
 	fmt.Println("═══════════════════════════════════════════════════════")
+	fmt.Println("Tip: re-run with A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA=false")
+	fmt.Println("on the server to confirm Task.Metadata is omitted.")
+	fmt.Println("═══════════════════════════════════════════════════════")
+}
+
+// runStreamingDemo submits a streaming task, consumes the event stream until
+// the task reaches a terminal state, then fetches the final task snapshot to
+// display the usage metadata captured by the streaming task handler.
+func runStreamingDemo(ctx context.Context, a2aClient client.A2AClient, logger *zap.Logger) {
+	prompt := "Calculate 7 * 6 using the calculate tool, then briefly explain the result."
+	fmt.Printf("Prompt: %s\n\n", prompt)
+
+	message := types.Message{
+		Role:  types.RoleUser,
+		Parts: []types.Part{types.NewTextPart(prompt)},
+	}
+
+	blocking := false
+	params := types.MessageSendParams{
+		Message: message,
+		Configuration: &types.MessageSendConfiguration{
+			Blocking:            &blocking,
+			AcceptedOutputModes: []string{"text/plain"},
+		},
+	}
+
+	eventChan, err := a2aClient.SendTaskStreaming(ctx, params)
+	if err != nil {
+		logger.Error("failed to start streaming task", zap.Error(err))
+		return
+	}
+
+	fmt.Print("Streaming")
+	var (
+		taskID       string
+		finalState   types.TaskState
+		eventCount   int
+		streamedText string
+	)
+
+	for event := range eventChan {
+		eventCount++
+		fmt.Print(".")
+
+		if event.Result == nil {
+			continue
+		}
+
+		resultBytes, err := json.Marshal(event.Result)
+		if err != nil {
+			continue
+		}
+
+		// Streaming events alternate between full Task snapshots and
+		// TaskStatusUpdateEvent entries. The wire payload carries a
+		// "kind" discriminator that isn't on the generated types yet, so
+		// peek at the raw JSON to route the decode.
+		var disc struct {
+			Kind string `json:"kind"`
+		}
+		_ = json.Unmarshal(resultBytes, &disc)
+
+		switch disc.Kind {
+		case "task":
+			var task types.Task
+			if err := json.Unmarshal(resultBytes, &task); err == nil {
+				if task.ID != "" {
+					taskID = task.ID
+				}
+				if task.Status.Message != nil {
+					for _, part := range task.Status.Message.Parts {
+						if part.Text != nil {
+							streamedText += *part.Text
+						}
+					}
+				}
+				finalState = task.Status.State
+			}
+		case "status-update":
+			var statusUpdate types.TaskStatusUpdateEvent
+			if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil {
+				if statusUpdate.TaskID != "" {
+					taskID = statusUpdate.TaskID
+				}
+				finalState = statusUpdate.Status.State
+			}
+		}
+	}
+
+	fmt.Printf(" done (%d events)\n", eventCount)
+
+	if taskID == "" {
+		fmt.Println("⚠ No task ID observed from stream - cannot fetch metadata")
+		return
+	}
+
+	fmt.Printf("Task ID: %s\n", taskID)
+	fmt.Printf("Terminal state: %s\n", finalState)
+	if streamedText != "" {
+		fmt.Printf("Streamed response: %s\n", streamedText)
+	}
+
+	// Re-fetch the task to get the post-completion snapshot, which is where
+	// the default streaming handler writes the usage metadata.
+	taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{ID: taskID})
+	if err != nil {
+		logger.Error("failed to fetch final task", zap.Error(err))
+		return
+	}
+
+	taskResultBytes, ok := taskResponse.Result.(json.RawMessage)
+	if !ok {
+		logger.Error("unexpected GetTask response shape")
+		return
+	}
+
+	var finalTask types.Task
+	if err := json.Unmarshal(taskResultBytes, &finalTask); err != nil {
+		logger.Error("failed to unmarshal final task", zap.Error(err))
+		return
+	}
+
+	var metadata map[string]any
+	if finalTask.Metadata != nil {
+		metadata = *finalTask.Metadata
+	}
+	displayUsageMetadata(metadata)
 }
 
 // displayUsageMetadata formats and displays the usage metadata from a task

@@ -168,6 +168,7 @@ func (b *A2AServerBuilderImpl) WithDefaultBackgroundTaskHandler() A2AServerBuild
 	if b.artifactService != nil {
 		handler.artifactService = b.artifactService
 	}
+	handler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
 	b.pollingTaskHandler = handler
 	return b
 }
@@ -178,6 +179,7 @@ func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilde
 	if b.artifactService != nil {
 		handler.artifactService = b.artifactService
 	}
+	handler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
 	b.streamingTaskHandler = handler
 	return b
 }
@@ -186,10 +188,12 @@ func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilde
 func (b *A2AServerBuilderImpl) WithDefaultTaskHandlers() A2AServerBuilder {
 	bgHandler := NewDefaultBackgroundTaskHandler(b.logger, b.agent)
 	bgHandler.artifactService = b.artifactService
+	bgHandler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
 	b.pollingTaskHandler = bgHandler
 
 	streamHandler := NewDefaultStreamingTaskHandler(b.logger, b.agent)
 	streamHandler.artifactService = b.artifactService
+	streamHandler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
 	b.streamingTaskHandler = streamHandler
 	return b
 }
