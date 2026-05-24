@@ -21,7 +21,7 @@ This example demonstrates real-time streaming responses from an A2A server, perf
 
 ## Directory Structure
 
-```
+```text
 streaming/
 ├── client/
 │   └── main.go          # Streaming client
@@ -82,7 +82,7 @@ for event := range stream {
 
 ## Example Output
 
-```
+```text
 Sending streaming request...
 Received stream:
 T-h-i-s- -i-s- -a- -s-t-r-e-a-m-i-n-g- -r-e-s-p-o-n-s-e-.- -E-a-c-h- -c-h-a-r-a-c-t-e-r-

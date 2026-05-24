@@ -112,7 +112,7 @@ The client will demonstrate:
 
 ## File Structure
 
-```
+```text
 examples/static-agent-card/
 ├── agent-card.json          # Agent configuration
 ├── server/

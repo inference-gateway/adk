@@ -148,7 +148,7 @@ curl -X POST http://localhost:8081/a2a \
 
 Watch the server logs to see the callbacks being triggered in sequence with colored emojis:
 
-```
+```text
 🔵 BeforeAgent: Starting agent execution
 🟢 BeforeModel: About to call LLM
 🟡 AfterModel: Received LLM response

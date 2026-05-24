@@ -41,7 +41,7 @@ The usage metadata feature provides:
 
 ## Directory Structure
 
-```
+```text
 usage-metadata/
 ├── server/
 │   ├── main.go         # A2A server with usage tracking

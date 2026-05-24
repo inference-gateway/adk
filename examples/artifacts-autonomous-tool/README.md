@@ -1,6 +1,9 @@
 # Artifacts Autonomous Tool Example
 
-This example demonstrates an A2A server where an LLM can **autonomously** create artifacts using the built-in `create_artifact` tool. Unlike examples with custom task handlers that explicitly create artifacts, this approach lets the AI decide when and what artifacts to create based on user requests.
+This example demonstrates an A2A server where an LLM can **autonomously** create artifacts using
+the built-in `create_artifact` tool. Unlike examples with custom task handlers that explicitly
+create artifacts, this approach lets the AI decide when and what artifacts to create based on
+user requests.
 
 ## Table of Contents
 
@@ -56,7 +59,7 @@ The LLM autonomously decides:
 
 ## How It Works
 
-```
+```text
 ┌─────────────────┐
 │  User Request   │  "Create a JSON report with user data"
 └────────┬────────┘
@@ -83,7 +86,7 @@ The LLM autonomously decides:
 
 ## Directory Structure
 
-```
+```text
 artifacts-autonomous-tool/
 ├── server/
 │   ├── main.go           # AI-powered A2A server with create_artifact tool
@@ -186,7 +189,9 @@ go run main.go
 | `A2A_ARTIFACTS_STORAGE_PROVIDER`         | `filesystem`                    | Storage provider                |
 | `A2A_ARTIFACTS_STORAGE_BASE_PATH`        | `./artifacts`                   | Base path for artifacts         |
 
-**Docker Networking Note**: When running in Docker, set `A2A_ARTIFACTS_SERVER_HOST` to the service name (e.g., `server`) so artifact URLs are accessible from other containers in the network. The docker-compose.yaml already configures this correctly.
+**Docker Networking Note**: When running in Docker, set `A2A_ARTIFACTS_SERVER_HOST` to the service
+name (e.g., `server`) so artifact URLs are accessible from other containers in the network.
+The docker-compose.yaml already configures this correctly.
 
 ### Client Configuration
 
@@ -379,7 +384,7 @@ go run main.go
 
 Look for log entries like:
 
-```
+```text
 tool_call: create_artifact
 tool_args: {"content":"...", "filename":"report.json", "type":"url"}
 ```

@@ -1,6 +1,8 @@
 # Artifacts Filesystem Example
 
-This example demonstrates an A2A server that creates downloadable artifacts using filesystem storage. The server generates analysis reports as markdown files and makes them available for download via HTTP endpoints.
+This example demonstrates an A2A server that creates downloadable artifacts using filesystem
+storage. The server generates analysis reports as markdown files and makes them available for
+download via HTTP endpoints.
 
 ## Table of Contents
 
@@ -25,7 +27,7 @@ This example demonstrates an A2A server that creates downloadable artifacts usin
 
 ## Architecture
 
-```
+```text
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │                 │    │                  │    │                 │
 │  A2A Client     │◄──►│  A2A Server      │◄──►│ Artifacts Server│
@@ -114,7 +116,7 @@ The server generates markdown reports that include:
 
 Example output structure:
 
-```
+```text
 client/downloads/
           └── analysis_report.md  # Downloaded artifact
 ```

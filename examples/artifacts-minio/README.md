@@ -1,6 +1,8 @@
 # Artifacts MinIO Example
 
-This example demonstrates an A2A server that creates downloadable artifacts using MinIO cloud storage. The server generates analysis reports as markdown files and makes them available for download via HTTP endpoints using MinIO as the storage backend.
+This example demonstrates an A2A server that creates downloadable artifacts using MinIO cloud
+storage. The server generates analysis reports as markdown files and makes them available for
+download via HTTP endpoints using MinIO as the storage backend.
 
 ## Table of Contents
 
@@ -33,7 +35,7 @@ This example supports two download modes for artifacts stored in MinIO:
 
 ### Proxy Mode (Default)
 
-```
+```text
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │                 │    │                  │    │                 │    │                 │
 │  A2A Client     │◄──►│  A2A Server      │◄──►│ Artifacts Server│◄──►│ MinIO Storage   │
@@ -44,7 +46,7 @@ This example supports two download modes for artifacts stored in MinIO:
 
 ### Direct Mode (Configurable)
 
-```
+```text
 ┌─────────────────┐                              ┌─────────────────┐
 │                 │                              │                 │
 │  A2A Client     │◄────────────────────────────►│ MinIO Storage   │
@@ -131,7 +133,7 @@ Client configuration:
 
 This example demonstrates two different approaches for downloading artifacts from MinIO:
 
-### Proxy Mode (Default)
+### Proxy Mode Details
 
 **Flow**: Client → Artifacts Server → MinIO Storage
 
@@ -193,7 +195,7 @@ The server generates markdown reports that include:
 
 Example output structure:
 
-```
+```text
 client/downloads/
           └── analysis_report.md  # Downloaded artifact from MinIO
 ```
@@ -249,7 +251,7 @@ curl -O http://localhost:8081/artifacts/ARTIFACT_ID/analysis_report.md
 
 ### MinIO Console Access
 
-1. Open http://localhost:9001 in your browser
+1. Open <http://localhost:9001> in your browser
 2. Login with: **minioadmin** / **minioadmin**
 3. Browse the 'artifacts' bucket to see stored files
 4. View object metadata, download files, and manage permissions

@@ -1,6 +1,8 @@
 # Input-Required Flow Examples
 
-This example demonstrates how A2A agents can pause task execution to request additional information from users when needed. The input-required flow is essential for creating conversational agents that can handle ambiguous or incomplete requests gracefully.
+This example demonstrates how A2A agents can pause task execution to request additional information
+from users when needed. The input-required flow is essential for creating conversational agents that
+can handle ambiguous or incomplete requests gracefully.
 
 ## Table of Contents
 
@@ -26,7 +28,7 @@ This example demonstrates how A2A agents can pause task execution to request add
 
 ## Directory Structure
 
-```
+```text
 input-required/
 ├── README.md                          # This file
 ├── non-streaming/                     # Traditional request-response mode
@@ -190,7 +192,7 @@ inference-gateway:
 
 ### Weather Query (Missing Location)
 
-```
+```text
 User: "What's the weather?"
 Agent: "I'd be happy to help you with the weather! Could you please specify which location you'd like the weather for?"
 User: "New York"
@@ -199,7 +201,7 @@ Agent: "The weather in New York is currently sunny and 72°F!"
 
 ### Calculation Request (Missing Numbers)
 
-```
+```text
 User: "Calculate something for me"
 Agent: "I can help you with calculations! Could you please provide the specific numbers or equation you'd like me to calculate?"
 User: "What's 15 * 23?"
@@ -208,7 +210,7 @@ Agent: "15 * 23 = 345"
 
 ### Unclear Request
 
-```
+```text
 User: "Help me"
 Agent: "I'd be happy to help! Could you please provide more details about what you'd like me to do? For example, you could ask about the weather or request a calculation."
 User: "I need help with my homework"

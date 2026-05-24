@@ -1,6 +1,9 @@
 # Artifacts with Default Handlers Example
 
-This example demonstrates how to use artifacts with an **AI-powered agent and default task handlers**. It showcases automatic artifact extraction functionality where AI agents use tools to create artifacts via `ArtifactService.CreateFileArtifact()` and the default handlers automatically extract and attach them to tasks. This example requires an LLM provider configuration.
+This example demonstrates how to use artifacts with an **AI-powered agent and default task
+handlers**. It showcases automatic artifact extraction functionality where AI agents use tools to
+create artifacts via `ArtifactService.CreateFileArtifact()` and the default handlers automatically
+extract and attach them to tasks. This example requires an LLM provider configuration.
 
 ## Table of Contents
 
@@ -186,6 +189,7 @@ The default handlers automatically:
    ```
 
 2. **In another terminal, run the client:**
+
    ```bash
    cd client
    go mod tidy
@@ -230,7 +234,7 @@ When you run the example, you should see:
 
 **Server Output:**
 
-```
+```text
 🔧 Starting Artifacts with Default Handlers A2A Server...
 2024/01/15 10:30:00 INFO configuration loaded
 2024/01/15 10:30:00 INFO ✅ server created with default handlers
@@ -239,7 +243,7 @@ When you run the example, you should see:
 
 **Client Output:**
 
-```
+```text
 --- Request 1: Generate Report ---
 Sending: Generate a comprehensive report about renewable energy technologies
 
@@ -272,7 +276,7 @@ Response includes:
 
 ## Project Structure
 
-```
+```text
 artifacts-with-default-handlers/
 ├── README.md                # This file
 ├── docker-compose.yaml      # Docker orchestration

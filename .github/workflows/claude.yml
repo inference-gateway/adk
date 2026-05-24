@@ -59,6 +59,9 @@ jobs:
         with:
           node-version: 'lts/*'
 
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
       - name: Install maintainer skill
         run: |
           mkdir -p ~/.claude/skills/maintainer

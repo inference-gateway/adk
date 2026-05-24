@@ -73,7 +73,7 @@ The streaming client handles multiple event types:
 
 ### Enable AI
 
-**Option 1: Using .env file (Recommended)**
+#### Option 1: Using .env file (Recommended)
 
 1. Copy the example environment file:
 
@@ -95,7 +95,7 @@ The streaming client handles multiple event types:
 
 3. The docker-compose.yaml will automatically load these values
 
-**Option 2: Edit docker-compose.yaml directly**
+#### Option 2: Edit docker-compose.yaml directly
 
 Uncomment these lines in `docker-compose.yaml`:
 
@@ -126,7 +126,7 @@ inference-gateway:
 
 ### Weather Query with Streaming
 
-```
+```text
 💬 Your message: What's the weather?
 📤 Sending: What's the weather?
 📥 Streaming response: I'd be happy to help you with the weather!
@@ -139,7 +139,7 @@ inference-gateway:
 
 ### Real-time Calculation
 
-```
+```text
 💬 Your message: Calculate something
 📤 Sending: Calculate something
 📥 Streaming response: I can help you with calculations!
@@ -152,10 +152,11 @@ inference-gateway:
 
 ### Simple Greeting (No Input Required)
 
-```
+```text
 💬 Your message: Hello
 📤 Sending: Hello
-📥 Streaming response: Hello! I'm an assistant that demonstrates the input-required flow with streaming. Try asking me about the weather or a calculation to see how I request additional information!
+📥 Streaming response: Hello! I'm an assistant that demonstrates the input-required flow with streaming.
+   Try asking me about the weather or a calculation to see how I request additional information!
 ✅ Response complete!
 ```
 
@@ -248,7 +249,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient *client.A2AClient, initialM
 
 Unlike traditional input-required flows, streaming can pause mid-response:
 
-```
+```text
 📥 Streaming response: I can help you with the weather in
 ❓ Input Required: Could you please specify which city?
 💬 Your response: Boston
