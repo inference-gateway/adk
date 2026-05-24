@@ -478,7 +478,7 @@ for evt := range events {
 The JSON-RPC counterpart to the public `.well-known/agent-card.json`
 endpoint. The response is the same `AgentCard` object, but the call passes
 through the JSON-RPC route and is therefore subject to the server's
-authentication middleware — useful when the extended card should only be
+authentication middleware - useful when the extended card should only be
 visible to authenticated callers.
 
 ```go

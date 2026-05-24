@@ -276,7 +276,7 @@ func runStreamingDemo(ctx context.Context, a2aClient client.A2AClient, logger *z
 	fmt.Printf(" done (%d events)\n", eventCount)
 
 	if taskID == "" {
-		fmt.Println("⚠ No task ID observed from stream — cannot fetch metadata")
+		fmt.Println("⚠ No task ID observed from stream - cannot fetch metadata")
 		return
 	}
 

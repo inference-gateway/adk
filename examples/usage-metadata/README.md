@@ -127,7 +127,7 @@ Usage metadata is automatically collected during task execution and populated in
 Both default task handlers honour the `EnableUsageMetadata` flag on
 `AgentConfig`. When you build the server with `WithDefaultBackgroundTaskHandler`,
 `WithDefaultStreamingTaskHandler`, or `WithDefaultTaskHandlers`, the builder
-wires the configured value through — so flipping the env var off truly disables
+wires the configured value through - so flipping the env var off truly disables
 metadata collection.
 
 **For Background Tasks (`message/send` + `tasks/get`):**
@@ -145,14 +145,14 @@ handler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
 handler := server.NewDefaultStreamingTaskHandler(logger, agent)
 handler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
 // Usage metadata is available on the final task snapshot once the
-// stream completes — fetch it via tasks/get after the stream ends.
+// stream completes - fetch it via tasks/get after the stream ends.
 ```
 
 **In Your Code:**
 
 The `UsageTracker` is automatically injected into the agent execution context
 and collects metrics transparently. No additional code is required in your
-task handlers — just set `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA` (default
+task handlers - just set `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA` (default
 `true`).
 
 The bundled client demonstrates both code paths: it submits three background
@@ -219,7 +219,7 @@ A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA=false
 
 When disabled, neither the background nor the streaming default handler will
 attach `usage` / `execution_stats` to `Task.Metadata`. To see the difference,
-start the server with the env var set to `false` and re-run the client — the
+start the server with the env var set to `false` and re-run the client - the
 "Usage Metadata" block printed by `displayUsageMetadata` will be empty (or
 absent) for every test case, both background and streaming.
 

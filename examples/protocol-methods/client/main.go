@@ -154,7 +154,7 @@ func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, task
 	getBytes, _ := json.MarshalIndent(getResp.Result, "", "  ")
 	fmt.Printf("get → \n%s\n", string(getBytes))
 
-	// 3. list: show every config attached to this task — should contain both.
+	// 3. list: show every config attached to this task - should contain both.
 	listResp, err := a2a.ListTaskPushNotificationConfig(ctx, types.ListTaskPushNotificationConfigParams{
 		Parent: taskID,
 	})
