@@ -157,8 +157,12 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 
 	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
 	server.responseSender = NewDefaultResponseSender(logger)
-	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger, server.agent)
-	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger, server.agent)
+	bgHandler := NewDefaultBackgroundTaskHandler(logger, server.agent)
+	bgHandler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
+	server.backgroundTaskHandler = bgHandler
+	streamHandler := NewDefaultStreamingTaskHandler(logger, server.agent)
+	streamHandler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
+	server.streamingTaskHandler = streamHandler
 	server.protocolHandler = NewDefaultA2AProtocolHandler(
 		logger,
 		server.storage,
@@ -235,8 +239,12 @@ func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel o
 
 	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
 	server.responseSender = NewDefaultResponseSender(logger)
-	server.backgroundTaskHandler = NewDefaultBackgroundTaskHandler(logger, server.agent)
-	server.streamingTaskHandler = NewDefaultStreamingTaskHandler(logger, server.agent)
+	bgHandler := NewDefaultBackgroundTaskHandler(logger, server.agent)
+	bgHandler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
+	server.backgroundTaskHandler = bgHandler
+	streamHandler := NewDefaultStreamingTaskHandler(logger, server.agent)
+	streamHandler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
+	server.streamingTaskHandler = streamHandler
 	server.protocolHandler = NewDefaultA2AProtocolHandler(
 		logger,
 		server.storage,
