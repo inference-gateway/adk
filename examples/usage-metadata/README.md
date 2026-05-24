@@ -20,8 +20,10 @@ This example demonstrates how to track and retrieve **token usage** and **execut
 - Automatic token usage tracking from LLM responses
 - Execution statistics collection (iterations, messages, tool calls)
 - Metadata population in completed task responses
-- Configuration options for enabling/disabling usage tracking
-- How to access usage data in both background and streaming tasks
+- How `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA` toggles tracking on the
+  default task handlers (both background and streaming)
+- How to access usage data from both `message/send` (background) and
+  `message/stream` (streaming) flows
 
 ## Features
 
@@ -122,23 +124,38 @@ Usage metadata is automatically collected during task execution and populated in
 
 ### How It Works
 
-**For Background Tasks:**
+Both default task handlers honour the `EnableUsageMetadata` flag on
+`AgentConfig`. When you build the server with `WithDefaultBackgroundTaskHandler`,
+`WithDefaultStreamingTaskHandler`, or `WithDefaultTaskHandlers`, the builder
+wires the configured value through — so flipping the env var off truly disables
+metadata collection.
+
+**For Background Tasks (`message/send` + `tasks/get`):**
 
 ```go
 handler := server.NewDefaultBackgroundTaskHandler(logger, agent)
-// Usage metadata is automatically tracked and populated in Task.Metadata
+handler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
+// Usage metadata is populated in Task.Metadata when the task reaches
+// a terminal state (completed/failed/cancelled).
 ```
 
-**For Streaming Tasks:**
+**For Streaming Tasks (`message/stream`):**
 
 ```go
 handler := server.NewDefaultStreamingTaskHandler(logger, agent)
-// Usage metadata is tracked during streaming and available after completion
+handler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
+// Usage metadata is available on the final task snapshot once the
+// stream completes — fetch it via tasks/get after the stream ends.
 ```
 
 **In Your Code:**
 
-The `UsageTracker` is automatically injected into the agent execution context and collects metrics transparently. No additional code is required in your task handlers.
+The `UsageTracker` is automatically injected into the agent execution context and collects metrics transparently. No additional code is required in your task handlers — just set `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA` (default `true`).
+
+The bundled client demonstrates both code paths: it submits three background
+tasks via `SendTask`/`GetTask`, then submits a final streaming task via
+`SendTaskStreaming` and re-fetches the completed task to display the metadata
+collected during the stream.
 
 ## Metadata Structure
 
@@ -197,7 +214,11 @@ Or in your `.env` file:
 A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA=false
 ```
 
-When disabled, the `Task.Metadata` field will not include usage information.
+When disabled, neither the background nor the streaming default handler will
+attach `usage` / `execution_stats` to `Task.Metadata`. To see the difference,
+start the server with the env var set to `false` and re-run the client — the
+"Usage Metadata" block printed by `displayUsageMetadata` will be empty (or
+absent) for every test case, both background and streaming.
 
 ## Use Cases
 
