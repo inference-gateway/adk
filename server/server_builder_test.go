@@ -4,13 +4,16 @@ import (
 	"testing"
 	"time"
 
-	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
-	mocks "github.com/inference-gateway/adk/server/mocks"
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
 	zap "go.uber.org/zap"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestA2AServerBuilder_BasicConstruction(t *testing.T) {
@@ -207,8 +210,6 @@ func TestA2AServerBuilder_UsageMetadataWiring(t *testing.T) {
 				AgentName:    "test-agent",
 				ServerConfig: config.ServerConfig{Port: "8080"},
 				AgentConfig: config.AgentConfig{
-					// SystemPrompt ensures the config is not considered "empty"
-					// and overwritten with defaults by NewA2AServerBuilder.
 					SystemPrompt:                "You are a test assistant.",
 					MaxChatCompletionIterations: 10,
 					EnableUsageMetadata:         tt.enabled,
@@ -462,7 +463,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(false), // Streaming disabled, but still need background handler
+				Streaming:              new(false),
 				PushNotifications:      new(false),
 				StateTransitionHistory: new(false),
 			},
@@ -485,7 +486,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(true), // Streaming enabled
+				Streaming:              new(true),
 				PushNotifications:      new(false),
 				StateTransitionHistory: new(false),
 			},
@@ -495,7 +496,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 
 		_, err := server.NewA2AServerBuilder(cfg, logger).
 			WithAgentCard(agentCard).
-			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}). // Only background handler
+			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}).
 			Build()
 
 		require.Error(t, err)
@@ -509,7 +510,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(false), // Streaming disabled
+				Streaming:              new(false),
 				PushNotifications:      new(false),
 				StateTransitionHistory: new(false),
 			},
@@ -519,7 +520,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 
 		serverInstance, err := server.NewA2AServerBuilder(cfg, logger).
 			WithAgentCard(agentCard).
-			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}). // Only background handler is enough
+			WithBackgroundTaskHandler(&mocks.FakeTaskHandler{}).
 			Build()
 
 		require.NoError(t, err)
@@ -533,7 +534,7 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 			URL:         new("http://test-agent:8080"),
 			Version:     "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(true), // Streaming enabled
+				Streaming:              new(true),
 				PushNotifications:      new(false),
 				StateTransitionHistory: new(false),
 			},
