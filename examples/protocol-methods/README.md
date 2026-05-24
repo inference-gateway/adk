@@ -78,7 +78,7 @@ go run main.go
 
 A successful client run prints something like:
 
-```
+```text
 === agent/getAuthenticatedExtendedCard ===
 { ...agent card json... }
 
@@ -110,7 +110,7 @@ All protocol method demonstrations completed.
 
 ## Files Structure
 
-```
+```text
 protocol-methods/
 ├── README.md
 ├── docker-compose.yaml

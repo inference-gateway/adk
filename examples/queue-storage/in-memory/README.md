@@ -1,6 +1,8 @@
 # In-Memory Queue Storage Example
 
-This example demonstrates the simplest queue storage configuration using in-memory storage. This is the default storage backend and is perfect for development, testing, and small deployments where persistence is not required.
+This example demonstrates the simplest queue storage configuration using in-memory storage.
+This is the default storage backend and is perfect for development, testing, and small deployments
+where persistence is not required.
 
 ## Table of Contents
 
@@ -9,7 +11,7 @@ This example demonstrates the simplest queue storage configuration using in-memo
 - [Directory Structure](#directory-structure)
 - [Running the Example](#running-the-example)
 - [Configuration](#configuration)
-- [How It Works](#how-it-works)
+- [Understanding In-Memory Storage](#understanding-in-memory-storage)
 - [Next Steps](#next-steps)
 - [Troubleshooting](#troubleshooting)
 
@@ -29,7 +31,7 @@ This example demonstrates the simplest queue storage configuration using in-memo
 
 ## Directory Structure
 
-```
+```text
 in-memory/
 ├── client/
 │   ├── main.go         # A2A client submitting tasks
@@ -129,7 +131,7 @@ The server uses in-memory storage by default. Key environment variables:
 
 When running the example, you'll see logs like:
 
-```
+```text
 Server:
 INFO: A2A server starting with in-memory storage
 INFO: Task enqueued for processing, task_id=task-123, queue_length=1

@@ -23,7 +23,7 @@ This example demonstrates an A2A server with AI/LLM integration and adding tools
 
 ## Directory Structure
 
-```
+```text
 ai-powered/
 ├── client/
 │   └── main.go         # A2A client sending AI prompts
@@ -129,7 +129,7 @@ The server includes two sample tools:
 
 Example AI interaction:
 
-```
+```text
 User: "What's the weather in Tokyo and what time is it?"
 AI: Uses both tools to provide current weather and time information
 ```

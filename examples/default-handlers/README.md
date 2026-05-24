@@ -1,14 +1,16 @@
 # Default Handlers A2A Example
 
-This example demonstrates an A2A server using the **default handlers** provided by the ADK. The server uses `WithDefaultTaskHandlers()` which provides built-in task processing capabilities without requiring custom handler implementations.
+This example demonstrates an A2A server using the **default handlers** provided by the ADK.
+The server uses `WithDefaultTaskHandlers()` which provides built-in task processing capabilities
+without requiring custom handler implementations.
 
 ## Table of Contents
 
 - [Key Features](#key-features)
 - [Architecture](#architecture)
 - [Running the Example](#running-the-example)
-- [AI Integration](#ai-integration)
-- [How Default Handlers Work](#how-default-handlers-work)
+- [Adding AI Capabilities](#adding-ai-capabilities)
+- [Expected Output](#expected-output)
 - [Files Structure](#files-structure)
 - [Troubleshooting](#troubleshooting)
 
@@ -64,6 +66,7 @@ This approach provides:
    ```
 
 2. **In another terminal, run the client:**
+
    ```bash
    cd client
    go mod tidy
@@ -113,7 +116,7 @@ When you run the example, you should see:
 
 **Server Output:**
 
-```
+```text
 🔧 Starting Default Handlers A2A Server...
 2024/01/15 10:30:00 INFO configuration loaded
 2024/01/15 10:30:00 INFO no LLM provider configured - using default handlers with mock responses
@@ -123,7 +126,7 @@ When you run the example, you should see:
 
 **Client Output:**
 
-```
+```text
 --- Request 1 ---
 Sending: Hello, how are you?
 Response:
@@ -154,7 +157,7 @@ Response:
 
 ## Files Structure
 
-```
+```text
 default-handlers/
 ├── README.md
 ├── docker-compose.yaml

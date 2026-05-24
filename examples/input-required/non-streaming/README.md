@@ -69,7 +69,7 @@ When AI is configured, the agent uses the built-in `input_required` tool:
 
 ### Enable AI
 
-**Option 1: Using .env file (Recommended)**
+#### Option 1: Using .env file (Recommended)
 
 1. Copy the example environment file:
 
@@ -91,7 +91,7 @@ When AI is configured, the agent uses the built-in `input_required` tool:
 
 3. The docker-compose.yaml will automatically load these values
 
-**Option 2: Edit docker-compose.yaml directly**
+#### Option 2: Edit docker-compose.yaml directly
 
 Uncomment these lines in `docker-compose.yaml`:
 
@@ -122,7 +122,7 @@ inference-gateway:
 
 ### Weather Query
 
-```
+```text
 💬 Your message: What's the weather?
 📤 Sending: What's the weather?
 🆔 Task ID: task-abc123
@@ -137,7 +137,7 @@ inference-gateway:
 
 ### Calculation Request
 
-```
+```text
 💬 Your message: Calculate something
 📤 Sending: Calculate something
 🆔 Task ID: task-xyz789

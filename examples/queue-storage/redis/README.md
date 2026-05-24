@@ -9,9 +9,9 @@ This example demonstrates Redis-based queue storage for production environments.
 - [Directory Structure](#directory-structure)
 - [Running the Example](#running-the-example)
 - [Configuration](#configuration)
-- [How It Works](#how-it-works)
-- [Comparison: In-Memory vs Redis](#comparison-in-memory-vs-redis)
-- [Redis Monitoring](#redis-monitoring)
+- [Understanding Redis Storage](#understanding-redis-storage)
+- [Task Processing Flow](#task-processing-flow)
+- [Monitoring Redis](#monitoring-redis)
 - [Next Steps](#next-steps)
 - [Troubleshooting](#troubleshooting)
 
@@ -34,7 +34,7 @@ This example demonstrates Redis-based queue storage for production environments.
 
 ## Directory Structure
 
-```
+```text
 redis/
 ├── client/
 │   ├── main.go         # A2A client submitting tasks
@@ -176,7 +176,7 @@ rediss://localhost:6380
 
 The example uses the following Redis keys:
 
-```
+```text
 a2a:queue              # Main task queue (Redis list)
 a2a:active:{task_id}   # Active task data (Redis hash)
 a2a:deadletter:{task_id} # Completed task data (Redis hash)
@@ -188,7 +188,7 @@ a2a:queue:notify       # Queue notification channel (Redis pub/sub)
 
 When running the example, you'll see logs like:
 
-```
+```text
 Redis:
 Ready to accept connections
 
@@ -278,7 +278,7 @@ docker logs redis-queue-example
 redis-cli LRANGE a2a:queue 0 -1
 ```
 
-## Troubleshooting
+## A2A Debugger
 
 ### Troubleshooting with A2A Debugger
 

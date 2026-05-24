@@ -21,7 +21,7 @@ This example demonstrates the most basic A2A server and client setup without any
 
 ## Directory Structure
 
-```
+```text
 minimal/
 ├── client/
 │   └── main.go          # Simple A2A client
@@ -98,7 +98,7 @@ All A2A-specific settings are grouped under the `A2A_` prefix, making it easy to
 
 ## Client Configuration
 
-- `SERVER_URL`: A2A server URL (default: http://localhost:8080)
+- `SERVER_URL`: A2A server URL (default: <http://localhost:8080>)
 
 ## Understanding the Code
 

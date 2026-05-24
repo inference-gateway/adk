@@ -2,7 +2,9 @@
 
 ## Purpose
 
-This example demonstrates the **combination of AI/LLM integration with real-time streaming capabilities**. It shows how to build an A2A server that can process natural language requests using AI models while streaming responses in real-time for an interactive, chat-like experience.
+This example demonstrates the **combination of AI/LLM integration with real-time streaming capabilities**.
+It shows how to build an A2A server that can process natural language requests using AI models
+while streaming responses in real-time for an interactive, chat-like experience.
 
 ## Table of Contents
 
@@ -11,10 +13,9 @@ This example demonstrates the **combination of AI/LLM integration with real-time
 - [Key Features](#key-features)
 - [Running the Example](#running-the-example)
 - [Configuration](#configuration)
-- [Project Structure](#project-structure)
-- [How It Works](#how-it-works)
-- [Example Interaction](#example-interaction)
-- [Supported AI Providers](#supported-ai-providers)
+- [File Structure](#file-structure)
+- [Understanding the Code](#understanding-the-code)
+- [Example Interactions](#example-interactions)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
 
@@ -100,7 +101,8 @@ Configure via environment variables:
 
 ### Example Configuration
 
-**IMPORTANT**: You must set both `A2A_AGENT_CLIENT_PROVIDER` and `A2A_AGENT_CLIENT_MODEL` environment variables for the AI agent to function. The server will fail to start if these are not configured.
+**IMPORTANT**: You must set both `A2A_AGENT_CLIENT_PROVIDER` and `A2A_AGENT_CLIENT_MODEL` environment
+variables for the AI agent to function. The server will fail to start if these are not configured.
 
 For OpenAI:
 
@@ -149,7 +151,7 @@ go run main.go
 
 Expected output:
 
-```
+```text
 🤖⚡ Starting AI-Powered Streaming A2A Server...
 2024/01/15 10:30:00 INFO configuration loaded
 2024/01/15 10:30:00 INFO ✅ AI agent created with streaming capabilities
@@ -238,7 +240,7 @@ The client demonstrates three types of interactions:
 
 ## File Structure
 
-```
+```text
 ai-powered-streaming/
 ├── README.md                    # This file
 ├── server/

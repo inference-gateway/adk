@@ -8,7 +8,7 @@ This example demonstrates how to run an A2A server with TLS encryption, providin
 - [Directory Structure](#directory-structure)
 - [Quick Start](#quick-start)
 - [TLS Configuration](#tls-configuration)
-- [Certificate Generation](#certificate-generation)
+- [Certificate Details](#certificate-details)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
 
@@ -22,7 +22,7 @@ This example demonstrates how to run an A2A server with TLS encryption, providin
 
 ## Directory Structure
 
-```
+```text
 tls-example/
 ├── server/
 │   ├── main.go           # TLS-enabled A2A server
@@ -323,7 +323,7 @@ docker-compose up --build
 - Learn about streaming with the `streaming` example
 - Review production deployment patterns in the main documentation
 
-## Troubleshooting
+## A2A Debugger
 
 ### Troubleshooting with A2A Debugger
 
