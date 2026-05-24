@@ -150,7 +150,10 @@ handler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
 
 **In Your Code:**
 
-The `UsageTracker` is automatically injected into the agent execution context and collects metrics transparently. No additional code is required in your task handlers — just set `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA` (default `true`).
+The `UsageTracker` is automatically injected into the agent execution context
+and collects metrics transparently. No additional code is required in your
+task handlers — just set `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA` (default
+`true`).
 
 The bundled client demonstrates both code paths: it submits three background
 tasks via `SendTask`/`GetTask`, then submits a final streaming task via
