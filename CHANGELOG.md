@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.0](https://github.com/inference-gateway/adk/compare/v0.18.4...v0.19.0) (2026-05-24)
+
+### ✨ Features
+
+* **server:** Wire EnableUsageMetadata config flag to default task handlers ([#155](https://github.com/inference-gateway/adk/issues/155)) ([95aa4bd](https://github.com/inference-gateway/adk/commit/95aa4bd0c1e2e949b40f0da0d409db0f5f2ea37a)), closes [#154](https://github.com/inference-gateway/adk/issues/154)
+
+### 👷 CI
+
+* **claude:** Add maintainer skill ([3d74741](https://github.com/inference-gateway/adk/commit/3d74741fb0efb7ae44ec4f08c458c78510143205))
+* **claude:** Simplify conditions for triggering Claude Code actions ([dde3f25](https://github.com/inference-gateway/adk/commit/dde3f25fd5e03e9e9be20b81194ab1ae38d5113f))
+* **deps:** Update Claude Code Action to version 1.0.131 ([76225da](https://github.com/inference-gateway/adk/commit/76225da054d1408dfa69f83a2d1b026d5df81afb))
+* **deps:** Update claude-code-action to version 1.0.130 ([a79b599](https://github.com/inference-gateway/adk/commit/a79b5994fe4e7129ebba0f0856d4c2dff3822bf3))
+* **lint:** Switch markdown linter from markdownlint-cli2 to markdownlint ([9df92b9](https://github.com/inference-gateway/adk/commit/9df92b9752834bfc2fcd8ad39628bb21610227d2))
+
+### 📚 Documentation
+
+* **examples:** Fix markdown lint errors across example READMEs ([98d1652](https://github.com/inference-gateway/adk/commit/98d16527e31513fe988bef670c989e3cfdda8c4f))
+
+### 🔧 Miscellaneous
+
+* **deps:** Update infer.flake to v0.109.11 ([7a29ff1](https://github.com/inference-gateway/adk/commit/7a29ff19058b33224ae9ddc8a55691b953df731e))
+* **license:** Update license to Apache 2.0 ([29369d7](https://github.com/inference-gateway/adk/commit/29369d7a76c7e960af34bbf7ce15e4b65adb4c6f))
+
 ## [0.18.4](https://github.com/inference-gateway/adk/compare/v0.18.3...v0.18.4) (2026-05-21)
 
 ### 🐛 Bug Fixes
