@@ -1,4 +1,3 @@
-.devcontainer/* linguist-vendored=true
 scripts/* linguist-vendored=true
 
 types/generated_types.go linguist-generated=true
