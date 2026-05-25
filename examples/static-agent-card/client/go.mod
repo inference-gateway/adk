@@ -1,4 +1,4 @@
-module github.com/inference-gateway/adk/examples/artifacts-filesystem/client
+module github.com/inference-gateway/adk/examples/static-agent-card/client
 
 go 1.26.2
 

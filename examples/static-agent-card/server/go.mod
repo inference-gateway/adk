@@ -1,10 +1,11 @@
-module github.com/inference-gateway/adk/examples/default-handlers/server
+module github.com/inference-gateway/adk/examples/static-agent-card/server
 
 go 1.26.2
 
 replace github.com/inference-gateway/adk => ../../..
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/inference-gateway/adk v0.0.0-00010101000000-000000000000
 	github.com/sethvargo/go-envconfig v1.3.0
 	go.uber.org/zap v1.28.0
@@ -35,7 +36,6 @@ require (
 	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/inference-gateway/sdk v1.16.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect

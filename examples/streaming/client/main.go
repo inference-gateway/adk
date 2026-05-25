@@ -64,10 +64,11 @@ func main() {
 	}
 
 	// Send the streaming message
+	blocking := false
 	params := types.MessageSendParams{
 		Message: message,
 		Configuration: &types.MessageSendConfiguration{
-			Blocking:            new(false),
+			Blocking:            &blocking,
 			AcceptedOutputModes: []string{"text/plain"},
 		},
 	}
@@ -99,24 +100,30 @@ func main() {
 
 		resultBytes, _ := json.Marshal(event.Result)
 
-		// Try to parse as Task (for delta events)
-		var task types.Task
-		if err := json.Unmarshal(resultBytes, &task); err == nil && task.Kind == "task" {
-			// Handle delta message
-			if task.Status.Message != nil && len(task.Status.Message.Parts) > 0 {
-				for _, part := range task.Status.Message.Parts {
-					if part.Text != nil {
-						fmt.Print(*part.Text)
-						finalResponse += *part.Text
-					}
-				}
-			}
+		var probe map[string]json.RawMessage
+		if err := json.Unmarshal(resultBytes, &probe); err != nil {
 			continue
 		}
 
-		// Try to parse as TaskStatusUpdateEvent (for status changes)
+		_, isStatusUpdate := probe["taskId"]
+
+		if !isStatusUpdate {
+			var task types.Task
+			if err := json.Unmarshal(resultBytes, &task); err == nil {
+				if task.Status.Message != nil && len(task.Status.Message.Parts) > 0 {
+					for _, part := range task.Status.Message.Parts {
+						if part.Text != nil {
+							fmt.Print(*part.Text)
+							finalResponse += *part.Text
+						}
+					}
+				}
+				continue
+			}
+		}
+
 		var statusUpdate types.TaskStatusUpdateEvent
-		if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && statusUpdate.Kind == "status-update" {
+		if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && isStatusUpdate {
 			// Handle different task states
 			switch statusUpdate.Status.State {
 			case types.TaskStateWorking:

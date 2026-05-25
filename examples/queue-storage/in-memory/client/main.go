@@ -81,7 +81,6 @@ func main() {
 
 		message := types.Message{
 			ContextID: &contextID,
-			Kind:      "request",
 			MessageID: fmt.Sprintf("msg-%d", i+1),
 			Role:      types.RoleUser,
 			Parts: []types.Part{
@@ -184,7 +183,7 @@ func main() {
 			}
 			logger.Info("task response",
 				zap.String("task_id", task.ID),
-				zap.String("role", lastMessage.Role),
+				zap.String("role", string(lastMessage.Role)),
 				zap.String("content", contentPreview))
 		}
 	}

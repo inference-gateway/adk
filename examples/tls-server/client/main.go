@@ -107,11 +107,15 @@ func main() {
 		logger.Fatal("failed to get agent card", zap.Error(err))
 	}
 
+	url := ""
+	if agentCard.URL != nil {
+		url = *agentCard.URL
+	}
 	logger.Info("✅ agent card retrieved successfully",
 		zap.String("name", agentCard.Name),
 		zap.String("description", agentCard.Description),
 		zap.String("version", agentCard.Version),
-		zap.String("url", agentCard.URL),
+		zap.String("url", url),
 	)
 
 	// Test messages to demonstrate secure communication

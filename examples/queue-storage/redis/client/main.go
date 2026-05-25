@@ -201,7 +201,7 @@ func main() {
 			}
 			logger.Info("task response from redis queue",
 				zap.String("task_id", task.ID),
-				zap.String("role", lastMessage.Role),
+				zap.String("role", string(lastMessage.Role)),
 				zap.String("content", contentPreview))
 		}
 	}
