@@ -28,7 +28,7 @@ This example demonstrates Redis-based queue storage for production environments.
 - **Persistent Storage**: Tasks survive server restarts
 - **Horizontal Scaling**: Multiple server instances can share the same queue
 - **High Performance**: Redis provides fast queue operations
-- **Production Ready**: Suitable for production deployments
+- **Enterprise Ready**: Suitable for production deployments
 - **Monitoring**: Redis provides built-in monitoring capabilities
 - **Clustering Support**: Can be configured for Redis clusters
 

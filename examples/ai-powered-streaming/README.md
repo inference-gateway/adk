@@ -228,7 +228,7 @@ The client demonstrates three types of interactions:
 2. **Interactive Experience**: Chat-like interface with real-time updates
 3. **Tool Integration**: AI can use tools and stream the process
 4. **Scalable Architecture**: Supports both streaming and background processing
-5. **Production Ready**: Proper error handling and configuration management
+5. **Enterprise Ready**: Proper error handling and configuration management
 
 ## Comparison with Other Examples
 
