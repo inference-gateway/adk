@@ -17,8 +17,8 @@ jobs:
         id: token
         uses: actions/create-github-app-token@v3.2.0
         with:
-          client-id: ${{ secrets.BOT_MAINTAINER_APP_ID }}
-          private-key: ${{ secrets.BOT_MAINTAINER_APP_PRIVATE_KEY }}
+          client-id: ${{ secrets.INFERENCE_GATEWAY_MAINTAINER_APP_ID }}
+          private-key: ${{ secrets.INFERENCE_GATEWAY_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
 
