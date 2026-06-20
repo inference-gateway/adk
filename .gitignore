@@ -3,3 +3,4 @@
 .task
 .vscode
 .DS_Store
+.infer/
