@@ -1,33 +1,38 @@
 ---
 name: Dependabot Tidy
 
+# Unprivileged half of the dependabot tidy flow.
+#
+# This runs on the untrusted Dependabot PR branch via the `pull_request`
+# trigger, so it has NO access to repository secrets and only a read-only
+# token. It tidies every Go module and uploads the changed go.mod / go.sum
+# files as an artifact. The privileged half (dependabot-tidy-apply.yml) is
+# triggered via `workflow_run`, downloads that artifact and commits it back.
+#
+# Splitting it this way means untrusted code (`go mod tidy` over the PR's
+# files) never executes in a context that holds secrets or write access,
+# which is what CodeQL's actions/untrusted-checkout rule guards against.
+# Do not reintroduce `pull_request_target` here or check out the PR with a
+# privileged token.
+
 on:
-  pull_request_target:
+  pull_request:
     branches:
       - main
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   tidy:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-24.04
     steps:
-      - name: Mint GitHub App token
-        id: token
-        uses: actions/create-github-app-token@v3.2.0
-        with:
-          client-id: ${{ secrets.INFERENCE_GATEWAY_MAINTAINER_APP_ID }}
-          private-key: ${{ secrets.INFERENCE_GATEWAY_APP_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-
       - name: Checkout PR branch
         uses: actions/checkout@v7.0.0
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          token: ${{ steps.token.outputs.token }}
-          persist-credentials: true
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v6.4.0
@@ -38,7 +43,28 @@ jobs:
       - name: Tidy all Go modules
         run: find . -name 'go.mod' -execdir go mod tidy \;
 
-      - name: Commit and push tidy results
-        uses: stefanzweifel/git-auto-commit-action@v7.1.0
+      - name: Collect tidy changes
+        run: |
+          git add -A
+          mkdir -p tidy-artifact
+          : > files.jsonl
+          while IFS= read -r -d '' path; do
+            case "${path##*/}" in
+              go.mod | go.sum)
+                jq -n --arg path "$path" --arg content "$(base64 -w0 "$path")" \
+                  '{path: $path, content: $content}' >> files.jsonl
+                ;;
+              *)
+                echo "::warning::ignoring unexpected changed file $path"
+                ;;
+            esac
+          done < <(git diff --cached --name-only -z)
+          jq -s '{files: .}' files.jsonl > tidy-artifact/tidy.json
+          echo "collected $(jq '.files | length' tidy-artifact/tidy.json) changed module file(s)"
+
+      - name: Upload tidy result
+        uses: actions/upload-artifact@v7.0.1
         with:
-          commit_message: 'chore: Tidy example modules after dependabot bump'
+          name: dependabot-tidy
+          path: tidy-artifact/tidy.json
+          retention-days: 1

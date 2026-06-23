@@ -1,0 +1,113 @@
+---
+name: Dependabot Tidy Apply
+
+# Privileged half of the dependabot tidy flow.
+#
+# Triggered by the completion of the unprivileged "Dependabot Tidy" workflow.
+# It mints a GitHub App token, downloads the tidy artifact produced in the
+# unprivileged context and commits the changed go.mod / go.sum files back to
+# the Dependabot PR branch using the Git Data API.
+#
+# It never checks out or executes the untrusted PR code, so secrets and write
+# access are never exposed to it. The artifact is treated as untrusted input:
+# every path is validated and only go.mod / go.sum files are committed, onto
+# the PR branch only.
+
+on:
+  workflow_run:
+    workflows:
+      - Dependabot Tidy
+    types:
+      - completed
+
+permissions: {}
+
+jobs:
+  apply:
+    # Only act on successful Dependabot pull_request runs whose branch lives in
+    # this repository (Dependabot pushes its branches here, never from a fork).
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+    steps:
+      - name: Download tidy result
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: dependabot-tidy
+          path: tidy-artifact
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Mint GitHub App token
+        id: token
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          client-id: ${{ secrets.INFERENCE_GATEWAY_MAINTAINER_APP_ID }}
+          private-key: ${{ secrets.INFERENCE_GATEWAY_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Commit tidy result to the PR branch
+        uses: actions/github-script@v9.0.0
+        env:
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          github-token: ${{ steps.token.outputs.token }}
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const branch = process.env.HEAD_BRANCH;
+            const baseSha = process.env.HEAD_SHA;
+
+            const manifest = JSON.parse(fs.readFileSync('tidy-artifact/tidy.json', 'utf8'));
+            const files = Array.isArray(manifest.files) ? manifest.files : [];
+            if (files.length === 0) {
+              core.info('no tidy changes to apply');
+              return;
+            }
+
+            // The artifact comes from untrusted code: only ever commit go.mod /
+            // go.sum files, with sane relative paths, onto the PR branch.
+            const safePath = /^[A-Za-z0-9._/-]+$/;
+            for (const f of files) {
+              const p = f && f.path;
+              const base = typeof p === 'string' ? p.split('/').pop() : '';
+              if (typeof p !== 'string' || !safePath.test(p) || p.includes('..') ||
+                  p.startsWith('/') || (base !== 'go.mod' && base !== 'go.sum') ||
+                  typeof f.content !== 'string') {
+                throw new Error(`refusing to commit unexpected artifact entry: ${JSON.stringify(p)}`);
+              }
+            }
+
+            // Bail if the branch advanced past what we tidied, to avoid
+            // clobbering a newer Dependabot push.
+            const ref = `heads/${branch}`;
+            const { data: refData } = await github.rest.git.getRef({ owner, repo, ref });
+            if (refData.object.sha !== baseSha) {
+              core.warning(`branch ${branch} moved since tidy (${refData.object.sha} != ${baseSha}); skipping`);
+              return;
+            }
+
+            const tree = [];
+            for (const f of files) {
+              const { data: blob } = await github.rest.git.createBlob({
+                owner, repo, content: f.content, encoding: 'base64',
+              });
+              tree.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });
+            }
+            const { data: newTree } = await github.rest.git.createTree({
+              owner, repo, base_tree: baseSha, tree,
+            });
+            const { data: commit } = await github.rest.git.createCommit({
+              owner, repo,
+              message: 'chore: tidy example modules after dependabot bump',
+              tree: newTree.sha,
+              parents: [baseSha],
+            });
+            await github.rest.git.updateRef({ owner, repo, ref, sha: commit.sha });
+            core.info(`committed tidy result ${commit.sha} to ${branch}`);
