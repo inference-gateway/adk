@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: dependabot-tidy-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true
+
 jobs:
   tidy:
     if: github.actor == 'dependabot[bot]'
@@ -44,7 +48,7 @@ jobs:
                 echo "::warning::ignoring unexpected changed file $path"
                 ;;
             esac
-          done < <(git diff --cached --name-only -z)
+          done < <(git diff --cached --name-only -z --diff-filter=d)
           jq -s '{files: .}' files.jsonl > tidy-artifact/tidy.json
           echo "collected $(jq '.files | length' tidy-artifact/tidy.json) changed module file(s)"
 

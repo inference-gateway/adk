@@ -10,6 +10,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: dependabot-tidy-apply-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
 jobs:
   apply:
     if: >
