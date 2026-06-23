@@ -1,17 +1,6 @@
 ---
 name: Dependabot Tidy Apply
 
-# Privileged half of the dependabot tidy flow.
-#
-# Triggered by the completion of the unprivileged "Dependabot Tidy" workflow.
-# It mints a GitHub App token, downloads the tidy artifact produced in the
-# unprivileged context and commits the changed go.mod / go.sum files back to
-# the Dependabot PR branch using the Git Data API.
-#
-# It never checks out or executes the untrusted PR code, so secrets and write
-# access are never exposed to it. The artifact is treated as untrusted input:
-# every path is validated and only go.mod / go.sum files are committed, onto
-# the PR branch only.
 
 on:
   workflow_run:
@@ -24,8 +13,6 @@ permissions: {}
 
 jobs:
   apply:
-    # Only act on successful Dependabot pull_request runs whose branch lives in
-    # this repository (Dependabot pushes its branches here, never from a fork).
     if: >
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success' &&
@@ -71,8 +58,6 @@ jobs:
               return;
             }
 
-            // The artifact comes from untrusted code: only ever commit go.mod /
-            // go.sum files, with sane relative paths, onto the PR branch.
             const safePath = /^[A-Za-z0-9._/-]+$/;
             for (const f of files) {
               const p = f && f.path;
@@ -84,8 +69,6 @@ jobs:
               }
             }
 
-            // Bail if the branch advanced past what we tidied, to avoid
-            // clobbering a newer Dependabot push.
             const ref = `heads/${branch}`;
             const { data: refData } = await github.rest.git.getRef({ owner, repo, ref });
             if (refData.object.sha !== baseSha) {

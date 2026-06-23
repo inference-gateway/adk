@@ -1,20 +1,6 @@
 ---
 name: Dependabot Tidy
 
-# Unprivileged half of the dependabot tidy flow.
-#
-# This runs on the untrusted Dependabot PR branch via the `pull_request`
-# trigger, so it has NO access to repository secrets and only a read-only
-# token. It tidies every Go module and uploads the changed go.mod / go.sum
-# files as an artifact. The privileged half (dependabot-tidy-apply.yml) is
-# triggered via `workflow_run`, downloads that artifact and commits it back.
-#
-# Splitting it this way means untrusted code (`go mod tidy` over the PR's
-# files) never executes in a context that holds secrets or write access,
-# which is what CodeQL's actions/untrusted-checkout rule guards against.
-# Do not reintroduce `pull_request_target` here or check out the PR with a
-# privileged token.
-
 on:
   pull_request:
     branches:
