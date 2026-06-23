@@ -1,7 +1,6 @@
 ---
 name: Dependabot Tidy Apply
 
-
 on:
   workflow_run:
     workflows:
