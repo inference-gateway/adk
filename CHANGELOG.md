@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.0](https://github.com/inference-gateway/adk/compare/v0.19.0...v0.20.0) (2026-07-05)
+
 ## [0.19.0](https://github.com/inference-gateway/adk/compare/v0.18.4...v0.19.0) (2026-05-24)
 
 ### ✨ Features
