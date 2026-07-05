@@ -118,6 +118,13 @@ export A2A_AGENT_CLIENT_PROVIDER=anthropic
 export A2A_AGENT_CLIENT_MODEL=claude-3-haiku-20240307
 ```
 
+For NVIDIA NIM:
+
+```bash
+export A2A_AGENT_CLIENT_PROVIDER=nvidia
+export A2A_AGENT_CLIENT_MODEL=nvidia/meta/llama-3.1-8b-instruct
+```
+
 For Docker Compose usage, create a `.env` file in the example directory:
 
 ```bash
