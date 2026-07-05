@@ -53,11 +53,16 @@ cp .env.example .env
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
+NVIDIA_API_KEY=your_nvidia_api_key_here
 # ... other providers
 
 # Configure agent
 A2A_AGENT_CLIENT_PROVIDER=openai
 A2A_AGENT_CLIENT_MODEL=gpt-4o-mini
+
+# Or, for example, use NVIDIA NIM:
+# A2A_AGENT_CLIENT_PROVIDER=nvidia
+# A2A_AGENT_CLIENT_MODEL=nvidia/meta/llama-3.1-8b-instruct
 ```
 
 3. Run the example:
@@ -119,6 +124,7 @@ Via the included Inference Gateway:
 - Cloudflare Workers AI
 - Cohere
 - Mistral
+- NVIDIA NIM (e.g. `nvidia/meta/llama-3.1-8b-instruct`)
 
 ## Adding Tools
 
