@@ -20,7 +20,7 @@ claude-code.pkg-path = "claude-code"
 claude-code.version = "^2.1.201"
 claude-code.pkg-group = "claude-code"
 codex.pkg-path = "codex"
-codex.version = "^0.139.0"
+codex.version = "^0.142.3"
 codex.pkg-group = "codex"
 
 [hook]
