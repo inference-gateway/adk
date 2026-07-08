@@ -82,6 +82,28 @@ server.NewA2AServerBuilder(cfg.A2A, logger).
 - **Go 1.26+**: For building and running the example
 - **Streaming Enabled**: Server must have streaming capabilities enabled
 
+## Supported Providers
+
+Via the included Inference Gateway:
+
+<!-- providers:start -->
+
+- Anthropic (Claude models)
+- Cloudflare Workers AI
+- Cohere
+- DeepSeek
+- Google (Gemini)
+- Groq
+- MiniMax
+- Mistral
+- Moonshot
+- **NVIDIA NIM** (e.g. `nvidia/meta/llama-3.1-8b-instruct`)
+- Ollama
+- Ollama Cloud
+- OpenAI (GPT models)
+
+<!-- providers:end -->
+
 ## Configuration
 
 Configure via environment variables:

@@ -20,6 +20,9 @@ All commands run from the repo root. Discover the full list with `task --list`.
 | `task tidy` | Walks every `go.mod` in the tree (root + each `examples/*/{server,client}`) and runs `go mod tidy` |
 | `task a2a:download-schema` | Pull the latest A2A schema YAML from `inference-gateway/schemas` into `schema.yaml` |
 | `task a2a:generate-types` | Regenerate `types/generated_types.go` from `schema.yaml` |
+| `task providers:download-schema` | Pull the canonical `openapi.yaml` from `inference-gateway/schemas` into `providers-schema.yaml` |
+| `task generate:providers` | Regenerate all provider-enumerating artifacts (`.env.example`, `docker-compose.yaml`, READMEs) from `providers-schema.yaml` |
+| `task generate` | Umbrella: runs `a2a:generate-types`, `generate:providers`, and `generate:mocks` |
 | `task generate:mocks` | Regenerate every counterfeiter mock under `client/mocks/` and `server/mocks/` |
 | `task generate:mocks:clean` | Wipe and regenerate all mocks |
 | `task lint:examples` | `markdownlint --fix 'examples/**/*.md'` |
@@ -96,6 +99,17 @@ Each example is a self-contained module pair: `examples/<name>/server/` and `exa
 ## Schema is upstream
 
 `schema.yaml` in this repo is a vendored copy of `a2a/a2a-schema.yaml` from `inference-gateway/schemas`. The flow is: change the upstream schema → `task a2a:download-schema` → `task a2a:generate-types` → commit both `schema.yaml` and `types/generated_types.go`. Don't propose protocol changes here — open them against `inference-gateway/schemas` first.
+
+### Provider generation
+
+`providers-schema.yaml` is a vendored copy of the root `openapi.yaml` from `inference-gateway/schemas`. The flow for adding a new LLM provider is:
+
+1. Add the provider to the `Provider` enum in `inference-gateway/schemas` `openapi.yaml` (upstream change)
+2. `task providers:download-schema` — refresh the vendored copy
+3. `task generate` — regenerates all provider-enumerating artifacts (`.env.example`, `docker-compose.yaml`, READMEs)
+4. Commit the schema bump + generated changes
+
+No hand-editing of example/doc files is needed. CI enforces that generated files are up to date via `git diff --exit-code`.
 
 ## Ecosystem coordination
 
