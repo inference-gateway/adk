@@ -52,12 +52,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Stable sort for deterministic output
 	sort.Strings(providers)
 
 	repoRoot := "."
 
-	// .env.example files that have provider blocks
 	envFiles := []string{
 		"examples/ai-powered/.env.example",
 		"examples/ai-powered-streaming/.env.example",
@@ -70,7 +68,6 @@ func main() {
 		"examples/usage-metadata/.env.example",
 	}
 
-	// docker-compose.yaml files that have provider blocks in the gateway service
 	composeFiles := []string{
 		"examples/ai-powered/docker-compose.yaml",
 		"examples/ai-powered-streaming/docker-compose.yaml",
@@ -81,15 +78,12 @@ func main() {
 		"examples/artifacts-with-default-handlers/docker-compose.yaml",
 	}
 
-	// Markers for env/yaml files
 	envStartMarker := "# >>> providers: generated from schemas openapi.yaml - do not edit >>>"
 	envEndMarker := "# <<< providers <<<"
 
-	// Markers for Markdown files
 	mdStartMarker := "<!-- providers:start -->"
 	mdEndMarker := "<!-- providers:end -->"
 
-	// Generate env blocks
 	envBlock := generateEnvBlock(providers, envStartMarker, envEndMarker)
 	for _, rel := range envFiles {
 		path := filepath.Join(repoRoot, rel)
@@ -100,7 +94,6 @@ func main() {
 		}
 	}
 
-	// Generate docker-compose blocks
 	composeBlock := generateComposeBlock(providers, envStartMarker, envEndMarker)
 	for _, rel := range composeFiles {
 		path := filepath.Join(repoRoot, rel)
@@ -111,7 +104,6 @@ func main() {
 		}
 	}
 
-	// Update root README.md multi-provider line
 	readmePath := filepath.Join(repoRoot, "README.md")
 	if err := updateReadmeProviderList(readmePath, providers, mdStartMarker, mdEndMarker); err != nil {
 		fmt.Fprintf(os.Stderr, "error updating README.md: %v\n", err)
@@ -119,7 +111,6 @@ func main() {
 		fmt.Println("updated README.md")
 	}
 
-	// Update example READMEs
 	exampleReadmes := []string{
 		"examples/ai-powered/README.md",
 		"examples/ai-powered-streaming/README.md",
@@ -175,8 +166,6 @@ func replaceBetween(path, startMarker, endMarker, newContent string) error {
 	endIdx := strings.Index(content, endMarker)
 
 	if startIdx == -1 || endIdx == -1 {
-		// Markers not found - this file needs them added.
-		// Insert after the first line (or at a sensible position).
 		return addMarkers(path, startMarker, endMarker, newContent)
 	}
 
@@ -207,11 +196,6 @@ func addMarkers(path, startMarker, endMarker, blockContent string) error {
 
 	content := string(data)
 
-	// For .env.example files: insert after the "# Inference Gateway" line or at the top
-	// For docker-compose.yaml: insert in the gateway service environment section
-	// We'll insert after the first line that looks like a comment or header.
-
-	// Find a good insertion point
 	insertAfter := findInsertionPoint(content, path)
 
 	block := strings.TrimRight(blockContent, "\n") + "\n"
@@ -225,11 +209,9 @@ func findInsertionPoint(content, path string) int {
 	lines := strings.Split(content, "\n")
 
 	if strings.HasSuffix(path, ".env.example") {
-		// Insert after the "# Inference Gateway" comment line, or after line 0
 		for i, line := range lines {
 			trimmed := strings.TrimSpace(line)
 			if trimmed == "# Inference Gateway" || trimmed == "# Inference Gateway Configuration" {
-				// Return position after this line (including the newline)
 				pos := 0
 				for j := 0; j <= i; j++ {
 					pos += len(lines[j]) + 1
@@ -237,14 +219,10 @@ func findInsertionPoint(content, path string) int {
 				return pos
 			}
 		}
-		// Default: after first line
 		return strings.Index(content, "\n") + 1
 	}
 
 	if strings.HasSuffix(path, "docker-compose.yaml") {
-		// Insert in the gateway service's environment section, after the LOG_LEVEL line
-		// or after the last _API_KEY line, or at a sensible position.
-		// Look for the environment: key under the gateway/inference-gateway service
 		inGatewayService := false
 		inEnvironment := false
 		lastEnvLine := 0
@@ -260,7 +238,6 @@ func findInsertionPoint(content, path string) int {
 			}
 			if inGatewayService && inEnvironment {
 				if trimmed == "" || !strings.HasPrefix(trimmed, "#") && !strings.Contains(trimmed, ":") {
-					// End of environment section
 					pos := 0
 					for j := 0; j < i; j++ {
 						pos += len(lines[j]) + 1
@@ -276,7 +253,6 @@ func findInsertionPoint(content, path string) int {
 				}
 			}
 			if inGatewayService && !inEnvironment && trimmed != "" && !strings.HasPrefix(trimmed, "#") && !strings.HasPrefix(trimmed, "    ") {
-				// Left the gateway service
 				break
 			}
 		}
@@ -285,7 +261,6 @@ func findInsertionPoint(content, path string) int {
 		}
 	}
 
-	// Default: insert after first newline
 	idx := strings.Index(content, "\n")
 	if idx == -1 {
 		return len(content)
@@ -309,11 +284,9 @@ func updateReadmeProviderList(path string, providers []string, startMarker, endM
 		displayNames[i] = providerDisplayName(p)
 	}
 
-	// Build the provider list text
 	providerList := strings.Join(displayNames, ", ")
 
 	if startIdx == -1 || endIdx == -1 {
-		// Need to add markers. Find the "Multi-Provider Support" line.
 		oldLine := "Works with OpenAI, Ollama, Groq, Cohere, Nvidia, and other LLM providers"
 		newLine := fmt.Sprintf("Works with %s, and other LLM providers", providerList)
 		newContent := strings.Replace(content, oldLine, newLine, 1)
@@ -323,7 +296,6 @@ func updateReadmeProviderList(path string, providers []string, startMarker, endM
 		return os.WriteFile(path, []byte(newContent), 0644)
 	}
 
-	// Replace between markers
 	replacement := fmt.Sprintf("%s\n%s\n%s", startMarker, providerList, endMarker)
 	endIdx += len(endMarker)
 	if endIdx > len(content) {
@@ -347,7 +319,6 @@ func updateExampleReadme(path string, providers []string, startMarker, endMarker
 	startIdx := strings.Index(content, startMarker)
 	endIdx := strings.Index(content, endMarker)
 
-	// Build the provider list as a bullet list
 	var b strings.Builder
 	b.WriteString(startMarker)
 	b.WriteString("\n\n")
@@ -364,15 +335,12 @@ func updateExampleReadme(path string, providers []string, startMarker, endMarker
 	block := b.String()
 
 	if startIdx == -1 || endIdx == -1 {
-		// Need to add markers. Find the "Supported Providers" section.
-		// Look for the section header and insert after it.
 		sectionHeader := "## Supported Providers"
 		headerIdx := strings.Index(content, sectionHeader)
 		if headerIdx == -1 {
 			return fmt.Errorf("could not find 'Supported Providers' section in %s", path)
 		}
 
-		// Find the end of the section (next ## or end of file)
 		sectionStart := headerIdx + len(sectionHeader)
 		nextSection := strings.Index(content[sectionStart:], "\n## ")
 		var sectionEnd int
@@ -382,7 +350,6 @@ func updateExampleReadme(path string, providers []string, startMarker, endMarker
 			sectionEnd = sectionStart + nextSection
 		}
 
-		// Replace the section content
 		newSection := sectionHeader + "\n\n" + block
 		result := content[:headerIdx] + newSection
 		if sectionEnd < len(content) {
@@ -391,7 +358,6 @@ func updateExampleReadme(path string, providers []string, startMarker, endMarker
 		return os.WriteFile(path, []byte(result), 0644)
 	}
 
-	// Replace between markers
 	endIdx += len(endMarker)
 	if endIdx > len(content) {
 		endIdx = len(content)
@@ -433,7 +399,6 @@ func providerDisplayName(id string) string {
 	case "nvidia":
 		return "NVIDIA NIM"
 	default:
-		// Fallback: title-case the id
 		return strings.ToUpper(id[:1]) + id[1:]
 	}
 }
