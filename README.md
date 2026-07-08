@@ -116,7 +116,7 @@ Each example includes its own README with setup instructions and usage details.
 
 - 🤖 **A2A Protocol Compliance**: Full implementation of the Agent-to-Agent communication standard
 - 🔌 **Multi-Provider Support**: Works with <!-- providers:start -->
-  Anthropic (Claude models), Cloudflare Workers AI, Cohere, DeepSeek, Google (Gemini), Groq, MiniMax, Mistral, Moonshot, NVIDIA NIM, Ollama, Ollama Cloud, OpenAI (GPT models)
+  Anthropic (Claude models), Cloudflare Workers AI, Cohere, DeepSeek, Google (Gemini), Groq, MiniMax, Mistral, Moonshot, Nvidia, Ollama, Ollama Cloud, OpenAI (GPT models)
 
 <!-- providers:end -->, and other LLM providers
 

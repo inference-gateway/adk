@@ -324,11 +324,7 @@ func updateExampleReadme(path string, providers []string, startMarker, endMarker
 	b.WriteString("\n\n")
 	for _, p := range providers {
 		name := providerDisplayName(p)
-		if p == "nvidia" {
-			fmt.Fprintf(&b, "- **%s** (e.g. `nvidia/meta/llama-3.1-8b-instruct`)\n", name)
-		} else {
-			fmt.Fprintf(&b, "- %s\n", name)
-		}
+		fmt.Fprintf(&b, "- %s\n", name)
 	}
 	b.WriteString("\n")
 	b.WriteString(endMarker)
@@ -396,8 +392,6 @@ func providerDisplayName(id string) string {
 		return "MiniMax"
 	case "moonshot":
 		return "Moonshot"
-	case "nvidia":
-		return "NVIDIA NIM"
 	default:
 		return strings.ToUpper(id[:1]) + id[1:]
 	}

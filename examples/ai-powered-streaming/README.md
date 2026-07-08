@@ -97,7 +97,7 @@ Via the included Inference Gateway:
 - MiniMax
 - Mistral
 - Moonshot
-- **NVIDIA NIM** (e.g. `nvidia/meta/llama-3.1-8b-instruct`)
+- Nvidia
 - Ollama
 - Ollama Cloud
 - OpenAI (GPT models)
