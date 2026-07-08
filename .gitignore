@@ -4,3 +4,5 @@
 .vscode
 .DS_Store
 .infer/
+/adk
+/generate-providers

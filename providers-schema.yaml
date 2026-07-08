@@ -1,0 +1,86 @@
+# Vendored from inference-gateway/schemas openapi.yaml
+# Do not edit by hand - run `task providers:download-schema` to refresh.
+components:
+  schemas:
+    Provider:
+      type: string
+      enum:
+        - ollama
+        - ollama_cloud
+        - groq
+        - openai
+        - cloudflare
+        - cohere
+        - anthropic
+        - deepseek
+        - google
+        - mistral
+        - minimax
+        - moonshot
+        - nvidia
+      x-provider-configs:
+        ollama:
+          id: ollama
+          url: http://host.docker.internal:11434/v1
+          auth_type: none
+          supports_vision: false
+        ollama_cloud:
+          id: ollama_cloud
+          url: https://api.ollama.cloud/v1
+          auth_type: bearer
+          supports_vision: true
+        groq:
+          id: groq
+          url: https://api.groq.com/openai/v1
+          auth_type: bearer
+          supports_vision: true
+        openai:
+          id: openai
+          url: https://api.openai.com/v1
+          auth_type: bearer
+          supports_vision: true
+        cloudflare:
+          id: cloudflare
+          url: https://api.cloudflare.com/client/v4
+          auth_type: bearer
+          supports_vision: true
+        cohere:
+          id: cohere
+          url: https://api.cohere.com/v1
+          auth_type: bearer
+          supports_vision: false
+        anthropic:
+          id: anthropic
+          url: https://api.anthropic.com/v1
+          auth_type: xheader
+          supports_vision: true
+        deepseek:
+          id: deepseek
+          url: https://api.deepseek.com/v1
+          auth_type: bearer
+          supports_vision: false
+        google:
+          id: google
+          url: https://generativelanguage.googleapis.com/v1beta/openai
+          auth_type: bearer
+          supports_vision: true
+        mistral:
+          id: mistral
+          url: https://api.mistral.ai/v1
+          auth_type: bearer
+          supports_vision: true
+        minimax:
+          id: minimax
+          url: https://api.minimax.chat/v1
+          auth_type: bearer
+          supports_vision: true
+        moonshot:
+          id: moonshot
+          url: https://api.moonshot.cn/v1
+          auth_type: bearer
+          supports_vision: true
+        nvidia:
+          id: nvidia
+          url: https://integrate.api.nvidia.com/v1
+          auth_type: bearer
+          supports_vision: true

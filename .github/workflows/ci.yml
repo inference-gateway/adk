@@ -61,7 +61,12 @@ jobs:
         run: find . -name 'go.mod' -execdir go mod tidy \;
 
       - name: Run generate
-        run: generator -generator jsonrpc -package types schema.yaml types/generated_types.go
+        run: |
+          generator -generator jsonrpc -package types schema.yaml types/generated_types.go
+          go run ./cmd/generate-providers
+
+      - name: Format generated markdown
+        run: find . -name '*.md' -exec prettier -w {} \;
 
       - name: Check dirty
         run: git diff --exit-code

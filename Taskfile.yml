@@ -21,6 +21,25 @@ tasks:
     cmds:
       - go run github.com/inference-gateway/tools/cmd/generator@v0.2.2 -generator jsonrpc -package types schema.yaml types/generated_types.go
 
+  providers:download-schema:
+    desc: 'Download the canonical openapi.yaml from inference-gateway/schemas'
+    cmds:
+      - curl -o providers-schema.yaml https://raw.githubusercontent.com/inference-gateway/schemas/refs/heads/main/openapi.yaml
+
+  generate:providers:
+    desc: 'Regenerate all provider-enumerating artifacts from providers-schema.yaml'
+    sources:
+      - providers-schema.yaml
+    cmds:
+      - go run ./cmd/generate-providers
+
+  generate:
+    desc: 'Regenerate everything (types, providers, mocks)'
+    cmds:
+      - task: a2a:generate-types
+      - task: generate:providers
+      - task: generate:mocks
+
   tidy:
     desc: 'Tidy all Go modules'
     cmds:

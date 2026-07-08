@@ -117,14 +117,23 @@ The server uses environment variables with the `A2A_` prefix for consistency wit
 
 Via the included Inference Gateway:
 
-- OpenAI (GPT models)
+<!-- providers:start -->
+
 - Anthropic (Claude models)
-- DeepSeek
-- Google (Gemini)
 - Cloudflare Workers AI
 - Cohere
+- DeepSeek
+- Google (Gemini)
+- Groq
+- MiniMax
 - Mistral
-- NVIDIA NIM (e.g. `nvidia/meta/llama-3.1-8b-instruct`)
+- Moonshot
+- Nvidia
+- Ollama
+- Ollama Cloud
+- OpenAI (GPT models)
+
+<!-- providers:end -->
 
 ## Adding Tools
 

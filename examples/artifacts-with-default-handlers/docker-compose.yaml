@@ -7,13 +7,22 @@ services:
       - 8080:8080
     environment:
       ENVIRONMENT: ${ENVIRONMENT}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # >>> providers: generated from schemas openapi.yaml - do not edit >>>
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       CLOUDFLARE_API_KEY: ${CLOUDFLARE_API_KEY}
       COHERE_API_KEY: ${COHERE_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY}
+      OLLAMA_CLOUD_API_KEY: ${OLLAMA_CLOUD_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # <<< providers <<<
+
     networks:
       - a2a-network
 
