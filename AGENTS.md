@@ -23,6 +23,8 @@ Install the optional hook with `task precommit:install`; it runs formatting, tid
 
 Follow standard Go formatting and idioms. `.editorconfig` specifies tabs for Go, LF endings, final newlines, and a 120-column guideline. Prefer early returns, table-driven tests, interface-driven dependencies, and structured logging with lowercase messages. Keep generated files generated: update the source schema or interface, then rerun the relevant Task command.
 
+No inline comments inside function bodies - only docblocks and comments above struct members are allowed.
+
 ## Testing Guidelines
 
 Place tests beside the code under test using Go’s `*_test.go` convention, for example `server/task_manager_test.go`. Prefer table-driven tests with isolated mocks per case. Use helpers from `server/test_helpers.go`, `server/testutils/`, or package-local helpers where appropriate. Run `task test` before submitting; add focused coverage for new behavior and regressions.
