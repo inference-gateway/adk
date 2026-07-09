@@ -53,6 +53,8 @@ jobs:
       language: "go"
       node: true
       markdownlint: true
+      plugins: |
+        DietrichGebert/ponytail
       browser: ${{ inputs.browser || false }}
       prompt: ${{ inputs.prompt }}
     secrets: inherit
