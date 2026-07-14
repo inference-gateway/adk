@@ -113,7 +113,6 @@ func TestNewClientWithConfig(t *testing.T) {
 }
 
 func TestNewClientWithConfig_CustomTransport(t *testing.T) {
-	// recordingTransport records whether it was called
 	type recordingTransport struct {
 		called bool
 	}
