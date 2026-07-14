@@ -5,10 +5,9 @@ import (
 	"context"
 	"sync"
 
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/inference-gateway/adk/server/otel"
 	"github.com/inference-gateway/sdk"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type FakeOpenTelemetry struct {

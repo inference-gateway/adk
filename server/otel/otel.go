@@ -9,12 +9,12 @@ import (
 	otlp "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	prometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	metric "go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/propagation"
+	propagation "go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
-	"go.opentelemetry.io/otel/trace"
+	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
 
 	config "github.com/inference-gateway/adk/server/config"
@@ -101,17 +101,14 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 		zap.String("agent_name", cfg.AgentName),
 		zap.String("version", cfg.AgentVersion))
 
-	// Initialize metrics (Prometheus)
 	if err := o.initializeMetrics(cfg, res); err != nil {
 		return err
 	}
 
-	// Initialize traces (OTLP)
 	if err := o.initializeTraces(cfg, res); err != nil {
 		return err
 	}
 
-	// Set up W3C trace context and baggage propagators
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
@@ -205,7 +202,6 @@ func (o *OpenTelemetryImpl) TracerProvider() trace.TracerProvider {
 	if o.tracerProvider != nil {
 		return o.tracerProvider
 	}
-	// Return the global tracer provider as fallback (no-op if no OTLP configured)
 	return otel.GetTracerProvider()
 }
 

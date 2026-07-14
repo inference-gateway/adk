@@ -4,11 +4,10 @@ package mocks
 import (
 	"sync"
 
-	"go.uber.org/zap"
-
 	"github.com/inference-gateway/adk/server"
 	"github.com/inference-gateway/adk/server/otel"
 	"github.com/inference-gateway/adk/types"
+	"go.uber.org/zap"
 )
 
 type FakeA2AServerBuilder struct {
