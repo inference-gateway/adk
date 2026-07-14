@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.0](https://github.com/inference-gateway/adk/compare/v0.20.0...v0.21.0) (2026-07-14)
+
+### ✨ Features
+
+* automate provider propagation from canonical openapi.yaml via task generate ([#212](https://github.com/inference-gateway/adk/issues/212)) ([c0abb44](https://github.com/inference-gateway/adk/commit/c0abb44dc50ae9e6e1a29fe427c76633e66c89d9))
+
+### 🐛 Bug Fixes
+
+* **client:** add Transport field to Config for custom HTTP transport ([#222](https://github.com/inference-gateway/adk/issues/222)) ([bcf0e71](https://github.com/inference-gateway/adk/commit/bcf0e71740abf96f1ae659f6bf46ff705a1892cd)), closes [#221](https://github.com/inference-gateway/adk/issues/221)
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#218](https://github.com/inference-gateway/adk/issues/218)) ([5a63886](https://github.com/inference-gateway/adk/commit/5a63886ae07b26965dcf52c940292ae96e8ae199))
+* **deps:** bump golang.org/x/crypto from 0.51.0 to 0.52.0 ([#210](https://github.com/inference-gateway/adk/issues/210)) ([db5a58f](https://github.com/inference-gateway/adk/commit/db5a58f565eca42a82986b3d8f50d870019db4ff))
+* **deps:** bump inference-gateway/.github/.github/workflows/claude.yml ([#211](https://github.com/inference-gateway/adk/issues/211)) ([5b27d9e](https://github.com/inference-gateway/adk/commit/5b27d9ef356ed083389e9948ef3785c0d4da72e4))
+* **infer:** centralize infer.yml via reusable workflow ([#215](https://github.com/inference-gateway/adk/issues/215)) ([2459877](https://github.com/inference-gateway/adk/commit/245987722b6e55e77690ed03610162140632b754))
+* **infer:** centralize infer.yml via reusable workflow ([#216](https://github.com/inference-gateway/adk/issues/216)) ([aad952c](https://github.com/inference-gateway/adk/commit/aad952ca4ef9ede01728eaff465b3f20f117175b))
+* **release:** update semantic release and plugins to latest versions with local installation ([5da6379](https://github.com/inference-gateway/adk/commit/5da6379ec9d51fbab4394dc9a674b77e138469e2))
+* restrict default workflow token permissions to contents: read ([#214](https://github.com/inference-gateway/adk/issues/214)) ([190c5a5](https://github.com/inference-gateway/adk/commit/190c5a5d8248d9addea7b98f57e812879e7285d9))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.197 -> 2.1.201 ([#206](https://github.com/inference-gateway/adk/issues/206)) ([1e3b67a](https://github.com/inference-gateway/adk/commit/1e3b67a4422466384c0298056742ac098d38fe0b))
+* **deps:** bump claude-code-action v1.0.165 -> v1.0.169 ([#217](https://github.com/inference-gateway/adk/issues/217)) ([73e7b6c](https://github.com/inference-gateway/adk/commit/73e7b6c6ee32a8d5abc1ecc422ef2f4cffa06fae))
+* **deps:** bump infer CLI v0.130.1 -> v0.133.0, infer-action v0.23.1 -> v0.26.0 ([#207](https://github.com/inference-gateway/adk/issues/207)) ([d14f2f1](https://github.com/inference-gateway/adk/commit/d14f2f137abbdc7fb3be29faa70640bce0787bbc))
+* **deps:** bump infer CLI v0.133.0 -> v0.133.1, infer-action v0.26.0 -> v0.27.1 ([#208](https://github.com/inference-gateway/adk/issues/208)) ([483cf9b](https://github.com/inference-gateway/adk/commit/483cf9b8ee3b8bef8f7b53fdf14b2a2b69536e97))
+* **deps:** bump infer CLI v0.133.1 -> v0.137.0, infer-action v0.27.1 -> v0.29.0 ([#209](https://github.com/inference-gateway/adk/issues/209)) ([90968f3](https://github.com/inference-gateway/adk/commit/90968f39c25a1576e0fcfbdd6600b45c0ba058c4))
+* **deps:** bump infer CLI v0.137.0 -> v0.138.0, infer-action v0.29.0 -> v0.30.1 ([#213](https://github.com/inference-gateway/adk/issues/213)) ([6f89461](https://github.com/inference-gateway/adk/commit/6f8946175ba077a338ae89f6f0a160cdf619782e))
+* **deps:** bump infer CLI v0.138.0 -> v0.141.0 ([#219](https://github.com/inference-gateway/adk/issues/219)) ([62a1a49](https://github.com/inference-gateway/adk/commit/62a1a49cdc78e73ce1ab281ba632cabab79df5e5))
+* **release:** update Git author and committer names to use app slug ([57a9b4a](https://github.com/inference-gateway/adk/commit/57a9b4ac8dd6f0bec1363f22f58af26ae432ae1a))
+* update flox environment packages ([ff06ac5](https://github.com/inference-gateway/adk/commit/ff06ac56cc9e21809e4eb6b32d25b5466f36078b))
+
 ## [0.20.0](https://github.com/inference-gateway/adk/compare/v0.19.0...v0.20.0) (2026-07-05)
 
 ## [0.19.0](https://github.com/inference-gateway/adk/compare/v0.18.4...v0.19.0) (2026-05-24)
