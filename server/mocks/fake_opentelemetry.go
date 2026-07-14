@@ -7,6 +7,7 @@ import (
 
 	"github.com/inference-gateway/adk/server/otel"
 	"github.com/inference-gateway/sdk"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type FakeOpenTelemetry struct {
@@ -81,6 +82,16 @@ type FakeOpenTelemetry struct {
 	}
 	shutDownReturnsOnCall map[int]struct {
 		result1 error
+	}
+	TracerProviderStub        func() trace.TracerProvider
+	tracerProviderMutex       sync.RWMutex
+	tracerProviderArgsForCall []struct {
+	}
+	tracerProviderReturns struct {
+		result1 trace.TracerProvider
+	}
+	tracerProviderReturnsOnCall map[int]struct {
+		result1 trace.TracerProvider
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -424,6 +435,59 @@ func (fake *FakeOpenTelemetry) ShutDownReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeOpenTelemetry) TracerProvider() trace.TracerProvider {
+	fake.tracerProviderMutex.Lock()
+	ret, specificReturn := fake.tracerProviderReturnsOnCall[len(fake.tracerProviderArgsForCall)]
+	fake.tracerProviderArgsForCall = append(fake.tracerProviderArgsForCall, struct {
+	}{})
+	stub := fake.TracerProviderStub
+	fakeReturns := fake.tracerProviderReturns
+	fake.recordInvocation("TracerProvider", []interface{}{})
+	fake.tracerProviderMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeOpenTelemetry) TracerProviderCallCount() int {
+	fake.tracerProviderMutex.RLock()
+	defer fake.tracerProviderMutex.RUnlock()
+	return len(fake.tracerProviderArgsForCall)
+}
+
+func (fake *FakeOpenTelemetry) TracerProviderCalls(stub func() trace.TracerProvider) {
+	fake.tracerProviderMutex.Lock()
+	defer fake.tracerProviderMutex.Unlock()
+	fake.TracerProviderStub = stub
+}
+
+func (fake *FakeOpenTelemetry) TracerProviderReturns(result1 trace.TracerProvider) {
+	fake.tracerProviderMutex.Lock()
+	defer fake.tracerProviderMutex.Unlock()
+	fake.TracerProviderStub = nil
+	fake.tracerProviderReturns = struct {
+		result1 trace.TracerProvider
+	}{result1}
+}
+
+func (fake *FakeOpenTelemetry) TracerProviderReturnsOnCall(i int, result1 trace.TracerProvider) {
+	fake.tracerProviderMutex.Lock()
+	defer fake.tracerProviderMutex.Unlock()
+	fake.TracerProviderStub = nil
+	if fake.tracerProviderReturnsOnCall == nil {
+		fake.tracerProviderReturnsOnCall = make(map[int]struct {
+			result1 trace.TracerProvider
+		})
+	}
+	fake.tracerProviderReturnsOnCall[i] = struct {
+		result1 trace.TracerProvider
+	}{result1}
+}
+
 func (fake *FakeOpenTelemetry) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -445,6 +509,8 @@ func (fake *FakeOpenTelemetry) Invocations() map[string][][]interface{} {
 	defer fake.recordToolCallFailureMutex.RUnlock()
 	fake.shutDownMutex.RLock()
 	defer fake.shutDownMutex.RUnlock()
+	fake.tracerProviderMutex.RLock()
+	defer fake.tracerProviderMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

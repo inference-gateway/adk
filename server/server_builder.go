@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"os"
 
+	zap "go.uber.org/zap"
+
 	config "github.com/inference-gateway/adk/server/config"
 	otel "github.com/inference-gateway/adk/server/otel"
 	types "github.com/inference-gateway/adk/types"
-	zap "go.uber.org/zap"
 )
 
 // A2AServerBuilder provides a fluent interface for building A2A servers with custom configurations.
@@ -66,6 +67,12 @@ type A2AServerBuilder interface {
 	// This enables URI-based artifacts instead of base64-encoded ones.
 	WithArtifactService(service ArtifactService) A2AServerBuilder
 
+	// WithTelemetry sets a pre-configured OpenTelemetry instance for the server.
+	// This allows library consumers to reuse the built-in telemetry infrastructure
+	// rather than re-implementing it. When set, the telemetry config Enable flag is
+	// ignored in favor of this instance.
+	WithTelemetry(telemetry otel.OpenTelemetry) A2AServerBuilder
+
 	// Build creates and returns the configured A2A server.
 	// This method applies configuration defaults and initializes all components.
 	Build() (A2AServer, error)
@@ -85,6 +92,7 @@ type A2AServerBuilderImpl struct {
 	agent                OpenAICompatibleAgent // Optional pre-configured agent
 	agentCard            *types.AgentCard      // Optional custom agent card
 	artifactService      ArtifactService       // Optional artifact service for storage operations
+	telemetry            otel.OpenTelemetry    // Optional pre-configured telemetry instance
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies.
@@ -276,6 +284,13 @@ func (b *A2AServerBuilderImpl) WithArtifactService(service ArtifactService) A2AS
 	return b
 }
 
+// WithTelemetry sets a pre-configured OpenTelemetry instance for the server.
+// When set, the telemetry config Enable flag is ignored in favor of this instance.
+func (b *A2AServerBuilderImpl) WithTelemetry(telemetry otel.OpenTelemetry) A2AServerBuilder {
+	b.telemetry = telemetry
+	return b
+}
+
 // Build creates and returns the configured A2A server.
 func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 	if b.agentCard == nil {
@@ -293,7 +308,10 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 	}
 
 	var telemetryInstance otel.OpenTelemetry
-	if b.cfg.TelemetryConfig.Enable {
+	if b.telemetry != nil {
+		telemetryInstance = b.telemetry
+		b.logger.Info("using pre-configured telemetry instance")
+	} else if b.cfg.TelemetryConfig.Enable {
 		var err error
 		telemetryInstance, err = otel.NewOpenTelemetry(&b.cfg, b.logger)
 		if err != nil {

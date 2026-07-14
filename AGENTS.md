@@ -23,7 +23,44 @@ Install the optional hook with `task precommit:install`; it runs formatting, tid
 
 Follow standard Go formatting and idioms. `.editorconfig` specifies tabs for Go, LF endings, final newlines, and a 120-column guideline. Prefer early returns, table-driven tests, interface-driven dependencies, and structured logging with lowercase messages. Keep generated files generated: update the source schema or interface, then rerun the relevant Task command.
 
-No inline comments inside function bodies - only docblocks and comments above struct members are allowed.
+No inline comments inside function bodies - only docblocks and comments above struct members are allowed. No self-explanatory comments (comments that merely restate what the code does). Docblocks must be at most 3 lines and must not contain issue links.
+
+### Import Conventions
+
+All non-standard-library imports MUST use explicit named imports (aliases). Never rely on the default package name matching the import path.
+
+Imports MUST be grouped in this order, with each group separated by a blank line:
+
+1. **Standard library** (stdlib packages, no named imports needed)
+2. **External testing libraries** (e.g. `require "github.com/stretchr/testify/require"`)
+3. **External libraries** (third-party dependencies)
+4. **Internal testing libraries** (e.g. `testutils "github.com/inference-gateway/adk/server/testutils"`)
+5. **Internal libraries** (packages within the `github.com/inference-gateway/adk/` module)
+
+Within each group, imports are sorted alphabetically by import path (handled by `gofmt`).
+
+Example:
+
+```go
+import (
+    "context"
+    "net/http"
+    "strings"
+    "time"
+
+    require "github.com/stretchr/testify/require"
+
+    gin "github.com/gin-gonic/gin"
+    otel "go.opentelemetry.io/otel"
+    attribute "go.opentelemetry.io/otel/attribute"
+    semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
+    trace "go.opentelemetry.io/otel/trace"
+    zap "go.uber.org/zap"
+
+    config "github.com/inference-gateway/adk/server/config"
+    adkotel "github.com/inference-gateway/adk/server/otel"
+)
+```
 
 ## Testing Guidelines
 

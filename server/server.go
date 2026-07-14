@@ -408,7 +408,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 	r.GET("/.well-known/agent-card.json", s.handleAgentInfo)
 
 	var telemetryMiddleware gin.HandlerFunc
-	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
+	if s.otel != nil {
 		telemetryMw, err := middlewares.NewTelemetryMiddleware(*s.cfg, s.otel, s.logger)
 		if err != nil {
 			s.logger.Error("failed to create telemetry middleware", zap.Error(err))
@@ -466,7 +466,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	s.validateStreamingConfiguration()
 
-	if s.cfg.TelemetryConfig.Enable && s.otel != nil {
+	if s.otel != nil {
 		go func() {
 			metricsRouter := gin.Default()
 			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
