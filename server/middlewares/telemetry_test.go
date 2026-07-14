@@ -42,8 +42,6 @@ func TestTelemetryMiddleware_Disabled(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	// Middleware no longer checks Enable flag - it only checks the path.
-	// Telemetry is gated by whether the middleware is registered at all (s.otel != nil).
 	assert.Equal(t, 1, mockOtel.RecordRequestCountCallCount())
 	assert.Equal(t, 1, mockOtel.RecordResponseStatusCallCount())
 	assert.Equal(t, 1, mockOtel.RecordRequestDurationCallCount())
