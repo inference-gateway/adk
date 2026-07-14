@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	config "github.com/inference-gateway/adk/server/config"
-	sdk "github.com/inference-gateway/sdk"
 	otel "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	otlp "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -18,6 +16,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
 	"go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
+
+	config "github.com/inference-gateway/adk/server/config"
+	sdk "github.com/inference-gateway/sdk"
 )
 
 // OpenTelemetry defines the operations for telemetry

@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"os"
 
+	zap "go.uber.org/zap"
+
 	config "github.com/inference-gateway/adk/server/config"
 	otel "github.com/inference-gateway/adk/server/otel"
 	types "github.com/inference-gateway/adk/types"
-	zap "go.uber.org/zap"
 )
 
 // A2AServerBuilder provides a fluent interface for building A2A servers with custom configurations.
