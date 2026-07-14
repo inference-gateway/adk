@@ -117,7 +117,7 @@ func TestTelemetryMiddleware_ExtractsTraceContextAndBaggage(t *testing.T) {
 
 	req, _ := http.NewRequest("POST", "/a2a", nil)
 	req.Header.Set("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
-	req.Header.Set("baggage", "infer.session.id=session-123,infer.tool.call.id=tool-456")
+	req.Header.Set("baggage", "session.id=session-123,gen_ai.tool.call.id=tool-456")
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -135,6 +135,55 @@ func TestTelemetryMiddleware_ExtractsTraceContextAndBaggage(t *testing.T) {
 	for _, kv := range span.Attributes {
 		attrs[string(kv.Key)] = kv.Value.AsString()
 	}
-	assert.Equal(t, "session-123", attrs["infer.session.id"])
-	assert.Equal(t, "tool-456", attrs["infer.tool.call.id"])
+	assert.Equal(t, "session-123", attrs["session.id"])
+	assert.Equal(t, "tool-456", attrs["gen_ai.tool.call.id"])
+}
+
+// TestTelemetryMiddleware_ConfigurableAttributeKeys verifies that the session-id
+// and tool-call-id attribute/baggage keys can be overridden via config.
+func TestTelemetryMiddleware_ConfigurableAttributeKeys(t *testing.T) {
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+
+	exporter := tracetest.NewInMemoryExporter()
+	tracerProvider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+
+	cfg := config.Config{
+		TelemetryConfig: config.TelemetryConfig{
+			AttrSessionIDKey:  "custom.session",
+			AttrToolCallIDKey: "custom.tool.call",
+		},
+	}
+	logger := zap.NewNop()
+	mockOtel := &mocks.FakeOpenTelemetry{}
+	mockOtel.TracerProviderReturns(tracerProvider)
+
+	telemetryMw, err := middlewares.NewTelemetryMiddleware(cfg, mockOtel, logger)
+	require.NoError(t, err)
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(telemetryMw.Middleware())
+	router.POST("/a2a", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	req, _ := http.NewRequest("POST", "/a2a", nil)
+	req.Header.Set("baggage", "custom.session=session-789,custom.tool.call=tool-012")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	spans := exporter.GetSpans()
+	require.Len(t, spans, 1)
+
+	attrs := map[string]string{}
+	for _, kv := range spans[0].Attributes {
+		attrs[string(kv.Key)] = kv.Value.AsString()
+	}
+	assert.Equal(t, "session-789", attrs["custom.session"])
+	assert.Equal(t, "tool-012", attrs["custom.tool.call"])
 }
