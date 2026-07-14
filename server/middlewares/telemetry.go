@@ -71,8 +71,10 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 		c.Request = c.Request.WithContext(ctx)
 
 		bag := baggage.FromContext(ctx)
-		sessionID := bag.Member("infer.session.id")
-		toolCallID := bag.Member("infer.tool.call.id")
+		sessionIDKey := t.cfg.TelemetryConfig.SessionIDKey()
+		toolCallIDKey := t.cfg.TelemetryConfig.ToolCallIDKey()
+		sessionID := bag.Member(sessionIDKey)
+		toolCallID := bag.Member(toolCallIDKey)
 
 		spanAttrs := []attribute.KeyValue{
 			semconv.HTTPRequestMethodKey.String(c.Request.Method),
@@ -80,10 +82,10 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 			semconv.HTTPRouteKey.String(c.Request.URL.Path),
 		}
 		if sessionID.Value() != "" {
-			spanAttrs = append(spanAttrs, attribute.String("infer.session.id", sessionID.Value()))
+			spanAttrs = append(spanAttrs, attribute.String(sessionIDKey, sessionID.Value()))
 		}
 		if toolCallID.Value() != "" {
-			spanAttrs = append(spanAttrs, attribute.String("infer.tool.call.id", toolCallID.Value()))
+			spanAttrs = append(spanAttrs, attribute.String(toolCallIDKey, toolCallID.Value()))
 		}
 
 		ctx, span := t.tracer.Start(ctx, "a2a.request",

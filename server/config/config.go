@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sethvargo/go-envconfig"
@@ -26,6 +27,7 @@ type Config struct {
 	ServerConfig                  ServerConfig        `env:",prefix=SERVER_"`
 	TelemetryConfig               TelemetryConfig     `env:",prefix=TELEMETRY_"`
 	ArtifactsConfig               ArtifactsConfig     `env:",prefix=ARTIFACTS_"`
+	OTelConfig                    OTelConfig          // Standard OpenTelemetry SDK env vars (OTEL_*), read without a prefix
 }
 
 // AgentConfig holds agent-specific configuration
@@ -130,6 +132,121 @@ type TelemetryConfig struct {
 	MetricsConfig MetricsConfig `env:",prefix=METRICS_"`
 	TraceConfig   TraceConfig   `env:",prefix=TRACE_"`
 	LogConfig     LogConfig     `env:",prefix=LOG_"`
+	// AttrSessionIDKey is the span-attribute and baggage-member key used for the
+	// session id. Defaults to the OTel semantic-convention key `session.id`.
+	AttrSessionIDKey string `env:"ATTR_SESSION_ID_KEY,default=session.id" description:"Span attribute and baggage member key for the session id"`
+	// AttrToolCallIDKey is the span-attribute and baggage-member key used for the
+	// tool call id. Defaults to the OTel semantic-convention key `gen_ai.tool.call.id`.
+	AttrToolCallIDKey string `env:"ATTR_TOOL_CALL_ID_KEY,default=gen_ai.tool.call.id" description:"Span attribute and baggage member key for the tool call id"`
+}
+
+// Default attribute/baggage keys following OTel semantic conventions. These
+// mirror the `default=` struct tags above so direct struct construction (e.g. in
+// tests) still resolves sensible keys.
+const (
+	DefaultAttrSessionIDKey  = "session.id"
+	DefaultAttrToolCallIDKey = "gen_ai.tool.call.id"
+)
+
+// SessionIDKey returns the configured session-id attribute/baggage key, falling
+// back to the default when unset (e.g. a config built directly, not loaded).
+func (t TelemetryConfig) SessionIDKey() string {
+	if t.AttrSessionIDKey != "" {
+		return t.AttrSessionIDKey
+	}
+	return DefaultAttrSessionIDKey
+}
+
+// ToolCallIDKey returns the configured tool-call-id attribute/baggage key,
+// falling back to the default when unset.
+func (t TelemetryConfig) ToolCallIDKey() string {
+	if t.AttrToolCallIDKey != "" {
+		return t.AttrToolCallIDKey
+	}
+	return DefaultAttrToolCallIDKey
+}
+
+// OTelConfig holds the standard OpenTelemetry SDK environment variables. These
+// follow the OTel specification naming and, when set, take precedence over the
+// deprecated TELEMETRY_* aliases. They are read without a prefix so the standard
+// names apply when the ADK config is loaded at the process root.
+type OTelConfig struct {
+	MetricsExporter      string `env:"OTEL_METRICS_EXPORTER" description:"Metrics exporter to use: prometheus, otlp, or none"`
+	TracesExporter       string `env:"OTEL_TRACES_EXPORTER" description:"Traces exporter to use: otlp or none"`
+	ExporterOTLPEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT" description:"OTLP endpoint base URL shared by traces and metrics"`
+	ExporterOTLPProtocol string `env:"OTEL_EXPORTER_OTLP_PROTOCOL" description:"OTLP transport protocol: http/protobuf or grpc"`
+	PrometheusHost       string `env:"OTEL_EXPORTER_PROMETHEUS_HOST" description:"Host for the Prometheus pull endpoint"`
+	PrometheusPort       string `env:"OTEL_EXPORTER_PROMETHEUS_PORT" description:"Port for the Prometheus pull endpoint"`
+}
+
+// Telemetry exporter selection values, following the OpenTelemetry specification.
+const (
+	MetricsExporterPrometheus = "prometheus"
+	ExporterOTLP              = "otlp"
+	ExporterNone              = "none"
+
+	OTLPProtocolHTTP = "http/protobuf"
+	OTLPProtocolGRPC = "grpc"
+)
+
+// ResolvedTelemetry captures the effective telemetry exporter selection after
+// merging the standard OTEL_* variables with the deprecated TELEMETRY_* aliases.
+// Standard OTEL_* values win when set; otherwise the legacy TELEMETRY_* values
+// (and their defaults) are used so existing deployments keep working.
+type ResolvedTelemetry struct {
+	MetricsExporter string
+	TracesExporter  string
+	OTLPEndpoint    string
+	OTLPProtocol    string
+	PrometheusHost  string
+	PrometheusPort  string
+}
+
+// ResolveTelemetry computes the effective exporter selection, preferring the
+// standard OTEL_* env vars and falling back to the deprecated TELEMETRY_* ones.
+func (c *Config) ResolveTelemetry() ResolvedTelemetry {
+	r := ResolvedTelemetry{
+		MetricsExporter: strings.ToLower(strings.TrimSpace(c.OTelConfig.MetricsExporter)),
+		TracesExporter:  strings.ToLower(strings.TrimSpace(c.OTelConfig.TracesExporter)),
+		OTLPEndpoint:    strings.TrimSpace(c.OTelConfig.ExporterOTLPEndpoint),
+		OTLPProtocol:    strings.ToLower(strings.TrimSpace(c.OTelConfig.ExporterOTLPProtocol)),
+		PrometheusHost:  c.OTelConfig.PrometheusHost,
+		PrometheusPort:  c.OTelConfig.PrometheusPort,
+	}
+
+	// Metrics exporter defaults to the legacy pull-based Prometheus behaviour.
+	if r.MetricsExporter == "" {
+		r.MetricsExporter = MetricsExporterPrometheus
+	}
+
+	// Traces exporter falls back to the deprecated TELEMETRY_TRACE_ENABLE flag.
+	if r.TracesExporter == "" {
+		if c.TelemetryConfig.TraceConfig.Enable {
+			r.TracesExporter = ExporterOTLP
+		} else {
+			r.TracesExporter = ExporterNone
+		}
+	}
+
+	// OTLP endpoint falls back to the deprecated TELEMETRY_TRACE_ENDPOINT.
+	if r.OTLPEndpoint == "" {
+		r.OTLPEndpoint = c.TelemetryConfig.TraceConfig.Endpoint
+	}
+
+	// OTLP protocol defaults to HTTP/protobuf per the OTel specification.
+	if r.OTLPProtocol == "" {
+		r.OTLPProtocol = OTLPProtocolHTTP
+	}
+
+	// Prometheus host/port fall back to the deprecated TELEMETRY_METRICS_* values.
+	if r.PrometheusHost == "" {
+		r.PrometheusHost = c.TelemetryConfig.MetricsConfig.Host
+	}
+	if r.PrometheusPort == "" {
+		r.PrometheusPort = c.TelemetryConfig.MetricsConfig.Port
+	}
+
+	return r
 }
 
 // TraceConfig holds OTLP trace exporter configuration
