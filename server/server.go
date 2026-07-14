@@ -473,8 +473,6 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	s.validateStreamingConfiguration()
 
-	// The Prometheus pull server only runs when metrics resolve to the prometheus
-	// exporter; the otlp and none exporters push (or drop) metrics instead.
 	resolvedTelemetry := s.cfg.ResolveTelemetry()
 	if s.otel != nil && resolvedTelemetry.MetricsExporter == config.MetricsExporterPrometheus {
 		go func() {
