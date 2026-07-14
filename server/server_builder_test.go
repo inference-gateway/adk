@@ -552,3 +552,24 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 		assert.NotNil(t, serverInstance)
 	})
 }
+
+func TestA2AServerBuilder_WithTelemetry(t *testing.T) {
+	cfg := config.Config{
+		AgentName:    "test-agent",
+		ServerConfig: config.ServerConfig{Port: "8080"},
+		TelemetryConfig: config.TelemetryConfig{
+			Enable: false,
+		},
+	}
+	logger := zap.NewNop()
+	mockOtel := &mocks.FakeOpenTelemetry{}
+
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+		WithTelemetry(mockOtel).
+		WithAgentCard(createTestAgentCard()).
+		WithDefaultTaskHandlers().
+		Build()
+
+	require.NoError(t, err)
+	assert.NotNil(t, a2aServer)
+}

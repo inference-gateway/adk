@@ -18,6 +18,10 @@ func TestTelemetryMiddleware_Disabled(t *testing.T) {
 		TelemetryConfig: config.TelemetryConfig{
 			Enable: false,
 		},
+		AgentConfig: config.AgentConfig{
+			Provider: "test-provider",
+			Model:    "test-model",
+		},
 	}
 	logger := zap.NewNop()
 	mockOtel := &mocks.FakeOpenTelemetry{}
@@ -38,9 +42,11 @@ func TestTelemetryMiddleware_Disabled(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	assert.Equal(t, 0, mockOtel.RecordRequestCountCallCount())
-	assert.Equal(t, 0, mockOtel.RecordResponseStatusCallCount())
-	assert.Equal(t, 0, mockOtel.RecordRequestDurationCallCount())
+	// Middleware no longer checks Enable flag - it only checks the path.
+	// Telemetry is gated by whether the middleware is registered at all (s.otel != nil).
+	assert.Equal(t, 1, mockOtel.RecordRequestCountCallCount())
+	assert.Equal(t, 1, mockOtel.RecordResponseStatusCallCount())
+	assert.Equal(t, 1, mockOtel.RecordRequestDurationCallCount())
 }
 
 func TestTelemetryMiddleware_Enabled(t *testing.T) {

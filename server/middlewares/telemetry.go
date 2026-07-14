@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	otel "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	baggage "go.opentelemetry.io/otel/baggage"
+	codes "go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
 	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
@@ -57,7 +59,7 @@ func (w *responseBodyWriter) Write(b []byte) (int, error) {
 
 func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !t.cfg.TelemetryConfig.Enable || !strings.Contains(c.Request.URL.Path, "/a2a") {
+		if !strings.Contains(c.Request.URL.Path, "/a2a") {
 			c.Next()
 			return
 		}
@@ -114,8 +116,9 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 		statusCode := responseWriter.Status()
 
 		span.SetAttributes(semconv.HTTPResponseStatusCodeKey.Int(statusCode))
-		if statusCode >= 400 {
-			span.SetAttributes(attribute.String("error.type", "http_error"))
+		if statusCode >= 500 {
+			span.SetAttributes(semconv.ErrorTypeKey.String(fmt.Sprintf("%d", statusCode)))
+			span.SetStatus(codes.Error, fmt.Sprintf("HTTP %d", statusCode))
 		}
 
 		t.telemetry.RecordResponseStatus(
