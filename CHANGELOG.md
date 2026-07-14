@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.0](https://github.com/inference-gateway/adk/compare/v0.22.0...v0.23.0) (2026-07-14)
+
+### ✨ Features
+
+* OTel-aligned telemetry config and OTLP metrics push ([#228](https://github.com/inference-gateway/adk/issues/228)) ([673ca4b](https://github.com/inference-gateway/adk/commit/673ca4baf9dc96e747fc3748db09325795232c9b))
+
+### ♻️ Improvements
+
+* **server:** remove redundant comment ([e98bde4](https://github.com/inference-gateway/adk/commit/e98bde40ab200ece3be610106528ae303bd06d3a))
+
 ## [0.22.0](https://github.com/inference-gateway/adk/compare/v0.21.0...v0.22.0) (2026-07-14)
 
 ### ✨ Features
