@@ -61,7 +61,7 @@ type Config struct {
 	BaseURL    string
 	Timeout    time.Duration
 	HTTPClient *http.Client
-	Transport  http.RoundTripper // optional; used when HTTPClient is nil; defaults to http.DefaultTransport
+	Transport  http.RoundTripper
 	UserAgent  string
 	Headers    map[string]string
 	MaxRetries int
