@@ -7,14 +7,15 @@ import (
 	"time"
 
 	gin "github.com/gin-gonic/gin"
+	otel "go.opentelemetry.io/otel"
+	attribute "go.opentelemetry.io/otel/attribute"
+	baggage "go.opentelemetry.io/otel/baggage"
+	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
+	trace "go.opentelemetry.io/otel/trace"
+	zap "go.uber.org/zap"
+
 	config "github.com/inference-gateway/adk/server/config"
 	adkotel "github.com/inference-gateway/adk/server/otel"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/baggage"
-	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
-	"go.opentelemetry.io/otel/trace"
-	zap "go.uber.org/zap"
 )
 
 type Telemetry interface {
