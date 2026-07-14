@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.22.0](https://github.com/inference-gateway/adk/compare/v0.21.0...v0.22.0) (2026-07-14)
+
+### ✨ Features
+
+* **telemetry:** add OTLP trace export, W3C trace propagation, and library reuse support ([#223](https://github.com/inference-gateway/adk/issues/223)) ([6752db7](https://github.com/inference-gateway/adk/commit/6752db70cd22fe8c6fa30649e2e149d8fae0dd7e))
+
 ## [0.21.0](https://github.com/inference-gateway/adk/compare/v0.20.0...v0.21.0) (2026-07-14)
 
 ### ✨ Features
