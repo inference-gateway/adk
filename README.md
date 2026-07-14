@@ -658,11 +658,31 @@ export ARTIFACTS_STORAGE_BASE_URL=http://localhost:9000
 
 #### Telemetry (Optional)
 
-| Variable                 | Default     | Description              |
-| ------------------------ | ----------- | ------------------------ |
-| `TELEMETRY_ENABLE`       | `false`     | Enable OpenTelemetry     |
-| `TELEMETRY_ENDPOINT`     | -           | OTLP endpoint URL        |
-| `TELEMETRY_SERVICE_NAME` | `a2a-agent` | Service name for tracing |
+When enabled, the server exposes Prometheus metrics on a separate `/metrics` endpoint and can export traces via OTLP over HTTP. It also participates in [W3C Trace Context](https://www.w3.org/TR/trace-context/) propagation: incoming `traceparent` and `baggage` headers are extracted, a request-scoped `a2a.request` span is created, and the `infer.session.id` / `infer.tool.call.id` baggage items are surfaced as span attributes. See [docs/telemetry.md](./docs/telemetry.md) for details.
+
+| Variable                   | Default                 | Description                                            |
+| -------------------------- | ----------------------- | ------------------------------------------------------ |
+| `TELEMETRY_ENABLE`         | `false`                 | Enable telemetry (Prometheus metrics + tracing)        |
+| `TELEMETRY_METRICS_PORT`   | `9090`                  | Port for the `/metrics` Prometheus endpoint            |
+| `TELEMETRY_METRICS_HOST`   | -                       | Metrics server host (empty = all interfaces)           |
+| `TELEMETRY_TRACE_ENABLE`   | `false`                 | Enable OTLP trace export                               |
+| `TELEMETRY_TRACE_ENDPOINT` | `http://localhost:4318` | OTLP HTTP endpoint URL for traces                      |
+| `TELEMETRY_TRACE_HEADERS`  | -                       | Custom headers for OTLP trace export (`key:value`)     |
+| `TELEMETRY_LOG_ENABLE`     | `false`                 | Reserved - OTLP log export is not yet wired            |
+| `TELEMETRY_LOG_ENDPOINT`   | `http://localhost:4318` | Reserved - OTLP log endpoint URL (not yet wired)       |
+| `TELEMETRY_LOG_HEADERS`    | -                       | Reserved - headers for OTLP log export (not yet wired) |
+
+> The tracing service name is taken from the agent card `name` (the build-time agent identity), not a separate variable.
+
+Library consumers that already run their own OpenTelemetry setup can inject it with `WithTelemetry()` instead of letting the ADK build one from the environment. The injected instance activates the middleware, request spans, and `/metrics` endpoint regardless of `TELEMETRY_ENABLE`:
+
+```go
+srv, err := server.NewA2AServerBuilder(cfg, logger).
+    WithTelemetry(myOtel).
+    WithAgentCard(card).
+    WithDefaultTaskHandlers().
+    Build()
+```
 
 #### Example Configuration
 
