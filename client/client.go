@@ -61,6 +61,7 @@ type Config struct {
 	BaseURL    string
 	Timeout    time.Duration
 	HTTPClient *http.Client
+	Transport  http.RoundTripper
 	UserAgent  string
 	Headers    map[string]string
 	MaxRetries int
@@ -99,8 +100,13 @@ func NewClient(baseURL string) A2AClient {
 func NewClientWithConfig(config *Config) A2AClient {
 	httpClient := config.HTTPClient
 	if httpClient == nil {
+		transport := config.Transport
+		if transport == nil {
+			transport = http.DefaultTransport
+		}
 		httpClient = &http.Client{
-			Timeout: config.Timeout,
+			Timeout:   config.Timeout,
+			Transport: transport,
 		}
 	}
 
