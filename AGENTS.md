@@ -23,7 +23,7 @@ Install the optional hook with `task precommit:install`; it runs formatting, tid
 
 Follow standard Go formatting and idioms. `.editorconfig` specifies tabs for Go, LF endings, final newlines, and a 120-column guideline. Prefer early returns, table-driven tests, interface-driven dependencies, and structured logging with lowercase messages. Keep generated files generated: update the source schema or interface, then rerun the relevant Task command.
 
-No inline comments inside function bodies - only docblocks and comments above struct members are allowed.
+No inline comments inside function bodies - only docblocks and comments above struct members are allowed. No self-explanatory comments (comments that merely restate what the code does). Docblocks must be at most 3 lines and must not contain issue links.
 
 ### Import Conventions
 

@@ -64,17 +64,14 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 
 		startTime := time.Now()
 
-		// Extract W3C trace context and baggage from incoming request headers
 		propagator := otel.GetTextMapPropagator()
 		ctx := propagator.Extract(c.Request.Context(), propagationHeaderCarrier(c.Request.Header))
 		c.Request = c.Request.WithContext(ctx)
 
-		// Extract baggage items and surface as span attributes
 		bag := baggage.FromContext(ctx)
 		sessionID := bag.Member("infer.session.id")
 		toolCallID := bag.Member("infer.tool.call.id")
 
-		// Start a request-scoped span
 		spanAttrs := []attribute.KeyValue{
 			semconv.HTTPRequestMethodKey.String(c.Request.Method),
 			semconv.URLFullKey.String(c.Request.URL.String()),
@@ -93,7 +90,6 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 		)
 		defer span.End()
 
-		// Update the request context with the span context
 		c.Request = c.Request.WithContext(ctx)
 
 		attrs := adkotel.TelemetryAttributes{
