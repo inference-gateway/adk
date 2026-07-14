@@ -246,6 +246,124 @@ func TestConfig_LoadWithLookuper_InvalidValues(t *testing.T) {
 	}
 }
 
+func TestConfig_TelemetryAttributeKeys(t *testing.T) {
+	tests := []struct {
+		name            string
+		envVars         map[string]string
+		expectedSession string
+		expectedTool    string
+	}{
+		{
+			name:            "defaults follow otel semantic conventions",
+			envVars:         map[string]string{},
+			expectedSession: "session.id",
+			expectedTool:    "gen_ai.tool.call.id",
+		},
+		{
+			name: "attribute keys are overridable",
+			envVars: map[string]string{
+				"TELEMETRY_ATTR_SESSION_ID_KEY":   "custom.session",
+				"TELEMETRY_ATTR_TOOL_CALL_ID_KEY": "custom.tool.call",
+			},
+			expectedSession: "custom.session",
+			expectedTool:    "custom.tool.call",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			lookuper := envconfig.MapLookuper(tt.envVars)
+			cfg, err := config.LoadWithLookuper(ctx, nil, lookuper)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedSession, cfg.TelemetryConfig.SessionIDKey())
+			assert.Equal(t, tt.expectedTool, cfg.TelemetryConfig.ToolCallIDKey())
+		})
+	}
+}
+
+func TestConfig_ResolveTelemetry(t *testing.T) {
+	tests := []struct {
+		name     string
+		envVars  map[string]string
+		validate func(t *testing.T, r config.ResolvedTelemetry)
+	}{
+		{
+			name:    "defaults to prometheus metrics and no traces",
+			envVars: map[string]string{},
+			validate: func(t *testing.T, r config.ResolvedTelemetry) {
+				assert.Equal(t, config.MetricsExporterPrometheus, r.MetricsExporter)
+				assert.Equal(t, config.ExporterNone, r.TracesExporter)
+				assert.Equal(t, config.OTLPProtocolHTTP, r.OTLPProtocol)
+				assert.Equal(t, "9090", r.PrometheusPort)
+				assert.Equal(t, "http://localhost:4318", r.OTLPEndpoint)
+			},
+		},
+		{
+			name: "standard OTEL vars select exporters and endpoint",
+			envVars: map[string]string{
+				"OTEL_METRICS_EXPORTER":         "otlp",
+				"OTEL_TRACES_EXPORTER":          "otlp",
+				"OTEL_EXPORTER_OTLP_ENDPOINT":   "http://collector:4318",
+				"OTEL_EXPORTER_OTLP_PROTOCOL":   "grpc",
+				"OTEL_EXPORTER_PROMETHEUS_PORT": "9464",
+				"OTEL_EXPORTER_PROMETHEUS_HOST": "127.0.0.1",
+			},
+			validate: func(t *testing.T, r config.ResolvedTelemetry) {
+				assert.Equal(t, config.ExporterOTLP, r.MetricsExporter)
+				assert.Equal(t, config.ExporterOTLP, r.TracesExporter)
+				assert.Equal(t, "http://collector:4318", r.OTLPEndpoint)
+				assert.Equal(t, config.OTLPProtocolGRPC, r.OTLPProtocol)
+				assert.Equal(t, "9464", r.PrometheusPort)
+				assert.Equal(t, "127.0.0.1", r.PrometheusHost)
+			},
+		},
+		{
+			name: "deprecated TELEMETRY aliases still drive traces",
+			envVars: map[string]string{
+				"TELEMETRY_TRACE_ENABLE":   "true",
+				"TELEMETRY_TRACE_ENDPOINT": "http://legacy:4318",
+				"TELEMETRY_METRICS_PORT":   "9191",
+			},
+			validate: func(t *testing.T, r config.ResolvedTelemetry) {
+				assert.Equal(t, config.ExporterOTLP, r.TracesExporter)
+				assert.Equal(t, "http://legacy:4318", r.OTLPEndpoint)
+				assert.Equal(t, "9191", r.PrometheusPort)
+			},
+		},
+		{
+			name: "standard OTEL endpoint overrides deprecated alias",
+			envVars: map[string]string{
+				"TELEMETRY_TRACE_ENABLE":      "true",
+				"TELEMETRY_TRACE_ENDPOINT":    "http://legacy:4318",
+				"OTEL_EXPORTER_OTLP_ENDPOINT": "http://standard:4318",
+			},
+			validate: func(t *testing.T, r config.ResolvedTelemetry) {
+				assert.Equal(t, "http://standard:4318", r.OTLPEndpoint)
+			},
+		},
+		{
+			name: "metrics exporter none disables prometheus",
+			envVars: map[string]string{
+				"OTEL_METRICS_EXPORTER": "none",
+			},
+			validate: func(t *testing.T, r config.ResolvedTelemetry) {
+				assert.Equal(t, config.ExporterNone, r.MetricsExporter)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			lookuper := envconfig.MapLookuper(tt.envVars)
+			cfg, err := config.LoadWithLookuper(ctx, nil, lookuper)
+			require.NoError(t, err)
+			tt.validate(t, cfg.ResolveTelemetry())
+		})
+	}
+}
+
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name               string

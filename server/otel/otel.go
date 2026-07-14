@@ -6,7 +6,10 @@ import (
 
 	otel "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
-	otlp "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	otlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	otlpmetrichttp "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	otlptracegrpc "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	otlptracehttp "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	prometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	metric "go.opentelemetry.io/otel/metric"
 	propagation "go.opentelemetry.io/otel/propagation"
@@ -101,11 +104,17 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 		zap.String("agent_name", cfg.AgentName),
 		zap.String("version", cfg.AgentVersion))
 
-	if err := o.initializeMetrics(cfg, res); err != nil {
+	resolved := cfg.ResolveTelemetry()
+	o.logger.Debug("resolved telemetry exporters",
+		zap.String("metrics_exporter", resolved.MetricsExporter),
+		zap.String("traces_exporter", resolved.TracesExporter),
+		zap.String("otlp_protocol", resolved.OTLPProtocol))
+
+	if err := o.initializeMetrics(cfg, res, resolved); err != nil {
 		return err
 	}
 
-	if err := o.initializeTraces(cfg, res); err != nil {
+	if err := o.initializeTraces(cfg, res, resolved); err != nil {
 		return err
 	}
 
@@ -119,15 +128,7 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 	return nil
 }
 
-func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresource.Resource) error {
-	exporter, err := prometheus.New()
-	if err != nil {
-		o.logger.Error("failed to create prometheus exporter", zap.Error(err))
-		return err
-	}
-
-	o.logger.Debug("prometheus exporter created successfully")
-
+func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresource.Resource, resolved config.ResolvedTelemetry) error {
 	histogramBoundaries := []float64{1, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
 
 	latencyView := sdkmetric.NewView(
@@ -143,11 +144,35 @@ func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresour
 
 	o.logger.Debug("histogram boundaries configured", zap.Any("boundaries", histogramBoundaries))
 
-	o.meterProvider = sdkmetric.NewMeterProvider(
+	opts := []sdkmetric.Option{
 		sdkmetric.WithResource(res),
-		sdkmetric.WithReader(exporter),
 		sdkmetric.WithView(latencyView),
-	)
+	}
+
+	switch resolved.MetricsExporter {
+	case config.ExporterNone:
+		o.logger.Info("metrics exporter disabled (metrics exporter=none)")
+	case config.ExporterOTLP:
+		exporter, err := o.newOTLPMetricExporter(resolved)
+		if err != nil {
+			o.logger.Error("failed to create otlp metric exporter", zap.Error(err))
+			return err
+		}
+		o.logger.Info("otlp metric exporter created",
+			zap.String("endpoint", resolved.OTLPEndpoint),
+			zap.String("protocol", resolved.OTLPProtocol))
+		opts = append(opts, sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)))
+	default:
+		exporter, err := prometheus.New()
+		if err != nil {
+			o.logger.Error("failed to create prometheus exporter", zap.Error(err))
+			return err
+		}
+		o.logger.Debug("prometheus exporter created successfully")
+		opts = append(opts, sdkmetric.WithReader(exporter))
+	}
+
+	o.meterProvider = sdkmetric.NewMeterProvider(opts...)
 	otel.SetMeterProvider(o.meterProvider)
 
 	o.logger.Debug("meter provider created and set globally")
@@ -166,20 +191,35 @@ func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresour
 	return nil
 }
 
-func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresource.Resource) error {
-	if !cfg.TelemetryConfig.TraceConfig.Enable {
+// newOTLPMetricExporter builds an OTLP metric exporter for the resolved protocol.
+func (o *OpenTelemetryImpl) newOTLPMetricExporter(resolved config.ResolvedTelemetry) (sdkmetric.Exporter, error) {
+	ctx := context.Background()
+	if resolved.OTLPProtocol == config.OTLPProtocolGRPC {
+		grpcOpts := []otlpmetricgrpc.Option{}
+		if resolved.OTLPEndpoint != "" {
+			grpcOpts = append(grpcOpts, otlpmetricgrpc.WithEndpointURL(resolved.OTLPEndpoint))
+		}
+		return otlpmetricgrpc.New(ctx, grpcOpts...)
+	}
+
+	httpOpts := []otlpmetrichttp.Option{}
+	if resolved.OTLPEndpoint != "" {
+		httpOpts = append(httpOpts, otlpmetrichttp.WithEndpointURL(resolved.OTLPEndpoint))
+	}
+	return otlpmetrichttp.New(ctx, httpOpts...)
+}
+
+func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresource.Resource, resolved config.ResolvedTelemetry) error {
+	if resolved.TracesExporter != config.ExporterOTLP {
 		o.logger.Debug("OTLP trace export is disabled")
 		return nil
 	}
 
 	o.logger.Info("initializing OTLP trace exporter",
-		zap.String("endpoint", cfg.TelemetryConfig.TraceConfig.Endpoint))
+		zap.String("endpoint", resolved.OTLPEndpoint),
+		zap.String("protocol", resolved.OTLPProtocol))
 
-	traceExporter, err := otlp.New(
-		context.Background(),
-		otlp.WithEndpointURL(cfg.TelemetryConfig.TraceConfig.Endpoint),
-		otlp.WithHeaders(cfg.TelemetryConfig.TraceConfig.Headers),
-	)
+	traceExporter, err := o.newOTLPTraceExporter(cfg, resolved)
 	if err != nil {
 		o.logger.Error("failed to create OTLP trace exporter", zap.Error(err))
 		return err
@@ -192,9 +232,37 @@ func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresourc
 	otel.SetTracerProvider(o.tracerProvider)
 
 	o.logger.Info("OTLP trace exporter initialized successfully",
-		zap.String("endpoint", cfg.TelemetryConfig.TraceConfig.Endpoint))
+		zap.String("endpoint", resolved.OTLPEndpoint))
 
 	return nil
+}
+
+// newOTLPTraceExporter builds an OTLP trace exporter for the resolved protocol.
+// TELEMETRY_TRACE_HEADERS are applied when set; otherwise the SDK's own
+// OTEL_EXPORTER_OTLP_HEADERS parsing still applies.
+func (o *OpenTelemetryImpl) newOTLPTraceExporter(cfg *config.Config, resolved config.ResolvedTelemetry) (sdktrace.SpanExporter, error) {
+	ctx := context.Background()
+	headers := cfg.TelemetryConfig.TraceConfig.Headers
+
+	if resolved.OTLPProtocol == config.OTLPProtocolGRPC {
+		grpcOpts := []otlptracegrpc.Option{}
+		if resolved.OTLPEndpoint != "" {
+			grpcOpts = append(grpcOpts, otlptracegrpc.WithEndpointURL(resolved.OTLPEndpoint))
+		}
+		if len(headers) > 0 {
+			grpcOpts = append(grpcOpts, otlptracegrpc.WithHeaders(headers))
+		}
+		return otlptracegrpc.New(ctx, grpcOpts...)
+	}
+
+	httpOpts := []otlptracehttp.Option{}
+	if resolved.OTLPEndpoint != "" {
+		httpOpts = append(httpOpts, otlptracehttp.WithEndpointURL(resolved.OTLPEndpoint))
+	}
+	if len(headers) > 0 {
+		httpOpts = append(httpOpts, otlptracehttp.WithHeaders(headers))
+	}
+	return otlptracehttp.New(ctx, httpOpts...)
 }
 
 // TracerProvider returns the tracer provider for creating spans

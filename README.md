@@ -658,19 +658,37 @@ export ARTIFACTS_STORAGE_BASE_URL=http://localhost:9000
 
 #### Telemetry (Optional)
 
-When enabled, the server exposes Prometheus metrics on a separate `/metrics` endpoint and can export traces via OTLP over HTTP. It also participates in [W3C Trace Context](https://www.w3.org/TR/trace-context/) propagation: incoming `traceparent` and `baggage` headers are extracted, a request-scoped `a2a.request` span is created, and the `infer.session.id` / `infer.tool.call.id` baggage items are surfaced as span attributes. See [docs/telemetry.md](./docs/telemetry.md) for details.
+When enabled, the server exports metrics (Prometheus pull or OTLP push) and can export traces via OTLP over HTTP or gRPC. It also participates in [W3C Trace Context](https://www.w3.org/TR/trace-context/) propagation: incoming `traceparent` and `baggage` headers are extracted, a request-scoped `a2a.request` span is created, and the `session.id` / `gen_ai.tool.call.id` baggage items are surfaced as span attributes. Exporters are selected with the standard `OTEL_*` variables; the original `TELEMETRY_*` variables remain supported as deprecated aliases. See [docs/telemetry.md](./docs/telemetry.md) for the full matrix.
 
-| Variable                   | Default                 | Description                                            |
-| -------------------------- | ----------------------- | ------------------------------------------------------ |
-| `TELEMETRY_ENABLE`         | `false`                 | Enable telemetry (Prometheus metrics + tracing)        |
-| `TELEMETRY_METRICS_PORT`   | `9090`                  | Port for the `/metrics` Prometheus endpoint            |
-| `TELEMETRY_METRICS_HOST`   | -                       | Metrics server host (empty = all interfaces)           |
-| `TELEMETRY_TRACE_ENABLE`   | `false`                 | Enable OTLP trace export                               |
-| `TELEMETRY_TRACE_ENDPOINT` | `http://localhost:4318` | OTLP HTTP endpoint URL for traces                      |
-| `TELEMETRY_TRACE_HEADERS`  | -                       | Custom headers for OTLP trace export (`key:value`)     |
-| `TELEMETRY_LOG_ENABLE`     | `false`                 | Reserved - OTLP log export is not yet wired            |
-| `TELEMETRY_LOG_ENDPOINT`   | `http://localhost:4318` | Reserved - OTLP log endpoint URL (not yet wired)       |
-| `TELEMETRY_LOG_HEADERS`    | -                       | Reserved - headers for OTLP log export (not yet wired) |
+`TELEMETRY_ENABLE=true` is the master switch; the `OTEL_*` variables then choose which exporters run per signal.
+
+| Variable                        | Default                 | Description                                       |
+| ------------------------------- | ----------------------- | ------------------------------------------------- |
+| `TELEMETRY_ENABLE`              | `false`                 | Master switch for the telemetry subsystem         |
+| `OTEL_METRICS_EXPORTER`         | `prometheus`            | Metrics exporter: `prometheus`, `otlp`, or `none` |
+| `OTEL_TRACES_EXPORTER`          | `none`                  | Traces exporter: `otlp` or `none`                 |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`   | `http://localhost:4318` | OTLP endpoint base URL for traces and metrics     |
+| `OTEL_EXPORTER_OTLP_PROTOCOL`   | `http/protobuf`         | OTLP transport: `http/protobuf` or `grpc`         |
+| `OTEL_EXPORTER_PROMETHEUS_HOST` | -                       | Prometheus pull host (empty = all interfaces)     |
+| `OTEL_EXPORTER_PROMETHEUS_PORT` | `9090`                  | Prometheus pull port                              |
+
+**Attribute keys** (default to OTel semantic conventions; used for both the baggage member and the span attribute):
+
+| Variable                          | Default               | Description                        |
+| --------------------------------- | --------------------- | ---------------------------------- |
+| `TELEMETRY_ATTR_SESSION_ID_KEY`   | `session.id`          | Session id baggage/attribute key   |
+| `TELEMETRY_ATTR_TOOL_CALL_ID_KEY` | `gen_ai.tool.call.id` | Tool call id baggage/attribute key |
+
+**Deprecated aliases** (superseded by the `OTEL_*` variables above, still honored):
+
+| Variable                   | Default                 | Superseded by                            |
+| -------------------------- | ----------------------- | ---------------------------------------- |
+| `TELEMETRY_METRICS_PORT`   | `9090`                  | `OTEL_EXPORTER_PROMETHEUS_PORT`          |
+| `TELEMETRY_METRICS_HOST`   | -                       | `OTEL_EXPORTER_PROMETHEUS_HOST`          |
+| `TELEMETRY_TRACE_ENABLE`   | `false`                 | `OTEL_TRACES_EXPORTER=otlp`              |
+| `TELEMETRY_TRACE_ENDPOINT` | `http://localhost:4318` | `OTEL_EXPORTER_OTLP_ENDPOINT`            |
+| `TELEMETRY_TRACE_HEADERS`  | -                       | `OTEL_EXPORTER_OTLP_HEADERS`             |
+| `TELEMETRY_LOG_*`          | -                       | Reserved - OTLP log export not yet wired |
 
 > The tracing service name is taken from the agent card `name` (the build-time agent identity), not a separate variable.
 

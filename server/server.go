@@ -210,8 +210,15 @@ func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl {
 		if err != nil {
 			logger.Fatal("failed to initialize telemetry", zap.Error(err))
 		}
-		metricsAddr := finalCfg.TelemetryConfig.MetricsConfig.Host + ":" + finalCfg.TelemetryConfig.MetricsConfig.Port
-		logger.Info("telemetry enabled - metrics will be available", zap.String("metrics_url", metricsAddr+"/metrics"))
+		resolvedTelemetry := finalCfg.ResolveTelemetry()
+		if resolvedTelemetry.MetricsExporter == config.MetricsExporterPrometheus {
+			metricsAddr := resolvedTelemetry.PrometheusHost + ":" + resolvedTelemetry.PrometheusPort
+			logger.Info("telemetry enabled - metrics will be available", zap.String("metrics_url", metricsAddr+"/metrics"))
+		} else {
+			logger.Info("telemetry enabled",
+				zap.String("metrics_exporter", resolvedTelemetry.MetricsExporter),
+				zap.String("traces_exporter", resolvedTelemetry.TracesExporter))
+		}
 	}
 
 	server := NewA2AServer(finalCfg, logger, telemetryInstance)
@@ -466,12 +473,15 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 
 	s.validateStreamingConfiguration()
 
-	if s.otel != nil {
+	// The Prometheus pull server only runs when metrics resolve to the prometheus
+	// exporter; the otlp and none exporters push (or drop) metrics instead.
+	resolvedTelemetry := s.cfg.ResolveTelemetry()
+	if s.otel != nil && resolvedTelemetry.MetricsExporter == config.MetricsExporterPrometheus {
 		go func() {
 			metricsRouter := gin.Default()
 			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-			metricsAddr := s.cfg.TelemetryConfig.MetricsConfig.Host + ":" + s.cfg.TelemetryConfig.MetricsConfig.Port
+			metricsAddr := resolvedTelemetry.PrometheusHost + ":" + resolvedTelemetry.PrometheusPort
 			s.metricsServer = &http.Server{
 				Addr:         metricsAddr,
 				Handler:      metricsRouter,
@@ -480,7 +490,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 				IdleTimeout:  s.cfg.TelemetryConfig.MetricsConfig.IdleTimeout,
 			}
 
-			s.logger.Info("starting metrics server", zap.String("port", s.cfg.TelemetryConfig.MetricsConfig.Port))
+			s.logger.Info("starting metrics server", zap.String("port", resolvedTelemetry.PrometheusPort))
 			if err := s.metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				s.logger.Error("metrics server failed", zap.Error(err))
 			}
