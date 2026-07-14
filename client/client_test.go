@@ -112,6 +112,58 @@ func TestNewClientWithConfig(t *testing.T) {
 	}
 }
 
+func TestNewClientWithConfig_CustomTransport(t *testing.T) {
+	// recordingTransport records whether it was called
+	type recordingTransport struct {
+		called bool
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := types.JSONRPCSuccessResponse{
+			JSONRPC: "2.0",
+			ID:      1,
+			Result:  "ok",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	rt := &recordingTransport{}
+	transport := roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		rt.called = true
+		return http.DefaultTransport.RoundTrip(req)
+	})
+
+	config := &client.Config{
+		BaseURL:   server.URL,
+		Transport: transport,
+	}
+	c := client.NewClientWithConfig(config)
+	ctx := context.Background()
+
+	params := types.MessageSendParams{
+		Message: types.Message{
+			MessageID: "transport-test",
+			Role:      "user",
+			Parts:     []types.Part{types.CreateTextPart("test")},
+		},
+	}
+
+	resp, err := c.SendTask(ctx, params)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.True(t, rt.called, "custom transport should have been used")
+}
+
+// roundTripperFunc adapts a function to http.RoundTripper
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
 func TestDefaultConfig(t *testing.T) {
 	tests := []struct {
 		name               string
