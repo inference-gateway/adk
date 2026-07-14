@@ -128,6 +128,22 @@ type MetricsConfig struct {
 type TelemetryConfig struct {
 	Enable        bool          `env:"ENABLE,default=false" description:"Enable telemetry collection"`
 	MetricsConfig MetricsConfig `env:",prefix=METRICS_"`
+	TraceConfig   TraceConfig   `env:",prefix=TRACE_"`
+	LogConfig     LogConfig     `env:",prefix=LOG_"`
+}
+
+// TraceConfig holds OTLP trace exporter configuration
+type TraceConfig struct {
+	Enable   bool              `env:"ENABLE,default=false" description:"Enable OTLP trace export"`
+	Endpoint string            `env:"ENDPOINT,default=http://localhost:4318" description:"OTLP trace endpoint URL"`
+	Headers  map[string]string `env:"HEADERS" description:"Custom headers for OTLP trace export"`
+}
+
+// LogConfig holds OTLP log exporter configuration
+type LogConfig struct {
+	Enable   bool              `env:"ENABLE,default=false" description:"Enable OTLP log export"`
+	Endpoint string            `env:"ENDPOINT,default=http://localhost:4318" description:"OTLP log endpoint URL"`
+	Headers  map[string]string `env:"HEADERS" description:"Custom headers for OTLP log export"`
 }
 
 // ArtifactsConfig holds artifacts server configuration

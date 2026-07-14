@@ -2,12 +2,18 @@ package middlewares
 
 import (
 	"bytes"
+	"net/http"
 	"strings"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
 	config "github.com/inference-gateway/adk/server/config"
-	otel "github.com/inference-gateway/adk/server/otel"
+	adkotel "github.com/inference-gateway/adk/server/otel"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
+	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
+	"go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
 )
 
@@ -17,15 +23,22 @@ type Telemetry interface {
 
 type TelemetryImpl struct {
 	cfg       config.Config
-	telemetry otel.OpenTelemetry
+	telemetry adkotel.OpenTelemetry
 	logger    *zap.Logger
+	tracer    trace.Tracer
 }
 
-func NewTelemetryMiddleware(cfg config.Config, telemetry otel.OpenTelemetry, logger *zap.Logger) (Telemetry, error) {
+func NewTelemetryMiddleware(cfg config.Config, telemetry adkotel.OpenTelemetry, logger *zap.Logger) (Telemetry, error) {
+	tp := telemetry.TracerProvider()
+	if tp == nil {
+		tp = otel.GetTracerProvider()
+	}
+	tracer := tp.Tracer("github.com/inference-gateway/adk/server/middlewares")
 	return &TelemetryImpl{
 		cfg:       cfg,
 		telemetry: telemetry,
 		logger:    logger,
+		tracer:    tracer,
 	}, nil
 }
 
@@ -50,7 +63,39 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 
 		startTime := time.Now()
 
-		attrs := otel.TelemetryAttributes{
+		// Extract W3C trace context and baggage from incoming request headers
+		propagator := otel.GetTextMapPropagator()
+		ctx := propagator.Extract(c.Request.Context(), propagationHeaderCarrier(c.Request.Header))
+		c.Request = c.Request.WithContext(ctx)
+
+		// Extract baggage items and surface as span attributes
+		bag := baggage.FromContext(ctx)
+		sessionID := bag.Member("infer.session.id")
+		toolCallID := bag.Member("infer.tool.call.id")
+
+		// Start a request-scoped span
+		spanAttrs := []attribute.KeyValue{
+			semconv.HTTPRequestMethodKey.String(c.Request.Method),
+			semconv.URLFullKey.String(c.Request.URL.String()),
+			semconv.HTTPRouteKey.String(c.Request.URL.Path),
+		}
+		if sessionID.Value() != "" {
+			spanAttrs = append(spanAttrs, attribute.String("infer.session.id", sessionID.Value()))
+		}
+		if toolCallID.Value() != "" {
+			spanAttrs = append(spanAttrs, attribute.String("infer.tool.call.id", toolCallID.Value()))
+		}
+
+		ctx, span := t.tracer.Start(ctx, "a2a.request",
+			trace.WithSpanKind(trace.SpanKindServer),
+			trace.WithAttributes(spanAttrs...),
+		)
+		defer span.End()
+
+		// Update the request context with the span context
+		c.Request = c.Request.WithContext(ctx)
+
+		attrs := adkotel.TelemetryAttributes{
 			Provider: t.cfg.AgentConfig.Provider,
 			Model:    t.cfg.AgentConfig.Model,
 			TaskID:   "",
@@ -62,7 +107,7 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 		}
 		c.Writer = responseWriter
 
-		t.telemetry.RecordRequestCount(c.Request.Context(), attrs, c.Request.Method)
+		t.telemetry.RecordRequestCount(ctx, attrs, c.Request.Method)
 
 		c.Next()
 
@@ -71,8 +116,13 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 
 		statusCode := responseWriter.Status()
 
+		span.SetAttributes(semconv.HTTPResponseStatusCodeKey.Int(statusCode))
+		if statusCode >= 400 {
+			span.SetAttributes(attribute.String("error.type", "http_error"))
+		}
+
 		t.telemetry.RecordResponseStatus(
-			c.Request.Context(),
+			ctx,
 			attrs,
 			c.Request.Method,
 			c.Request.URL.Path,
@@ -80,7 +130,7 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 		)
 
 		t.telemetry.RecordRequestDuration(
-			c.Request.Context(),
+			ctx,
 			attrs,
 			c.Request.Method,
 			c.Request.URL.Path,
@@ -96,4 +146,23 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 			zap.String("model", attrs.Model),
 		)
 	}
+}
+
+// propagationHeaderCarrier adapts http.Header to the OTel TextMapCarrier interface
+type propagationHeaderCarrier http.Header
+
+func (c propagationHeaderCarrier) Get(key string) string {
+	return http.Header(c).Get(key)
+}
+
+func (c propagationHeaderCarrier) Set(key string, value string) {
+	http.Header(c).Set(key, value)
+}
+
+func (c propagationHeaderCarrier) Keys() []string {
+	keys := make([]string, 0, len(c))
+	for k := range c {
+		keys = append(keys, k)
+	}
+	return keys
 }

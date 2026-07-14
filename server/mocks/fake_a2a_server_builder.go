@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/inference-gateway/adk/server"
+	"github.com/inference-gateway/adk/server/otel"
 	"github.com/inference-gateway/adk/types"
 	"go.uber.org/zap"
 )
@@ -139,6 +140,17 @@ type FakeA2AServerBuilder struct {
 		result1 server.A2AServerBuilder
 	}
 	withTaskResultProcessorReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
+	WithTelemetryStub        func(otel.OpenTelemetry) server.A2AServerBuilder
+	withTelemetryMutex       sync.RWMutex
+	withTelemetryArgsForCall []struct {
+		arg1 otel.OpenTelemetry
+	}
+	withTelemetryReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withTelemetryReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
 	invocations      map[string][][]interface{}
@@ -849,6 +861,67 @@ func (fake *FakeA2AServerBuilder) WithTaskResultProcessorReturnsOnCall(i int, re
 	}{result1}
 }
 
+func (fake *FakeA2AServerBuilder) WithTelemetry(arg1 otel.OpenTelemetry) server.A2AServerBuilder {
+	fake.withTelemetryMutex.Lock()
+	ret, specificReturn := fake.withTelemetryReturnsOnCall[len(fake.withTelemetryArgsForCall)]
+	fake.withTelemetryArgsForCall = append(fake.withTelemetryArgsForCall, struct {
+		arg1 otel.OpenTelemetry
+	}{arg1})
+	stub := fake.WithTelemetryStub
+	fakeReturns := fake.withTelemetryReturns
+	fake.recordInvocation("WithTelemetry", []interface{}{arg1})
+	fake.withTelemetryMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithTelemetryCallCount() int {
+	fake.withTelemetryMutex.RLock()
+	defer fake.withTelemetryMutex.RUnlock()
+	return len(fake.withTelemetryArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithTelemetryCalls(stub func(otel.OpenTelemetry) server.A2AServerBuilder) {
+	fake.withTelemetryMutex.Lock()
+	defer fake.withTelemetryMutex.Unlock()
+	fake.WithTelemetryStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithTelemetryArgsForCall(i int) otel.OpenTelemetry {
+	fake.withTelemetryMutex.RLock()
+	defer fake.withTelemetryMutex.RUnlock()
+	argsForCall := fake.withTelemetryArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServerBuilder) WithTelemetryReturns(result1 server.A2AServerBuilder) {
+	fake.withTelemetryMutex.Lock()
+	defer fake.withTelemetryMutex.Unlock()
+	fake.WithTelemetryStub = nil
+	fake.withTelemetryReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithTelemetryReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withTelemetryMutex.Lock()
+	defer fake.withTelemetryMutex.Unlock()
+	fake.WithTelemetryStub = nil
+	if fake.withTelemetryReturnsOnCall == nil {
+		fake.withTelemetryReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withTelemetryReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
 func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -876,6 +949,8 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.withStreamingTaskHandlerMutex.RUnlock()
 	fake.withTaskResultProcessorMutex.RLock()
 	defer fake.withTaskResultProcessorMutex.RUnlock()
+	fake.withTelemetryMutex.RLock()
+	defer fake.withTelemetryMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

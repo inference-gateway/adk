@@ -8,11 +8,15 @@ import (
 	sdk "github.com/inference-gateway/sdk"
 	otel "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
+	otlp "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	prometheus "go.opentelemetry.io/otel/exporters/prometheus"
 	metric "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	resource "go.opentelemetry.io/otel/sdk/resource"
+	sdkresource "go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
+	"go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
 )
 
@@ -28,14 +32,18 @@ type OpenTelemetry interface {
 	RecordTaskFailure(ctx context.Context, attrs TelemetryAttributes, toolName string, errorMessage string)
 	RecordToolCallFailure(ctx context.Context, attrs TelemetryAttributes, toolName string, errorMessage string)
 
+	// TracerProvider returns the tracer provider for creating spans
+	TracerProvider() trace.TracerProvider
+
 	// Shutdown the telemetry system
 	ShutDown(ctx context.Context) error
 }
 
 type OpenTelemetryImpl struct {
-	logger        *zap.Logger
-	meterProvider *sdkmetric.MeterProvider
-	meter         metric.Meter
+	logger         *zap.Logger
+	meterProvider  *sdkmetric.MeterProvider
+	tracerProvider *sdktrace.TracerProvider
+	meter          metric.Meter
 
 	// Metrics
 	promptTokensCounter      metric.Int64Counter
@@ -82,15 +90,7 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 		zap.String("agent_name", cfg.AgentName),
 		zap.String("version", cfg.AgentVersion))
 
-	exporter, err := prometheus.New()
-	if err != nil {
-		o.logger.Error("failed to create prometheus exporter", zap.Error(err))
-		return err
-	}
-
-	o.logger.Debug("prometheus exporter created successfully")
-
-	res := resource.NewWithAttributes(
+	res := sdkresource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceName(cfg.AgentName),
 		semconv.ServiceVersion(cfg.AgentVersion),
@@ -99,6 +99,36 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 	o.logger.Debug("opentelemetry resource created",
 		zap.String("agent_name", cfg.AgentName),
 		zap.String("version", cfg.AgentVersion))
+
+	// Initialize metrics (Prometheus)
+	if err := o.initializeMetrics(cfg, res); err != nil {
+		return err
+	}
+
+	// Initialize traces (OTLP)
+	if err := o.initializeTraces(cfg, res); err != nil {
+		return err
+	}
+
+	// Set up W3C trace context and baggage propagators
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	o.logger.Debug("W3C trace context and baggage propagators set globally")
+
+	o.logger.Info("opentelemetry initialized successfully")
+	return nil
+}
+
+func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresource.Resource) error {
+	exporter, err := prometheus.New()
+	if err != nil {
+		o.logger.Error("failed to create prometheus exporter", zap.Error(err))
+		return err
+	}
+
+	o.logger.Debug("prometheus exporter created successfully")
 
 	histogramBoundaries := []float64{1, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
 
@@ -130,13 +160,52 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 
 	o.logger.Debug("initializing opentelemetry metrics")
 
-	if err := o.initializeMetrics(cfg.AgentName); err != nil {
+	if err := o.initializeMetricsInstruments(cfg.AgentName); err != nil {
 		o.logger.Error("failed to initialize metrics", zap.Error(err))
 		return err
 	}
 
-	o.logger.Info("opentelemetry initialized successfully")
 	return nil
+}
+
+func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresource.Resource) error {
+	if !cfg.TelemetryConfig.TraceConfig.Enable {
+		o.logger.Debug("OTLP trace export is disabled")
+		return nil
+	}
+
+	o.logger.Info("initializing OTLP trace exporter",
+		zap.String("endpoint", cfg.TelemetryConfig.TraceConfig.Endpoint))
+
+	traceExporter, err := otlp.New(
+		context.Background(),
+		otlp.WithEndpointURL(cfg.TelemetryConfig.TraceConfig.Endpoint),
+		otlp.WithHeaders(cfg.TelemetryConfig.TraceConfig.Headers),
+	)
+	if err != nil {
+		o.logger.Error("failed to create OTLP trace exporter", zap.Error(err))
+		return err
+	}
+
+	o.tracerProvider = sdktrace.NewTracerProvider(
+		sdktrace.WithResource(res),
+		sdktrace.WithBatcher(traceExporter),
+	)
+	otel.SetTracerProvider(o.tracerProvider)
+
+	o.logger.Info("OTLP trace exporter initialized successfully",
+		zap.String("endpoint", cfg.TelemetryConfig.TraceConfig.Endpoint))
+
+	return nil
+}
+
+// TracerProvider returns the tracer provider for creating spans
+func (o *OpenTelemetryImpl) TracerProvider() trace.TracerProvider {
+	if o.tracerProvider != nil {
+		return o.tracerProvider
+	}
+	// Return the global tracer provider as fallback (no-op if no OTLP configured)
+	return otel.GetTracerProvider()
 }
 
 func (o *OpenTelemetryImpl) RecordTokenUsage(ctx context.Context, attrs TelemetryAttributes, usage sdk.CompletionUsage) {
@@ -245,11 +314,31 @@ func (o *OpenTelemetryImpl) RecordToolCallFailure(ctx context.Context, attrs Tel
 }
 
 func (o *OpenTelemetryImpl) ShutDown(ctx context.Context) error {
-	return o.meterProvider.Shutdown(ctx)
+	o.logger.Info("shutting down opentelemetry")
+
+	var err error
+
+	if o.tracerProvider != nil {
+		if shutdownErr := o.tracerProvider.Shutdown(ctx); shutdownErr != nil {
+			o.logger.Error("error shutting down tracer provider", zap.Error(shutdownErr))
+			err = shutdownErr
+		}
+	}
+
+	if o.meterProvider != nil {
+		if shutdownErr := o.meterProvider.Shutdown(ctx); shutdownErr != nil {
+			o.logger.Error("error shutting down meter provider", zap.Error(shutdownErr))
+			if err == nil {
+				err = shutdownErr
+			}
+		}
+	}
+
+	return err
 }
 
-// initializeMetrics initializes all the OpenTelemetry metrics
-func (o *OpenTelemetryImpl) initializeMetrics(serviceName string) error {
+// initializeMetricsInstruments initializes all the OpenTelemetry metrics
+func (o *OpenTelemetryImpl) initializeMetricsInstruments(serviceName string) error {
 	var err error
 
 	o.promptTokensCounter, err = o.meter.Int64Counter(
