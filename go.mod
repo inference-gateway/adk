@@ -1,13 +1,13 @@
 module github.com/inference-gateway/adk
 
-go 1.26.2
+go 1.26.4
 
 require (
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/coreos/go-oidc/v3 v3.19.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
-	github.com/inference-gateway/sdk v1.19.0
+	github.com/inference-gateway/sdk v1.21.0
 	github.com/minio/minio-go/v7 v7.2.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.21.0
