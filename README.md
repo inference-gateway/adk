@@ -25,10 +25,6 @@
   </a>
   <!-- Go Version -->
   <img src="https://img.shields.io/github/go-mod/go-version/inference-gateway/adk?style=flat-square" alt="Go Version"/>
-  <!-- Go Report Card -->
-  <a href="https://goreportcard.com/report/github.com/inference-gateway/adk">
-    <img src="https://goreportcard.com/badge/github.com/inference-gateway/adk?style=flat-square" alt="Go Report Card"/>
-  </a>
 </p>
 
 ---
