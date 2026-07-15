@@ -662,7 +662,7 @@ When enabled, the server exports metrics (Prometheus pull or OTLP push) and can 
 | ------------------------------- | ----------------------- | ------------------------------------------------- |
 | `TELEMETRY_ENABLE`              | `false`                 | Master switch for the telemetry subsystem         |
 | `OTEL_METRICS_EXPORTER`         | `prometheus`            | Metrics exporter: `prometheus`, `otlp`, or `none` |
-| `OTEL_TRACES_EXPORTER`          | `none`                  | Traces exporter: `otlp` or `none`                 |
+| `OTEL_TRACES_EXPORTER`          | `otlp`                  | Traces exporter: `otlp` or `none`                 |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`   | `http://localhost:4318` | OTLP endpoint base URL for traces and metrics     |
 | `OTEL_EXPORTER_OTLP_PROTOCOL`   | `http/protobuf`         | OTLP transport: `http/protobuf` or `grpc`         |
 | `OTEL_EXPORTER_PROMETHEUS_HOST` | -                       | Prometheus pull host (empty = all interfaces)     |
@@ -681,7 +681,6 @@ When enabled, the server exports metrics (Prometheus pull or OTLP push) and can 
 | -------------------------- | ----------------------- | ---------------------------------------- |
 | `TELEMETRY_METRICS_PORT`   | `9090`                  | `OTEL_EXPORTER_PROMETHEUS_PORT`          |
 | `TELEMETRY_METRICS_HOST`   | -                       | `OTEL_EXPORTER_PROMETHEUS_HOST`          |
-| `TELEMETRY_TRACE_ENABLE`   | `false`                 | `OTEL_TRACES_EXPORTER=otlp`              |
 | `TELEMETRY_TRACE_ENDPOINT` | `http://localhost:4318` | `OTEL_EXPORTER_OTLP_ENDPOINT`            |
 | `TELEMETRY_TRACE_HEADERS`  | -                       | `OTEL_EXPORTER_OTLP_HEADERS`             |
 | `TELEMETRY_LOG_*`          | -                       | Reserved - OTLP log export not yet wired |

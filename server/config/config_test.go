@@ -319,9 +319,28 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 			},
 		},
 		{
-			name: "deprecated TELEMETRY aliases still drive traces",
+			name: "telemetry enable defaults traces to otlp",
 			envVars: map[string]string{
-				"TELEMETRY_TRACE_ENABLE":   "true",
+				"TELEMETRY_ENABLE": "true",
+			},
+			validate: func(t *testing.T, r config.ResolvedTelemetry) {
+				assert.Equal(t, config.ExporterOTLP, r.TracesExporter)
+			},
+		},
+		{
+			name: "traces exporter none opts traces out while telemetry enabled",
+			envVars: map[string]string{
+				"TELEMETRY_ENABLE":     "true",
+				"OTEL_TRACES_EXPORTER": "none",
+			},
+			validate: func(t *testing.T, r config.ResolvedTelemetry) {
+				assert.Equal(t, config.ExporterNone, r.TracesExporter)
+			},
+		},
+		{
+			name: "deprecated endpoint alias still feeds otlp traces",
+			envVars: map[string]string{
+				"TELEMETRY_ENABLE":         "true",
 				"TELEMETRY_TRACE_ENDPOINT": "http://legacy:4318",
 				"TELEMETRY_METRICS_PORT":   "9191",
 			},
@@ -334,7 +353,7 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 		{
 			name: "standard OTEL endpoint overrides deprecated alias",
 			envVars: map[string]string{
-				"TELEMETRY_TRACE_ENABLE":      "true",
+				"TELEMETRY_ENABLE":            "true",
 				"TELEMETRY_TRACE_ENDPOINT":    "http://legacy:4318",
 				"OTEL_EXPORTER_OTLP_ENDPOINT": "http://standard:4318",
 			},

@@ -219,9 +219,8 @@ func (c *Config) ResolveTelemetry() ResolvedTelemetry {
 		r.MetricsExporter = MetricsExporterPrometheus
 	}
 
-	// Traces exporter falls back to the deprecated TELEMETRY_TRACE_ENABLE flag.
 	if r.TracesExporter == "" {
-		if c.TelemetryConfig.TraceConfig.Enable {
+		if c.TelemetryConfig.Enable {
 			r.TracesExporter = ExporterOTLP
 		} else {
 			r.TracesExporter = ExporterNone
@@ -249,9 +248,10 @@ func (c *Config) ResolveTelemetry() ResolvedTelemetry {
 	return r
 }
 
-// TraceConfig holds OTLP trace exporter configuration
+// TraceConfig holds OTLP trace exporter configuration. Trace export is gated by
+// the top-level TELEMETRY_ENABLE and the OTEL_TRACES_EXPORTER selection, not by
+// a per-signal enable flag.
 type TraceConfig struct {
-	Enable   bool              `env:"ENABLE,default=false" description:"Enable OTLP trace export"`
 	Endpoint string            `env:"ENDPOINT,default=http://localhost:4318" description:"OTLP trace endpoint URL"`
 	Headers  map[string]string `env:"HEADERS" description:"Custom headers for OTLP trace export"`
 }

@@ -28,7 +28,7 @@ This document explains the telemetry surface of the A2A Agent Development Kit (A
 The telemetry layer is built on [OpenTelemetry](https://opentelemetry.io/). When enabled it provides:
 
 - **Metrics** exported either by a **Prometheus pull** endpoint (default port `9090`) or **pushed via OTLP** to a collector.
-- **OTLP trace export** over HTTP or gRPC to a collector (optional, disabled by default).
+- **OTLP trace export** over HTTP or gRPC to a collector (on by default; opt out with `OTEL_TRACES_EXPORTER=none`).
 - **W3C Trace Context propagation** - incoming `traceparent`/`baggage` headers are extracted and a request-scoped span is created for every `/a2a` request.
 
 Exporters are selected with the standard OpenTelemetry `OTEL_*` environment variables. The original `TELEMETRY_*` variables remain supported as deprecated aliases so existing deployments keep working.
@@ -55,7 +55,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 | Variable                        | Default                 | Description                                                    |
 | ------------------------------- | ----------------------- | -------------------------------------------------------------- |
 | `OTEL_METRICS_EXPORTER`         | `prometheus`            | Metrics exporter: `prometheus`, `otlp`, or `none`              |
-| `OTEL_TRACES_EXPORTER`          | `none`                  | Traces exporter: `otlp` or `none`                              |
+| `OTEL_TRACES_EXPORTER`          | `otlp`                  | Traces exporter: `otlp` or `none`                              |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`   | `http://localhost:4318` | OTLP endpoint base URL shared by traces and metrics            |
 | `OTEL_EXPORTER_OTLP_PROTOCOL`   | `http/protobuf`         | OTLP transport: `http/protobuf` or `grpc`                      |
 | `OTEL_EXPORTER_PROMETHEUS_HOST` | -                       | Host for the Prometheus pull endpoint (empty = all interfaces) |
@@ -71,7 +71,6 @@ These still work but are superseded by the `OTEL_*` variables above. Prefer the 
 | -------------------------- | ----------------------- | ------------------------------- |
 | `TELEMETRY_METRICS_PORT`   | `9090`                  | `OTEL_EXPORTER_PROMETHEUS_PORT` |
 | `TELEMETRY_METRICS_HOST`   | -                       | `OTEL_EXPORTER_PROMETHEUS_HOST` |
-| `TELEMETRY_TRACE_ENABLE`   | `false`                 | `OTEL_TRACES_EXPORTER=otlp`     |
 | `TELEMETRY_TRACE_ENDPOINT` | `http://localhost:4318` | `OTEL_EXPORTER_OTLP_ENDPOINT`   |
 | `TELEMETRY_TRACE_HEADERS`  | -                       | `OTEL_EXPORTER_OTLP_HEADERS`    |
 
@@ -95,7 +94,7 @@ Baggage member names must stay in sync with the producer side (the `infer` orche
 For each setting, the standard `OTEL_*` variable wins when set; otherwise the deprecated `TELEMETRY_*` alias (and its default) applies:
 
 - **Metrics exporter** - `OTEL_METRICS_EXPORTER`, else `prometheus`.
-- **Traces exporter** - `OTEL_TRACES_EXPORTER`, else `otlp` when `TELEMETRY_TRACE_ENABLE=true`, else `none`.
+- **Traces exporter** - `OTEL_TRACES_EXPORTER`, else `otlp` when telemetry is enabled (`TELEMETRY_ENABLE=true`), else `none`.
 - **OTLP endpoint** - `OTEL_EXPORTER_OTLP_ENDPOINT`, else `TELEMETRY_TRACE_ENDPOINT`.
 - **OTLP protocol** - `OTEL_EXPORTER_OTLP_PROTOCOL`, else `http/protobuf`.
 - **Prometheus host/port** - `OTEL_EXPORTER_PROMETHEUS_HOST`/`PORT`, else `TELEMETRY_METRICS_HOST`/`PORT`.
@@ -125,7 +124,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 
 ### OTLP Trace Export
 
-When `OTEL_TRACES_EXPORTER=otlp` (or the deprecated `TELEMETRY_TRACE_ENABLE=true`), a batching OTLP trace exporter is configured against `OTEL_EXPORTER_OTLP_ENDPOINT` over the selected protocol (`http/protobuf` or `grpc`) and registered as the global `TracerProvider`. Spans are exported in the background and flushed on shutdown.
+When telemetry is enabled (`TELEMETRY_ENABLE=true`) traces default to OTLP; setting `OTEL_TRACES_EXPORTER=none` opts traces out. With OTLP selected, a batching OTLP trace exporter is configured against `OTEL_EXPORTER_OTLP_ENDPOINT` over the selected protocol (`http/protobuf` or `grpc`) and registered as the global `TracerProvider`. Spans are exported in the background and flushed on shutdown.
 
 ### Trace Context Propagation
 
