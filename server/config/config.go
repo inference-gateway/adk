@@ -219,8 +219,6 @@ func (c *Config) ResolveTelemetry() ResolvedTelemetry {
 		r.MetricsExporter = MetricsExporterPrometheus
 	}
 
-	// Traces default to OTLP when telemetry is enabled; opt a signal out
-	// per-signal with OTEL_TRACES_EXPORTER=none.
 	if r.TracesExporter == "" {
 		if c.TelemetryConfig.Enable {
 			r.TracesExporter = ExporterOTLP
