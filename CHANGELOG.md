@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.2](https://github.com/inference-gateway/adk/compare/v0.23.1...v0.23.2) (2026-07-15)
+
+### 🐛 Bug Fixes
+
+* make telemetry enable the sole trace export gate ([#234](https://github.com/inference-gateway/adk/issues/234)) ([d9da8c5](https://github.com/inference-gateway/adk/commit/d9da8c5ab512516b7a619c5c27fe150dbe01094f)), closes [#233](https://github.com/inference-gateway/adk/issues/233)
+
+### 🔧 Miscellaneous
+
+* remove retired go report card badge from README ([be1e900](https://github.com/inference-gateway/adk/commit/be1e9002c9cdf66675246b34000254ed9d288129))
+* update flox environment packages ([d82f73d](https://github.com/inference-gateway/adk/commit/d82f73ddb9d64ac1a0227cfed8f1fac8eb78f0d1))
+
 ## [0.23.1](https://github.com/inference-gateway/adk/compare/v0.23.0...v0.23.1) (2026-07-15)
 
 ### 👷 CI
