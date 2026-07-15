@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.1](https://github.com/inference-gateway/adk/compare/v0.23.0...v0.23.1) (2026-07-15)
+
+### 👷 CI
+
+* **deps:** bump actions/setup-node in the github-actions group ([#231](https://github.com/inference-gateway/adk/issues/231)) ([dc68165](https://github.com/inference-gateway/adk/commit/dc68165be4403d8ea8944a130a74012fb3b4c14f))
+* **deps:** bump the gomod group with 3 updates ([#232](https://github.com/inference-gateway/adk/issues/232)) ([8899071](https://github.com/inference-gateway/adk/commit/88990718ae934ac76d6a53974dacbff8de456416))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump inference-gateway/sdk from v1.19.0 to v1.21.0 ([#230](https://github.com/inference-gateway/adk/issues/230)) ([2afd2f8](https://github.com/inference-gateway/adk/commit/2afd2f80d45c28bc7a9ed9f971f8fca1e9cfe932))
+
 ## [0.23.0](https://github.com/inference-gateway/adk/compare/v0.22.0...v0.23.0) (2026-07-14)
 
 ### ✨ Features
