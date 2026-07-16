@@ -17,6 +17,9 @@ import (
 	types "github.com/inference-gateway/adk/types"
 	promhttp "github.com/prometheus/client_golang/prometheus/promhttp"
 	envconfig "github.com/sethvargo/go-envconfig"
+	sdkotel "go.opentelemetry.io/otel"
+	attribute "go.opentelemetry.io/otel/attribute"
+	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
 )
 
@@ -582,6 +585,11 @@ func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 // processQueuedTask processes a single queued task
 func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *QueuedTask) {
 	task := queuedTask.Task
+
+	ctx = extractTraceContext(ctx, queuedTask.TraceContext)
+	ctx, span := sdkotel.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "task.process",
+		trace.WithAttributes(attribute.String("a2a.task.id", task.ID)))
+	defer span.End()
 
 	var message *types.Message
 	if task.Status.Message != nil {

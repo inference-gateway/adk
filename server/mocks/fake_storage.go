@@ -99,11 +99,12 @@ type FakeStorage struct {
 		result1 *server.QueuedTask
 		result2 error
 	}
-	EnqueueTaskStub        func(*types.Task, any) error
+	EnqueueTaskStub        func(context.Context, *types.Task, any) error
 	enqueueTaskMutex       sync.RWMutex
 	enqueueTaskArgsForCall []struct {
-		arg1 *types.Task
-		arg2 any
+		arg1 context.Context
+		arg2 *types.Task
+		arg3 any
 	}
 	enqueueTaskReturns struct {
 		result1 error
@@ -720,19 +721,20 @@ func (fake *FakeStorage) DequeueTaskReturnsOnCall(i int, result1 *server.QueuedT
 	}{result1, result2}
 }
 
-func (fake *FakeStorage) EnqueueTask(arg1 *types.Task, arg2 any) error {
+func (fake *FakeStorage) EnqueueTask(arg1 context.Context, arg2 *types.Task, arg3 any) error {
 	fake.enqueueTaskMutex.Lock()
 	ret, specificReturn := fake.enqueueTaskReturnsOnCall[len(fake.enqueueTaskArgsForCall)]
 	fake.enqueueTaskArgsForCall = append(fake.enqueueTaskArgsForCall, struct {
-		arg1 *types.Task
-		arg2 any
-	}{arg1, arg2})
+		arg1 context.Context
+		arg2 *types.Task
+		arg3 any
+	}{arg1, arg2, arg3})
 	stub := fake.EnqueueTaskStub
 	fakeReturns := fake.enqueueTaskReturns
-	fake.recordInvocation("EnqueueTask", []interface{}{arg1, arg2})
+	fake.recordInvocation("EnqueueTask", []interface{}{arg1, arg2, arg3})
 	fake.enqueueTaskMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
@@ -746,17 +748,17 @@ func (fake *FakeStorage) EnqueueTaskCallCount() int {
 	return len(fake.enqueueTaskArgsForCall)
 }
 
-func (fake *FakeStorage) EnqueueTaskCalls(stub func(*types.Task, any) error) {
+func (fake *FakeStorage) EnqueueTaskCalls(stub func(context.Context, *types.Task, any) error) {
 	fake.enqueueTaskMutex.Lock()
 	defer fake.enqueueTaskMutex.Unlock()
 	fake.EnqueueTaskStub = stub
 }
 
-func (fake *FakeStorage) EnqueueTaskArgsForCall(i int) (*types.Task, any) {
+func (fake *FakeStorage) EnqueueTaskArgsForCall(i int) (context.Context, *types.Task, any) {
 	fake.enqueueTaskMutex.RLock()
 	defer fake.enqueueTaskMutex.RUnlock()
 	argsForCall := fake.enqueueTaskArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeStorage) EnqueueTaskReturns(result1 error) {

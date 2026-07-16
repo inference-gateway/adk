@@ -95,7 +95,7 @@ func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 	}
 	task := taskManager.CreateTask("test-context", types.TaskStateSubmitted, message)
 
-	err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+	err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id")
 	assert.NoError(t, err)
 
 	retrievedTask, exists := taskManager.GetTask(task.ID)

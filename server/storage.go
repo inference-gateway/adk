@@ -6,20 +6,46 @@ import (
 	"sync"
 
 	types "github.com/inference-gateway/adk/types"
+	otel "go.opentelemetry.io/otel"
+	propagation "go.opentelemetry.io/otel/propagation"
 	zap "go.uber.org/zap"
 )
+
+// injectTraceContext serializes the trace context and baggage from ctx into a
+// map suitable for storing on a QueuedTask. Returns nil when there is nothing
+// to propagate.
+func injectTraceContext(ctx context.Context) map[string]string {
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if len(carrier) == 0 {
+		return nil
+	}
+	return carrier
+}
+
+// extractTraceContext restores a trace context previously captured by
+// injectTraceContext onto ctx.
+func extractTraceContext(ctx context.Context, traceContext map[string]string) context.Context {
+	if len(traceContext) == 0 {
+		return ctx
+	}
+	return otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(traceContext))
+}
 
 // QueuedTask represents a task in the processing queue
 type QueuedTask struct {
 	Task      *types.Task
 	RequestID any
+	// TraceContext carries the W3C trace context and baggage of the request
+	// that enqueued the task, so background processing joins the caller's trace.
+	TraceContext map[string]string `json:"trace_context,omitempty"`
 }
 
 // Storage defines the interface for queue-centric task management
 // Tasks carry their complete message history and flow through: Queue -> Processing -> Dead Letter
 type Storage interface {
 	// Task Queue Management (primary storage for active tasks)
-	EnqueueTask(task *types.Task, requestID any) error
+	EnqueueTask(ctx context.Context, task *types.Task, requestID any) error
 	DequeueTask(ctx context.Context) (*QueuedTask, error)
 	GetQueueLength() int
 	ClearQueue() error
@@ -723,14 +749,15 @@ func (s *InMemoryStorage) GetStats() StorageStats {
 }
 
 // EnqueueTask adds a task to the processing queue
-func (s *InMemoryStorage) EnqueueTask(task *types.Task, requestID any) error {
+func (s *InMemoryStorage) EnqueueTask(ctx context.Context, task *types.Task, requestID any) error {
 	if task == nil {
 		return fmt.Errorf("task cannot be nil")
 	}
 
 	queuedTask := &QueuedTask{
-		Task:      task,
-		RequestID: requestID,
+		Task:         task,
+		RequestID:    requestID,
+		TraceContext: injectTraceContext(ctx),
 	}
 
 	s.queueMu.Lock()

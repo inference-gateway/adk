@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -115,7 +116,7 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 
 	createdTask := taskManager.CreateTask("test-context", types.TaskStateSubmitted, message)
 
-	err := taskManager.GetStorage().EnqueueTask(createdTask, "test-request-id")
+	err := taskManager.GetStorage().EnqueueTask(context.Background(), createdTask, "test-request-id")
 	assert.NoError(t, err)
 
 	retrievedTask, exists := taskManager.GetTask(createdTask.ID)
@@ -144,13 +145,13 @@ func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {
 	failedTask := taskManager.CreateTask("context-4", types.TaskStateFailed, nil)
 
 	storage := taskManager.GetStorage()
-	err := storage.EnqueueTask(submittedTask, "req-1")
+	err := storage.EnqueueTask(context.Background(), submittedTask, "req-1")
 	assert.NoError(t, err)
-	err = storage.EnqueueTask(workingTask, "req-2")
+	err = storage.EnqueueTask(context.Background(), workingTask, "req-2")
 	assert.NoError(t, err)
-	err = storage.EnqueueTask(completedTask, "req-3")
+	err = storage.EnqueueTask(context.Background(), completedTask, "req-3")
 	assert.NoError(t, err)
-	err = storage.EnqueueTask(failedTask, "req-4")
+	err = storage.EnqueueTask(context.Background(), failedTask, "req-4")
 	assert.NoError(t, err)
 
 	_, exists := taskManager.GetTask(submittedTask.ID)
@@ -673,7 +674,7 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 				},
 			})
 
-			err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+			err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id")
 			assert.NoError(t, err)
 
 			err = taskManager.CancelTask(task.ID)
@@ -709,7 +710,7 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 			},
 		})
 
-		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id")
 		assert.NoError(t, err)
 
 		pauseMessage := &types.Message{
@@ -735,7 +736,7 @@ func TestDefaultTaskManager_PauseTaskForInput(t *testing.T) {
 	t.Run("pause with nil message", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
 
-		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-2")
+		err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id-2")
 		assert.NoError(t, err)
 
 		err = taskManager.PauseTaskForInput(task.ID, nil)
@@ -761,7 +762,7 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 	t.Run("resume paused task successfully", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
 
-		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id")
 		assert.NoError(t, err)
 
 		err = taskManager.PauseTaskForInput(task.ID, nil)
@@ -790,7 +791,7 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 	t.Run("resume task in non-completed state should succeed", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context-2", types.TaskStateWorking, nil)
 
-		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-2")
+		err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id-2")
 		assert.NoError(t, err)
 
 		err = taskManager.ResumeTaskWithInput(task.ID, nil)
@@ -804,7 +805,7 @@ func TestDefaultTaskManager_ResumeTaskWithInput(t *testing.T) {
 	t.Run("resume completed task should fail", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context-3", types.TaskStateCompleted, nil)
 
-		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id-3")
+		err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id-3")
 		assert.NoError(t, err)
 
 		err = taskManager.ResumeTaskWithInput(task.ID, nil)
@@ -827,7 +828,7 @@ func TestDefaultTaskManager_IsTaskPaused(t *testing.T) {
 	t.Run("check paused task", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
 
-		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id")
 		assert.NoError(t, err)
 
 		isPaused, err := taskManager.IsTaskPaused(task.ID)
@@ -857,7 +858,7 @@ func TestDefaultTaskManager_PollTaskStatus_InputRequired(t *testing.T) {
 	t.Run("polling returns when task reaches input-required state", func(t *testing.T) {
 		task := taskManager.CreateTask("test-context", types.TaskStateWorking, nil)
 
-		err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+		err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id")
 		assert.NoError(t, err)
 
 		resultChan := make(chan *types.Task, 1)
@@ -901,7 +902,7 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 	}
 	task := taskManager.CreateTask("test-context", types.TaskStateWorking, initialMessage)
 
-	err := taskManager.GetStorage().EnqueueTask(task, "test-request-id")
+	err := taskManager.GetStorage().EnqueueTask(context.Background(), task, "test-request-id")
 	assert.NoError(t, err)
 
 	pauseMessage := &types.Message{
@@ -923,7 +924,7 @@ func TestDefaultTaskManager_InputRequiredWorkflow(t *testing.T) {
 
 	task2 := taskManager.CreateTask("test-context-2", types.TaskStateWorking, initialMessage)
 
-	err = taskManager.GetStorage().EnqueueTask(task2, "test-request-id-2")
+	err = taskManager.GetStorage().EnqueueTask(context.Background(), task2, "test-request-id-2")
 	assert.NoError(t, err)
 
 	err = taskManager.PauseTaskForInput(task2.ID, pauseMessage)
