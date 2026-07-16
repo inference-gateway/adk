@@ -26,7 +26,7 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 	}
 
 	t.Run("Enqueue and Dequeue Task", func(t *testing.T) {
-		err := storage.EnqueueTask(task, "request-123")
+		err := storage.EnqueueTask(context.Background(), task, "request-123")
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
@@ -61,11 +61,11 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 		task2 := &types.Task{ID: "task-2", ContextID: "ctx-2", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
 		task3 := &types.Task{ID: "task-3", ContextID: "ctx-3", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
 
-		err := storage.EnqueueTask(task1, "req-1")
+		err := storage.EnqueueTask(context.Background(), task1, "req-1")
 		require.NoError(t, err)
-		err = storage.EnqueueTask(task2, "req-2")
+		err = storage.EnqueueTask(context.Background(), task2, "req-2")
 		require.NoError(t, err)
-		err = storage.EnqueueTask(task3, "req-3")
+		err = storage.EnqueueTask(context.Background(), task3, "req-3")
 		require.NoError(t, err)
 
 		if length := storage.GetQueueLength(); length != 3 {
@@ -110,9 +110,9 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 		task1 := &types.Task{ID: "clear-task-1", ContextID: "ctx", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
 		task2 := &types.Task{ID: "clear-task-2", ContextID: "ctx", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
 
-		err := storage.EnqueueTask(task1, "req-1")
+		err := storage.EnqueueTask(context.Background(), task1, "req-1")
 		require.NoError(t, err)
-		err = storage.EnqueueTask(task2, "req-2")
+		err = storage.EnqueueTask(context.Background(), task2, "req-2")
 		require.NoError(t, err)
 
 		if length := storage.GetQueueLength(); length != 2 {
@@ -128,7 +128,7 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 	})
 
 	t.Run("Enqueue Nil Task", func(t *testing.T) {
-		err := storage.EnqueueTask(nil, "req-123")
+		err := storage.EnqueueTask(context.Background(), nil, "req-123")
 		if err == nil {
 			t.Fatalf("expected error for nil task, got nil")
 		}
@@ -167,7 +167,7 @@ func TestInMemoryStorage_ConcurrentQueueOperations(t *testing.T) {
 						ContextID: "concurrent-test",
 						Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 					}
-					err := storage.EnqueueTask(task, fmt.Sprintf("req-%d-%d", i, j))
+					err := storage.EnqueueTask(context.Background(), task, fmt.Sprintf("req-%d-%d", i, j))
 					if err != nil {
 						t.Errorf("enqueue error: %v", err)
 						return

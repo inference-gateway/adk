@@ -24,7 +24,7 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 			History:   []types.Message{},
 		}
 
-		err := storage.EnqueueTask(task, "request-1")
+		err := storage.EnqueueTask(context.Background(), task, "request-1")
 		assert.NoError(t, err)
 
 		ctx := context.Background()
@@ -44,7 +44,7 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 			History:   []types.Message{},
 		}
 
-		err := storage.EnqueueTask(task, "request-2")
+		err := storage.EnqueueTask(context.Background(), task, "request-2")
 		assert.NoError(t, err)
 
 		retrievedTask, err := storage.GetActiveTask("task-2")
@@ -97,7 +97,7 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 			History:   []types.Message{},
 		}
 
-		err := storage.EnqueueTask(workingTask, "request-working")
+		err := storage.EnqueueTask(context.Background(), workingTask, "request-working")
 		assert.NoError(t, err)
 
 		err = storage.StoreDeadLetterTask(completedTask)
@@ -131,7 +131,7 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 				History:   []types.Message{},
 			}
 
-			err := freshStorage.EnqueueTask(task, fmt.Sprintf("request-%d", i))
+			err := freshStorage.EnqueueTask(context.Background(), task, fmt.Sprintf("request-%d", i))
 			assert.NoError(t, err)
 		}
 
@@ -168,7 +168,7 @@ func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {
 			History:   []types.Message{},
 		}
 
-		err := storage.EnqueueTask(task1, "request-alpha")
+		err := storage.EnqueueTask(context.Background(), task1, "request-alpha")
 		assert.NoError(t, err)
 
 		err = storage.StoreDeadLetterTask(task2)

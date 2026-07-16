@@ -136,16 +136,15 @@ const (
 )
 
 // EnqueueTask adds a task to the processing queue
-func (s *RedisStorage) EnqueueTask(task *types.Task, requestID any) error {
-	ctx := context.Background()
-
+func (s *RedisStorage) EnqueueTask(ctx context.Context, task *types.Task, requestID any) error {
 	if task == nil {
 		return fmt.Errorf("task cannot be nil")
 	}
 
 	queuedTask := &QueuedTask{
-		Task:      task,
-		RequestID: requestID,
+		Task:         task,
+		RequestID:    requestID,
+		TraceContext: injectTraceContext(ctx),
 	}
 
 	data, err := json.Marshal(queuedTask)

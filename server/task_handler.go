@@ -516,7 +516,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 		return
 	}
 
-	err = h.storage.EnqueueTask(task, req.ID)
+	err = h.storage.EnqueueTask(c.Request.Context(), task, req.ID)
 	if err != nil {
 		h.logger.Error("failed to enqueue task", zap.Error(err))
 		err := h.taskManager.UpdateError(task.ID, &types.Message{

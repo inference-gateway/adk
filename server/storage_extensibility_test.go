@@ -30,7 +30,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					},
 				}
 
-				err := storage.EnqueueTask(task, "request-1")
+				err := storage.EnqueueTask(context.Background(), task, "request-1")
 				require.NoError(t, err)
 
 				err = storage.UpdateActiveTask(task)
@@ -82,7 +82,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					},
 				}
 
-				err := storage.EnqueueTask(task, "request-3")
+				err := storage.EnqueueTask(context.Background(), task, "request-3")
 				require.NoError(t, err)
 
 				err = storage.UpdateActiveTask(task)
@@ -113,7 +113,7 @@ func TestQueueCentricOperations(t *testing.T) {
 					},
 				}
 
-				err := storage.EnqueueTask(task, "request-4")
+				err := storage.EnqueueTask(context.Background(), task, "request-4")
 				require.NoError(t, err)
 
 				length = storage.GetQueueLength()
@@ -171,7 +171,7 @@ func TestQueueCentricOperations(t *testing.T) {
 						State: types.TaskStateSubmitted,
 					},
 				}
-				err := storage.EnqueueTask(activeTask, "request-active")
+				err := storage.EnqueueTask(context.Background(), activeTask, "request-active")
 				require.NoError(t, err)
 				err = storage.UpdateActiveTask(activeTask)
 				require.NoError(t, err)

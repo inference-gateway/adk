@@ -80,7 +80,7 @@ func TestRedisStorageEnqueueTask(t *testing.T) {
 	fakeClient.PublishReturns(redis.NewIntResult(1, nil))
 	fakeClient.LLenReturns(redis.NewIntResult(1, nil))
 
-	require.NoError(t, storage.EnqueueTask(task, "request-123"))
+	require.NoError(t, storage.EnqueueTask(context.Background(), task, "request-123"))
 
 	require.Equal(t, 1, fakePipe.LPushCallCount())
 	_, gotQueueKey, gotQueueValues := fakePipe.LPushArgsForCall(0)
@@ -110,7 +110,7 @@ func TestRedisStorageEnqueueTask(t *testing.T) {
 
 func TestRedisStorageEnqueueNilTask(t *testing.T) {
 	storage, _, _ := newTestRedisStorage(t)
-	err := storage.EnqueueTask(nil, "request-1")
+	err := storage.EnqueueTask(context.Background(), nil, "request-1")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "task cannot be nil")
 }
@@ -119,7 +119,7 @@ func TestRedisStorageEnqueueTaskPipelineExecError(t *testing.T) {
 	storage, _, fakePipe := newTestRedisStorage(t)
 	fakePipe.ExecReturns(nil, errors.New("boom"))
 
-	err := storage.EnqueueTask(&types.Task{ID: "t", ContextID: "c"}, "r")
+	err := storage.EnqueueTask(context.Background(), &types.Task{ID: "t", ContextID: "c"}, "r")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to enqueue task")
 }
