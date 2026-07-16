@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.3](https://github.com/inference-gateway/adk/compare/v0.23.2...v0.23.3) (2026-07-16)
+
+### 🐛 Bug Fixes
+
+* **otel:** propagate trace context into background task processing ([#236](https://github.com/inference-gateway/adk/issues/236)) ([6ca6c6d](https://github.com/inference-gateway/adk/commit/6ca6c6d29fc1e9835f9863fb408eaa725250ff5f)), closes [#235](https://github.com/inference-gateway/adk/issues/235)
+
+### 🔧 Miscellaneous
+
+* **release:** update GitHub App credentials to use RELEASER_APP_ID and RELEASER_APP_PRIVATE_KEY ([04ce237](https://github.com/inference-gateway/adk/commit/04ce237bec559e953cc662b626a0e07c33e0dd50))
+
 ## [0.23.2](https://github.com/inference-gateway/adk/compare/v0.23.1...v0.23.2) (2026-07-15)
 
 ### 🐛 Bug Fixes
