@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.4](https://github.com/inference-gateway/adk/compare/v0.23.3...v0.23.4) (2026-07-17)
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.146.0 -> v0.147.1 ([#237](https://github.com/inference-gateway/adk/issues/237)) ([227a68b](https://github.com/inference-gateway/adk/commit/227a68b06b9efeaef147c8a87c048e2e36ff4afb))
+* **deps:** update inference-gateway/sdk and oapi-codegen/runtime dependencies to v1.21.1 and v1.5.0 respectively across multiple examples and the main module. ([23a97f2](https://github.com/inference-gateway/adk/commit/23a97f24f917245528e23f92fa990c04f07bd904))
+
 ## [0.23.3](https://github.com/inference-gateway/adk/compare/v0.23.2...v0.23.3) (2026-07-16)
 
 ### 🐛 Bug Fixes
