@@ -125,6 +125,7 @@ Via the included Inference Gateway:
 - DeepSeek
 - Google (Gemini)
 - Groq
+- llama.cpp
 - MiniMax
 - Mistral
 - Moonshot

@@ -8,6 +8,7 @@ components:
         - ollama
         - ollama_cloud
         - groq
+        - llamacpp
         - openai
         - cloudflare
         - cohere
@@ -33,6 +34,11 @@ components:
           id: groq
           url: https://api.groq.com/openai/v1
           auth_type: bearer
+          supports_vision: true
+        llamacpp:
+          id: llamacpp
+          url: http://llamacpp:8080/v1
+          auth_type: none
           supports_vision: true
         openai:
           id: openai

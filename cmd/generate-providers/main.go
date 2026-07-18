@@ -374,6 +374,8 @@ func providerDisplayName(id string) string {
 		return "Ollama Cloud"
 	case "groq":
 		return "Groq"
+	case "llamacpp":
+		return "llama.cpp"
 	case "openai":
 		return "OpenAI (GPT models)"
 	case "cloudflare":
