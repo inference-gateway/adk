@@ -1,11 +1,10 @@
-module github.com/inference-gateway/adk/examples/artifacts-filesystem/server
+module github.com/inference-gateway/adk/examples/mcp/server
 
 go 1.26.4
 
 replace github.com/inference-gateway/adk => ../../..
 
 require (
-	github.com/google/uuid v1.6.0
 	github.com/inference-gateway/adk v0.0.0-00010101000000-000000000000
 	github.com/sethvargo/go-envconfig v1.4.3
 	go.uber.org/zap v1.28.0
@@ -37,6 +36,7 @@ require (
 	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/inference-gateway/sdk v1.26.0 // indirect
 	github.com/invopop/jsonschema v0.12.0 // indirect

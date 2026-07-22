@@ -27,7 +27,25 @@ type Config struct {
 	ServerConfig                  ServerConfig        `env:",prefix=SERVER_"`
 	TelemetryConfig               TelemetryConfig     `env:",prefix=TELEMETRY_"`
 	ArtifactsConfig               ArtifactsConfig     `env:",prefix=ARTIFACTS_"`
+	MCPConfig                     MCPConfig           `env:",prefix=MCP_"`
 	OTelConfig                    OTelConfig          // Standard OpenTelemetry SDK env vars (OTEL_*), read without a prefix
+}
+
+// MCPConfig holds Model Context Protocol client configuration. When enabled, the
+// server connects to the configured MCP servers over streamable HTTP, discovers
+// their tools, and exposes them to the agent through two selector tools
+// (mcp_list_tools, mcp_call_tool) so only tool metadata - not every tool schema -
+// ever reaches the LLM context. Only useful when an LLM/agent is configured.
+type MCPConfig struct {
+	Enable           bool          `env:"ENABLE,default=false" description:"Enable the MCP client - connect to MCP servers to discover and invoke their tools"`
+	Servers          []string      `env:"SERVERS" description:"MCP server base URLs (comma-separated), e.g. http://mcp:8080"`
+	Endpoint         string        `env:"ENDPOINT,default=/mcp" description:"HTTP path appended to each server URL for the streamable MCP endpoint"`
+	RefreshInterval  time.Duration `env:"REFRESH_INTERVAL,default=5m" description:"How often to refresh the tool catalog from each MCP server"`
+	DialTimeout      time.Duration `env:"DIAL_TIMEOUT,default=30s" description:"Timeout for initializing/listing tools on an MCP server"`
+	CallTimeout      time.Duration `env:"CALL_TIMEOUT,default=30s" description:"Timeout for a single MCP tool invocation"`
+	MaxRetries       int           `env:"MAX_RETRIES,default=0" description:"Maximum initial connection attempts per server before giving up (0 = retry forever)"`
+	RetryInterval    time.Duration `env:"RETRY_INTERVAL,default=2s" description:"Initial backoff between connection/refresh retries (doubles up to RETRY_MAX_INTERVAL)"`
+	RetryMaxInterval time.Duration `env:"RETRY_MAX_INTERVAL,default=30s" description:"Maximum backoff between connection/refresh retries"`
 }
 
 // AgentConfig holds agent-specific configuration
