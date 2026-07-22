@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.24.0](https://github.com/inference-gateway/adk/compare/v0.23.4...v0.24.0) (2026-07-22)
+
+### ✨ Features
+
+* add llamacpp provider support ([#240](https://github.com/inference-gateway/adk/issues/240)) ([5c5a3a1](https://github.com/inference-gateway/adk/commit/5c5a3a1e9946efee60a2c76654f06e5eaa1558b5))
+* connect A2A servers to MCP servers via a tool selector ([#251](https://github.com/inference-gateway/adk/issues/251)) ([6661fd7](https://github.com/inference-gateway/adk/commit/6661fd72971613f2d4439dc2d8fd064e4683ec4a))
+* group artifact storage paths by context (session) id ([#249](https://github.com/inference-gateway/adk/issues/249)) ([8568314](https://github.com/inference-gateway/adk/commit/8568314272d01595cd1143ad29c166ffb9fe39b0))
+
+### 👷 CI
+
+* **deps:** bump github.com/buger/jsonparser from 1.1.1 to 1.1.2 ([#254](https://github.com/inference-gateway/adk/issues/254)) ([c1f3ba1](https://github.com/inference-gateway/adk/commit/c1f3ba1c2e3a1d7734d8e32f737eb0eec29c0861))
+* **deps:** bump github.com/buger/jsonparser in /examples/streaming/server ([#253](https://github.com/inference-gateway/adk/issues/253)) ([9d7e381](https://github.com/inference-gateway/adk/commit/9d7e381e9405ec08ce94ee11a51e4b5c268a2452))
+* **deps:** bump google.golang.org/grpc ([#245](https://github.com/inference-gateway/adk/issues/245)) ([0ab9cea](https://github.com/inference-gateway/adk/commit/0ab9ceaebd44bbaf9d1f64d07bd700625a48dd1e))
+* **deps:** bump google.golang.org/grpc ([#247](https://github.com/inference-gateway/adk/issues/247)) ([9eea011](https://github.com/inference-gateway/adk/commit/9eea011d759ce10a4164806d7d5972a43a233466))
+* **deps:** bump google.golang.org/grpc ([#248](https://github.com/inference-gateway/adk/issues/248)) ([9dd74e4](https://github.com/inference-gateway/adk/commit/9dd74e4b0ac25c5741eeec1d065602284662ad94))
+* **deps:** bump google.golang.org/grpc from 1.81.1 to 1.82.1 ([#246](https://github.com/inference-gateway/adk/issues/246)) ([b2d2d99](https://github.com/inference-gateway/adk/commit/b2d2d99f4df52163af6355329140b5bb254fe5cf))
+* **deps:** bump the github-actions group with 2 updates ([#243](https://github.com/inference-gateway/adk/issues/243)) ([edb2bdd](https://github.com/inference-gateway/adk/commit/edb2bddc476de2737823c413ccecd5cf1269ae7c))
+* **deps:** bump the gomod group with 3 updates ([#244](https://github.com/inference-gateway/adk/issues/244)) ([5dff39e](https://github.com/inference-gateway/adk/commit/5dff39e56adc2a086a13ad1dc6fe284dc3b58802))
+
+### 🔧 Miscellaneous
+
+* **deps:** sync go.sum and examples to sdk v1.22.0 ([#242](https://github.com/inference-gateway/adk/issues/242)) ([600a505](https://github.com/inference-gateway/adk/commit/600a5057ec9a7052b2d123bbfa937d284a92eba9))
+* **deps:** update inference-gateway/sdk to version 1.22.0 ([afd652c](https://github.com/inference-gateway/adk/commit/afd652c85a84724d14717f45ab56309ae4f23951))
+
 ## [0.23.4](https://github.com/inference-gateway/adk/compare/v0.23.3...v0.23.4) (2026-07-17)
 
 ### 🔧 Miscellaneous
