@@ -137,6 +137,7 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	mimeType := "text/markdown"
 
 	artifact, err := h.artifactService.CreateFileArtifact(
+		task.ContextID,
 		"Analysis Report",
 		"A detailed analysis report based on your request, stored in MinIO cloud storage",
 		filename,

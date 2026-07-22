@@ -34,15 +34,16 @@ func NewFilesystemArtifactStorage(cfg *config.ArtifactsStorageConfig) (*Filesyst
 }
 
 // Store stores an artifact to the local filesystem
-func (fs *FilesystemArtifactStorage) Store(ctx context.Context, artifactID string, filename string, data io.Reader) (string, error) {
+func (fs *FilesystemArtifactStorage) Store(ctx context.Context, contextID string, artifactID string, filename string, data io.Reader) (string, error) {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
-	if artifactID == "" || filename == "" {
-		return "", fmt.Errorf("invalid artifact ID or filename")
+	if contextID == "" || artifactID == "" || filename == "" {
+		return "", fmt.Errorf("invalid context ID, artifact ID or filename")
 	}
 
-	artifactDir := filepath.Join(fs.basePath, artifactID)
+	artifactDir := filepath.Join(fs.basePath, contextID, artifactID)
 	if err := os.MkdirAll(artifactDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create artifact directory: %w", err)
 	}
@@ -62,20 +63,21 @@ func (fs *FilesystemArtifactStorage) Store(ctx context.Context, artifactID strin
 		return "", fmt.Errorf("failed to write artifact data: %w", err)
 	}
 
-	url := fs.GetURL(artifactID, filename)
+	url := fs.GetURL(contextID, artifactID, filename)
 	return url, nil
 }
 
 // Retrieve retrieves an artifact from the local filesystem
-func (fs *FilesystemArtifactStorage) Retrieve(ctx context.Context, artifactID string, filename string) (io.ReadCloser, error) {
+func (fs *FilesystemArtifactStorage) Retrieve(ctx context.Context, contextID string, artifactID string, filename string) (io.ReadCloser, error) {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
-	if artifactID == "" || filename == "" {
-		return nil, fmt.Errorf("invalid artifact ID or filename")
+	if contextID == "" || artifactID == "" || filename == "" {
+		return nil, fmt.Errorf("invalid context ID, artifact ID or filename")
 	}
 
-	filePath := filepath.Join(fs.basePath, artifactID, filename)
+	filePath := filepath.Join(fs.basePath, contextID, artifactID, filename)
 	file, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -88,36 +90,39 @@ func (fs *FilesystemArtifactStorage) Retrieve(ctx context.Context, artifactID st
 }
 
 // Delete removes an artifact from the filesystem
-func (fs *FilesystemArtifactStorage) Delete(ctx context.Context, artifactID string, filename string) error {
+func (fs *FilesystemArtifactStorage) Delete(ctx context.Context, contextID string, artifactID string, filename string) error {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
-	if artifactID == "" || filename == "" {
-		return fmt.Errorf("invalid artifact ID or filename")
+	if contextID == "" || artifactID == "" || filename == "" {
+		return fmt.Errorf("invalid context ID, artifact ID or filename")
 	}
 
-	filePath := filepath.Join(fs.basePath, artifactID, filename)
+	filePath := filepath.Join(fs.basePath, contextID, artifactID, filename)
 	err := os.Remove(filePath)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to delete artifact: %w", err)
 	}
 
-	artifactDir := filepath.Join(fs.basePath, artifactID)
-	_ = os.Remove(artifactDir)
+	// Best-effort prune of now-empty artifact and context directories.
+	_ = os.Remove(filepath.Join(fs.basePath, contextID, artifactID))
+	_ = os.Remove(filepath.Join(fs.basePath, contextID))
 
 	return nil
 }
 
 // Exists checks if an artifact exists in the filesystem
-func (fs *FilesystemArtifactStorage) Exists(ctx context.Context, artifactID string, filename string) (bool, error) {
+func (fs *FilesystemArtifactStorage) Exists(ctx context.Context, contextID string, artifactID string, filename string) (bool, error) {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
-	if artifactID == "" || filename == "" {
-		return false, fmt.Errorf("invalid artifact ID or filename")
+	if contextID == "" || artifactID == "" || filename == "" {
+		return false, fmt.Errorf("invalid context ID, artifact ID or filename")
 	}
 
-	filePath := filepath.Join(fs.basePath, artifactID, filename)
+	filePath := filepath.Join(fs.basePath, contextID, artifactID, filename)
 	_, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -129,10 +134,11 @@ func (fs *FilesystemArtifactStorage) Exists(ctx context.Context, artifactID stri
 }
 
 // GetURL returns the public URL for accessing an artifact
-func (fs *FilesystemArtifactStorage) GetURL(artifactID string, filename string) string {
+func (fs *FilesystemArtifactStorage) GetURL(contextID string, artifactID string, filename string) string {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
-	return fmt.Sprintf("%s/artifacts/%s/%s", fs.baseURL, artifactID, filename)
+	return fmt.Sprintf("%s/artifacts/%s/%s/%s", fs.baseURL, contextID, artifactID, filename)
 }
 
 // Close cleans up the filesystem storage (no-op for filesystem)
@@ -183,22 +189,35 @@ func (fs *FilesystemArtifactStorage) CleanupOldestArtifacts(ctx context.Context,
 
 	removedCount := 0
 
-	entries, err := os.ReadDir(fs.basePath)
+	// Layout is {contextID}/{artifactID}/{files}, so recurse one level: keep
+	// only maxCount files per artifact directory.
+	contexts, err := os.ReadDir(fs.basePath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read artifacts directory: %w", err)
 	}
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
+	for _, contextEntry := range contexts {
+		if !contextEntry.IsDir() {
 			continue
 		}
 
-		artifactDir := filepath.Join(fs.basePath, entry.Name())
-		cleaned, err := fs.cleanupArtifactDirectory(artifactDir, maxCount)
+		contextDir := filepath.Join(fs.basePath, contextEntry.Name())
+		artifacts, err := os.ReadDir(contextDir)
 		if err != nil {
 			continue
 		}
-		removedCount += cleaned
+
+		for _, artifactEntry := range artifacts {
+			if !artifactEntry.IsDir() {
+				continue
+			}
+
+			cleaned, err := fs.cleanupArtifactDirectory(filepath.Join(contextDir, artifactEntry.Name()), maxCount)
+			if err != nil {
+				continue
+			}
+			removedCount += cleaned
+		}
 	}
 
 	fs.cleanupEmptyDirectories()
@@ -253,26 +272,37 @@ func (fs *FilesystemArtifactStorage) cleanupArtifactDirectory(artifactDir string
 	return removedCount, nil
 }
 
-// cleanupEmptyDirectories removes empty artifact directories
+// cleanupEmptyDirectories removes empty artifact and context directories
 func (fs *FilesystemArtifactStorage) cleanupEmptyDirectories() {
-	entries, err := os.ReadDir(fs.basePath)
+	contexts, err := os.ReadDir(fs.basePath)
 	if err != nil {
 		return
 	}
 
-	for _, entry := range entries {
-		if !entry.IsDir() {
+	for _, contextEntry := range contexts {
+		if !contextEntry.IsDir() {
 			continue
 		}
 
-		artifactDir := filepath.Join(fs.basePath, entry.Name())
-		files, err := os.ReadDir(artifactDir)
+		contextDir := filepath.Join(fs.basePath, contextEntry.Name())
+		artifacts, err := os.ReadDir(contextDir)
 		if err != nil {
 			continue
 		}
 
-		if len(files) == 0 {
-			_ = os.Remove(artifactDir)
+		for _, artifactEntry := range artifacts {
+			if !artifactEntry.IsDir() {
+				continue
+			}
+
+			artifactDir := filepath.Join(contextDir, artifactEntry.Name())
+			if files, err := os.ReadDir(artifactDir); err == nil && len(files) == 0 {
+				_ = os.Remove(artifactDir)
+			}
+		}
+
+		if files, err := os.ReadDir(contextDir); err == nil && len(files) == 0 {
+			_ = os.Remove(contextDir)
 		}
 	}
 }

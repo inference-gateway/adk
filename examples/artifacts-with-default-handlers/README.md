@@ -120,9 +120,11 @@ serverBuilder := server.NewA2AServerBuilder(cfg.A2A, logger).
 Tools create artifacts using the artifact service from context:
 
 ```go
+task := ctx.Value(server.TaskContextKey).(*types.Task)
 artifactService := ctx.Value(server.ArtifactServiceContextKey).(server.ArtifactService)
+// contextID (task.ContextID) groups stored files by A2A session
 artifact, err := artifactService.CreateFileArtifact(
-    "Report", "Analysis report", "report.md", data, &mimeType)
+    task.ContextID, "Report", "Analysis report", "report.md", data, &mimeType)
 ```
 
 The default handlers automatically:

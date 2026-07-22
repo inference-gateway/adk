@@ -6,22 +6,25 @@ import (
 	"time"
 )
 
-// ArtifactStorageProvider defines the interface for artifact storage backends
+// ArtifactStorageProvider defines the interface for artifact storage backends.
+//
+// Artifacts are grouped by the A2A context (session) ID so files belonging to
+// the same conversation live together: {contextID}/{artifactID}/{filename}.
 type ArtifactStorageProvider interface {
 	// Store stores an artifact and returns its URL for retrieval
-	Store(ctx context.Context, artifactID string, filename string, data io.Reader) (string, error)
+	Store(ctx context.Context, contextID string, artifactID string, filename string, data io.Reader) (string, error)
 
-	// Retrieve retrieves an artifact by its ID and filename
-	Retrieve(ctx context.Context, artifactID string, filename string) (io.ReadCloser, error)
+	// Retrieve retrieves an artifact by its context, ID and filename
+	Retrieve(ctx context.Context, contextID string, artifactID string, filename string) (io.ReadCloser, error)
 
 	// Delete removes an artifact from storage
-	Delete(ctx context.Context, artifactID string, filename string) error
+	Delete(ctx context.Context, contextID string, artifactID string, filename string) error
 
 	// Exists checks if an artifact exists in storage
-	Exists(ctx context.Context, artifactID string, filename string) (bool, error)
+	Exists(ctx context.Context, contextID string, artifactID string, filename string) (bool, error)
 
 	// GetURL returns the public URL for accessing an artifact
-	GetURL(artifactID string, filename string) string
+	GetURL(contextID string, artifactID string, filename string) string
 
 	// Close closes the storage provider and cleans up resources
 	Close() error

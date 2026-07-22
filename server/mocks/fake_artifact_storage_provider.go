@@ -49,12 +49,13 @@ type FakeArtifactStorageProvider struct {
 	closeReturnsOnCall map[int]struct {
 		result1 error
 	}
-	DeleteStub        func(context.Context, string, string) error
+	DeleteStub        func(context.Context, string, string, string) error
 	deleteMutex       sync.RWMutex
 	deleteArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
+		arg4 string
 	}
 	deleteReturns struct {
 		result1 error
@@ -62,12 +63,13 @@ type FakeArtifactStorageProvider struct {
 	deleteReturnsOnCall map[int]struct {
 		result1 error
 	}
-	ExistsStub        func(context.Context, string, string) (bool, error)
+	ExistsStub        func(context.Context, string, string, string) (bool, error)
 	existsMutex       sync.RWMutex
 	existsArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
+		arg4 string
 	}
 	existsReturns struct {
 		result1 bool
@@ -77,11 +79,12 @@ type FakeArtifactStorageProvider struct {
 		result1 bool
 		result2 error
 	}
-	GetURLStub        func(string, string) string
+	GetURLStub        func(string, string, string) string
 	getURLMutex       sync.RWMutex
 	getURLArgsForCall []struct {
 		arg1 string
 		arg2 string
+		arg3 string
 	}
 	getURLReturns struct {
 		result1 string
@@ -89,12 +92,13 @@ type FakeArtifactStorageProvider struct {
 	getURLReturnsOnCall map[int]struct {
 		result1 string
 	}
-	RetrieveStub        func(context.Context, string, string) (io.ReadCloser, error)
+	RetrieveStub        func(context.Context, string, string, string) (io.ReadCloser, error)
 	retrieveMutex       sync.RWMutex
 	retrieveArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
+		arg4 string
 	}
 	retrieveReturns struct {
 		result1 io.ReadCloser
@@ -104,13 +108,14 @@ type FakeArtifactStorageProvider struct {
 		result1 io.ReadCloser
 		result2 error
 	}
-	StoreStub        func(context.Context, string, string, io.Reader) (string, error)
+	StoreStub        func(context.Context, string, string, string, io.Reader) (string, error)
 	storeMutex       sync.RWMutex
 	storeArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-		arg4 io.Reader
+		arg4 string
+		arg5 io.Reader
 	}
 	storeReturns struct {
 		result1 string
@@ -307,20 +312,21 @@ func (fake *FakeArtifactStorageProvider) CloseReturnsOnCall(i int, result1 error
 	}{result1}
 }
 
-func (fake *FakeArtifactStorageProvider) Delete(arg1 context.Context, arg2 string, arg3 string) error {
+func (fake *FakeArtifactStorageProvider) Delete(arg1 context.Context, arg2 string, arg3 string, arg4 string) error {
 	fake.deleteMutex.Lock()
 	ret, specificReturn := fake.deleteReturnsOnCall[len(fake.deleteArgsForCall)]
 	fake.deleteArgsForCall = append(fake.deleteArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-	}{arg1, arg2, arg3})
+		arg4 string
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.DeleteStub
 	fakeReturns := fake.deleteReturns
-	fake.recordInvocation("Delete", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("Delete", []interface{}{arg1, arg2, arg3, arg4})
 	fake.deleteMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
@@ -334,17 +340,17 @@ func (fake *FakeArtifactStorageProvider) DeleteCallCount() int {
 	return len(fake.deleteArgsForCall)
 }
 
-func (fake *FakeArtifactStorageProvider) DeleteCalls(stub func(context.Context, string, string) error) {
+func (fake *FakeArtifactStorageProvider) DeleteCalls(stub func(context.Context, string, string, string) error) {
 	fake.deleteMutex.Lock()
 	defer fake.deleteMutex.Unlock()
 	fake.DeleteStub = stub
 }
 
-func (fake *FakeArtifactStorageProvider) DeleteArgsForCall(i int) (context.Context, string, string) {
+func (fake *FakeArtifactStorageProvider) DeleteArgsForCall(i int) (context.Context, string, string, string) {
 	fake.deleteMutex.RLock()
 	defer fake.deleteMutex.RUnlock()
 	argsForCall := fake.deleteArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeArtifactStorageProvider) DeleteReturns(result1 error) {
@@ -370,20 +376,21 @@ func (fake *FakeArtifactStorageProvider) DeleteReturnsOnCall(i int, result1 erro
 	}{result1}
 }
 
-func (fake *FakeArtifactStorageProvider) Exists(arg1 context.Context, arg2 string, arg3 string) (bool, error) {
+func (fake *FakeArtifactStorageProvider) Exists(arg1 context.Context, arg2 string, arg3 string, arg4 string) (bool, error) {
 	fake.existsMutex.Lock()
 	ret, specificReturn := fake.existsReturnsOnCall[len(fake.existsArgsForCall)]
 	fake.existsArgsForCall = append(fake.existsArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-	}{arg1, arg2, arg3})
+		arg4 string
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.ExistsStub
 	fakeReturns := fake.existsReturns
-	fake.recordInvocation("Exists", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("Exists", []interface{}{arg1, arg2, arg3, arg4})
 	fake.existsMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -397,17 +404,17 @@ func (fake *FakeArtifactStorageProvider) ExistsCallCount() int {
 	return len(fake.existsArgsForCall)
 }
 
-func (fake *FakeArtifactStorageProvider) ExistsCalls(stub func(context.Context, string, string) (bool, error)) {
+func (fake *FakeArtifactStorageProvider) ExistsCalls(stub func(context.Context, string, string, string) (bool, error)) {
 	fake.existsMutex.Lock()
 	defer fake.existsMutex.Unlock()
 	fake.ExistsStub = stub
 }
 
-func (fake *FakeArtifactStorageProvider) ExistsArgsForCall(i int) (context.Context, string, string) {
+func (fake *FakeArtifactStorageProvider) ExistsArgsForCall(i int) (context.Context, string, string, string) {
 	fake.existsMutex.RLock()
 	defer fake.existsMutex.RUnlock()
 	argsForCall := fake.existsArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeArtifactStorageProvider) ExistsReturns(result1 bool, result2 error) {
@@ -436,19 +443,20 @@ func (fake *FakeArtifactStorageProvider) ExistsReturnsOnCall(i int, result1 bool
 	}{result1, result2}
 }
 
-func (fake *FakeArtifactStorageProvider) GetURL(arg1 string, arg2 string) string {
+func (fake *FakeArtifactStorageProvider) GetURL(arg1 string, arg2 string, arg3 string) string {
 	fake.getURLMutex.Lock()
 	ret, specificReturn := fake.getURLReturnsOnCall[len(fake.getURLArgsForCall)]
 	fake.getURLArgsForCall = append(fake.getURLArgsForCall, struct {
 		arg1 string
 		arg2 string
-	}{arg1, arg2})
+		arg3 string
+	}{arg1, arg2, arg3})
 	stub := fake.GetURLStub
 	fakeReturns := fake.getURLReturns
-	fake.recordInvocation("GetURL", []interface{}{arg1, arg2})
+	fake.recordInvocation("GetURL", []interface{}{arg1, arg2, arg3})
 	fake.getURLMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2)
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
@@ -462,17 +470,17 @@ func (fake *FakeArtifactStorageProvider) GetURLCallCount() int {
 	return len(fake.getURLArgsForCall)
 }
 
-func (fake *FakeArtifactStorageProvider) GetURLCalls(stub func(string, string) string) {
+func (fake *FakeArtifactStorageProvider) GetURLCalls(stub func(string, string, string) string) {
 	fake.getURLMutex.Lock()
 	defer fake.getURLMutex.Unlock()
 	fake.GetURLStub = stub
 }
 
-func (fake *FakeArtifactStorageProvider) GetURLArgsForCall(i int) (string, string) {
+func (fake *FakeArtifactStorageProvider) GetURLArgsForCall(i int) (string, string, string) {
 	fake.getURLMutex.RLock()
 	defer fake.getURLMutex.RUnlock()
 	argsForCall := fake.getURLArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeArtifactStorageProvider) GetURLReturns(result1 string) {
@@ -498,20 +506,21 @@ func (fake *FakeArtifactStorageProvider) GetURLReturnsOnCall(i int, result1 stri
 	}{result1}
 }
 
-func (fake *FakeArtifactStorageProvider) Retrieve(arg1 context.Context, arg2 string, arg3 string) (io.ReadCloser, error) {
+func (fake *FakeArtifactStorageProvider) Retrieve(arg1 context.Context, arg2 string, arg3 string, arg4 string) (io.ReadCloser, error) {
 	fake.retrieveMutex.Lock()
 	ret, specificReturn := fake.retrieveReturnsOnCall[len(fake.retrieveArgsForCall)]
 	fake.retrieveArgsForCall = append(fake.retrieveArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-	}{arg1, arg2, arg3})
+		arg4 string
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.RetrieveStub
 	fakeReturns := fake.retrieveReturns
-	fake.recordInvocation("Retrieve", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("Retrieve", []interface{}{arg1, arg2, arg3, arg4})
 	fake.retrieveMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -525,17 +534,17 @@ func (fake *FakeArtifactStorageProvider) RetrieveCallCount() int {
 	return len(fake.retrieveArgsForCall)
 }
 
-func (fake *FakeArtifactStorageProvider) RetrieveCalls(stub func(context.Context, string, string) (io.ReadCloser, error)) {
+func (fake *FakeArtifactStorageProvider) RetrieveCalls(stub func(context.Context, string, string, string) (io.ReadCloser, error)) {
 	fake.retrieveMutex.Lock()
 	defer fake.retrieveMutex.Unlock()
 	fake.RetrieveStub = stub
 }
 
-func (fake *FakeArtifactStorageProvider) RetrieveArgsForCall(i int) (context.Context, string, string) {
+func (fake *FakeArtifactStorageProvider) RetrieveArgsForCall(i int) (context.Context, string, string, string) {
 	fake.retrieveMutex.RLock()
 	defer fake.retrieveMutex.RUnlock()
 	argsForCall := fake.retrieveArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeArtifactStorageProvider) RetrieveReturns(result1 io.ReadCloser, result2 error) {
@@ -564,21 +573,22 @@ func (fake *FakeArtifactStorageProvider) RetrieveReturnsOnCall(i int, result1 io
 	}{result1, result2}
 }
 
-func (fake *FakeArtifactStorageProvider) Store(arg1 context.Context, arg2 string, arg3 string, arg4 io.Reader) (string, error) {
+func (fake *FakeArtifactStorageProvider) Store(arg1 context.Context, arg2 string, arg3 string, arg4 string, arg5 io.Reader) (string, error) {
 	fake.storeMutex.Lock()
 	ret, specificReturn := fake.storeReturnsOnCall[len(fake.storeArgsForCall)]
 	fake.storeArgsForCall = append(fake.storeArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-		arg4 io.Reader
-	}{arg1, arg2, arg3, arg4})
+		arg4 string
+		arg5 io.Reader
+	}{arg1, arg2, arg3, arg4, arg5})
 	stub := fake.StoreStub
 	fakeReturns := fake.storeReturns
-	fake.recordInvocation("Store", []interface{}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("Store", []interface{}{arg1, arg2, arg3, arg4, arg5})
 	fake.storeMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4)
+		return stub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -592,17 +602,17 @@ func (fake *FakeArtifactStorageProvider) StoreCallCount() int {
 	return len(fake.storeArgsForCall)
 }
 
-func (fake *FakeArtifactStorageProvider) StoreCalls(stub func(context.Context, string, string, io.Reader) (string, error)) {
+func (fake *FakeArtifactStorageProvider) StoreCalls(stub func(context.Context, string, string, string, io.Reader) (string, error)) {
 	fake.storeMutex.Lock()
 	defer fake.storeMutex.Unlock()
 	fake.StoreStub = stub
 }
 
-func (fake *FakeArtifactStorageProvider) StoreArgsForCall(i int) (context.Context, string, string, io.Reader) {
+func (fake *FakeArtifactStorageProvider) StoreArgsForCall(i int) (context.Context, string, string, string, io.Reader) {
 	fake.storeMutex.RLock()
 	defer fake.storeMutex.RUnlock()
 	argsForCall := fake.storeArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
 func (fake *FakeArtifactStorageProvider) StoreReturns(result1 string, result2 error) {

@@ -192,6 +192,7 @@ The file upload and processing demonstrates the complete artifact lifecycle:
 
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
+				task.ContextID,
 				fmt.Sprintf("Analysis Report for %s", filename),
 				fmt.Sprintf("Detailed analysis of the uploaded file: %s", filename),
 				reportFilename,
@@ -354,6 +355,7 @@ This report demonstrates how tools can create artifacts that are automatically e
 
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
+				task.ContextID,
 				fmt.Sprintf("%s Analysis Report", strings.Title(topic)),
 				fmt.Sprintf("Comprehensive analysis report about %s in %s format", topic, format),
 				filename,
@@ -523,6 +525,7 @@ note over User,Database : %s
 
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
+				task.ContextID,
 				fmt.Sprintf("%s - %s Diagram", title, strings.Title(diagramType)),
 				fmt.Sprintf("PlantUML %s diagram: %s", diagramType, description),
 				filename,
@@ -641,6 +644,7 @@ note over User,Database : %s
 
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
+				task.ContextID,
 				fmt.Sprintf("%s Dataset Export", strings.Title(dataset)),
 				fmt.Sprintf("Data export of %s dataset in %s format", dataset, format),
 				filename,

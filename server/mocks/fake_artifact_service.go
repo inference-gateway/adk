@@ -75,14 +75,15 @@ type FakeArtifactService struct {
 	createDataArtifactReturnsOnCall map[int]struct {
 		result1 types.Artifact
 	}
-	CreateFileArtifactStub        func(string, string, string, []byte, *string) (types.Artifact, error)
+	CreateFileArtifactStub        func(string, string, string, string, []byte, *string) (types.Artifact, error)
 	createFileArtifactMutex       sync.RWMutex
 	createFileArtifactArgsForCall []struct {
 		arg1 string
 		arg2 string
 		arg3 string
-		arg4 []byte
-		arg5 *string
+		arg4 string
+		arg5 []byte
+		arg6 *string
 	}
 	createFileArtifactReturns struct {
 		result1 types.Artifact
@@ -148,12 +149,13 @@ type FakeArtifactService struct {
 	createTextArtifactReturnsOnCall map[int]struct {
 		result1 types.Artifact
 	}
-	ExistsStub        func(context.Context, string, string) (bool, error)
+	ExistsStub        func(context.Context, string, string, string) (bool, error)
 	existsMutex       sync.RWMutex
 	existsArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
+		arg4 string
 	}
 	existsReturns struct {
 		result1 bool
@@ -200,12 +202,13 @@ type FakeArtifactService struct {
 	getMimeTypeFromExtensionReturnsOnCall map[int]struct {
 		result1 *string
 	}
-	RetrieveStub        func(context.Context, string, string) (io.ReadCloser, error)
+	RetrieveStub        func(context.Context, string, string, string) (io.ReadCloser, error)
 	retrieveMutex       sync.RWMutex
 	retrieveArgsForCall []struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
+		arg4 string
 	}
 	retrieveReturns struct {
 		result1 io.ReadCloser
@@ -547,11 +550,11 @@ func (fake *FakeArtifactService) CreateDataArtifactReturnsOnCall(i int, result1 
 	}{result1}
 }
 
-func (fake *FakeArtifactService) CreateFileArtifact(arg1 string, arg2 string, arg3 string, arg4 []byte, arg5 *string) (types.Artifact, error) {
-	var arg4Copy []byte
-	if arg4 != nil {
-		arg4Copy = make([]byte, len(arg4))
-		copy(arg4Copy, arg4)
+func (fake *FakeArtifactService) CreateFileArtifact(arg1 string, arg2 string, arg3 string, arg4 string, arg5 []byte, arg6 *string) (types.Artifact, error) {
+	var arg5Copy []byte
+	if arg5 != nil {
+		arg5Copy = make([]byte, len(arg5))
+		copy(arg5Copy, arg5)
 	}
 	fake.createFileArtifactMutex.Lock()
 	ret, specificReturn := fake.createFileArtifactReturnsOnCall[len(fake.createFileArtifactArgsForCall)]
@@ -559,15 +562,16 @@ func (fake *FakeArtifactService) CreateFileArtifact(arg1 string, arg2 string, ar
 		arg1 string
 		arg2 string
 		arg3 string
-		arg4 []byte
-		arg5 *string
-	}{arg1, arg2, arg3, arg4Copy, arg5})
+		arg4 string
+		arg5 []byte
+		arg6 *string
+	}{arg1, arg2, arg3, arg4, arg5Copy, arg6})
 	stub := fake.CreateFileArtifactStub
 	fakeReturns := fake.createFileArtifactReturns
-	fake.recordInvocation("CreateFileArtifact", []interface{}{arg1, arg2, arg3, arg4Copy, arg5})
+	fake.recordInvocation("CreateFileArtifact", []interface{}{arg1, arg2, arg3, arg4, arg5Copy, arg6})
 	fake.createFileArtifactMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3, arg4, arg5)
+		return stub(arg1, arg2, arg3, arg4, arg5, arg6)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -581,17 +585,17 @@ func (fake *FakeArtifactService) CreateFileArtifactCallCount() int {
 	return len(fake.createFileArtifactArgsForCall)
 }
 
-func (fake *FakeArtifactService) CreateFileArtifactCalls(stub func(string, string, string, []byte, *string) (types.Artifact, error)) {
+func (fake *FakeArtifactService) CreateFileArtifactCalls(stub func(string, string, string, string, []byte, *string) (types.Artifact, error)) {
 	fake.createFileArtifactMutex.Lock()
 	defer fake.createFileArtifactMutex.Unlock()
 	fake.CreateFileArtifactStub = stub
 }
 
-func (fake *FakeArtifactService) CreateFileArtifactArgsForCall(i int) (string, string, string, []byte, *string) {
+func (fake *FakeArtifactService) CreateFileArtifactArgsForCall(i int) (string, string, string, string, []byte, *string) {
 	fake.createFileArtifactMutex.RLock()
 	defer fake.createFileArtifactMutex.RUnlock()
 	argsForCall := fake.createFileArtifactArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5, argsForCall.arg6
 }
 
 func (fake *FakeArtifactService) CreateFileArtifactReturns(result1 types.Artifact, result2 error) {
@@ -881,20 +885,21 @@ func (fake *FakeArtifactService) CreateTextArtifactReturnsOnCall(i int, result1 
 	}{result1}
 }
 
-func (fake *FakeArtifactService) Exists(arg1 context.Context, arg2 string, arg3 string) (bool, error) {
+func (fake *FakeArtifactService) Exists(arg1 context.Context, arg2 string, arg3 string, arg4 string) (bool, error) {
 	fake.existsMutex.Lock()
 	ret, specificReturn := fake.existsReturnsOnCall[len(fake.existsArgsForCall)]
 	fake.existsArgsForCall = append(fake.existsArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-	}{arg1, arg2, arg3})
+		arg4 string
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.ExistsStub
 	fakeReturns := fake.existsReturns
-	fake.recordInvocation("Exists", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("Exists", []interface{}{arg1, arg2, arg3, arg4})
 	fake.existsMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -908,17 +913,17 @@ func (fake *FakeArtifactService) ExistsCallCount() int {
 	return len(fake.existsArgsForCall)
 }
 
-func (fake *FakeArtifactService) ExistsCalls(stub func(context.Context, string, string) (bool, error)) {
+func (fake *FakeArtifactService) ExistsCalls(stub func(context.Context, string, string, string) (bool, error)) {
 	fake.existsMutex.Lock()
 	defer fake.existsMutex.Unlock()
 	fake.ExistsStub = stub
 }
 
-func (fake *FakeArtifactService) ExistsArgsForCall(i int) (context.Context, string, string) {
+func (fake *FakeArtifactService) ExistsArgsForCall(i int) (context.Context, string, string, string) {
 	fake.existsMutex.RLock()
 	defer fake.existsMutex.RUnlock()
 	argsForCall := fake.existsArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeArtifactService) ExistsReturns(result1 bool, result2 error) {
@@ -1135,20 +1140,21 @@ func (fake *FakeArtifactService) GetMimeTypeFromExtensionReturnsOnCall(i int, re
 	}{result1}
 }
 
-func (fake *FakeArtifactService) Retrieve(arg1 context.Context, arg2 string, arg3 string) (io.ReadCloser, error) {
+func (fake *FakeArtifactService) Retrieve(arg1 context.Context, arg2 string, arg3 string, arg4 string) (io.ReadCloser, error) {
 	fake.retrieveMutex.Lock()
 	ret, specificReturn := fake.retrieveReturnsOnCall[len(fake.retrieveArgsForCall)]
 	fake.retrieveArgsForCall = append(fake.retrieveArgsForCall, struct {
 		arg1 context.Context
 		arg2 string
 		arg3 string
-	}{arg1, arg2, arg3})
+		arg4 string
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.RetrieveStub
 	fakeReturns := fake.retrieveReturns
-	fake.recordInvocation("Retrieve", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("Retrieve", []interface{}{arg1, arg2, arg3, arg4})
 	fake.retrieveMutex.Unlock()
 	if stub != nil {
-		return stub(arg1, arg2, arg3)
+		return stub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -1162,17 +1168,17 @@ func (fake *FakeArtifactService) RetrieveCallCount() int {
 	return len(fake.retrieveArgsForCall)
 }
 
-func (fake *FakeArtifactService) RetrieveCalls(stub func(context.Context, string, string) (io.ReadCloser, error)) {
+func (fake *FakeArtifactService) RetrieveCalls(stub func(context.Context, string, string, string) (io.ReadCloser, error)) {
 	fake.retrieveMutex.Lock()
 	defer fake.retrieveMutex.Unlock()
 	fake.RetrieveStub = stub
 }
 
-func (fake *FakeArtifactService) RetrieveArgsForCall(i int) (context.Context, string, string) {
+func (fake *FakeArtifactService) RetrieveArgsForCall(i int) (context.Context, string, string, string) {
 	fake.retrieveMutex.RLock()
 	defer fake.retrieveMutex.RUnlock()
 	argsForCall := fake.retrieveArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeArtifactService) RetrieveReturns(result1 io.ReadCloser, result2 error) {
