@@ -30,16 +30,22 @@ import (
 // The MCP client is feature-flagged and only wired when an LLM is configured.
 //
 // Configuration (environment variables):
+//
 //   - A2A_AGENT_CLIENT_PROVIDER: LLM provider (required to enable the agent/MCP)
+//
 //   - A2A_AGENT_CLIENT_MODEL:    LLM model (required)
+//
 //   - A2A_AGENT_CLIENT_API_KEY:  provider API key
+//
 //   - A2A_MCP_ENABLE:            enable the MCP client (default: false)
+//
 //   - A2A_MCP_SERVERS:           comma-separated MCP server base URLs
+//
 //   - A2A_MCP_ENDPOINT:          MCP HTTP endpoint path (default: /mcp)
 //
-//	To run: A2A_MCP_ENABLE=true A2A_MCP_SERVERS=http://localhost:8083 \
-//	        A2A_AGENT_CLIENT_PROVIDER=openai A2A_AGENT_CLIENT_MODEL=gpt-4o-mini \
-//	        A2A_AGENT_CLIENT_API_KEY=... go run .
+//     To run: A2A_MCP_ENABLE=true A2A_MCP_SERVERS=http://localhost:8083 \
+//     A2A_AGENT_CLIENT_PROVIDER=openai A2A_AGENT_CLIENT_MODEL=gpt-4o-mini \
+//     A2A_AGENT_CLIENT_API_KEY=... go run .
 func main() {
 	cfg := &config.Config{
 		Environment: "development",
