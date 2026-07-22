@@ -296,7 +296,7 @@ func updateReadmeProviderList(path string, providers []string, startMarker, endM
 		return os.WriteFile(path, []byte(newContent), 0644)
 	}
 
-	replacement := fmt.Sprintf("%s\n%s\n%s", startMarker, providerList, endMarker)
+	replacement := fmt.Sprintf("%s\n  %s\n\n%s", startMarker, providerList, endMarker)
 	endIdx += len(endMarker)
 	if endIdx > len(content) {
 		endIdx = len(content)
