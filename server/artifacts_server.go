@@ -130,7 +130,7 @@ func (s *ArtifactsServerImpl) setupRouter() {
 
 	s.router.GET("/health", s.handleHealth)
 
-	s.router.GET("/artifacts/:artifactId/:filename", s.handleArtifactDownload)
+	s.router.GET("/artifacts/:contextId/:artifactId/:filename", s.handleArtifactDownload)
 }
 
 // loggingMiddleware provides request logging
@@ -157,20 +157,22 @@ func (s *ArtifactsServerImpl) handleHealth(c *gin.Context) {
 
 // handleArtifactDownload handles artifact download requests
 func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
+	contextID := c.Param("contextId")
 	artifactID := c.Param("artifactId")
 	filename := c.Param("filename")
 
-	if artifactID == "" || filename == "" {
+	if contextID == "" || artifactID == "" || filename == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "artifact ID and filename are required",
+			"error": "context ID, artifact ID and filename are required",
 		})
 		return
 	}
 
 	ctx := c.Request.Context()
-	exists, err := s.artifactService.Exists(ctx, artifactID, filename)
+	exists, err := s.artifactService.Exists(ctx, contextID, artifactID, filename)
 	if err != nil {
 		s.logger.Error("failed to check artifact existence",
+			zap.String("context_id", contextID),
 			zap.String("artifact_id", artifactID),
 			zap.String("filename", filename),
 			zap.Error(err))
@@ -187,9 +189,10 @@ func (s *ArtifactsServerImpl) handleArtifactDownload(c *gin.Context) {
 		return
 	}
 
-	reader, err := s.artifactService.Retrieve(ctx, artifactID, filename)
+	reader, err := s.artifactService.Retrieve(ctx, contextID, artifactID, filename)
 	if err != nil {
 		s.logger.Error("failed to retrieve artifact",
+			zap.String("context_id", contextID),
 			zap.String("artifact_id", artifactID),
 			zap.String("filename", filename),
 			zap.Error(err))

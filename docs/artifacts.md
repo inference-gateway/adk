@@ -26,6 +26,7 @@ This document explains how to use artifacts in the A2A Agent Development Kit (AD
     - [Handling Both URI and Byte-Based Files](#handling-both-uri-and-byte-based-files)
     - [Error Handling](#error-handling)
   - [Handling Streaming Artifact Updates](#handling-streaming-artifact-updates)
+- [Storage Layout](#storage-layout)
 - [Examples](#examples)
   - [Complete Server Example](#complete-server-example)
   - [Complete Client Example](#complete-client-example)
@@ -233,10 +234,12 @@ The tool returns a JSON response:
   "success": true,
   "message": "Artifact 'Analysis Results' created successfully",
   "artifact_id": "uuid-generated-id",
-  "url": "http://localhost:8081/artifacts/uuid-generated-id/analysis.json",
+  "url": "http://localhost:8081/artifacts/context-id/uuid-generated-id/analysis.json",
   "filename": "analysis.json"
 }
 ```
+
+The URL path is grouped by the A2A context (session) ID - see [Storage Layout](#storage-layout) below.
 
 #### Integration Requirements
 
@@ -600,6 +603,32 @@ for event := range eventChan {
     }
 }
 ```
+
+## Storage Layout
+
+Server-side, stored file artifacts are grouped by the A2A **context (session) ID**. This mirrors the A2A protocol hierarchy (`contextId` -> `task` -> `artifact`) and keeps files from the same conversation together instead of in one flat directory:
+
+```
+artifacts/
+├── {contextId-a}/
+│   ├── {artifactId-1}/
+│   │   └── report.pdf
+│   └── {artifactId-2}/
+│       └── data.json
+└── {contextId-b}/
+    └── {artifactId-3}/
+        └── summary.md
+```
+
+The same layout applies to both storage backends: filesystem paths and MinIO/S3 object keys are `{contextId}/{artifactId}/{filename}`. Download URLs follow the same shape:
+
+```
+{baseURL}/artifacts/{contextId}/{artifactId}/{filename}
+```
+
+The `contextId` is taken from the task the artifact is created for (`task.ContextID`), which is why `ArtifactService.CreateFileArtifact` takes the context ID as its first argument. When using the built-in `create_artifact` tool or the default handlers, this is wired up automatically. Clients do not need to parse the URL - they simply fetch the opaque `uri` returned on the file part.
+
+> Note: `ArtifactService.CreateFileArtifact(contextID, name, description, filename, data, mimeType)` and the storage-provider methods (`Store`, `Retrieve`, `Exists`, `Delete`, `GetURL`) all take `contextID` as their first (post-`ctx`) argument.
 
 ## Examples
 

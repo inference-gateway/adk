@@ -53,35 +53,37 @@ func NewMinIOArtifactStorage(cfg *config.ArtifactsStorageConfig) (*MinIOArtifact
 }
 
 // Store stores an artifact to MinIO
-func (m *MinIOArtifactStorage) Store(ctx context.Context, artifactID string, filename string, data io.Reader) (string, error) {
+func (m *MinIOArtifactStorage) Store(ctx context.Context, contextID string, artifactID string, filename string, data io.Reader) (string, error) {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
-	if artifactID == "" || filename == "" {
-		return "", fmt.Errorf("invalid artifact ID or filename")
+	if contextID == "" || artifactID == "" || filename == "" {
+		return "", fmt.Errorf("invalid context ID, artifact ID or filename")
 	}
 
-	objectName := fmt.Sprintf("%s/%s", artifactID, filename)
+	objectName := fmt.Sprintf("%s/%s/%s", contextID, artifactID, filename)
 
 	_, err := m.client.PutObject(ctx, m.bucketName, objectName, data, -1, minio.PutObjectOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to store artifact in MinIO: %w", err)
 	}
 
-	url := m.GetURL(artifactID, filename)
+	url := m.GetURL(contextID, artifactID, filename)
 	return url, nil
 }
 
 // Retrieve retrieves an artifact from MinIO
-func (m *MinIOArtifactStorage) Retrieve(ctx context.Context, artifactID string, filename string) (io.ReadCloser, error) {
+func (m *MinIOArtifactStorage) Retrieve(ctx context.Context, contextID string, artifactID string, filename string) (io.ReadCloser, error) {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
-	if artifactID == "" || filename == "" {
-		return nil, fmt.Errorf("invalid artifact ID or filename")
+	if contextID == "" || artifactID == "" || filename == "" {
+		return nil, fmt.Errorf("invalid context ID, artifact ID or filename")
 	}
 
-	objectName := fmt.Sprintf("%s/%s", artifactID, filename)
+	objectName := fmt.Sprintf("%s/%s/%s", contextID, artifactID, filename)
 
 	object, err := m.client.GetObject(ctx, m.bucketName, objectName, minio.GetObjectOptions{})
 	if err != nil {
@@ -92,15 +94,16 @@ func (m *MinIOArtifactStorage) Retrieve(ctx context.Context, artifactID string, 
 }
 
 // Delete removes an artifact from MinIO
-func (m *MinIOArtifactStorage) Delete(ctx context.Context, artifactID string, filename string) error {
+func (m *MinIOArtifactStorage) Delete(ctx context.Context, contextID string, artifactID string, filename string) error {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
-	if artifactID == "" || filename == "" {
-		return fmt.Errorf("invalid artifact ID or filename")
+	if contextID == "" || artifactID == "" || filename == "" {
+		return fmt.Errorf("invalid context ID, artifact ID or filename")
 	}
 
-	objectName := fmt.Sprintf("%s/%s", artifactID, filename)
+	objectName := fmt.Sprintf("%s/%s/%s", contextID, artifactID, filename)
 
 	err := m.client.RemoveObject(ctx, m.bucketName, objectName, minio.RemoveObjectOptions{})
 	if err != nil {
@@ -111,15 +114,16 @@ func (m *MinIOArtifactStorage) Delete(ctx context.Context, artifactID string, fi
 }
 
 // Exists checks if an artifact exists in MinIO
-func (m *MinIOArtifactStorage) Exists(ctx context.Context, artifactID string, filename string) (bool, error) {
+func (m *MinIOArtifactStorage) Exists(ctx context.Context, contextID string, artifactID string, filename string) (bool, error) {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 
-	if artifactID == "" || filename == "" {
-		return false, fmt.Errorf("invalid artifact ID or filename")
+	if contextID == "" || artifactID == "" || filename == "" {
+		return false, fmt.Errorf("invalid context ID, artifact ID or filename")
 	}
 
-	objectName := fmt.Sprintf("%s/%s", artifactID, filename)
+	objectName := fmt.Sprintf("%s/%s/%s", contextID, artifactID, filename)
 
 	_, err := m.client.StatObject(ctx, m.bucketName, objectName, minio.StatObjectOptions{})
 	if err != nil {
@@ -133,10 +137,11 @@ func (m *MinIOArtifactStorage) Exists(ctx context.Context, artifactID string, fi
 }
 
 // GetURL returns the public URL for accessing an artifact
-func (m *MinIOArtifactStorage) GetURL(artifactID string, filename string) string {
+func (m *MinIOArtifactStorage) GetURL(contextID string, artifactID string, filename string) string {
+	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
-	return fmt.Sprintf("%s/artifacts/%s/%s", m.baseURL, artifactID, filename)
+	return fmt.Sprintf("%s/artifacts/%s/%s/%s", m.baseURL, contextID, artifactID, filename)
 }
 
 // Close closes the MinIO connection
@@ -194,10 +199,12 @@ func (m *MinIOArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCo
 			continue
 		}
 
+		// Group by the artifact directory ({contextID}/{artifactID}), i.e.
+		// the object key without its trailing filename.
 		parts := strings.Split(object.Key, "/")
 		if len(parts) >= 2 {
-			artifactID := parts[0]
-			artifactGroups[artifactID] = append(artifactGroups[artifactID], object)
+			artifactDir := strings.Join(parts[:len(parts)-1], "/")
+			artifactGroups[artifactDir] = append(artifactGroups[artifactDir], object)
 		}
 	}
 

@@ -38,15 +38,15 @@ func TestFilesystemArtifactStorage_Store(t *testing.T) {
 	ctx := context.Background()
 	data := strings.NewReader("test content")
 
-	url, err := storage.Store(ctx, "test-artifact", "test.txt", data)
+	url, err := storage.Store(ctx, "test-context", "test-artifact", "test.txt", data)
 	assert.NoError(t, err)
-	assert.Equal(t, "http://localhost:8081/artifacts/test-artifact/test.txt", url)
+	assert.Equal(t, "http://localhost:8081/artifacts/test-context/test-artifact/test.txt", url)
 
-	exists, err := storage.Exists(ctx, "test-artifact", "test.txt")
+	exists, err := storage.Exists(ctx, "test-context", "test-artifact", "test.txt")
 	assert.NoError(t, err)
 	assert.True(t, exists)
 
-	err = storage.Delete(ctx, "test-artifact", "test.txt")
+	err = storage.Delete(ctx, "test-context", "test-artifact", "test.txt")
 	assert.NoError(t, err)
 }
 
@@ -62,10 +62,10 @@ func TestFilesystemArtifactStorage_Retrieve(t *testing.T) {
 	ctx := context.Background()
 	testContent := "test content for retrieval"
 
-	_, err = storage.Store(ctx, "test-artifact", "test.txt", strings.NewReader(testContent))
+	_, err = storage.Store(ctx, "test-context", "test-artifact", "test.txt", strings.NewReader(testContent))
 	require.NoError(t, err)
 
-	reader, err := storage.Retrieve(ctx, "test-artifact", "test.txt")
+	reader, err := storage.Retrieve(ctx, "test-context", "test-artifact", "test.txt")
 	require.NoError(t, err)
 	defer func() { _ = reader.Close() }()
 
@@ -73,7 +73,7 @@ func TestFilesystemArtifactStorage_Retrieve(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, testContent, string(content))
 
-	err = storage.Delete(ctx, "test-artifact", "test.txt")
+	err = storage.Delete(ctx, "test-context", "test-artifact", "test.txt")
 	assert.NoError(t, err)
 }
 
@@ -86,8 +86,8 @@ func TestFilesystemArtifactStorage_GetURL(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = storage.Close() }()
 
-	url := storage.GetURL("test-artifact", "test.txt")
-	assert.Equal(t, "http://localhost:8081/artifacts/test-artifact/test.txt", url)
+	url := storage.GetURL("test-context", "test-artifact", "test.txt")
+	assert.Equal(t, "http://localhost:8081/artifacts/test-context/test-artifact/test.txt", url)
 }
 
 func TestFilesystemArtifactStorage_InvalidInputs(t *testing.T) {
@@ -101,13 +101,50 @@ func TestFilesystemArtifactStorage_InvalidInputs(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err = storage.Store(ctx, "", "test.txt", strings.NewReader("test"))
+	_, err = storage.Store(ctx, "test-context", "", "test.txt", strings.NewReader("test"))
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid artifact ID or filename")
+	assert.Contains(t, err.Error(), "invalid context ID, artifact ID or filename")
 
-	_, err = storage.Store(ctx, "test-artifact", "", strings.NewReader("test"))
+	_, err = storage.Store(ctx, "test-context", "test-artifact", "", strings.NewReader("test"))
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid artifact ID or filename")
+	assert.Contains(t, err.Error(), "invalid context ID, artifact ID or filename")
+
+	_, err = storage.Store(ctx, "", "test-artifact", "test.txt", strings.NewReader("test"))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid context ID, artifact ID or filename")
+}
+
+func TestFilesystemArtifactStorage_ContextIsolation(t *testing.T) {
+	cfg := &config.ArtifactsStorageConfig{
+		BasePath: "./test-artifacts-isolation",
+		BaseURL:  "http://localhost:8081",
+	}
+	storage, err := NewFilesystemArtifactStorage(cfg)
+	require.NoError(t, err)
+	defer func() { _ = storage.Close() }()
+
+	ctx := context.Background()
+
+	// Same artifactID + filename in two different contexts must not collide.
+	_, err = storage.Store(ctx, "context-a", "artifact-1", "report.md", strings.NewReader("from A"))
+	require.NoError(t, err)
+	_, err = storage.Store(ctx, "context-b", "artifact-1", "report.md", strings.NewReader("from B"))
+	require.NoError(t, err)
+
+	readerA, err := storage.Retrieve(ctx, "context-a", "artifact-1", "report.md")
+	require.NoError(t, err)
+	defer func() { _ = readerA.Close() }()
+	contentA, err := io.ReadAll(readerA)
+	require.NoError(t, err)
+	assert.Equal(t, "from A", string(contentA))
+
+	// A file stored under context-b is invisible under context-a's grouping.
+	exists, err := storage.Exists(ctx, "context-a", "artifact-1", "other.md")
+	require.NoError(t, err)
+	assert.False(t, exists)
+
+	_ = storage.Delete(ctx, "context-a", "artifact-1", "report.md")
+	_ = storage.Delete(ctx, "context-b", "artifact-1", "report.md")
 }
 
 func TestSanitizePath(t *testing.T) {

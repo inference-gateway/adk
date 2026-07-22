@@ -20,8 +20,10 @@ type ArtifactService interface {
 	// CreateTextArtifact creates a text artifact
 	CreateTextArtifact(name, description, text string) types.Artifact
 
-	// CreateFileArtifact creates a file artifact with URI by storing the content
-	CreateFileArtifact(name, description, filename string, data []byte, mimeType *string) (types.Artifact, error)
+	// CreateFileArtifact creates a file artifact with URI by storing the content.
+	// contextID is the A2A context (session) ID the artifact belongs to; it is
+	// used to group stored files by conversation.
+	CreateFileArtifact(contextID, name, description, filename string, data []byte, mimeType *string) (types.Artifact, error)
 
 	// CreateFileArtifactFromURI creates a file artifact from an existing URI
 	CreateFileArtifactFromURI(name, description, filename, uri string, mimeType *string) types.Artifact
@@ -55,10 +57,10 @@ type ArtifactService interface {
 
 	// Storage operations for artifacts server
 	// Exists checks if an artifact file exists
-	Exists(ctx context.Context, artifactID, filename string) (bool, error)
+	Exists(ctx context.Context, contextID, artifactID, filename string) (bool, error)
 
 	// Retrieve retrieves an artifact file
-	Retrieve(ctx context.Context, artifactID, filename string) (io.ReadCloser, error)
+	Retrieve(ctx context.Context, contextID, artifactID, filename string) (io.ReadCloser, error)
 
 	// CleanupExpiredArtifacts removes artifacts older than maxAge
 	CleanupExpiredArtifacts(ctx context.Context, maxAge time.Duration) (int, error)
@@ -152,12 +154,12 @@ func (as *ArtifactServiceImpl) CreateTextArtifact(name, description, text string
 }
 
 // CreateFileArtifact creates a file artifact with URI by storing the content
-func (as *ArtifactServiceImpl) CreateFileArtifact(name, description, filename string, data []byte, mimeType *string) (types.Artifact, error) {
+func (as *ArtifactServiceImpl) CreateFileArtifact(contextID, name, description, filename string, data []byte, mimeType *string) (types.Artifact, error) {
 	artifactID := uuid.New().String()
 
 	ctx := context.Background()
 	reader := bytes.NewReader(data)
-	uri, err := as.storage.Store(ctx, artifactID, filename, reader)
+	uri, err := as.storage.Store(ctx, contextID, artifactID, filename, reader)
 	if err != nil {
 		return types.Artifact{}, fmt.Errorf("failed to store artifact: %w", err)
 	}
@@ -361,13 +363,13 @@ func (as *ArtifactServiceImpl) CreateTaskArtifactUpdateEvent(taskID, contextID s
 }
 
 // Exists checks if an artifact file exists
-func (as *ArtifactServiceImpl) Exists(ctx context.Context, artifactID, filename string) (bool, error) {
-	return as.storage.Exists(ctx, artifactID, filename)
+func (as *ArtifactServiceImpl) Exists(ctx context.Context, contextID, artifactID, filename string) (bool, error) {
+	return as.storage.Exists(ctx, contextID, artifactID, filename)
 }
 
 // Retrieve retrieves an artifact file
-func (as *ArtifactServiceImpl) Retrieve(ctx context.Context, artifactID, filename string) (io.ReadCloser, error) {
-	return as.storage.Retrieve(ctx, artifactID, filename)
+func (as *ArtifactServiceImpl) Retrieve(ctx context.Context, contextID, artifactID, filename string) (io.ReadCloser, error) {
+	return as.storage.Retrieve(ctx, contextID, artifactID, filename)
 }
 
 // CleanupExpiredArtifacts removes artifacts older than maxAge

@@ -129,11 +129,11 @@ func TestArtifactsServer_ArtifactDownload(t *testing.T) {
 
 	testContent := "test artifact content"
 	mockService := &mocks.FakeArtifactService{}
-	mockService.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
-		return artifactID == "test-artifact" && filename == "test.txt", nil
+	mockService.ExistsStub = func(ctx context.Context, contextID string, artifactID string, filename string) (bool, error) {
+		return contextID == "test-context" && artifactID == "test-artifact" && filename == "test.txt", nil
 	}
-	mockService.RetrieveStub = func(ctx context.Context, artifactID string, filename string) (io.ReadCloser, error) {
-		if artifactID == "test-artifact" && filename == "test.txt" {
+	mockService.RetrieveStub = func(ctx context.Context, contextID string, artifactID string, filename string) (io.ReadCloser, error) {
+		if contextID == "test-context" && artifactID == "test-artifact" && filename == "test.txt" {
 			return io.NopCloser(strings.NewReader(testContent)), nil
 		}
 		return nil, fmt.Errorf("artifact not found")
@@ -150,7 +150,7 @@ func TestArtifactsServer_ArtifactDownload(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	resp, err := http.Get("http://localhost:8085/artifacts/test-artifact/test.txt")
+	resp, err := http.Get("http://localhost:8085/artifacts/test-context/test-artifact/test.txt")
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 
@@ -173,7 +173,7 @@ func TestArtifactsServer_ArtifactNotFound(t *testing.T) {
 	}
 
 	mockService := &mocks.FakeArtifactService{}
-	mockService.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
+	mockService.ExistsStub = func(ctx context.Context, contextID string, artifactID string, filename string) (bool, error) {
 		return false, nil
 	}
 
@@ -188,7 +188,7 @@ func TestArtifactsServer_ArtifactNotFound(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	resp, err := http.Get("http://localhost:8086/artifacts/nonexistent/file.txt")
+	resp, err := http.Get("http://localhost:8086/artifacts/test-context/nonexistent/file.txt")
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 
@@ -220,7 +220,7 @@ func TestArtifactsServer_BadRequest(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	resp, err := http.Get("http://localhost:8087/artifacts/test-artifact/")
+	resp, err := http.Get("http://localhost:8087/artifacts/test-context/test-artifact/")
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 
@@ -237,7 +237,7 @@ func TestArtifactsServer_StorageError(t *testing.T) {
 	}
 
 	mockService := &mocks.FakeArtifactService{}
-	mockService.ExistsStub = func(ctx context.Context, artifactID string, filename string) (bool, error) {
+	mockService.ExistsStub = func(ctx context.Context, contextID string, artifactID string, filename string) (bool, error) {
 		return false, fmt.Errorf("storage error")
 	}
 
@@ -252,7 +252,7 @@ func TestArtifactsServer_StorageError(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	resp, err := http.Get("http://localhost:8088/artifacts/test/file.txt")
+	resp, err := http.Get("http://localhost:8088/artifacts/test-context/test/file.txt")
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
 

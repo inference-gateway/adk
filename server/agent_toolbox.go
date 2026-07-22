@@ -272,6 +272,7 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 	data := []byte(content)
 	mimeType := artifactService.GetMimeTypeFromExtension(filename)
 	artifact, err := artifactService.CreateFileArtifact(
+		task.ContextID,
 		name,
 		fmt.Sprintf("Artifact created by create_artifact tool: %s", name),
 		filename,
