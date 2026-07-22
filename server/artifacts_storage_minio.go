@@ -199,8 +199,6 @@ func (m *MinIOArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCo
 			continue
 		}
 
-		// Group by the artifact directory ({contextID}/{artifactID}), i.e.
-		// the object key without its trailing filename.
 		parts := strings.Split(object.Key, "/")
 		if len(parts) >= 2 {
 			artifactDir := strings.Join(parts[:len(parts)-1], "/")

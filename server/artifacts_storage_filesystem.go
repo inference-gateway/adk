@@ -301,7 +301,6 @@ func (fs *FilesystemArtifactStorage) cleanupEmptyDirectories() {
 			}
 		}
 
-		// Remove the context directory too if it is now empty.
 		if files, err := os.ReadDir(contextDir); err == nil && len(files) == 0 {
 			_ = os.Remove(contextDir)
 		}

@@ -125,7 +125,6 @@ func TestFilesystemArtifactStorage_ContextIsolation(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Same artifactID + filename in two different contexts must not collide.
 	_, err = storage.Store(ctx, "context-a", "artifact-1", "report.md", strings.NewReader("from A"))
 	require.NoError(t, err)
 	_, err = storage.Store(ctx, "context-b", "artifact-1", "report.md", strings.NewReader("from B"))
@@ -138,7 +137,6 @@ func TestFilesystemArtifactStorage_ContextIsolation(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "from A", string(contentA))
 
-	// A file stored under context-b is invisible under context-a's grouping.
 	exists, err := storage.Exists(ctx, "context-a", "artifact-1", "other.md")
 	require.NoError(t, err)
 	assert.False(t, exists)
