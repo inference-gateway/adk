@@ -19,7 +19,7 @@ import (
 type fakeMCPClient struct {
 	url          string
 	tools        []mcpToolEntry
-	failInits    int32 // number of Initialize calls to fail before succeeding
+	failInits    int32
 	initCalls    int32
 	listErr      error
 	callResult   string
