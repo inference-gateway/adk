@@ -6,7 +6,7 @@ replace github.com/inference-gateway/adk => ../../..
 
 require (
 	github.com/inference-gateway/adk v0.0.0-00010101000000-000000000000
-	github.com/sethvargo/go-envconfig v1.3.1
+	github.com/sethvargo/go-envconfig v1.4.3
 	go.uber.org/zap v1.28.0
 )
 
