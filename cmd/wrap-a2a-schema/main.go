@@ -51,8 +51,6 @@ func run(input, output string) error {
 	for name, schema := range hoisted {
 		schemas[name] = schema
 	}
-	// Struct is a bare `type: object`; pin it to a map alias so it stays
-	// assignable to/from plain maps, matching the previous generator output.
 	if s, ok := schemas["Struct"].(map[string]any); ok {
 		s["x-go-type"] = "map[string]interface{}"
 	}
@@ -104,7 +102,6 @@ func hoistTitledEnums(root map[string]any, node any) {
 					"x-enum-varnames": enumVarnames(name, enum),
 				}
 			}
-			// Replace the inline enum with a reference to the hoisted schema.
 			for k := range v {
 				delete(v, k)
 			}
@@ -178,16 +175,12 @@ func annotateLooseObjects(node any) {
 	case map[string]any:
 		if v["type"] == "object" {
 			if ap, ok := v["additionalProperties"].(map[string]any); ok {
-				// A map type (`map[string]T`) is already nilable; keep it
-				// unpointered on optional fields, matching the old generator.
 				v["x-go-type-skip-optional-pointer"] = true
 				if len(ap) == 0 {
 					v["x-go-type"] = "map[string]interface{}"
 				}
 			}
 		}
-		// Optional slices are already nilable; keep them as `[]T` (not `*[]T`)
-		// to match the previous generator's output.
 		if v["type"] == "array" {
 			v["x-go-type-skip-optional-pointer"] = true
 		}
