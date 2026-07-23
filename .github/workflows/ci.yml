@@ -37,9 +37,6 @@ jobs:
       - name: Install Mockgen
         run: go install go.uber.org/mock/mockgen@v0.6.0
 
-      - name: Install generator tool
-        run: go install github.com/inference-gateway/tools/cmd/generator@v0.2.2
-
       - name: Setup Node.js
         uses: actions/setup-node@v7.0.0
         with:
@@ -65,7 +62,10 @@ jobs:
 
       - name: Run generate
         run: |
-          generator -generator jsonrpc -package types schema.yaml types/generated_types.go
+          go run ./cmd/wrap-a2a-schema schema.yaml schema.openapi.yaml
+          go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0 --config=.oapi-codegen.a2a.yaml -o types/generated_types.go schema.openapi.yaml
+          gofmt -r 'interface{} -> any' -w types/generated_types.go
+          rm -f schema.openapi.yaml
           go run ./cmd/generate-providers
 
       - name: Format generated markdown

@@ -16,10 +16,15 @@ tasks:
     desc: 'Generate the Golang ADK types from the A2A schema'
     sources:
       - schema.yaml
+      - cmd/wrap-a2a-schema/main.go
+      - .oapi-codegen.a2a.yaml
     generates:
       - types/generated_types.go
     cmds:
-      - go run github.com/inference-gateway/tools/cmd/generator@v0.2.2 -generator jsonrpc -package types schema.yaml types/generated_types.go
+      - go run ./cmd/wrap-a2a-schema schema.yaml schema.openapi.yaml
+      - go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0 --config=.oapi-codegen.a2a.yaml -o types/generated_types.go schema.openapi.yaml
+      - gofmt -r 'interface{} -> any' -w types/generated_types.go
+      - rm -f schema.openapi.yaml
 
   providers:download-schema:
     desc: 'Download the canonical openapi.yaml from inference-gateway/schemas'
