@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -108,8 +109,8 @@ func hoistTitledEnums(root map[string]any, node any) {
 			v["$ref"] = "#/components/schemas/" + name
 			return
 		}
-		for _, child := range v {
-			hoistTitledEnums(root, child)
+		for _, k := range sortedKeys(v) {
+			hoistTitledEnums(root, v[k])
 		}
 	case []any:
 		for _, child := range v {
@@ -165,6 +166,17 @@ func camel(s string) string {
 		b.WriteString(strings.ToLower(word[1:]))
 	}
 	return b.String()
+}
+
+// sortedKeys returns the keys of m in sorted order, making tree walks
+// deterministic across runs.
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // annotateLooseObjects pins every object whose additionalProperties is the
