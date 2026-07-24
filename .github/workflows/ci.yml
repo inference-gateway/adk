@@ -60,6 +60,9 @@ jobs:
       - name: Tidy Go modules
         run: find . -name 'go.mod' -execdir go mod tidy \;
 
+      - name: Install Task
+        run: go install github.com/go-task/task/v3/cmd/task@latest
+
       - name: Run generate
         run: |
           task a2a:generate-types
