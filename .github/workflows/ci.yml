@@ -37,9 +37,6 @@ jobs:
       - name: Install Mockgen
         run: go install go.uber.org/mock/mockgen@v0.6.0
 
-      - name: Install generator tool
-        run: go install github.com/inference-gateway/tools/cmd/generator@v0.2.2
-
       - name: Setup Node.js
         uses: actions/setup-node@v7.0.0
         with:
@@ -63,9 +60,12 @@ jobs:
       - name: Tidy Go modules
         run: find . -name 'go.mod' -execdir go mod tidy \;
 
+      - name: Install Task
+        run: go install github.com/go-task/task/v3/cmd/task@latest
+
       - name: Run generate
         run: |
-          generator -generator jsonrpc -package types schema.yaml types/generated_types.go
+          task a2a:generate-types
           go run ./cmd/generate-providers
 
       - name: Format generated markdown

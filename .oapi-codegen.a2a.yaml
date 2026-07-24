@@ -1,0 +1,14 @@
+# oapi-codegen config for the A2A JSON-RPC Go types.
+#
+# schema.yaml is raw JSON Schema (draft-07, top-level `definitions`); the
+# wrap-a2a-schema step first turns it into a minimal OpenAPI 3.1 document.
+# Settings mirror the rest of the org (same version, skip-prune, name-normalizer).
+#
+# skip-prune is required: the wrapped document has empty `paths`, so every schema
+# is unreachable and oapi-codegen would otherwise prune all of them.
+package: types
+generate:
+  models: true
+output-options:
+  skip-prune: true
+  name-normalizer: ToCamelCaseWithInitialisms
