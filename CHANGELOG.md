@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.0](https://github.com/inference-gateway/adk/compare/v0.24.0...v0.25.0) (2026-07-24)
+
+### ✨ Features
+
+* add go skills adapted for adk conventions ([#259](https://github.com/inference-gateway/adk/issues/259)) ([a294b86](https://github.com/inference-gateway/adk/commit/a294b86a5342b9f41355f38cd485a72ccd91cedc))
+
+### ♻️ Improvements
+
+* generate A2A types with oapi-codegen ([#258](https://github.com/inference-gateway/adk/issues/258)) ([50925ac](https://github.com/inference-gateway/adk/commit/50925acedbc5dce9a3f82dfeda863b09c7ee62fb)), closes [#257](https://github.com/inference-gateway/adk/issues/257)
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#255](https://github.com/inference-gateway/adk/issues/255)) ([e558338](https://github.com/inference-gateway/adk/commit/e558338cbcb0b7431c93be16913c7a3de515e50b))
+* **claude:** centralize claude.yml via reusable workflow ([#256](https://github.com/inference-gateway/adk/issues/256)) ([5c05352](https://github.com/inference-gateway/adk/commit/5c053528cd63573d73878c9a5e7af537b6f65d12))
+
+### 🔧 Miscellaneous
+
+* add symlink .claude/skills -> .agents/skills ([#260](https://github.com/inference-gateway/adk/issues/260)) ([b518e13](https://github.com/inference-gateway/adk/commit/b518e13cd7dc9a8e64341010175cec9123f3b59b))
+* move pre-commit hook from scripts/ to .githooks/ ([#261](https://github.com/inference-gateway/adk/issues/261)) ([2f5b989](https://github.com/inference-gateway/adk/commit/2f5b98943db28a9e3a9120666d56f6777a37131a))
+
 ## [0.24.0](https://github.com/inference-gateway/adk/compare/v0.23.4...v0.24.0) (2026-07-22)
 
 ### ✨ Features
