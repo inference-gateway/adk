@@ -53,7 +53,7 @@ func run(input, output string) error {
 		schemas[name] = schema
 	}
 	if s, ok := schemas["Struct"].(map[string]any); ok {
-		s["x-go-type"] = "map[string]interface{}"
+		s["x-go-type"] = "map[string]any"
 	}
 
 	wrapped := map[string]any{
@@ -87,6 +87,11 @@ func run(input, output string) error {
 // previous generator's `<Type><Value>` idiom (RoleAgent, TaskStateWorking, ...)
 // instead of its default `TYPEVALUE` shouting form. `root` is the schemas map
 // the hoisted entries are added to; `node` is the subtree being walked.
+//
+// Assumes each enum value is SCREAMING_SNAKE prefixed by the screaming type
+// name (ROLE_AGENT under "Role") and that titles are unique - two different
+// enums sharing a title would collapse into one $ref. Both hold for today's
+// A2A schema (only Role/TaskState, plain two-word titles).
 func hoistTitledEnums(root map[string]any, node any) {
 	switch v := node.(type) {
 	case map[string]any:
@@ -180,7 +185,7 @@ func sortedKeys(m map[string]any) []string {
 }
 
 // annotateLooseObjects pins every object whose additionalProperties is the
-// empty schema (`{}`) to map[string]interface{}, reproducing the previous
+// empty schema (`{}`) to map[string]any, reproducing the previous
 // generator's output.
 func annotateLooseObjects(node any) {
 	switch v := node.(type) {
@@ -189,7 +194,7 @@ func annotateLooseObjects(node any) {
 			if ap, ok := v["additionalProperties"].(map[string]any); ok {
 				v["x-go-type-skip-optional-pointer"] = true
 				if len(ap) == 0 {
-					v["x-go-type"] = "map[string]interface{}"
+					v["x-go-type"] = "map[string]any"
 				}
 			}
 		}

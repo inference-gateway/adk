@@ -6,3 +6,4 @@
 .infer/
 /adk
 /generate-providers
+schema.openapi.yaml

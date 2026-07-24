@@ -23,7 +23,6 @@ tasks:
     cmds:
       - go run ./cmd/wrap-a2a-schema schema.yaml schema.openapi.yaml
       - go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0 --config=.oapi-codegen.a2a.yaml -o types/generated_types.go schema.openapi.yaml
-      - gofmt -r 'interface{} -> any' -w types/generated_types.go
       - rm -f schema.openapi.yaml
 
   providers:download-schema:
