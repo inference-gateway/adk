@@ -101,6 +101,6 @@ Recommendations (advisory, non-blocking):
 
 ---
 
-_Adapted from [spf13/go-skills](https://github.com/spf13/go-skills) (MIT, by Steve
+*Adapted from [spf13/go-skills](https://github.com/spf13/go-skills) (MIT, by Steve
 Francia) for this repo's local subagent tooling and conventions. Pairs with **go**
-and **go-concurrency**._
+and **go-concurrency**.*
