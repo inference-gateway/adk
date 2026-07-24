@@ -23,16 +23,16 @@ gotchas. Verify everything with `go test -race`.
 
 ## Pick your tool
 
-| Need | Use |
-|------|-----|
-| Hand off / stream values between goroutines | `chan` |
-| Protect shared state in place | `sync.Mutex` / `sync.RWMutex` (read-heavy) |
-| Wait for N goroutines to finish | `sync.WaitGroup` |
-| Run exactly once (lazy init) | `sync.Once` |
-| Reuse expensive allocations, cut GC pressure | `sync.Pool` |
-| Wake goroutines on a condition | `sync.Cond` (rare; a channel is usually clearer) |
-| Lock-free counters / flags | `sync/atomic` |
-| Cancellation, deadlines, request-scoped values | `context.Context` |
+| Need                                           | Use                                              |
+| ---------------------------------------------- | ------------------------------------------------ |
+| Hand off / stream values between goroutines    | `chan`                                           |
+| Protect shared state in place                  | `sync.Mutex` / `sync.RWMutex` (read-heavy)       |
+| Wait for N goroutines to finish                | `sync.WaitGroup`                                 |
+| Run exactly once (lazy init)                   | `sync.Once`                                      |
+| Reuse expensive allocations, cut GC pressure   | `sync.Pool`                                      |
+| Wake goroutines on a condition                 | `sync.Cond` (rare; a channel is usually clearer) |
+| Lock-free counters / flags                     | `sync/atomic`                                    |
+| Cancellation, deadlines, request-scoped values | `context.Context`                                |
 
 Always `defer mu.Unlock()` right after `mu.Lock()` so a panic can't leave the
 lock held.
@@ -47,14 +47,14 @@ lock held.
 
 Behaviour is defined by the operation × the channel's state. Memorize this:
 
-| Operation | nil channel | open channel | closed channel |
-|-----------|-------------|--------------|----------------|
+| Operation          | nil channel    | open channel                 | closed channel                                |
+| ------------------ | -------------- | ---------------------------- | --------------------------------------------- |
 | receive `v := <-c` | blocks forever | a value (or blocks if empty) | zero value, `ok==false` (drains buffer first) |
-| send `c <- v` | blocks forever | sends (or blocks if full) | **panic** |
-| `close(c)` | **panic** | closes it | **panic** |
+| send `c <- v`      | blocks forever | sends (or blocks if full)    | **panic**                                     |
+| `close(c)`         | **panic**      | closes it                    | **panic**                                     |
 
 - **Unbuffered** (`make(chan T)`): send and receive rendezvous - each blocks
-  until the other is ready. This *is* the synchronization.
+  until the other is ready. This _is_ the synchronization.
 - **Buffered** (`make(chan T, n)`): send blocks only when full, receive only
   when empty. A buffer decouples timing; it does not remove backpressure.
 - **Ownership rule:** exactly one goroutine owns a channel - it creates, writes,
@@ -99,7 +99,7 @@ case <-done:
   synchronization. Undefined behaviour. Catch it with `go test -race` / `go run -race`.
 - **Goroutine leak:** a goroutine blocked on a channel that will never proceed.
   Every goroutine you start needs a guaranteed exit - a `done`/`ctx` signal or a
-  channel that *will* close. Leaks accumulate silently.
+  channel that _will_ close. Leaks accumulate silently.
 - **Deadlock:** all goroutines blocked. Causes: acquiring locks in inconsistent
   order (always lock in the same order), or send/receive on a `nil` channel, or
   an unbuffered send with no receiver. `fatal error: all goroutines are asleep`.
@@ -118,7 +118,7 @@ Short, copy-ready skeletons. They use `any` (= `interface{}`) and assume Go 1.22
 loop semantics.
 
 **Done-channel cancellation** - pass a read-only `done`; close it once to stop
-all listeners. Send results *under* the `done` guard so a cancelled consumer
+all listeners. Send results _under_ the `done` guard so a cancelled consumer
 can't wedge the producer.
 
 ```go
@@ -265,12 +265,13 @@ Go multiplexes goroutines onto OS threads with an **M:N work-stealing**
 scheduler: **G** = goroutine, **M** = OS thread, **P** = processor (a run
 context). `GOMAXPROCS` (default `runtime.NumCPU()`) caps how many Ps run Go code
 at once; an idle P steals goroutines from a busy P's queue. Goroutines are cheap
+
 - ~2 KB initial stacks that grow on demand and nanosecond-scale switches - so
-thousands are fine where threads would not be. You rarely manage any of this
-directly; you make goroutines *cancellable* and let the runtime schedule them.
-None of it makes a racy program correct - run `-race`.
+  thousands are fine where threads would not be. You rarely manage any of this
+  directly; you make goroutines _cancellable_ and let the runtime schedule them.
+  None of it makes a racy program correct - run `-race`.
 
 ---
 
-*Distilled from [luk4z7/go-concurrency-guide](https://github.com/luk4z7/go-concurrency-guide),
-which draws on "Concurrency in Go" (Katherine Cox-Buday) and "The Go Programming Language".*
+_Distilled from [luk4z7/go-concurrency-guide](https://github.com/luk4z7/go-concurrency-guide),
+which draws on "Concurrency in Go" (Katherine Cox-Buday) and "The Go Programming Language"._

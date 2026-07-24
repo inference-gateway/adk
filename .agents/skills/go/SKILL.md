@@ -13,7 +13,7 @@ license: Apache-2.0
 # Idiomatic Go
 
 Write Go that is **boring in the best way** - direct, predictable, obvious on the
-first read. *Clear is better than clever.* The common failure mode (and the LLM
+first read. _Clear is better than clever._ The common failure mode (and the LLM
 default) is importing Java/Spring habits - deep layer trees, generic
 repositories, heavy frameworks, manual worker pools - into a language built for
 flat, simple, discoverable APIs. When in doubt, delete the abstraction.
@@ -49,7 +49,7 @@ func (c *Counter) Inc() { c.mu.Lock(); c.count++; c.mu.Unlock() }
 ## Packages: flat, named for what they do
 
 Start flat; add a package only when a domain earns a namespace. Name packages by
-**what they do** (`auth`, `billing`, `jobs`), never by what *layer* they are
+**what they do** (`auth`, `billing`, `jobs`), never by what _layer_ they are
 (`service`, `repository`, `controller`) - layer-named packages breed circular
 imports and interface bloat and add zero clarity in Go. No `utils/`, `helpers/`,
 or `common/` junk drawers; they signal unclear ownership. Packages don't import
@@ -161,7 +161,7 @@ func TestParse(t *testing.T) {
 > **In this repo:** fakes for the domain interfaces are
 > **counterfeiter-generated** under `client/mocks/` and `server/mocks/`, not
 > hand-written. Regenerate with `task generate:mocks` (the pre-commit hook runs
-> it). For a *new* interface, add its `generate:mock:*` target in `Taskfile.yml`
+> it). For a _new_ interface, add its `generate:mock:*` target in `Taskfile.yml`
 > (each points at a specific source file via `sources:`). Use the generated
 > fakes - don't hand-roll rivals. Table tests, `testdata`, and `go-cmp` still
 > apply.
@@ -171,17 +171,17 @@ func TestParse(t *testing.T) {
 This repo targets **Go 1.26** - reach for the modern stdlib before any third-party
 helper or hand-rolled loop:
 
-| Instead of | Use |
-| --- | --- |
-| `sort.Slice(s, ...)` | `slices.Sort(s)`, `slices.SortFunc`, `slices.Contains/Index` |
-| manual key/value loops | `maps.Keys/Values/Clone/Copy/Equal` |
-| `if x == 0 { x = def }` | `cmp.Or(x, def)`; `min`/`max` built-ins |
-| ad-hoc multi-error joins | `errors.Join(err1, err2)` |
-| `atomic.AddInt64(&n, 1)` | typed `atomic.Int64`/`Bool`/`Pointer[T]` (`n.Add(1)`) |
+| Instead of                    | Use                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `sort.Slice(s, ...)`          | `slices.Sort(s)`, `slices.SortFunc`, `slices.Contains/Index`           |
+| manual key/value loops        | `maps.Keys/Values/Clone/Copy/Equal`                                    |
+| `if x == 0 { x = def }`       | `cmp.Or(x, def)`; `min`/`max` built-ins                                |
+| ad-hoc multi-error joins      | `errors.Join(err1, err2)`                                              |
+| `atomic.AddInt64(&n, 1)`      | typed `atomic.Int64`/`Bool`/`Pointer[T]` (`n.Add(1)`)                  |
 | gorilla/mux for basic routing | `net/http`: `mux.HandleFunc("GET /u/{id}", ...)` + `r.PathValue("id")` |
-| `for i := 0; i < n; i++` | `for i := range n` |
-| `interface{}` | `any` |
-| `// +build` tags | `//go:build` |
+| `for i := 0; i < n; i++`      | `for i := range n`                                                     |
+| `interface{}`                 | `any`                                                                  |
+| `// +build` tags              | `//go:build`                                                           |
 
 To keep a request's values but drop its cancellation for work that outlives it,
 use `context.WithoutCancel(ctx)` (Go 1.21).
@@ -214,11 +214,12 @@ logger.Error("request failed", "err", err)   // needs attention
 ```
 
 - **Inject** the logger as a dependency; no package-level logger beyond `main`.
-- **Never log *and* return** the same error - log once at the boundary, return it
+- **Never log _and_ return** the same error - log once at the boundary, return it
   up the stack everywhere else.
 
 > **In this repo:** logging is **`go.uber.org/zap`** (`*zap.Logger`, injected
 > into the agent/server/handlers), not `slog`. The discipline above is identical
+>
 > - use `zap.String`/`zap.Error` typed fields.
 
 ## Concurrency, briefly
@@ -266,6 +267,6 @@ Re-read the (accurate) error, confirm the file is actually compiled
 
 ---
 
-*Adapted from [spf13/go-skills](https://github.com/spf13/go-skills) (MIT, by Steve
+_Adapted from [spf13/go-skills](https://github.com/spf13/go-skills) (MIT, by Steve
 Francia), trimmed and reconciled with this repo's conventions. Pairs with
-**go-concurrency** and **go-spec-reviewer**.*
+**go-concurrency** and **go-spec-reviewer**._
