@@ -26,7 +26,7 @@ All commands run from the repo root. Discover the full list with `task --list`.
 | `task generate:mocks` | Regenerate every counterfeiter mock under `client/mocks/` and `server/mocks/` |
 | `task generate:mocks:clean` | Wipe and regenerate all mocks |
 | `task lint:examples` | `markdownlint --fix 'examples/**/*.md'` |
-| `task precommit:install` | Copy `scripts/pre-commit` into `.git/hooks/` (recommended) |
+| `task precommit:install` | Copy `.githooks/pre-commit` into `.git/hooks/` (recommended) |
 
 **Single test / single package:**
 
@@ -35,7 +35,7 @@ go test -run TestNameRegex -v ./server/...
 go test -v ./types/...
 ```
 
-CI lives in `.github/workflows/ci.yml`. It mirrors the local flow and ends with `git diff --exit-code` after running `gofmt`, `prettier`, `go mod tidy`, and the type generator — so any formatting / tidy / generation change must be committed, otherwise CI fails. The pre-commit hook (`scripts/pre-commit`) runs format → tidy → `generate:mocks` → lint → test on staged Go files and likewise exits non-zero if files are still dirty after.
+CI lives in `.github/workflows/ci.yml`. It mirrors the local flow and ends with `git diff --exit-code` after running `gofmt`, `prettier`, `go mod tidy`, and the type generator — so any formatting / tidy / generation change must be committed, otherwise CI fails. The pre-commit hook (`.githooks/pre-commit`) runs format → tidy → `generate:mocks` → lint → test on staged Go files and likewise exits non-zero if files are still dirty after.
 
 ## Architecture
 

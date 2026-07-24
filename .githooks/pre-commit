@@ -4,8 +4,8 @@ set -e
 
 echo "🔍 Running pre-commit checks..."
 
-go_files=$(git diff --cached --name-only | grep '\.go$' || true)
-md_files=$(git diff --cached --name-only | grep '\.md$' || true)
+go_files=$(git diff --cached --name-only | grep '\\.go$' || true)
+md_files=$(git diff --cached --name-only | grep '\\.md$' || true)
 
 if [ -n "$go_files" ]; then
     echo "📝 Go files detected - running full checks..."
