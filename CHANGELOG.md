@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.2](https://github.com/inference-gateway/adk/compare/v0.25.1...v0.25.2) (2026-07-28)
+
+### 🔧 Miscellaneous
+
+* **deps:** bump inference-gateway/sdk from v1.26.0 to v1.30.0 ([#264](https://github.com/inference-gateway/adk/issues/264)) ([c006d0b](https://github.com/inference-gateway/adk/commit/c006d0b8d08cc8aa736d6b4d76df2e44f5624bfa))
+
 ## [0.25.1](https://github.com/inference-gateway/adk/compare/v0.25.0...v0.25.1) (2026-07-28)
 
 ### 🐛 Bug Fixes
