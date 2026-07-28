@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.1](https://github.com/inference-gateway/adk/compare/v0.25.0...v0.25.1) (2026-07-28)
+
+### 🐛 Bug Fixes
+
+* **ci:** update maintainer app ID to client ID in workflows and documentation ([e992029](https://github.com/inference-gateway/adk/commit/e99202918d8c83051c8c8ef7b8aa3fd8b21618c4))
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#263](https://github.com/inference-gateway/adk/issues/263)) ([1806cae](https://github.com/inference-gateway/adk/commit/1806cae2d0121cf8e48e110816c57e941cd604bb))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.147.1 -> v0.153.1 ([#262](https://github.com/inference-gateway/adk/issues/262)) ([adb76e9](https://github.com/inference-gateway/adk/commit/adb76e9ad3b3a60a27bc27582eeb542a992353e4))
+
 ## [0.25.0](https://github.com/inference-gateway/adk/compare/v0.24.0...v0.25.0) (2026-07-24)
 
 ### ✨ Features
