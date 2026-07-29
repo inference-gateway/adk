@@ -552,6 +552,8 @@ Configure your A2A agent using environment variables. All configuration is optio
 | `AUTH_CLIENT_ID`     | -       | OIDC client ID             |
 | `AUTH_CLIENT_SECRET` | -       | OIDC client secret         |
 
+See [docs/authentication.md](docs/authentication.md) for the full card-driven auth flow: discovery, out-of-band credentials, the authenticated extended card, and authorization via callbacks.
+
 #### Task Management
 
 | Variable                             | Default | Description                                 |

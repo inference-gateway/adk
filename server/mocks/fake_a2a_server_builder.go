@@ -109,6 +109,17 @@ type FakeA2AServerBuilder struct {
 	withDefaultTaskHandlersReturnsOnCall map[int]struct {
 		result1 server.A2AServerBuilder
 	}
+	WithExtendedAgentCardStub        func(types.AgentCard) server.A2AServerBuilder
+	withExtendedAgentCardMutex       sync.RWMutex
+	withExtendedAgentCardArgsForCall []struct {
+		arg1 types.AgentCard
+	}
+	withExtendedAgentCardReturns struct {
+		result1 server.A2AServerBuilder
+	}
+	withExtendedAgentCardReturnsOnCall map[int]struct {
+		result1 server.A2AServerBuilder
+	}
 	WithLoggerStub        func(*zap.Logger) server.A2AServerBuilder
 	withLoggerMutex       sync.RWMutex
 	withLoggerArgsForCall []struct {
@@ -678,6 +689,67 @@ func (fake *FakeA2AServerBuilder) WithDefaultTaskHandlersReturnsOnCall(i int, re
 	}{result1}
 }
 
+func (fake *FakeA2AServerBuilder) WithExtendedAgentCard(arg1 types.AgentCard) server.A2AServerBuilder {
+	fake.withExtendedAgentCardMutex.Lock()
+	ret, specificReturn := fake.withExtendedAgentCardReturnsOnCall[len(fake.withExtendedAgentCardArgsForCall)]
+	fake.withExtendedAgentCardArgsForCall = append(fake.withExtendedAgentCardArgsForCall, struct {
+		arg1 types.AgentCard
+	}{arg1})
+	stub := fake.WithExtendedAgentCardStub
+	fakeReturns := fake.withExtendedAgentCardReturns
+	fake.recordInvocation("WithExtendedAgentCard", []interface{}{arg1})
+	fake.withExtendedAgentCardMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeA2AServerBuilder) WithExtendedAgentCardCallCount() int {
+	fake.withExtendedAgentCardMutex.RLock()
+	defer fake.withExtendedAgentCardMutex.RUnlock()
+	return len(fake.withExtendedAgentCardArgsForCall)
+}
+
+func (fake *FakeA2AServerBuilder) WithExtendedAgentCardCalls(stub func(types.AgentCard) server.A2AServerBuilder) {
+	fake.withExtendedAgentCardMutex.Lock()
+	defer fake.withExtendedAgentCardMutex.Unlock()
+	fake.WithExtendedAgentCardStub = stub
+}
+
+func (fake *FakeA2AServerBuilder) WithExtendedAgentCardArgsForCall(i int) types.AgentCard {
+	fake.withExtendedAgentCardMutex.RLock()
+	defer fake.withExtendedAgentCardMutex.RUnlock()
+	argsForCall := fake.withExtendedAgentCardArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeA2AServerBuilder) WithExtendedAgentCardReturns(result1 server.A2AServerBuilder) {
+	fake.withExtendedAgentCardMutex.Lock()
+	defer fake.withExtendedAgentCardMutex.Unlock()
+	fake.WithExtendedAgentCardStub = nil
+	fake.withExtendedAgentCardReturns = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
+func (fake *FakeA2AServerBuilder) WithExtendedAgentCardReturnsOnCall(i int, result1 server.A2AServerBuilder) {
+	fake.withExtendedAgentCardMutex.Lock()
+	defer fake.withExtendedAgentCardMutex.Unlock()
+	fake.WithExtendedAgentCardStub = nil
+	if fake.withExtendedAgentCardReturnsOnCall == nil {
+		fake.withExtendedAgentCardReturnsOnCall = make(map[int]struct {
+			result1 server.A2AServerBuilder
+		})
+	}
+	fake.withExtendedAgentCardReturnsOnCall[i] = struct {
+		result1 server.A2AServerBuilder
+	}{result1}
+}
+
 func (fake *FakeA2AServerBuilder) WithLogger(arg1 *zap.Logger) server.A2AServerBuilder {
 	fake.withLoggerMutex.Lock()
 	ret, specificReturn := fake.withLoggerReturnsOnCall[len(fake.withLoggerArgsForCall)]
@@ -943,6 +1015,8 @@ func (fake *FakeA2AServerBuilder) Invocations() map[string][][]interface{} {
 	defer fake.withDefaultStreamingTaskHandlerMutex.RUnlock()
 	fake.withDefaultTaskHandlersMutex.RLock()
 	defer fake.withDefaultTaskHandlersMutex.RUnlock()
+	fake.withExtendedAgentCardMutex.RLock()
+	defer fake.withExtendedAgentCardMutex.RUnlock()
 	fake.withLoggerMutex.RLock()
 	defer fake.withLoggerMutex.RUnlock()
 	fake.withStreamingTaskHandlerMutex.RLock()

@@ -59,6 +59,11 @@ type A2AServerBuilder interface {
 	// The optional overrides map allows dynamic replacement of JSON attribute values.
 	WithAgentCardFromFile(filePath string, overrides map[string]any) A2AServerBuilder
 
+	// WithExtendedAgentCard sets the extended agent card returned to authenticated
+	// callers via agent/getAuthenticatedExtendedCard. Setting it forces the served
+	// public card to advertise supportsExtendedAgentCard: true.
+	WithExtendedAgentCard(agentCard types.AgentCard) A2AServerBuilder
+
 	// WithLogger sets a custom logger for the builder and resulting server.
 	// This allows using a logger configured with appropriate level based on the Debug config.
 	WithLogger(logger *zap.Logger) A2AServerBuilder
@@ -91,6 +96,7 @@ type A2AServerBuilderImpl struct {
 	taskResultProcessor  TaskResultProcessor   // Optional custom task result processor
 	agent                OpenAICompatibleAgent // Optional pre-configured agent
 	agentCard            *types.AgentCard      // Optional custom agent card
+	extendedAgentCard    *types.AgentCard      // Optional extended agent card for authenticated callers
 	artifactService      ArtifactService       // Optional artifact service for storage operations
 	telemetry            otel.OpenTelemetry    // Optional pre-configured telemetry instance
 }
@@ -272,6 +278,12 @@ func (b *A2AServerBuilderImpl) WithAgentCardFromFile(filePath string, overrides 
 	return b
 }
 
+// WithExtendedAgentCard sets the extended agent card for authenticated callers
+func (b *A2AServerBuilderImpl) WithExtendedAgentCard(agentCard types.AgentCard) A2AServerBuilder {
+	b.extendedAgentCard = &agentCard
+	return b
+}
+
 // WithLogger sets a custom logger for the builder
 func (b *A2AServerBuilderImpl) WithLogger(logger *zap.Logger) A2AServerBuilder {
 	b.logger = logger
@@ -351,6 +363,10 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 
 	if b.agentCard != nil {
 		server.SetAgentCard(*b.agentCard)
+	}
+
+	if b.extendedAgentCard != nil {
+		server.SetExtendedAgentCard(*b.extendedAgentCard)
 	}
 
 	return server, nil

@@ -169,55 +169,88 @@ func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandle
 	assert.GreaterOrEqual(t, strings.Count(body, "data: "), 2)
 }
 
-func TestProtocolHandler_HandleGetAuthenticatedExtendedCard_ReturnsCard(t *testing.T) {
-	h, _, _, _ := makeProtocolHandlerWithMocks(t)
+func TestProtocolHandler_HandleGetAuthenticatedExtendedCard(t *testing.T) {
+	makeCard := func(name string, supports *bool) *types.AgentCard {
+		return &types.AgentCard{
+			Name:                      name,
+			Description:               "test card",
+			Version:                   "1.2.3",
+			ProtocolVersion:           "1.0",
+			DefaultInputModes:         []string{"text/plain"},
+			DefaultOutputModes:        []string{"text/plain"},
+			Skills:                    []types.AgentSkill{},
+			SupportsExtendedAgentCard: supports,
+		}
+	}
+	truePtr := true
+	falsePtr := false
 
-	agentCard := &types.AgentCard{
-		Name:               "extended-agent",
-		Description:        "test extended card",
-		Version:            "1.2.3",
-		ProtocolVersion:    "1.0",
-		DefaultInputModes:  []string{"text/plain"},
-		DefaultOutputModes: []string{"text/plain"},
-		Skills:             []types.AgentSkill{},
+	tests := []struct {
+		name         string
+		publicCard   *types.AgentCard
+		extendedCard *types.AgentCard
+		wantCode     int
+		wantErrCode  float64
+		wantName     string
+	}{
+		{
+			name:        "nil public card is internal error",
+			publicCard:  nil,
+			wantErrCode: float64(server.ErrInternalError),
+		},
+		{
+			name:        "flag absent returns unsupported operation",
+			publicCard:  makeCard("agent", nil),
+			wantErrCode: float64(server.ErrUnsupportedOperation),
+		},
+		{
+			name:        "flag false returns unsupported operation",
+			publicCard:  makeCard("agent", &falsePtr),
+			wantErrCode: float64(server.ErrUnsupportedOperation),
+		},
+		{
+			name:        "flag true but no extended card returns not configured",
+			publicCard:  makeCard("agent", &truePtr),
+			wantErrCode: float64(server.ErrExtendedAgentCardNotConfigured),
+		},
+		{
+			name:         "flag true with extended card returns it",
+			publicCard:   makeCard("public-agent", &truePtr),
+			extendedCard: makeCard("extended-agent", &truePtr),
+			wantCode:     200,
+			wantName:     "extended-agent",
+		},
 	}
 
-	c, w := newRequestContext(t, "{}")
-	reqID := any("req-1")
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		ID:      &reqID,
-		Method:  "agent/getAuthenticatedExtendedCard",
-		Params:  map[string]any{"tenant": "tenant-1"},
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, _, _, _ := makeProtocolHandlerWithMocks(t)
+			c, w := newRequestContext(t, "{}")
+			reqID := any("req-1")
+			req := types.JSONRPCRequest{
+				JSONRPC: "2.0",
+				ID:      &reqID,
+				Method:  "agent/getAuthenticatedExtendedCard",
+				Params:  map[string]any{"tenant": "tenant-1"},
+			}
+
+			h.HandleGetAuthenticatedExtendedCard(c, req, tt.publicCard, tt.extendedCard)
+
+			var payload map[string]any
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &payload))
+			assert.Equal(t, "2.0", payload["jsonrpc"])
+
+			if tt.wantName != "" {
+				assert.Equal(t, tt.wantCode, w.Code)
+				result, ok := payload["result"].(map[string]any)
+				require.True(t, ok, "result should decode as object")
+				assert.Equal(t, tt.wantName, result["name"])
+				return
+			}
+
+			errObj, ok := payload["error"].(map[string]any)
+			require.True(t, ok, "error should be present")
+			assert.Equal(t, tt.wantErrCode, errObj["code"])
+		})
 	}
-
-	h.HandleGetAuthenticatedExtendedCard(c, req, agentCard)
-
-	assert.Equal(t, 200, w.Code)
-	var payload map[string]any
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &payload))
-	assert.Equal(t, "2.0", payload["jsonrpc"])
-
-	result, ok := payload["result"].(map[string]any)
-	require.True(t, ok, "result should be present and decode as object")
-	assert.Equal(t, "extended-agent", result["name"])
-	assert.Equal(t, "1.2.3", result["version"])
-}
-
-func TestProtocolHandler_HandleGetAuthenticatedExtendedCard_NilCardReturnsError(t *testing.T) {
-	h, _, _, _ := makeProtocolHandlerWithMocks(t)
-
-	c, w := newRequestContext(t, "{}")
-	reqID := any("req-1")
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		ID:      &reqID,
-		Method:  "agent/getAuthenticatedExtendedCard",
-		Params:  map[string]any{},
-	}
-
-	h.HandleGetAuthenticatedExtendedCard(c, req, nil)
-
-	body := w.Body.String()
-	assert.Contains(t, body, "agent card not configured")
 }
