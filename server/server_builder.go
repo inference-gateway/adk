@@ -367,6 +367,10 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 
 	if b.extendedAgentCard != nil {
 		server.SetExtendedAgentCard(*b.extendedAgentCard)
+		if server.customAgentCard != nil {
+			enabled := true
+			server.customAgentCard.SupportsExtendedAgentCard = &enabled
+		}
 	}
 
 	return server, nil

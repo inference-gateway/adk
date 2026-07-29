@@ -341,14 +341,9 @@ func (s *A2AServerImpl) SetAgentCard(agentCard types.AgentCard) {
 }
 
 // SetExtendedAgentCard sets the extended agent card returned to authenticated
-// callers via agent/getAuthenticatedExtendedCard. Setting it also forces the
-// public card to advertise supportsExtendedAgentCard.
+// callers via agent/getAuthenticatedExtendedCard.
 func (s *A2AServerImpl) SetExtendedAgentCard(agentCard types.AgentCard) {
 	s.extendedAgentCard = &agentCard
-	if s.customAgentCard != nil {
-		enabled := true
-		s.customAgentCard.SupportsExtendedAgentCard = &enabled
-	}
 }
 
 // validateStreamingConfiguration checks if streaming is enabled but no streaming handler is configured
