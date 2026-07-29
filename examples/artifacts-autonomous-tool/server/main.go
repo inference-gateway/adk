@@ -40,7 +40,7 @@ import (
 //   - A2A_AGENT_CLIENT_PROVIDER: LLM provider (required)
 //   - A2A_AGENT_CLIENT_MODEL: LLM model (required)
 //   - A2A_AGENT_CLIENT_TOOLS_CREATE_ARTIFACT: Enable create_artifact tool (default: true)
-//   - A2A_ARTIFACTS_ENABLE: Enable artifacts support (default: true)
+//   - A2A_ARTIFACTS_ENABLED: Enable artifacts support (default: true)
 //   - A2A_ARTIFACTS_SERVER_PORT: Artifacts server port (default: 8081)
 //   - A2A_ARTIFACTS_STORAGE_PROVIDER: Storage provider (default: filesystem)
 //

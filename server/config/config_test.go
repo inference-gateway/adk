@@ -82,10 +82,10 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				"CAPABILITIES_STREAMING":                      "false",
 				"CAPABILITIES_PUSH_NOTIFICATIONS":             "false",
 				"CAPABILITIES_STATE_TRANSITION_HISTORY":       "true",
-				"SERVER_TLS_ENABLE":                           "true",
+				"SERVER_TLS_ENABLED":                          "true",
 				"SERVER_TLS_CERT_PATH":                        "/custom/cert.pem",
 				"SERVER_TLS_KEY_PATH":                         "/custom/key.pem",
-				"AUTH_ENABLE":                                 "true",
+				"AUTH_ENABLED":                                "true",
 				"AUTH_ISSUER_URL":                             "http://custom-keycloak:8080/realms/custom",
 				"AUTH_CLIENT_ID":                              "custom-client",
 				"AUTH_CLIENT_SECRET":                          "custom-secret",
@@ -321,7 +321,7 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 		{
 			name: "telemetry enable defaults traces to otlp",
 			envVars: map[string]string{
-				"TELEMETRY_ENABLE": "true",
+				"TELEMETRY_ENABLED": "true",
 			},
 			validate: func(t *testing.T, r config.ResolvedTelemetry) {
 				assert.Equal(t, config.ExporterOTLP, r.TracesExporter)
@@ -330,7 +330,7 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 		{
 			name: "traces exporter none opts traces out while telemetry enabled",
 			envVars: map[string]string{
-				"TELEMETRY_ENABLE":     "true",
+				"TELEMETRY_ENABLED":    "true",
 				"OTEL_TRACES_EXPORTER": "none",
 			},
 			validate: func(t *testing.T, r config.ResolvedTelemetry) {
@@ -340,7 +340,7 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 		{
 			name: "deprecated endpoint alias still feeds otlp traces",
 			envVars: map[string]string{
-				"TELEMETRY_ENABLE":         "true",
+				"TELEMETRY_ENABLED":        "true",
 				"TELEMETRY_TRACE_ENDPOINT": "http://legacy:4318",
 				"TELEMETRY_METRICS_PORT":   "9191",
 			},
@@ -353,7 +353,7 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 		{
 			name: "standard OTEL endpoint overrides deprecated alias",
 			envVars: map[string]string{
-				"TELEMETRY_ENABLE":            "true",
+				"TELEMETRY_ENABLED":           "true",
 				"TELEMETRY_TRACE_ENDPOINT":    "http://legacy:4318",
 				"OTEL_EXPORTER_OTLP_ENDPOINT": "http://standard:4318",
 			},

@@ -30,7 +30,7 @@ cd server
 A2A_AGENT_CLIENT_PROVIDER=openai \
 A2A_AGENT_CLIENT_MODEL=gpt-4o-mini \
 A2A_AGENT_CLIENT_API_KEY=sk-... \
-A2A_MCP_ENABLE=true \
+A2A_MCP_ENABLED=true \
 A2A_MCP_SERVERS=http://localhost:8083 \
 go run .
 ```
