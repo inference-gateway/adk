@@ -82,7 +82,7 @@ The server can be configured via environment variables:
 | `A2A_AGENT_DESCRIPTION`           | `An agent that creates...`   | Agent description        |
 | `A2A_AGENT_VERSION`               | `0.1.0`                      | Agent version            |
 | `A2A_SERVER_PORT`                 | `8080`                       | A2A server port          |
-| `A2A_ARTIFACTS_ENABLED`            | `true`                       | Enable artifacts support |
+| `A2A_ARTIFACTS_ENABLED`           | `true`                       | Enable artifacts support |
 | `A2A_ARTIFACTS_SERVER_HOST`       | `localhost`                  | Artifacts server host    |
 | `A2A_ARTIFACTS_SERVER_PORT`       | `8081`                       | Artifacts server port    |
 | `A2A_ARTIFACTS_STORAGE_PROVIDER`  | `filesystem`                 | Storage provider         |

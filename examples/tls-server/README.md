@@ -120,7 +120,7 @@ The server supports the following TLS-related environment variables:
 
 | Environment Variable       | Description                  | Default             |
 | -------------------------- | ---------------------------- | ------------------- |
-| `A2A_SERVER_TLS_ENABLED`    | Enable TLS/HTTPS             | `true`              |
+| `A2A_SERVER_TLS_ENABLED`   | Enable TLS/HTTPS             | `true`              |
 | `A2A_SERVER_TLS_CERT_PATH` | Path to TLS certificate file | `/certs/server.crt` |
 | `A2A_SERVER_TLS_KEY_PATH`  | Path to TLS private key file | `/certs/server.key` |
 | `A2A_SERVER_PORT`          | HTTPS server port            | `8443`              |
