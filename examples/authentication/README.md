@@ -1,12 +1,19 @@
 # Authentication Flow Example
 
-Demonstrates the A2A **card-driven authentication flow** ([spec section 7](https://a2a-protocol.org/latest/specification/#7-authentication-and-authorization) and the extended-card contract in 3.3.4).
+Demonstrates the A2A **card-driven authentication flow**
+([spec section 7](https://a2a-protocol.org/latest/specification/#7-authentication-and-authorization)
+and the extended-card contract in 3.3.4).
 
 The flow has three steps:
 
-1. **Discovery** - the client fetches the public agent card (unauthenticated) and reads its `securitySchemes` to learn how to authenticate. The server declares an OpenID Connect scheme via `server.OIDCSecuritySchemes(cfg.AuthConfig)`.
-2. **Credentials** - the client obtains a credential out of band (from the discovered OIDC provider) and attaches it as an `Authorization` header on every request.
-3. **Extended card** - the authenticated client calls `agent/getAuthenticatedExtendedCard` to receive a richer card. The server exposes it via `WithExtendedAgentCard()`, which also advertises `supportsExtendedAgentCard: true` on the public card.
+1. **Discovery** - the client fetches the public agent card (unauthenticated) and reads its
+   `securitySchemes` to learn how to authenticate. The server declares an OpenID Connect scheme
+   via `server.OIDCSecuritySchemes(cfg.AuthConfig)`.
+2. **Credentials** - the client obtains a credential out of band (from the discovered OIDC
+   provider) and attaches it as an `Authorization` header on every request.
+3. **Extended card** - the authenticated client calls `agent/getAuthenticatedExtendedCard` to
+   receive a richer card. The server exposes it via `WithExtendedAgentCard()`, which also
+   advertises `supportsExtendedAgentCard: true` on the public card.
 
 ## Running
 
@@ -18,7 +25,9 @@ cd server && go run .
 cd client && go run .
 ```
 
-Authentication is **disabled by default** (`AUTH_ENABLE=false`) so the example runs without a live OIDC provider - the discovery half of the flow and the extended-card contract are still exercised end to end. To enforce the declared scheme, run the server with:
+Authentication is **disabled by default** (`AUTH_ENABLE=false`) so the example runs without a
+live OIDC provider - the discovery half of the flow and the extended-card contract are still
+exercised end to end. To enforce the declared scheme, run the server with:
 
 ```bash
 A2A_AUTH_ENABLE=true A2A_AUTH_ISSUER_URL=https://your-issuer/realms/demo go run .
