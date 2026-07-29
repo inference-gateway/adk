@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.3](https://github.com/inference-gateway/adk/compare/v0.25.2...v0.25.3) (2026-07-29)
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#266](https://github.com/inference-gateway/adk/issues/266)) ([73a0fda](https://github.com/inference-gateway/adk/commit/73a0fda96e4a02fdb97d48071619f975a6801612))
+* **deps:** bump github.com/prometheus/client_golang from 1.24.0 to 1.24.1 in the gomod group ([#265](https://github.com/inference-gateway/adk/issues/265)) ([730a5a4](https://github.com/inference-gateway/adk/commit/730a5a4489d7a1954db3685d1f98a0d2c4ce5496))
+
 ## [0.25.2](https://github.com/inference-gateway/adk/compare/v0.25.1...v0.25.2) (2026-07-28)
 
 ### 🔧 Miscellaneous
