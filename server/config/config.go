@@ -37,7 +37,7 @@ type Config struct {
 // (mcp_list_tools, mcp_call_tool) so only tool metadata - not every tool schema -
 // ever reaches the LLM context. Only useful when an LLM/agent is configured.
 type MCPConfig struct {
-	Enable           bool          `env:"ENABLE,default=false" description:"Enable the MCP client - connect to MCP servers to discover and invoke their tools"`
+	Enable           bool          `env:"ENABLED,default=false" description:"Enable the MCP client - connect to MCP servers to discover and invoke their tools"`
 	Servers          []string      `env:"SERVERS" description:"MCP server base URLs (comma-separated), e.g. http://mcp:8080"`
 	Endpoint         string        `env:"ENDPOINT,default=/mcp" description:"HTTP path appended to each server URL for the streamable MCP endpoint"`
 	RefreshInterval  time.Duration `env:"REFRESH_INTERVAL,default=5m" description:"How often to refresh the tool catalog from each MCP server"`
@@ -95,14 +95,14 @@ type CapabilitiesConfig struct {
 
 // TLSConfig holds TLS configuration
 type TLSConfig struct {
-	Enable   bool   `env:"ENABLE,default=false"`
+	Enable   bool   `env:"ENABLED,default=false"`
 	CertPath string `env:"CERT_PATH" description:"TLS certificate path"`
 	KeyPath  string `env:"KEY_PATH" description:"TLS key path"`
 }
 
 // AuthConfig holds authentication configuration
 type AuthConfig struct {
-	Enable       bool   `env:"ENABLE,default=false"`
+	Enable       bool   `env:"ENABLED,default=false"`
 	IssuerURL    string `env:"ISSUER_URL,default=http://keycloak:8080/realms/inference-gateway-realm"`
 	ClientID     string `env:"CLIENT_ID,default=inference-gateway-client"`
 	ClientSecret string `env:"CLIENT_SECRET"`
@@ -146,7 +146,7 @@ type MetricsConfig struct {
 
 // TelemetryConfig holds telemetry configuration
 type TelemetryConfig struct {
-	Enable        bool          `env:"ENABLE,default=false" description:"Enable telemetry collection"`
+	Enable        bool          `env:"ENABLED,default=false" description:"Enable telemetry collection"`
 	MetricsConfig MetricsConfig `env:",prefix=METRICS_"`
 	TraceConfig   TraceConfig   `env:",prefix=TRACE_"`
 	LogConfig     LogConfig     `env:",prefix=LOG_"`
@@ -267,7 +267,7 @@ func (c *Config) ResolveTelemetry() ResolvedTelemetry {
 }
 
 // TraceConfig holds OTLP trace exporter configuration. Trace export is gated by
-// the top-level TELEMETRY_ENABLE and the OTEL_TRACES_EXPORTER selection, not by
+// the top-level TELEMETRY_ENABLED and the OTEL_TRACES_EXPORTER selection, not by
 // a per-signal enable flag.
 type TraceConfig struct {
 	Endpoint string            `env:"ENDPOINT,default=http://localhost:4318" description:"OTLP trace endpoint URL"`
@@ -277,14 +277,14 @@ type TraceConfig struct {
 // LogConfig holds OTLP log exporter configuration.
 // Reserved for future use - the OTLP log exporter is not yet wired.
 type LogConfig struct {
-	Enable   bool              `env:"ENABLE,default=false" description:"Enable OTLP log export (reserved, not yet wired)"`
+	Enable   bool              `env:"ENABLED,default=false" description:"Enable OTLP log export (reserved, not yet wired)"`
 	Endpoint string            `env:"ENDPOINT,default=http://localhost:4318" description:"OTLP log endpoint URL (reserved, not yet wired)"`
 	Headers  map[string]string `env:"HEADERS" description:"Custom headers for OTLP log export (reserved, not yet wired)"`
 }
 
 // ArtifactsConfig holds artifacts server configuration
 type ArtifactsConfig struct {
-	Enable          bool                    `env:"ENABLE,default=false" description:"Enable artifacts server"`
+	Enable          bool                    `env:"ENABLED,default=false" description:"Enable artifacts server"`
 	ServerConfig    ArtifactsServerConfig   `env:",prefix=SERVER_" description:"HTTP server configuration for artifacts server"`
 	StorageConfig   ArtifactsStorageConfig  `env:",prefix=STORAGE_" description:"Storage configuration for artifacts"`
 	RetentionConfig ArtifactRetentionConfig `env:",prefix=RETENTION_" description:"Artifact retention and cleanup configuration"`

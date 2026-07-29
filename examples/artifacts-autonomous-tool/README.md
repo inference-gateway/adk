@@ -183,7 +183,7 @@ go run main.go
 | `A2A_AGENT_CLIENT_PROVIDER`              | Required                        | LLM provider                    |
 | `A2A_AGENT_CLIENT_MODEL`                 | Required                        | Model name                      |
 | `A2A_AGENT_CLIENT_TOOLS_CREATE_ARTIFACT` | `true`                          | **Enable create_artifact tool** |
-| `A2A_ARTIFACTS_ENABLE`                   | `true`                          | Enable artifacts support        |
+| `A2A_ARTIFACTS_ENABLED`                   | `true`                          | Enable artifacts support        |
 | `A2A_ARTIFACTS_SERVER_PORT`              | `8081`                          | Artifacts server port           |
 | `A2A_ARTIFACTS_SERVER_HOST`              | `localhost`                     | Artifacts server hostname       |
 | `A2A_ARTIFACTS_STORAGE_PROVIDER`         | `filesystem`                    | Storage provider                |

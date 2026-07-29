@@ -37,10 +37,10 @@ The tracing service name is derived from the agent card `name` (the build-time a
 
 ## Enabling Telemetry
 
-Telemetry is off by default. `TELEMETRY_ENABLE=true` is the master switch that turns the telemetry subsystem on. Once enabled, the `OTEL_*` variables choose which exporters run per signal.
+Telemetry is off by default. `TELEMETRY_ENABLED=true` is the master switch that turns the telemetry subsystem on. Once enabled, the `OTEL_*` variables choose which exporters run per signal.
 
 ```bash
-export TELEMETRY_ENABLE=true
+export TELEMETRY_ENABLED=true
 export OTEL_METRICS_EXPORTER=prometheus      # prometheus | otlp | none
 export OTEL_TRACES_EXPORTER=otlp             # otlp | none
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
@@ -94,7 +94,7 @@ Baggage member names must stay in sync with the producer side (the `infer` orche
 For each setting, the standard `OTEL_*` variable wins when set; otherwise the deprecated `TELEMETRY_*` alias (and its default) applies:
 
 - **Metrics exporter** - `OTEL_METRICS_EXPORTER`, else `prometheus`.
-- **Traces exporter** - `OTEL_TRACES_EXPORTER`, else `otlp` when telemetry is enabled (`TELEMETRY_ENABLE=true`), else `none`.
+- **Traces exporter** - `OTEL_TRACES_EXPORTER`, else `otlp` when telemetry is enabled (`TELEMETRY_ENABLED=true`), else `none`.
 - **OTLP endpoint** - `OTEL_EXPORTER_OTLP_ENDPOINT`, else `TELEMETRY_TRACE_ENDPOINT`.
 - **OTLP protocol** - `OTEL_EXPORTER_OTLP_PROTOCOL`, else `http/protobuf`.
 - **Prometheus host/port** - `OTEL_EXPORTER_PROMETHEUS_HOST`/`PORT`, else `TELEMETRY_METRICS_HOST`/`PORT`.
@@ -115,7 +115,7 @@ Set `OTEL_METRICS_EXPORTER=none` to disable metrics export entirely while still 
 
 ```bash
 # Push metrics over OTLP instead of exposing a Prometheus endpoint
-export TELEMETRY_ENABLE=true
+export TELEMETRY_ENABLED=true
 export OTEL_METRICS_EXPORTER=otlp
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 ```
@@ -124,7 +124,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 
 ### OTLP Trace Export
 
-When telemetry is enabled (`TELEMETRY_ENABLE=true`) traces default to OTLP; setting `OTEL_TRACES_EXPORTER=none` opts traces out. With OTLP selected, a batching OTLP trace exporter is configured against `OTEL_EXPORTER_OTLP_ENDPOINT` over the selected protocol (`http/protobuf` or `grpc`) and registered as the global `TracerProvider`. Spans are exported in the background and flushed on shutdown.
+When telemetry is enabled (`TELEMETRY_ENABLED=true`) traces default to OTLP; setting `OTEL_TRACES_EXPORTER=none` opts traces out. With OTLP selected, a batching OTLP trace exporter is configured against `OTEL_EXPORTER_OTLP_ENDPOINT` over the selected protocol (`http/protobuf` or `grpc`) and registered as the global `TracerProvider`. Spans are exported in the background and flushed on shutdown.
 
 ### Trace Context Propagation
 
@@ -157,7 +157,7 @@ The request span status is set to `Error` only for `5xx` responses (a server fau
 
 ## Reusing Telemetry in a Library
 
-If your application already configures OpenTelemetry, inject your instance with `WithTelemetry()` rather than letting the ADK build one from the environment. The builder wires the provided instance into the request middleware, request spans, and the `/metrics` endpoint - regardless of the `TELEMETRY_ENABLE` flag.
+If your application already configures OpenTelemetry, inject your instance with `WithTelemetry()` rather than letting the ADK build one from the environment. The builder wires the provided instance into the request middleware, request spans, and the `/metrics` endpoint - regardless of the `TELEMETRY_ENABLED` flag.
 
 ```go
 package main
@@ -183,7 +183,7 @@ func build(myOtel otel.OpenTelemetry) (server.A2AServer, error) {
 Run an OpenTelemetry Collector locally and point the agent at it:
 
 ```bash
-export TELEMETRY_ENABLE=true
+export TELEMETRY_ENABLED=true
 export OTEL_TRACES_EXPORTER=otlp
 export OTEL_METRICS_EXPORTER=otlp
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
