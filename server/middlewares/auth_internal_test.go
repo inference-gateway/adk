@@ -7,7 +7,7 @@ import (
 
 	gin "github.com/gin-gonic/gin"
 	assert "github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
+	zap "go.uber.org/zap"
 )
 
 // TestOIDCMiddleware_Returns401WithChallenge covers the spec 7.4 SHOULD: 401 responses
