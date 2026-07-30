@@ -67,9 +67,9 @@ func (h *EchoTaskHandler) GetAgent() server.OpenAICompatibleAgent      { return 
 //   - Authenticated callers fetch the richer card via
 //     agent/getAuthenticatedExtendedCard.
 //
-// Authentication is left disabled by default (AUTH_ENABLE=false) so the example
+// Authentication is left disabled by default (AUTH_ENABLED=false) so the example
 // runs without a live OIDC provider - the discovery half of the flow and the
-// extended-card contract are still exercised end to end. Set AUTH_ENABLE=true
+// extended-card contract are still exercised end to end. Set AUTH_ENABLED=true
 // and point AUTH_ISSUER_URL at a real provider to enforce the declared scheme.
 //
 // To run: go run .

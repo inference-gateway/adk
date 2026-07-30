@@ -25,12 +25,12 @@ cd server && go run .
 cd client && go run .
 ```
 
-Authentication is **disabled by default** (`AUTH_ENABLE=false`) so the example runs without a
+Authentication is **disabled by default** (`AUTH_ENABLED=false`) so the example runs without a
 live OIDC provider - the discovery half of the flow and the extended-card contract are still
 exercised end to end. To enforce the declared scheme, run the server with:
 
 ```bash
-A2A_AUTH_ENABLE=true A2A_AUTH_ISSUER_URL=https://your-issuer/realms/demo go run .
+A2A_AUTH_ENABLED=true A2A_AUTH_ISSUER_URL=https://your-issuer/realms/demo go run .
 ```
 
 and point the client's `TOKEN` at a valid token from that provider.

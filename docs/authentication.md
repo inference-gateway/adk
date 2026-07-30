@@ -9,12 +9,12 @@ The ADK follows the [A2A specification, section 7](https://a2a-protocol.org/late
    - `security` - a requirement list with OR-of-ANDs semantics; satisfying any one entry is sufficient.
 2. **Credential acquisition is out-of-band** - the client obtains a token/key however the chosen scheme dictates.
 3. **Transmission** - the client sends the credential (e.g. `Authorization: Bearer <token>`) on every request.
-4. **Server enforcement** - with `AUTH_ENABLE=true` the `/a2a` endpoint is protected; unauthenticated requests get `401` with a `WWW-Authenticate` challenge.
+4. **Server enforcement** - with `AUTH_ENABLED=true` the `/a2a` endpoint is protected; unauthenticated requests get `401` with a `WWW-Authenticate` challenge.
 5. **Extended card** - if the card sets `supportsExtendedAgentCard: true`, an authenticated client MAY call `agent/getAuthenticatedExtendedCard` to receive a richer card and SHOULD replace its cached public card with the response.
 
 ## Declaring security schemes on the card
 
-With `AUTH_ENABLE=true` the served card must declare `securitySchemes` so clients can discover how to authenticate. A helper builds the OIDC declaration from the auth config:
+With `AUTH_ENABLED=true` the served card must declare `securitySchemes` so clients can discover how to authenticate. A helper builds the OIDC declaration from the auth config:
 
 ```go
 schemes, security := server.OIDCSecuritySchemes(cfg.AuthConfig)
@@ -37,7 +37,7 @@ Or declare it directly in a card JSON:
 }
 ```
 
-If `AUTH_ENABLE=true` but the card declares no `securitySchemes` (or the inverse), the server logs a startup warning - the discovery step would otherwise be broken.
+If `AUTH_ENABLED=true` but the card declares no `securitySchemes` (or the inverse), the server logs a startup warning - the discovery step would otherwise be broken.
 
 ## Configuring the extended card
 

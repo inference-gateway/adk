@@ -389,7 +389,7 @@ func (s *A2AServerImpl) validateAuthConfiguration() {
 	case !s.cfg.AuthConfig.Enable && declaresSchemes:
 		s.logger.Warn("the agent card declares securitySchemes but authentication is disabled",
 			zap.String("impact", "advertised schemes are not enforced"),
-			zap.String("suggestion", "set AUTH_ENABLE=true or remove the securitySchemes from the card"))
+			zap.String("suggestion", "set AUTH_ENABLED=true or remove the securitySchemes from the card"))
 	}
 }
 
