@@ -40,7 +40,7 @@ The tool catalog is discovered in the background and refreshed on an interval, s
 All settings are read from environment variables under the `MCP_` prefix (in the
 examples, which nest the ADK config under `A2A_`, the prefix is `A2A_MCP_`).
 
-- **`MCP_ENABLE`** (default `false`) - Enable the MCP client.
+- **`MCP_ENABLED`** (default `false`) - Enable the MCP client.
 - **`MCP_SERVERS`** - Comma-separated MCP server base URLs, e.g. `http://mcp:8080`.
 - **`MCP_ENDPOINT`** (default `/mcp`) - HTTP path appended to each server URL for the streamable MCP endpoint.
 - **`MCP_REFRESH_INTERVAL`** (default `5m`) - How often to refresh the tool catalog from each server.

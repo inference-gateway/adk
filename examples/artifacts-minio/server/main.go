@@ -202,7 +202,7 @@ func (h *ArtifactsTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 //   - ENVIRONMENT: Runtime environment (default: development)
 //   - A2A_AGENT_NAME: Agent name (default: artifacts-minio-agent)
 //   - A2A_SERVER_PORT: A2A server port (default: 8080)
-//   - A2A_ARTIFACTS_ENABLE: Enable artifacts support (default: true)
+//   - A2A_ARTIFACTS_ENABLED: Enable artifacts support (default: true)
 //   - A2A_ARTIFACTS_SERVER_HOST: Artifacts server host (default: localhost)
 //   - A2A_ARTIFACTS_SERVER_PORT: Artifacts server port (default: 8081)
 //   - A2A_ARTIFACTS_STORAGE_PROVIDER: Storage provider (default: minio)

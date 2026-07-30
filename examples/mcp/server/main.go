@@ -37,13 +37,13 @@ import (
 //
 //   - A2A_AGENT_CLIENT_API_KEY:  provider API key
 //
-//   - A2A_MCP_ENABLE:            enable the MCP client (default: false)
+//   - A2A_MCP_ENABLED:            enable the MCP client (default: false)
 //
 //   - A2A_MCP_SERVERS:           comma-separated MCP server base URLs
 //
 //   - A2A_MCP_ENDPOINT:          MCP HTTP endpoint path (default: /mcp)
 //
-//     To run: A2A_MCP_ENABLE=true A2A_MCP_SERVERS=http://localhost:8083 \
+//     To run: A2A_MCP_ENABLED=true A2A_MCP_SERVERS=http://localhost:8083 \
 //     A2A_AGENT_CLIENT_PROVIDER=openai A2A_AGENT_CLIENT_MODEL=gpt-4o-mini \
 //     A2A_AGENT_CLIENT_API_KEY=... go run .
 func main() {
@@ -97,7 +97,7 @@ func main() {
 		mcpManager.RegisterTools(toolBox)
 		logger.Info("mcp client enabled", zap.Strings("servers", cfg.A2A.MCPConfig.Servers))
 	} else {
-		logger.Warn("mcp client disabled - set A2A_MCP_ENABLE=true and A2A_MCP_SERVERS to use MCP tools")
+		logger.Warn("mcp client disabled - set A2A_MCP_ENABLED=true and A2A_MCP_SERVERS to use MCP tools")
 	}
 
 	llmClient, err := server.NewOpenAICompatibleLLMClient(&cfg.A2A.AgentConfig, logger)

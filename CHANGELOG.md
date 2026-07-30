@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.4](https://github.com/inference-gateway/adk/compare/v0.25.3...v0.25.4) (2026-07-29)
+
+### ♻️ Improvements
+
+* **config:** rename *_ENABLE env vars to *_ENABLED for consistency ([#269](https://github.com/inference-gateway/adk/issues/269)) ([fef1d14](https://github.com/inference-gateway/adk/commit/fef1d14da86cba425070f9e9c21618331faaa161))
+
 ## [0.25.3](https://github.com/inference-gateway/adk/compare/v0.25.2...v0.25.3) (2026-07-29)
 
 ### 👷 CI
