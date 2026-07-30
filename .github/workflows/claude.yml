@@ -74,8 +74,10 @@ jobs:
       language: "go"
       node: true
       markdownlint: true
+      extra-tools: "Bash(docker:*)"
       plugins: |
         DietrichGebert/ponytail
+        ayghri/i-have-adhd
       browser: ${{ inputs.browser || false }}
       effort: ${{ inputs.effort || 'medium' }}
       model: ${{ inputs.model || 'claude-opus-4-8' }}
