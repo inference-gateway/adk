@@ -72,6 +72,7 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			auth.logger.Error("missing authorization header")
+			c.Header("WWW-Authenticate", "Bearer")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
 			c.Abort()
 			return
@@ -79,6 +80,7 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
 			auth.logger.Error("invalid authorization header format")
+			c.Header("WWW-Authenticate", `Bearer error="invalid_request"`)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header format"})
 			c.Abort()
 			return
@@ -89,6 +91,7 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 		idToken, err := auth.verifier.Verify(c.Request.Context(), token)
 		if err != nil {
 			auth.logger.Error("failed to verify id token", zap.Error(err))
+			c.Header("WWW-Authenticate", `Bearer error="invalid_token"`)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
