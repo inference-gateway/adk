@@ -1,0 +1,38 @@
+---
+# On-prem OIDC issuer for the card-driven authentication flow.
+#
+# Brings up Keycloak with a pre-imported realm (inference-gateway-realm), a
+# confidential client (inference-gateway-client) with direct-access grants, and
+# a demo user (demo/demo). An audience mapper puts the client id into the token
+# `aud` so the ADK OIDC middleware accepts it.
+#
+#   docker compose up -d
+#   # then run the server with auth enforced against Keycloak:
+#   cd server && A2A_AUTH_ENABLED=true go run .
+#
+# Keycloak issues tokens with iss=http://localhost:8080/realms/inference-gateway-realm
+# (KC_HOSTNAME_STRICT=false → uses the request host), matching the issuer the
+# server and client use on the host.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/realm-import.json:/opt/keycloak/data/import/realm-import.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 40

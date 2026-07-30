@@ -17,7 +17,7 @@ import (
 // Config holds client configuration.
 type Config struct {
 	Environment string `env:"ENVIRONMENT,default=development"`
-	ServerURL   string `env:"SERVER_URL,default=http://localhost:8080"`
+	ServerURL   string `env:"SERVER_URL,default=http://localhost:8090"`
 	// Token is the out-of-band credential obtained separately (e.g. from the
 	// OIDC provider discovered on the card). For this example any value works
 	// since the server leaves auth disabled by default.

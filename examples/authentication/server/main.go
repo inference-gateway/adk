@@ -72,9 +72,11 @@ func (h *EchoTaskHandler) GetAgent() server.OpenAICompatibleAgent      { return 
 // extended-card contract are still exercised end to end. Set AUTH_ENABLED=true
 // and point AUTH_ISSUER_URL at a real provider to enforce the declared scheme.
 //
-// To run: go run .
-func main() {
-	cfg := &config.Config{
+// defaultConfig returns the example configuration before env overrides. Auth is
+// left disabled by default; the Keycloak issuer is the on-prem default so
+// setting A2A_AUTH_ENABLED=true is enough to enforce it (see README).
+func defaultConfig() *config.Config {
+	return &config.Config{
 		Environment: "development",
 		A2A: serverConfig.Config{
 			AgentName:        "authentication-agent",
@@ -84,24 +86,19 @@ func main() {
 				Streaming: false,
 			},
 			QueueConfig:  serverConfig.QueueConfig{CleanupInterval: 5 * time.Minute},
-			ServerConfig: serverConfig.ServerConfig{Port: "8080"},
+			ServerConfig: serverConfig.ServerConfig{Port: "8090"},
 			AuthConfig: serverConfig.AuthConfig{
-				IssuerURL: "https://issuer.example.com/realms/demo",
+				IssuerURL:    "http://localhost:8080/realms/inference-gateway-realm",
+				ClientID:     "inference-gateway-client",
+				ClientSecret: "inference-gateway-secret",
 			},
 		},
 	}
+}
 
-	ctx := context.Background()
-	if err := envconfig.Process(ctx, cfg); err != nil {
-		log.Fatalf("failed to load configuration: %v", err)
-	}
-
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("failed to create logger: %v", err)
-	}
-	defer func() { _ = logger.Sync() }()
-
+// buildServer wires the public and extended cards and builds the A2A server.
+// Shared by main() and the end-to-end test so both exercise identical setup.
+func buildServer(cfg *config.Config, logger *zap.Logger) (server.A2AServer, error) {
 	baseURL := fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)
 
 	// Public card: declare how to authenticate (spec section 7) so clients can
@@ -135,11 +132,31 @@ func main() {
 		},
 	}
 
-	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
+	return server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithBackgroundTaskHandler(&EchoTaskHandler{logger: logger}).
 		WithAgentCard(publicCard).
 		WithExtendedAgentCard(extendedCard).
 		Build()
+}
+
+// To run: go run .
+func main() {
+	cfg := defaultConfig()
+
+	ctx := context.Background()
+	if err := envconfig.Process(ctx, cfg); err != nil {
+		log.Fatalf("failed to load configuration: %v", err)
+	}
+
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		log.Fatalf("failed to create logger: %v", err)
+	}
+	defer func() { _ = logger.Sync() }()
+
+	baseURL := fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)
+
+	a2aServer, err := buildServer(cfg, logger)
 	if err != nil {
 		logger.Fatal("failed to create A2A server", zap.Error(err))
 	}
