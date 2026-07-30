@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.0](https://github.com/inference-gateway/adk/compare/v0.25.4...v0.26.0) (2026-07-30)
+
+### ✨ Features
+
+* implement A2A card-driven authentication flow ([#267](https://github.com/inference-gateway/adk/issues/267)) ([c36bcdc](https://github.com/inference-gateway/adk/commit/c36bcdcc55bb665e5f1d801ad37af734ab35b103)), closes [#40](https://github.com/inference-gateway/adk/issues/40)
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#270](https://github.com/inference-gateway/adk/issues/270)) ([6162bac](https://github.com/inference-gateway/adk/commit/6162bac89dbe1a177213d05af9c8e99fe5df2cc1))
+
 ## [0.25.4](https://github.com/inference-gateway/adk/compare/v0.25.3...v0.25.4) (2026-07-29)
 
 ### ♻️ Improvements
