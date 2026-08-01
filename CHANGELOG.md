@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.1](https://github.com/inference-gateway/adk/compare/v0.26.0...v0.26.1) (2026-08-01)
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#272](https://github.com/inference-gateway/adk/issues/272)) ([ea1ec0e](https://github.com/inference-gateway/adk/commit/ea1ec0e015c9f77b5c6a45b527921cac844bed6e))
+* **claude:** centralize claude.yml via reusable workflow ([#273](https://github.com/inference-gateway/adk/issues/273)) ([f5e2246](https://github.com/inference-gateway/adk/commit/f5e2246c0c3c787d3e316f749f175757ba9ce3b1))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.153.1 -> v0.155.0 ([#271](https://github.com/inference-gateway/adk/issues/271)) ([3f4fb88](https://github.com/inference-gateway/adk/commit/3f4fb88eb4f986f340c9852ad80c73c6e77b31ce))
+* **deps:** bump sdk version v1.30.0 -> v1.33.0 ([#274](https://github.com/inference-gateway/adk/issues/274)) ([cca59d0](https://github.com/inference-gateway/adk/commit/cca59d09f9c469a2f654c02badd7dff177486b09))
+
 ## [0.26.0](https://github.com/inference-gateway/adk/compare/v0.25.4...v0.26.0) (2026-07-30)
 
 ### ✨ Features
