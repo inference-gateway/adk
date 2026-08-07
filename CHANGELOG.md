@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.2](https://github.com/inference-gateway/adk/compare/v0.26.1...v0.26.2) (2026-08-07)
+
+### 🐛 Bug Fixes
+
+* **auth:** propagate verified OIDC claims through background task processor to callbacks ([#277](https://github.com/inference-gateway/adk/issues/277)) ([3ed43e8](https://github.com/inference-gateway/adk/commit/3ed43e80f66034cd496f35ae8d5fd91bda2590da)), references [#276](https://github.com/inference-gateway/adk/issues/276)
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.155.0 -> v0.164.0 ([#275](https://github.com/inference-gateway/adk/issues/275)) ([667db59](https://github.com/inference-gateway/adk/commit/667db59f6259e226d7b506a9875742e5215784bb))
+
 ## [0.26.1](https://github.com/inference-gateway/adk/compare/v0.26.0...v0.26.1) (2026-08-01)
 
 ### 👷 CI
