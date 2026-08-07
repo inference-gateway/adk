@@ -15,8 +15,7 @@ import (
 type contextKey string
 
 const (
-	AuthTokenContextKey contextKey = "authToken"
-	IDTokenContextKey   contextKey = "idToken"
+	ClaimsContextKey contextKey = "claims"
 )
 
 // OIDCAuthenticator interface for authentication middleware
@@ -97,14 +96,19 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set(string(AuthTokenContextKey), token)
-		c.Set(string(IDTokenContextKey), idToken)
-
-		// Propagate to the request context so values survive goroutine
-		// boundaries (the background task processor runs outside the
-		// request scope).
-		reqCtx := context.WithValue(c.Request.Context(), AuthTokenContextKey, token)
-		reqCtx = context.WithValue(reqCtx, IDTokenContextKey, idToken)
+		// Extract verified claims and propagate to context so they survive
+		// goroutine boundaries (the background task processor runs outside
+		// the request scope).
+		claims := make(map[string]any)
+		if err := idToken.Claims(&claims); err != nil {
+			auth.logger.Error("failed to extract id token claims", zap.Error(err))
+			c.Header("WWW-Authenticate", `Bearer error="invalid_token"`)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.Abort()
+			return
+		}
+		c.Set(string(ClaimsContextKey), claims)
+		reqCtx := context.WithValue(c.Request.Context(), ClaimsContextKey, claims)
 		c.Request = c.Request.WithContext(reqCtx)
 
 		c.Next()

@@ -693,16 +693,13 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		zap.String("context_id", task.ContextID))
 }
 
-// injectAuthContext restores the authenticated caller identity that was
-// captured when the task was enqueued (see QueuedTask.AuthToken /
-// IDToken) back onto the processing context so that callbacks can
-// inspect the caller via ctx.Value(middlewares.AuthTokenContextKey) etc.
+// injectAuthContext restores the authenticated caller claims that were
+// captured when the task was enqueued (see QueuedTask.Claims) back onto
+// the processing context so that callbacks can inspect the caller via
+// ctx.Value(middlewares.ClaimsContextKey).
 func injectAuthContext(ctx context.Context, qt *QueuedTask) context.Context {
-	if qt.AuthToken != "" {
-		ctx = context.WithValue(ctx, middlewares.AuthTokenContextKey, qt.AuthToken)
-	}
-	if qt.IDToken != nil {
-		ctx = context.WithValue(ctx, middlewares.IDTokenContextKey, qt.IDToken)
+	if len(qt.Claims) > 0 {
+		ctx = context.WithValue(ctx, middlewares.ClaimsContextKey, qt.Claims)
 	}
 	return ctx
 }

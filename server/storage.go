@@ -33,21 +33,15 @@ func extractTraceContext(ctx context.Context, traceContext map[string]string) co
 	return otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(traceContext))
 }
 
-// extractAuthTokenFromCtx retrieves the raw OIDC auth token from the
-// context when authentication is enabled and a token was verified.
-func extractAuthTokenFromCtx(ctx context.Context) string {
-	if v := ctx.Value(middlewares.AuthTokenContextKey); v != nil {
-		if s, ok := v.(string); ok {
-			return s
+// extractClaimsFromCtx retrieves the verified OIDC claims from the
+// context. Returns nil when authentication is disabled.
+func extractClaimsFromCtx(ctx context.Context) map[string]any {
+	if v := ctx.Value(middlewares.ClaimsContextKey); v != nil {
+		if m, ok := v.(map[string]any); ok {
+			return m
 		}
 	}
-	return ""
-}
-
-// extractIDTokenFromCtx retrieves the verified OIDC ID token from the
-// context. Returns nil when authentication is disabled.
-func extractIDTokenFromCtx(ctx context.Context) any {
-	return ctx.Value(middlewares.IDTokenContextKey)
+	return nil
 }
 
 // QueuedTask represents a task in the processing queue
@@ -57,12 +51,9 @@ type QueuedTask struct {
 	// TraceContext carries the W3C trace context and baggage of the request
 	// that enqueued the task, so background processing joins the caller's trace.
 	TraceContext map[string]string `json:"trace_context,omitempty"`
-	// AuthToken is the raw OIDC auth token from the authenticated request.
-	// Empty when the request was not authenticated.
-	AuthToken string `json:"auth_token,omitempty"`
-	// IDToken is the verified OIDC ID token (nil when auth is disabled).
-	// Stored as any so the server package does not depend on go-oidc types.
-	IDToken any `json:"-"`
+	// Claims holds the verified OIDC ID token claims (sub, email, name, etc.)
+	// from the authenticated request. Nil when the request was not authenticated.
+	Claims map[string]any `json:"claims,omitempty"`
 }
 
 // Storage defines the interface for queue-centric task management
@@ -782,8 +773,7 @@ func (s *InMemoryStorage) EnqueueTask(ctx context.Context, task *types.Task, req
 		Task:         task,
 		RequestID:    requestID,
 		TraceContext: injectTraceContext(ctx),
-		AuthToken:    extractAuthTokenFromCtx(ctx),
-		IDToken:      extractIDTokenFromCtx(ctx),
+		Claims:       extractClaimsFromCtx(ctx),
 	}
 
 	s.queueMu.Lock()
