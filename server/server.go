@@ -626,6 +626,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 	task := queuedTask.Task
 
 	ctx = extractTraceContext(ctx, queuedTask.TraceContext)
+	ctx = injectAuthContext(ctx, queuedTask)
 	ctx, span := sdkotel.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "task.process",
 		trace.WithAttributes(attribute.String("a2a.task.id", task.ID)))
 	defer span.End()
@@ -690,6 +691,20 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 	s.logger.Info("task processed successfully",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
+}
+
+// injectAuthContext restores the authenticated caller identity that was
+// captured when the task was enqueued (see QueuedTask.AuthToken /
+// IDToken) back onto the processing context so that callbacks can
+// inspect the caller via ctx.Value(middlewares.AuthTokenContextKey) etc.
+func injectAuthContext(ctx context.Context, qt *QueuedTask) context.Context {
+	if qt.AuthToken != "" {
+		ctx = context.WithValue(ctx, middlewares.AuthTokenContextKey, qt.AuthToken)
+	}
+	if qt.IDToken != nil {
+		ctx = context.WithValue(ctx, middlewares.IDTokenContextKey, qt.IDToken)
+	}
+	return ctx
 }
 
 // startTaskCleanup starts the background task cleanup process

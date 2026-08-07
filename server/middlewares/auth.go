@@ -99,6 +99,14 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 
 		c.Set(string(AuthTokenContextKey), token)
 		c.Set(string(IDTokenContextKey), idToken)
+
+		// Propagate to the request context so values survive goroutine
+		// boundaries (the background task processor runs outside the
+		// request scope).
+		reqCtx := context.WithValue(c.Request.Context(), AuthTokenContextKey, token)
+		reqCtx = context.WithValue(reqCtx, IDTokenContextKey, idToken)
+		c.Request = c.Request.WithContext(reqCtx)
+
 		c.Next()
 	}
 }
