@@ -145,6 +145,7 @@ func (s *RedisStorage) EnqueueTask(ctx context.Context, task *types.Task, reques
 		Task:         task,
 		RequestID:    requestID,
 		TraceContext: injectTraceContext(ctx),
+		Claims:       extractClaimsFromCtx(ctx),
 	}
 
 	data, err := json.Marshal(queuedTask)

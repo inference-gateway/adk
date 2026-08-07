@@ -36,12 +36,8 @@ func extractTraceContext(ctx context.Context, traceContext map[string]string) co
 // extractClaimsFromCtx retrieves the verified OIDC claims from the
 // context. Returns nil when authentication is disabled.
 func extractClaimsFromCtx(ctx context.Context) map[string]any {
-	if v := ctx.Value(middlewares.ClaimsContextKey); v != nil {
-		if m, ok := v.(map[string]any); ok {
-			return m
-		}
-	}
-	return nil
+	m, _ := ctx.Value(middlewares.ClaimsContextKey).(map[string]any)
+	return m
 }
 
 // QueuedTask represents a task in the processing queue

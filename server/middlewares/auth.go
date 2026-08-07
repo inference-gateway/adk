@@ -107,7 +107,6 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		c.Set(string(ClaimsContextKey), claims)
 		reqCtx := context.WithValue(c.Request.Context(), ClaimsContextKey, claims)
 		c.Request = c.Request.WithContext(reqCtx)
 

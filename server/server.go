@@ -698,10 +698,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 // the processing context so that callbacks can inspect the caller via
 // ctx.Value(middlewares.ClaimsContextKey).
 func injectAuthContext(ctx context.Context, qt *QueuedTask) context.Context {
-	if len(qt.Claims) > 0 {
-		ctx = context.WithValue(ctx, middlewares.ClaimsContextKey, qt.Claims)
-	}
-	return ctx
+	return context.WithValue(ctx, middlewares.ClaimsContextKey, qt.Claims)
 }
 
 // startTaskCleanup starts the background task cleanup process
