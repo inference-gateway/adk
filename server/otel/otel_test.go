@@ -76,3 +76,16 @@ func TestNewOpenTelemetry_Exporters(t *testing.T) {
 		})
 	}
 }
+
+func TestSignalEndpointURL(t *testing.T) {
+	cases := map[string]string{
+		"http://localhost:4318":           "http://localhost:4318/v1/traces",
+		"http://172.17.0.1:4318/":         "http://172.17.0.1:4318/v1/traces",
+		"http://collector:4318/v1/traces": "http://collector:4318/v1/traces",
+		"https://otlp.example.com/custom": "https://otlp.example.com/custom",
+	}
+	for in, want := range cases {
+		require.Equal(t, want, adkotel.SignalEndpointURL(in, "v1/traces"))
+	}
+	require.Equal(t, "http://localhost:4318/v1/metrics", adkotel.SignalEndpointURL("http://localhost:4318", "v1/metrics"))
+}
