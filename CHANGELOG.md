@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.3](https://github.com/inference-gateway/adk/compare/v0.26.2...v0.26.3) (2026-08-13)
+
+### 🐛 Bug Fixes
+
+* **otel:** append signal path to path-less OTLP HTTP endpoint URLs ([#279](https://github.com/inference-gateway/adk/issues/279)) ([177c659](https://github.com/inference-gateway/adk/commit/177c65985eb5adc4a2c1379106252dda65a0c816)), references [#278](https://github.com/inference-gateway/adk/issues/278)
+
+### 👷 CI
+
+* **deps:** bump the gomod group with 12 updates ([#278](https://github.com/inference-gateway/adk/issues/278)) ([3e977ce](https://github.com/inference-gateway/adk/commit/3e977cefad337309337d5d11d751d8b79c845ae3))
+
 ## [0.26.2](https://github.com/inference-gateway/adk/compare/v0.26.1...v0.26.2) (2026-08-07)
 
 ### 🐛 Bug Fixes
