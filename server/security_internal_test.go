@@ -73,7 +73,7 @@ func TestValidateAuthConfiguration(t *testing.T) {
 				customAgentCard: card,
 			}
 			s.cfg = &config.Config{}
-			s.cfg.AuthConfig.Enable = tt.authEnabled
+			s.cfg.AuthConfig.Enabled = tt.authEnabled
 
 			s.validateAuthConfiguration()
 

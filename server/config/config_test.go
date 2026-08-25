@@ -46,7 +46,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				assert.False(t, cfg.CapabilitiesConfig.StateTransitionHistory)
 
 				require.NotNil(t, cfg.AuthConfig)
-				assert.False(t, cfg.AuthConfig.Enable)
+				assert.False(t, cfg.AuthConfig.Enabled)
 				assert.Equal(t, "http://keycloak:8080/realms/inference-gateway-realm", cfg.AuthConfig.IssuerURL)
 				assert.Equal(t, "inference-gateway-client", cfg.AuthConfig.ClientID)
 
@@ -132,7 +132,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 
 				// Test Auth config overrides
 				require.NotNil(t, cfg.AuthConfig)
-				assert.True(t, cfg.AuthConfig.Enable)
+				assert.True(t, cfg.AuthConfig.Enabled)
 				assert.Equal(t, "http://custom-keycloak:8080/realms/custom", cfg.AuthConfig.IssuerURL)
 				assert.Equal(t, "custom-client", cfg.AuthConfig.ClientID)
 				assert.Equal(t, "custom-secret", cfg.AuthConfig.ClientSecret)
