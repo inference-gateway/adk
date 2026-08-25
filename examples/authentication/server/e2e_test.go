@@ -122,7 +122,7 @@ func startServer(t *testing.T) func() {
 
 	logger := zap.NewNop()
 	cfg := defaultConfig()
-	cfg.A2A.AuthConfig.Enable = true // enforce Keycloak
+	cfg.A2A.AuthConfig.Enabled = true // enforce Keycloak
 	cfg.A2A.AuthConfig.IssuerURL = keycloakBase
 	cfg.A2A.ServerConfig.Port = serverPort
 

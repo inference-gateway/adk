@@ -382,11 +382,11 @@ func (s *A2AServerImpl) validateAuthConfiguration() {
 	declaresSchemes := len(s.customAgentCard.SecuritySchemes) > 0
 
 	switch {
-	case s.cfg.AuthConfig.Enable && !declaresSchemes:
+	case s.cfg.AuthConfig.Enabled && !declaresSchemes:
 		s.logger.Warn("authentication is enabled but the agent card declares no securitySchemes",
 			zap.String("impact", "clients cannot discover how to authenticate"),
 			zap.String("suggestion", "declare schemes on the card, e.g. via server.OIDCSecuritySchemes(cfg.AuthConfig)"))
-	case !s.cfg.AuthConfig.Enable && declaresSchemes:
+	case !s.cfg.AuthConfig.Enabled && declaresSchemes:
 		s.logger.Warn("the agent card declares securitySchemes but authentication is disabled",
 			zap.String("impact", "advertised schemes are not enforced"),
 			zap.String("suggestion", "set AUTH_ENABLED=true or remove the securitySchemes from the card"))
@@ -465,7 +465,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		}
 	}
 
-	if !cfg.AuthConfig.Enable {
+	if !cfg.AuthConfig.Enabled {
 		if telemetryMiddleware != nil {
 			r.POST("/a2a", telemetryMiddleware, s.handleA2ARequest)
 		} else {

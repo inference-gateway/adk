@@ -174,7 +174,7 @@ func TestA2AServer_TaskProcessing_Background(t *testing.T) {
 			StateTransitionHistory: true,
 		},
 		AuthConfig: config.AuthConfig{
-			Enable: false,
+			Enabled: false,
 		},
 	}
 

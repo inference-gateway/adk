@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -35,13 +36,12 @@ type OIDCAuthenticatorNoop struct{}
 
 // NewOIDCAuthenticatorMiddleware creates a new OIDC authenticator middleware
 func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDCAuthenticator, error) {
-	if !cfg.AuthConfig.Enable {
+	if !cfg.AuthConfig.Enabled {
 		return &OIDCAuthenticatorNoop{}, nil
 	}
 
 	if cfg.AuthConfig.IssuerURL == "" || cfg.AuthConfig.ClientID == "" || cfg.AuthConfig.ClientSecret == "" {
-		logger.Warn("AuthConfig is enabled but required fields are missing, disabling authentication")
-		return &OIDCAuthenticatorNoop{}, nil
+		return nil, errors.New("authentication is enabled but required OIDC fields (issuer URL, client ID, client secret) are missing")
 	}
 
 	provider, err := oidcV3.NewProvider(context.Background(), cfg.AuthConfig.IssuerURL)
