@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.4](https://github.com/inference-gateway/adk/compare/v0.26.3...v0.26.4) (2026-08-25)
+
+### 🐛 Bug Fixes
+
+* **auth:** fail closed when enabled with missing OIDC config ([#282](https://github.com/inference-gateway/adk/issues/282)) ([d821387](https://github.com/inference-gateway/adk/commit/d821387dfcea0dff041c15a628998e852ac059d4))
+
+### 👷 CI
+
+* **deps:** bump the gomod group with 2 updates ([#280](https://github.com/inference-gateway/adk/issues/280)) ([56b280f](https://github.com/inference-gateway/adk/commit/56b280f94622f795dab842b52d90979a1cffc92e))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.164.0 -> v0.181.0 ([#283](https://github.com/inference-gateway/adk/issues/283)) ([68348ea](https://github.com/inference-gateway/adk/commit/68348ea9d535f45c5835b3f5b944ea9948a2f0ed))
+
 ## [0.26.3](https://github.com/inference-gateway/adk/compare/v0.26.2...v0.26.3) (2026-08-13)
 
 ### 🐛 Bug Fixes
