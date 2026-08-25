@@ -71,6 +71,7 @@ jobs:
     with:
       language: "go"
       markdownlint: true
+      prettier: true
       plugins: |
         DietrichGebert/ponytail
         ayghri/i-have-adhd
