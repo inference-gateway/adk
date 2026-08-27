@@ -83,6 +83,7 @@ jobs:
       language: "go"
       node: true
       markdownlint: true
+      prettier: true
       extra-tools: "Bash(docker:*)"
       plugins: |
         DietrichGebert/ponytail
