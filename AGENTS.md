@@ -1,77 +1,44 @@
-# Repository Guidelines
+# Inference Gateway A2A ADK
 
-## Project Structure & Module Organization
+This file is a README for AI coding agents working in this repository. See README.md for user-facing docs; CONTRIBUTING.md has the full contributor workflow.
 
-This repository is a Go module for the Inference Gateway A2A ADK. Core packages live in `client/`, `server/`, and `types/`. Generated protocol types are in `types/generated_types.go`, based on `schema.yaml`. Examples are organized under `examples/<scenario>/`, usually with separate `client/`, `server/`, and `docker-compose.yaml` files. Additional documentation belongs in `docs/`; contributor workflow details are in `CONTRIBUTING.md`.
+## Project Overview
+
+Go library for building Agent-to-Agent (A2A) protocol agents. Core packages: `client/` (A2A client), `server/` (server builders, storage, middlewares, telemetry), `types/` (protocol types). The root module and every `examples/<scenario>/client` and `examples/<scenario>/server` directory are separate Go modules.
 
 ## Build, Test, and Development Commands
 
-Use Task for common workflows:
+Use Task for common workflows (`task` lists all tasks):
 
-- `task` lists available tasks.
-- `task format` runs `gofmt` on Go files and Prettier on Markdown.
-- `task lint` runs `golangci-lint run`.
-- `task test` runs `go test -v -cover ./...`.
-- `task tidy` runs `go mod tidy` in every module, including examples.
-- `task a2a:generate-types` regenerates `types/generated_types.go` from `schema.yaml`.
-- `task generate:mocks` regenerates Counterfeiter mocks after interface changes.
-- `go build .` verifies the root package builds.
+- `task format` — gofmt on Go files, Prettier on Markdown
+- `task lint` — `golangci-lint run`
+- `task test` — `go test -v -cover ./...`
+- `task tidy` — `go mod tidy` in every module (root + examples)
+- `task a2a:generate-types` — regenerate `types/generated_types.go` from `schema.yaml`
+- `task generate:providers` — regenerate provider artifacts from `providers-schema.yaml`
+- `task generate:mocks` — regenerate Counterfeiter mocks in `client/mocks/` and `server/mocks/`
+- `task generate` — regenerate types, providers, and mocks; `go build .` verifies the root package
 
-Install the optional hook with `task precommit:install`; it runs formatting, tidying, linting, and tests based on changed file types.
+Install the optional pre-commit hook with `task precommit:install`.
 
-## Coding Style & Naming Conventions
+## Generated Files
 
-Follow standard Go formatting and idioms. `.editorconfig` specifies tabs for Go, LF endings, final newlines, and a 120-column guideline. Prefer early returns, table-driven tests, interface-driven dependencies, and structured logging with lowercase messages. Keep generated files generated: update the source schema or interface, then rerun the relevant Task command.
+`types/generated_types.go`, `client/mocks/*.go`, and `server/mocks/*.go` are generated. Never edit them by hand: change the source (`schema.yaml`, `providers-schema.yaml`, or the interface) and rerun the matching `task` target.
 
-No inline comments inside function bodies - only docblocks and comments above struct members are allowed. No self-explanatory comments (comments that merely restate what the code does). Docblocks must be at most 3 lines and must not contain issue links.
+## Code Style
 
-### Import Conventions
+Tabs for Go, LF endings, final newlines, 120-column guideline (`.editorconfig`). No inline comments inside function bodies; docblocks sit above exported symbols, at most 3 lines, no issue links. Prefer early returns, interface-driven dependencies, table-driven tests, and structured logging with lowercase messages.
 
-All non-standard-library imports MUST use explicit named imports (aliases). Never rely on the default package name matching the import path.
+All non-standard-library imports MUST use explicit named imports (aliases), grouped in this order with a blank line between groups: (1) stdlib, (2) external testing libraries, (3) external libraries, (4) internal testing libraries, (5) internal libraries.
 
-Imports MUST be grouped in this order, with each group separated by a blank line:
+## Testing
 
-1. **Standard library** (stdlib packages, no named imports needed)
-2. **External testing libraries** (e.g. `require "github.com/stretchr/testify/require"`)
-3. **External libraries** (third-party dependencies)
-4. **Internal testing libraries** (e.g. `testutils "github.com/inference-gateway/adk/server/testutils"`)
-5. **Internal libraries** (packages within the `github.com/inference-gateway/adk/` module)
+Tests live beside the code (`server/task_manager_test.go`). Prefer table-driven tests with isolated mocks per case; reuse helpers from `server/test_helpers.go` or `server/testutils/`. Add focused coverage for new behavior and regressions, and run `task test` before submitting.
 
-Within each group, imports are sorted alphabetically by import path (handled by `gofmt`).
+## Commits & Pull Requests
 
-Example:
+Conventional commits, e.g. `feat(agent): ...`, `fix(auth): ...`, `docs: ...`, `chore(deps): ...`. Branch names: `feature/...`, `fix/...`, `docs/...`, `refactor/...`. Before opening a PR run `task format`, `task tidy`, `task lint`, `task test`. Call out schema, generated type, mock, or example changes; for example behavior, describe how you verified it locally.
 
-```go
-import (
-    "context"
-    "net/http"
-    "strings"
-    "time"
+## Security
 
-    require "github.com/stretchr/testify/require"
-
-    gin "github.com/gin-gonic/gin"
-    otel "go.opentelemetry.io/otel"
-    attribute "go.opentelemetry.io/otel/attribute"
-    semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
-    trace "go.opentelemetry.io/otel/trace"
-    zap "go.uber.org/zap"
-
-    config "github.com/inference-gateway/adk/server/config"
-    adkotel "github.com/inference-gateway/adk/server/otel"
-)
-```
-
-## Testing Guidelines
-
-Place tests beside the code under test using Go’s `*_test.go` convention, for example `server/task_manager_test.go`. Prefer table-driven tests with isolated mocks per case. Use helpers from `server/test_helpers.go`, `server/testutils/`, or package-local helpers where appropriate. Run `task test` before submitting; add focused coverage for new behavior and regressions.
-
-## Commit & Pull Request Guidelines
-
-The project uses conventional commits, such as `feat(agent): add task processor`, `fix(auth): handle expired token`, `docs: update examples`, and `chore(deps): bump tooling`. Branch names commonly use `feature/...`, `fix/...`, `docs/...`, or `refactor/...`.
-
-Before opening a pull request, run `task format`, `task tidy`, `task lint`, and `task test`. Include a concise description, linked issues when applicable, and call out schema, generated type, mock, or example changes. For behavior visible in examples, describe how you verified it locally.
-
-## Security & Configuration Tips
-
-Do not commit secrets from `.env` or local example configuration. Prefer documented environment variables and keep example credentials clearly non-production.
+Never commit secrets from `.env` or example configs; prefer documented environment variables and keep example credentials clearly non-production. Auth is OIDC/OAuth2 (`server/middlewares/auth.go`).
