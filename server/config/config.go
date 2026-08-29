@@ -102,7 +102,7 @@ type TLSConfig struct {
 
 // AuthConfig holds authentication configuration
 type AuthConfig struct {
-	Enable       bool   `env:"ENABLED,default=false"`
+	Enabled      bool   `env:"ENABLED,default=false"`
 	IssuerURL    string `env:"ISSUER_URL,default=http://keycloak:8080/realms/inference-gateway-realm"`
 	ClientID     string `env:"CLIENT_ID,default=inference-gateway-client"`
 	ClientSecret string `env:"CLIENT_SECRET"`

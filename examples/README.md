@@ -36,6 +36,7 @@ examples/
 ├── queue-storage/             # Queue storage backends (in-memory and Redis)
 ├── tls-example/               # TLS-enabled server with HTTPS communication
 ├── usage-metadata/            # Token usage and execution metrics tracking
+├── authentication/            # Card-driven authentication flow (securitySchemes + extended card)
 └── protocol-methods/          # Full A2A JSON-RPC surface (cancel, list, pushNotificationConfig, resubscribe, authenticated card)
 ```
 
@@ -191,6 +192,15 @@ Demonstrates automatic token usage and execution metrics tracking in task respon
 - Automatic metadata population in Task.Metadata field
 - Configuration options for enabling/disabling usage tracking
 - Cost monitoring and performance analysis use cases
+
+#### `authentication/`
+
+Demonstrates the A2A card-driven authentication flow (spec section 7 and 3.3.4).
+
+- Public card declares `securitySchemes` via `server.OIDCSecuritySchemes()`
+- Extended card configured with `WithExtendedAgentCard()`
+- Client discovers how to authenticate, then fetches the extended card
+- Extended-card error contract (`-32004` / `-32007`)
 
 #### `protocol-methods/`
 

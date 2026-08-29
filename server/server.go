@@ -93,6 +93,10 @@ const (
 	ErrInvalidParams  JRPCErrorCode = -32602
 	ErrInternalError  JRPCErrorCode = -32603
 	ErrServerError    JRPCErrorCode = -32000
+
+	// A2A-specific error codes (spec section 3.3.2).
+	ErrUnsupportedOperation           JRPCErrorCode = -32004
+	ErrExtendedAgentCardNotConfigured JRPCErrorCode = -32007
 )
 
 type A2AServerImpl struct {
@@ -113,6 +117,11 @@ type A2AServerImpl struct {
 
 	// Custom agent card
 	customAgentCard *types.AgentCard
+
+	// Optional extended agent card returned to authenticated callers via
+	// agent/getAuthenticatedExtendedCard. When nil but the public card declares
+	// supportsExtendedAgentCard, the RPC returns ErrExtendedAgentCardNotConfigured.
+	extendedAgentCard *types.AgentCard
 
 	// Separate task handlers for different scenarios
 	backgroundTaskHandler TaskHandler
@@ -331,6 +340,12 @@ func (s *A2AServerImpl) SetAgentCard(agentCard types.AgentCard) {
 	s.customAgentCard = &agentCard
 }
 
+// SetExtendedAgentCard sets the extended agent card returned to authenticated
+// callers via agent/getAuthenticatedExtendedCard.
+func (s *A2AServerImpl) SetExtendedAgentCard(agentCard types.AgentCard) {
+	s.extendedAgentCard = &agentCard
+}
+
 // validateStreamingConfiguration checks if streaming is enabled but no streaming handler is configured
 func (s *A2AServerImpl) validateStreamingConfiguration() {
 	if s.customAgentCard == nil {
@@ -352,6 +367,29 @@ func (s *A2AServerImpl) validateStreamingConfiguration() {
 		s.logger.Info("streaming is disabled in agent capabilities",
 			zap.String("note", "only background/polling requests will be supported"),
 			zap.String("tip", "to enable streaming, set streaming capability to true in your agent card and configure a streaming task handler"))
+	}
+}
+
+// validateAuthConfiguration warns when the auth config and the served card's
+// security declaration are inconsistent - authentication enabled but the card
+// declares no securitySchemes (clients cannot discover how to authenticate), or
+// the inverse. Spec section 7 requires the card to declare how it is secured.
+func (s *A2AServerImpl) validateAuthConfiguration() {
+	if s.customAgentCard == nil {
+		return
+	}
+
+	declaresSchemes := len(s.customAgentCard.SecuritySchemes) > 0
+
+	switch {
+	case s.cfg.AuthConfig.Enabled && !declaresSchemes:
+		s.logger.Warn("authentication is enabled but the agent card declares no securitySchemes",
+			zap.String("impact", "clients cannot discover how to authenticate"),
+			zap.String("suggestion", "declare schemes on the card, e.g. via server.OIDCSecuritySchemes(cfg.AuthConfig)"))
+	case !s.cfg.AuthConfig.Enabled && declaresSchemes:
+		s.logger.Warn("the agent card declares securitySchemes but authentication is disabled",
+			zap.String("impact", "advertised schemes are not enforced"),
+			zap.String("suggestion", "set AUTH_ENABLED=true or remove the securitySchemes from the card"))
 	}
 }
 
@@ -427,7 +465,7 @@ func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
 		}
 	}
 
-	if !cfg.AuthConfig.Enable {
+	if !cfg.AuthConfig.Enabled {
 		if telemetryMiddleware != nil {
 			r.POST("/a2a", telemetryMiddleware, s.handleA2ARequest)
 		} else {
@@ -475,6 +513,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 		zap.String("agent_version", s.cfg.AgentVersion))
 
 	s.validateStreamingConfiguration()
+	s.validateAuthConfiguration()
 
 	resolvedTelemetry := s.cfg.ResolveTelemetry()
 	if s.otel != nil && resolvedTelemetry.MetricsExporter == config.MetricsExporterPrometheus {
@@ -587,6 +626,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 	task := queuedTask.Task
 
 	ctx = extractTraceContext(ctx, queuedTask.TraceContext)
+	ctx = injectAuthContext(ctx, queuedTask)
 	ctx, span := sdkotel.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "task.process",
 		trace.WithAttributes(attribute.String("a2a.task.id", task.ID)))
 	defer span.End()
@@ -651,6 +691,14 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 	s.logger.Info("task processed successfully",
 		zap.String("task_id", task.ID),
 		zap.String("context_id", task.ContextID))
+}
+
+// injectAuthContext restores the authenticated caller claims that were
+// captured when the task was enqueued (see QueuedTask.Claims) back onto
+// the processing context so that callbacks can inspect the caller via
+// ctx.Value(middlewares.ClaimsContextKey).
+func injectAuthContext(ctx context.Context, qt *QueuedTask) context.Context {
+	return context.WithValue(ctx, middlewares.ClaimsContextKey, qt.Claims)
 }
 
 // startTaskCleanup starts the background task cleanup process
@@ -735,7 +783,7 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 	case "tasks/resubscribe":
 		s.protocolHandler.HandleTaskResubscribe(c, req, s.streamingTaskHandler)
 	case "agent/getAuthenticatedExtendedCard":
-		s.protocolHandler.HandleGetAuthenticatedExtendedCard(c, req, s.customAgentCard)
+		s.protocolHandler.HandleGetAuthenticatedExtendedCard(c, req, s.customAgentCard, s.extendedAgentCard)
 	default:
 		s.logger.Warn("unknown method requested", zap.String("method", req.Method))
 		s.responseSender.SendError(c, req.ID, int(ErrMethodNotFound), "method not found")

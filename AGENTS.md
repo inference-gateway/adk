@@ -4,7 +4,7 @@ This file is a README for AI coding agents working in this repository. See READM
 
 ## Project Overview
 
-Go library for building Agent-to-Agent (A2A) protocol agents. Core packages: `client/` (A2A client), `server/` (server builders, storage, middlewares, telemetry), `types/` (protocol types). The root module and every example are separate Go modules: each `examples/<scenario>/server` (and `client/` where present) has its own `go.mod`.
+Go library for building Agent-to-Agent (A2A) protocol agents. Core packages: `client/` (A2A client), `server/` (server builders, storage, middlewares, telemetry), `types/` (protocol types). The root module and every `examples/<scenario>/client` and `examples/<scenario>/server` directory are separate Go modules.
 
 ## Build, Test, and Development Commands
 
@@ -17,19 +17,19 @@ Use Task for common workflows (`task` lists all tasks):
 - `task a2a:generate-types` — regenerate `types/generated_types.go` from `schema.yaml`
 - `task generate:providers` — regenerate provider artifacts from `providers-schema.yaml`
 - `task generate:mocks` — regenerate Counterfeiter mocks in `client/mocks/` and `server/mocks/`
-- `task generate` — regenerate types, providers, and mocks (then `go build .` to verify the root package)
+- `task generate` — regenerate types, providers, and mocks; `go build .` verifies the root package
 
 Install the optional pre-commit hook with `task precommit:install`.
 
 ## Generated Files
 
-`types/generated_types.go`, `client/mocks/*.go`, and `server/mocks/*.go` are generated. Never edit them by hand: change the source (`schema.yaml`, `providers-schema.yaml`, or the interface) and rerun the matching `task` target. CI runs `git diff --exit-code` after format/tidy/generate, so commit regenerated output. Both schemas are vendored from `inference-gateway/schemas` — propose protocol changes upstream.
+`types/generated_types.go`, `client/mocks/*.go`, and `server/mocks/*.go` are generated. Never edit them by hand: change the source (`schema.yaml`, `providers-schema.yaml`, or the interface) and rerun the matching `task` target.
 
 ## Code Style
 
-Tabs for Go, LF endings, final newlines, 120-column guideline (`.editorconfig`). Docblocks sit above exported symbols; inline comments are fine for complex logic (CONTRIBUTING.md). Prefer early returns, interface-driven dependencies, table-driven tests, and structured logging with lowercase messages.
+Tabs for Go, LF endings, final newlines, 120-column guideline (`.editorconfig`). No inline comments inside function bodies; docblocks sit above exported symbols, at most 3 lines, no issue links. Prefer early returns, interface-driven dependencies, table-driven tests, and structured logging with lowercase messages.
 
-All non-standard-library imports use explicit named imports (aliases): stdlib group first, blank line, then everything else (external and internal together — see `server/server.go`).
+All non-standard-library imports MUST use explicit named imports (aliases), grouped in this order with a blank line between groups: (1) stdlib, (2) external testing libraries, (3) external libraries, (4) internal testing libraries, (5) internal libraries.
 
 ## Testing
 

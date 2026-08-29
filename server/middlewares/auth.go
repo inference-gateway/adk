@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -15,8 +16,7 @@ import (
 type contextKey string
 
 const (
-	AuthTokenContextKey contextKey = "authToken"
-	IDTokenContextKey   contextKey = "idToken"
+	ClaimsContextKey contextKey = "claims"
 )
 
 // OIDCAuthenticator interface for authentication middleware
@@ -36,13 +36,12 @@ type OIDCAuthenticatorNoop struct{}
 
 // NewOIDCAuthenticatorMiddleware creates a new OIDC authenticator middleware
 func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDCAuthenticator, error) {
-	if !cfg.AuthConfig.Enable {
+	if !cfg.AuthConfig.Enabled {
 		return &OIDCAuthenticatorNoop{}, nil
 	}
 
 	if cfg.AuthConfig.IssuerURL == "" || cfg.AuthConfig.ClientID == "" || cfg.AuthConfig.ClientSecret == "" {
-		logger.Warn("AuthConfig is enabled but required fields are missing, disabling authentication")
-		return &OIDCAuthenticatorNoop{}, nil
+		return nil, errors.New("authentication is enabled but required OIDC fields (issuer URL, client ID, client secret) are missing")
 	}
 
 	provider, err := oidcV3.NewProvider(context.Background(), cfg.AuthConfig.IssuerURL)
@@ -72,6 +71,7 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			auth.logger.Error("missing authorization header")
+			c.Header("WWW-Authenticate", "Bearer")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
 			c.Abort()
 			return
@@ -79,6 +79,7 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 
 		if !strings.HasPrefix(authHeader, "Bearer ") {
 			auth.logger.Error("invalid authorization header format")
+			c.Header("WWW-Authenticate", `Bearer error="invalid_request"`)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header format"})
 			c.Abort()
 			return
@@ -89,13 +90,26 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 		idToken, err := auth.verifier.Verify(c.Request.Context(), token)
 		if err != nil {
 			auth.logger.Error("failed to verify id token", zap.Error(err))
+			c.Header("WWW-Authenticate", `Bearer error="invalid_token"`)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
 		}
 
-		c.Set(string(AuthTokenContextKey), token)
-		c.Set(string(IDTokenContextKey), idToken)
+		// Extract verified claims and propagate to context so they survive
+		// goroutine boundaries (the background task processor runs outside
+		// the request scope).
+		claims := make(map[string]any)
+		if err := idToken.Claims(&claims); err != nil {
+			auth.logger.Error("failed to extract id token claims", zap.Error(err))
+			c.Header("WWW-Authenticate", `Bearer error="invalid_token"`)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.Abort()
+			return
+		}
+		reqCtx := context.WithValue(c.Request.Context(), ClaimsContextKey, claims)
+		c.Request = c.Request.WithContext(reqCtx)
+
 		c.Next()
 	}
 }

@@ -3,6 +3,7 @@ package otel
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	otel "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
@@ -191,6 +192,22 @@ func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresour
 	return nil
 }
 
+// SignalEndpointURL appends the OTLP signal path (e.g. "v1/traces") to a
+// path-less HTTP endpoint URL. otel-go 1.45.0 stopped appending the default
+// signal path in the HTTP exporters' WithEndpointURL, so a bare endpoint like
+// http://localhost:4318 would silently export to "/" instead.
+func SignalEndpointURL(endpoint, signalPath string) string {
+	u, err := url.Parse(endpoint)
+	if err != nil || (u.Path != "" && u.Path != "/") {
+		return endpoint
+	}
+	joined, err := url.JoinPath(endpoint, signalPath)
+	if err != nil {
+		return endpoint
+	}
+	return joined
+}
+
 // newOTLPMetricExporter builds an OTLP metric exporter for the resolved protocol.
 func (o *OpenTelemetryImpl) newOTLPMetricExporter(resolved config.ResolvedTelemetry) (sdkmetric.Exporter, error) {
 	ctx := context.Background()
@@ -204,7 +221,7 @@ func (o *OpenTelemetryImpl) newOTLPMetricExporter(resolved config.ResolvedTeleme
 
 	httpOpts := []otlpmetrichttp.Option{}
 	if resolved.OTLPEndpoint != "" {
-		httpOpts = append(httpOpts, otlpmetrichttp.WithEndpointURL(resolved.OTLPEndpoint))
+		httpOpts = append(httpOpts, otlpmetrichttp.WithEndpointURL(SignalEndpointURL(resolved.OTLPEndpoint, "v1/metrics")))
 	}
 	return otlpmetrichttp.New(ctx, httpOpts...)
 }
@@ -257,7 +274,7 @@ func (o *OpenTelemetryImpl) newOTLPTraceExporter(cfg *config.Config, resolved co
 
 	httpOpts := []otlptracehttp.Option{}
 	if resolved.OTLPEndpoint != "" {
-		httpOpts = append(httpOpts, otlptracehttp.WithEndpointURL(resolved.OTLPEndpoint))
+		httpOpts = append(httpOpts, otlptracehttp.WithEndpointURL(SignalEndpointURL(resolved.OTLPEndpoint, "v1/traces")))
 	}
 	if len(headers) > 0 {
 		httpOpts = append(httpOpts, otlptracehttp.WithHeaders(headers))

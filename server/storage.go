@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	middlewares "github.com/inference-gateway/adk/server/middlewares"
 	types "github.com/inference-gateway/adk/types"
 	otel "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
@@ -32,6 +33,13 @@ func extractTraceContext(ctx context.Context, traceContext map[string]string) co
 	return otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(traceContext))
 }
 
+// extractClaimsFromCtx retrieves the verified OIDC claims from the
+// context. Returns nil when authentication is disabled.
+func extractClaimsFromCtx(ctx context.Context) map[string]any {
+	m, _ := ctx.Value(middlewares.ClaimsContextKey).(map[string]any)
+	return m
+}
+
 // QueuedTask represents a task in the processing queue
 type QueuedTask struct {
 	Task      *types.Task
@@ -39,6 +47,9 @@ type QueuedTask struct {
 	// TraceContext carries the W3C trace context and baggage of the request
 	// that enqueued the task, so background processing joins the caller's trace.
 	TraceContext map[string]string `json:"trace_context,omitempty"`
+	// Claims holds the verified OIDC ID token claims (sub, email, name, etc.)
+	// from the authenticated request. Nil when the request was not authenticated.
+	Claims map[string]any `json:"claims,omitempty"`
 }
 
 // Storage defines the interface for queue-centric task management
@@ -758,6 +769,7 @@ func (s *InMemoryStorage) EnqueueTask(ctx context.Context, task *types.Task, req
 		Task:         task,
 		RequestID:    requestID,
 		TraceContext: injectTraceContext(ctx),
+		Claims:       extractClaimsFromCtx(ctx),
 	}
 
 	s.queueMu.Lock()

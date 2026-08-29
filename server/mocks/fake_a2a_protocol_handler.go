@@ -10,12 +10,13 @@ import (
 )
 
 type FakeA2AProtocolHandler struct {
-	HandleGetAuthenticatedExtendedCardStub        func(*gin.Context, types.JSONRPCRequest, *types.AgentCard)
+	HandleGetAuthenticatedExtendedCardStub        func(*gin.Context, types.JSONRPCRequest, *types.AgentCard, *types.AgentCard)
 	handleGetAuthenticatedExtendedCardMutex       sync.RWMutex
 	handleGetAuthenticatedExtendedCardArgsForCall []struct {
 		arg1 *gin.Context
 		arg2 types.JSONRPCRequest
 		arg3 *types.AgentCard
+		arg4 *types.AgentCard
 	}
 	HandleMessageSendStub        func(*gin.Context, types.JSONRPCRequest)
 	handleMessageSendMutex       sync.RWMutex
@@ -83,18 +84,19 @@ type FakeA2AProtocolHandler struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(arg1 *gin.Context, arg2 types.JSONRPCRequest, arg3 *types.AgentCard) {
+func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(arg1 *gin.Context, arg2 types.JSONRPCRequest, arg3 *types.AgentCard, arg4 *types.AgentCard) {
 	fake.handleGetAuthenticatedExtendedCardMutex.Lock()
 	fake.handleGetAuthenticatedExtendedCardArgsForCall = append(fake.handleGetAuthenticatedExtendedCardArgsForCall, struct {
 		arg1 *gin.Context
 		arg2 types.JSONRPCRequest
 		arg3 *types.AgentCard
-	}{arg1, arg2, arg3})
+		arg4 *types.AgentCard
+	}{arg1, arg2, arg3, arg4})
 	stub := fake.HandleGetAuthenticatedExtendedCardStub
-	fake.recordInvocation("HandleGetAuthenticatedExtendedCard", []interface{}{arg1, arg2, arg3})
+	fake.recordInvocation("HandleGetAuthenticatedExtendedCard", []interface{}{arg1, arg2, arg3, arg4})
 	fake.handleGetAuthenticatedExtendedCardMutex.Unlock()
 	if stub != nil {
-		fake.HandleGetAuthenticatedExtendedCardStub(arg1, arg2, arg3)
+		fake.HandleGetAuthenticatedExtendedCardStub(arg1, arg2, arg3, arg4)
 	}
 }
 
@@ -104,17 +106,17 @@ func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCardCallCount(
 	return len(fake.handleGetAuthenticatedExtendedCardArgsForCall)
 }
 
-func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCardCalls(stub func(*gin.Context, types.JSONRPCRequest, *types.AgentCard)) {
+func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCardCalls(stub func(*gin.Context, types.JSONRPCRequest, *types.AgentCard, *types.AgentCard)) {
 	fake.handleGetAuthenticatedExtendedCardMutex.Lock()
 	defer fake.handleGetAuthenticatedExtendedCardMutex.Unlock()
 	fake.HandleGetAuthenticatedExtendedCardStub = stub
 }
 
-func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCardArgsForCall(i int) (*gin.Context, types.JSONRPCRequest, *types.AgentCard) {
+func (fake *FakeA2AProtocolHandler) HandleGetAuthenticatedExtendedCardArgsForCall(i int) (*gin.Context, types.JSONRPCRequest, *types.AgentCard, *types.AgentCard) {
 	fake.handleGetAuthenticatedExtendedCardMutex.RLock()
 	defer fake.handleGetAuthenticatedExtendedCardMutex.RUnlock()
 	argsForCall := fake.handleGetAuthenticatedExtendedCardArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *FakeA2AProtocolHandler) HandleMessageSend(arg1 *gin.Context, arg2 types.JSONRPCRequest) {

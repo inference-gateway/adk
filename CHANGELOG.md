@@ -2,6 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.4](https://github.com/inference-gateway/adk/compare/v0.26.3...v0.26.4) (2026-08-25)
+
+### 🐛 Bug Fixes
+
+* **auth:** fail closed when enabled with missing OIDC config ([#282](https://github.com/inference-gateway/adk/issues/282)) ([d821387](https://github.com/inference-gateway/adk/commit/d821387dfcea0dff041c15a628998e852ac059d4))
+
+### 👷 CI
+
+* **deps:** bump the gomod group with 2 updates ([#280](https://github.com/inference-gateway/adk/issues/280)) ([56b280f](https://github.com/inference-gateway/adk/commit/56b280f94622f795dab842b52d90979a1cffc92e))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.164.0 -> v0.181.0 ([#283](https://github.com/inference-gateway/adk/issues/283)) ([68348ea](https://github.com/inference-gateway/adk/commit/68348ea9d535f45c5835b3f5b944ea9948a2f0ed))
+
+## [0.26.3](https://github.com/inference-gateway/adk/compare/v0.26.2...v0.26.3) (2026-08-13)
+
+### 🐛 Bug Fixes
+
+* **otel:** append signal path to path-less OTLP HTTP endpoint URLs ([#279](https://github.com/inference-gateway/adk/issues/279)) ([177c659](https://github.com/inference-gateway/adk/commit/177c65985eb5adc4a2c1379106252dda65a0c816)), references [#278](https://github.com/inference-gateway/adk/issues/278)
+
+### 👷 CI
+
+* **deps:** bump the gomod group with 12 updates ([#278](https://github.com/inference-gateway/adk/issues/278)) ([3e977ce](https://github.com/inference-gateway/adk/commit/3e977cefad337309337d5d11d751d8b79c845ae3))
+
+## [0.26.2](https://github.com/inference-gateway/adk/compare/v0.26.1...v0.26.2) (2026-08-07)
+
+### 🐛 Bug Fixes
+
+* **auth:** propagate verified OIDC claims through background task processor to callbacks ([#277](https://github.com/inference-gateway/adk/issues/277)) ([3ed43e8](https://github.com/inference-gateway/adk/commit/3ed43e80f66034cd496f35ae8d5fd91bda2590da)), references [#276](https://github.com/inference-gateway/adk/issues/276)
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.155.0 -> v0.164.0 ([#275](https://github.com/inference-gateway/adk/issues/275)) ([667db59](https://github.com/inference-gateway/adk/commit/667db59f6259e226d7b506a9875742e5215784bb))
+
+## [0.26.1](https://github.com/inference-gateway/adk/compare/v0.26.0...v0.26.1) (2026-08-01)
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#272](https://github.com/inference-gateway/adk/issues/272)) ([ea1ec0e](https://github.com/inference-gateway/adk/commit/ea1ec0e015c9f77b5c6a45b527921cac844bed6e))
+* **claude:** centralize claude.yml via reusable workflow ([#273](https://github.com/inference-gateway/adk/issues/273)) ([f5e2246](https://github.com/inference-gateway/adk/commit/f5e2246c0c3c787d3e316f749f175757ba9ce3b1))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump infer CLI v0.153.1 -> v0.155.0 ([#271](https://github.com/inference-gateway/adk/issues/271)) ([3f4fb88](https://github.com/inference-gateway/adk/commit/3f4fb88eb4f986f340c9852ad80c73c6e77b31ce))
+* **deps:** bump sdk version v1.30.0 -> v1.33.0 ([#274](https://github.com/inference-gateway/adk/issues/274)) ([cca59d0](https://github.com/inference-gateway/adk/commit/cca59d09f9c469a2f654c02badd7dff177486b09))
+
+## [0.26.0](https://github.com/inference-gateway/adk/compare/v0.25.4...v0.26.0) (2026-07-30)
+
+### ✨ Features
+
+* implement A2A card-driven authentication flow ([#267](https://github.com/inference-gateway/adk/issues/267)) ([c36bcdc](https://github.com/inference-gateway/adk/commit/c36bcdcc55bb665e5f1d801ad37af734ab35b103)), closes [#40](https://github.com/inference-gateway/adk/issues/40)
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#270](https://github.com/inference-gateway/adk/issues/270)) ([6162bac](https://github.com/inference-gateway/adk/commit/6162bac89dbe1a177213d05af9c8e99fe5df2cc1))
+
 ## [0.25.4](https://github.com/inference-gateway/adk/compare/v0.25.3...v0.25.4) (2026-07-29)
 
 ### ♻️ Improvements

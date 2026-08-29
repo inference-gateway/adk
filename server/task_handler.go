@@ -54,10 +54,12 @@ type A2AProtocolHandler interface {
 	// subscription for an existing task and emitting its current state via SSE.
 	HandleTaskResubscribe(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler)
 
-	// HandleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests,
-	// returning the authenticated/extended agent card (the same card object the unauthenticated
-	// `.well-known/agent-card.json` endpoint exposes, but served over JSON-RPC).
-	HandleGetAuthenticatedExtendedCard(c *gin.Context, req types.JSONRPCRequest, agentCard *types.AgentCard)
+	// HandleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests.
+	// It enforces the spec section 3.3.4 error contract using the served public card and the
+	// optional extended card: ErrUnsupportedOperation (-32004) when the public card does not
+	// declare supportsExtendedAgentCard, ErrExtendedAgentCardNotConfigured (-32007) when it
+	// does but no extended card is configured, otherwise the extended card is returned.
+	HandleGetAuthenticatedExtendedCard(c *gin.Context, req types.JSONRPCRequest, publicCard *types.AgentCard, extendedCard *types.AgentCard)
 }
 
 // TaskHandler defines how to handle task processing
@@ -1257,14 +1259,28 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 
 // HandleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests.
 //
-// The handler returns the configured agent card to the caller. Because access to this
-// endpoint is gated by the JSON-RPC route (which is itself protected by the configured
-// authentication middleware when enabled), reaching this method implies the caller has
-// successfully authenticated.
-func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Context, req types.JSONRPCRequest, agentCard *types.AgentCard) {
-	if agentCard == nil {
+// Access to this endpoint is gated by the JSON-RPC route (protected by the configured
+// authentication middleware when enabled), so reaching this method implies the caller has
+// successfully authenticated. It enforces the spec section 3.3.4 error contract:
+//   - public card does not declare supportsExtendedAgentCard -> ErrUnsupportedOperation (-32004)
+//   - declared but no extended card configured -> ErrExtendedAgentCardNotConfigured (-32007)
+//   - otherwise the extended card is returned.
+func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Context, req types.JSONRPCRequest, publicCard *types.AgentCard, extendedCard *types.AgentCard) {
+	if publicCard == nil {
 		h.logger.Error("no agent card configured for agent/getAuthenticatedExtendedCard")
 		h.responseSender.SendError(c, req.ID, int(ErrInternalError), "agent card not configured")
+		return
+	}
+
+	if publicCard.SupportsExtendedAgentCard == nil || !*publicCard.SupportsExtendedAgentCard {
+		h.logger.Info("extended agent card not supported by this agent")
+		h.responseSender.SendError(c, req.ID, int(ErrUnsupportedOperation), "extended agent card is not supported")
+		return
+	}
+
+	if extendedCard == nil {
+		h.logger.Info("extended agent card supported but not configured")
+		h.responseSender.SendError(c, req.ID, int(ErrExtendedAgentCardNotConfigured), "extended agent card is not configured")
 		return
 	}
 
@@ -1286,7 +1302,7 @@ func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Co
 		h.logger.Info("returning authenticated extended agent card")
 	}
 
-	h.responseSender.SendSuccess(c, req.ID, *agentCard)
+	h.responseSender.SendSuccess(c, req.ID, *extendedCard)
 }
 
 // populateTaskMetadata populates task metadata with usage statistics if enabled
