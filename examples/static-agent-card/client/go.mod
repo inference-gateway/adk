@@ -1,6 +1,6 @@
 module github.com/inference-gateway/adk/examples/static-agent-card/client
 
-go 1.26.4
+go 1.26.6
 
 replace github.com/inference-gateway/adk => ../../..
 
