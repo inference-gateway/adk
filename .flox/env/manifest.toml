@@ -2,7 +2,7 @@ schema-version = "1.15.0"
 
 [install]
 go.pkg-path = "go"
-go.version = "^1.26.4"
+go.version = "1.26.7"
 golangci-lint.pkg-path = "golangci-lint"
 golangci-lint.version = "^2.12.2"
 prettier.pkg-path = "prettier"
