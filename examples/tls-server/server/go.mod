@@ -1,6 +1,6 @@
 module github.com/inference-gateway/adk/examples/tls-example/server
 
-go 1.26.6
+go 1.26.7
 
 replace github.com/inference-gateway/adk => ../../../
 
