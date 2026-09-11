@@ -7,7 +7,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
-	github.com/inference-gateway/sdk v1.37.1
+	github.com/inference-gateway/sdk v1.37.2
 	github.com/metoro-io/mcp-golang v0.16.1
 	github.com/minio/minio-go/v7 v7.3.0
 	github.com/prometheus/client_golang v1.24.1
@@ -50,7 +50,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.3 // indirect
-	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
