@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.5](https://github.com/inference-gateway/adk/compare/v0.26.4...v0.26.5) (2026-09-11)
+
+### 🐛 Bug Fixes
+
+* **deps:** bump go toolchain to 1.26.6 and x/crypto to v0.56.0 for cves ([#294](https://github.com/inference-gateway/adk/issues/294)) ([00fc738](https://github.com/inference-gateway/adk/commit/00fc7380c0f482884ab93274f3eac7752ec9fb12))
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#286](https://github.com/inference-gateway/adk/issues/286)) ([53d142b](https://github.com/inference-gateway/adk/commit/53d142b5e01223010fb77701eae3e4af9b85627c))
+* **deps:** bump github.com/stretchr/testify from 1.12.0 to 1.12.1 in the gomod group ([#284](https://github.com/inference-gateway/adk/issues/284)) ([0819341](https://github.com/inference-gateway/adk/commit/0819341be8a45e1e43de1885608e9b71d7e27ff2))
+* **deps:** bump golang.org/x/oauth2 from 0.36.0 to 0.37.0 in the gomod group ([#299](https://github.com/inference-gateway/adk/issues/299)) ([b653f04](https://github.com/inference-gateway/adk/commit/b653f042b9cea0a1552f5d0752c036d3ce250407))
+* **deps:** bump google.golang.org/grpc ([#291](https://github.com/inference-gateway/adk/issues/291)) ([00ac13c](https://github.com/inference-gateway/adk/commit/00ac13c52affd83e3d9326c63f943a8229596570))
+* **deps:** bump the gomod group with 10 updates ([#290](https://github.com/inference-gateway/adk/issues/290)) ([108a8c4](https://github.com/inference-gateway/adk/commit/108a8c481640fa1d71a7e7c93281a88f34527591))
+
+### 📚 Documentation
+
+* add AGENTS.md following the agents.md standard ([#289](https://github.com/inference-gateway/adk/issues/289)) ([cecbada](https://github.com/inference-gateway/adk/commit/cecbadaaefc2758c7eba1a5d68156a5cc25d1725))
+* rewrite AGENTS.md to the agents.md standard ([#288](https://github.com/inference-gateway/adk/issues/288)) ([a85498f](https://github.com/inference-gateway/adk/commit/a85498fb7b09ecd22c8d06607d877d3f37ef8638))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump all module dependencies to latest ([#298](https://github.com/inference-gateway/adk/issues/298)) ([f5d9cfd](https://github.com/inference-gateway/adk/commit/f5d9cfd50ebd41a1507a69fb5217cf10d9101e34))
+* **deps:** bump claude-code 2.1.201 -> 2.1.238 ([#285](https://github.com/inference-gateway/adk/issues/285)) ([21dbd0f](https://github.com/inference-gateway/adk/commit/21dbd0fa6259fb564de34a263353f4a55a198444))
+* **deps:** bump claude-code 2.1.238 -> 2.1.245 ([#293](https://github.com/inference-gateway/adk/issues/293)) ([47c4649](https://github.com/inference-gateway/adk/commit/47c46499e0b1352f0823e6f3cc66d1f4c0ab8774))
+* **deps:** bump go toolchain to 1.26.7 and pin explicitly ([#297](https://github.com/inference-gateway/adk/issues/297)) ([d7e08cc](https://github.com/inference-gateway/adk/commit/d7e08cc108249f03e316493000cfa8c6dc537f69))
+* **deps:** bump infer CLI v0.181.0 -> v0.183.0 ([#287](https://github.com/inference-gateway/adk/issues/287)) ([68c53a4](https://github.com/inference-gateway/adk/commit/68c53a498d9a9d09e3c5650b9915ee11210c62ed))
+* **deps:** bump inference-gateway/sdk to v1.37.2 ([#300](https://github.com/inference-gateway/adk/issues/300)) ([e2c97ab](https://github.com/inference-gateway/adk/commit/e2c97ab44f5bed54a2ca6e4f3363aea9f797fd07))
+
 ## [0.26.4](https://github.com/inference-gateway/adk/compare/v0.26.3...v0.26.4) (2026-08-25)
 
 ### 🐛 Bug Fixes
