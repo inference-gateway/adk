@@ -7,6 +7,13 @@ import (
 	config "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
+	assert "github.com/stretchr/testify/assert"
+	otel "go.opentelemetry.io/otel"
+	attribute "go.opentelemetry.io/otel/attribute"
+	baggage "go.opentelemetry.io/otel/baggage"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	tracetest "go.opentelemetry.io/otel/sdk/trace/tracetest"
+	trace "go.opentelemetry.io/otel/trace"
 )
 
 func TestNewDefaultToolBox_IncludesInputRequiredTool(t *testing.T) {
@@ -383,5 +390,38 @@ func TestExecuteCreateArtifact_MissingService(t *testing.T) {
 	expectedError := "artifact service not found in context - cannot create URL-based artifacts"
 	if err.Error() != expectedError {
 		t.Errorf("Expected error '%s', got '%s'", expectedError, err.Error())
+	}
+}
+
+// TestDefaultToolBox_ExecuteToolSpan verifies every tool execution is wrapped
+// in a tool.<name> span parented on the caller's span, so custom tools trace
+// without their own instrumentation.
+func TestDefaultToolBox_ExecuteToolSpan(t *testing.T) {
+	exporter := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+
+	toolBox := NewDefaultToolBox(nil)
+	toolBox.AddTool(NewBasicTool("navigate", "nav", map[string]any{"type": "object"},
+		func(ctx context.Context, _ map[string]any) (string, error) {
+			assert.True(t, trace.SpanFromContext(ctx).SpanContext().IsValid())
+			return "ok", nil
+		}))
+
+	member, _ := baggage.NewMember(config.DefaultAttrSessionIDKey, "s1")
+	bag, _ := baggage.New(member)
+	ctx := baggage.ContextWithBaggage(context.Background(), bag)
+	ctx, parent := tp.Tracer("test").Start(ctx, "task.process")
+	_, err := toolBox.ExecuteTool(ctx, "navigate", nil)
+	parent.End()
+	assert.NoError(t, err)
+
+	spans := exporter.GetSpans()
+	if assert.Len(t, spans, 2) {
+		assert.Equal(t, "tool.navigate", spans[0].Name)
+		assert.Equal(t, parent.SpanContext().SpanID(), spans[0].Parent.SpanID())
+		assert.Contains(t, spans[0].Attributes, attribute.String(config.DefaultAttrSessionIDKey, "s1"))
 	}
 }
