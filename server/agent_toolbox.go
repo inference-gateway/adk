@@ -8,6 +8,11 @@ import (
 	config "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 	sdk "github.com/inference-gateway/sdk"
+	otel "go.opentelemetry.io/otel"
+	attribute "go.opentelemetry.io/otel/attribute"
+	baggage "go.opentelemetry.io/otel/baggage"
+	codes "go.opentelemetry.io/otel/codes"
+	trace "go.opentelemetry.io/otel/trace"
 )
 
 // ToolBox defines the interface for a collection of tools that can be used by OpenAI-compatible agents
@@ -149,14 +154,37 @@ func (tb *DefaultToolBox) GetTools() []sdk.ChatCompletionTool {
 	return tools
 }
 
-// ExecuteTool executes a tool by name with the provided arguments
+// ExecuteTool executes a tool by name with the provided arguments. Every call
+// is wrapped in a "tool.<name>" span so built-in and custom tools alike show
+// up under task.process without per-tool instrumentation; with telemetry off
+// the global tracer is a no-op. The session and tool-call ids the caller
+// propagated as baggage are copied onto the span so it correlates with the
+// caller's execute_tool span.
+// ponytail: uses the default attribute keys; A2A_TELEMETRY_ATTR_* overrides
+// would need the telemetry config threaded into the toolbox.
 func (tb *DefaultToolBox) ExecuteTool(ctx context.Context, toolName string, arguments map[string]any) (string, error) {
 	tool, exists := tb.tools[toolName]
 	if !exists {
 		return "", &ToolNotFoundError{ToolName: toolName}
 	}
 
-	return tool.Execute(ctx, arguments)
+	attrs := []attribute.KeyValue{attribute.String("gen_ai.tool.name", toolName)}
+	bag := baggage.FromContext(ctx)
+	for _, key := range []string{config.DefaultAttrSessionIDKey, config.DefaultAttrToolCallIDKey} {
+		if v := bag.Member(key).Value(); v != "" {
+			attrs = append(attrs, attribute.String(key, v))
+		}
+	}
+	ctx, span := otel.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "tool."+toolName,
+		trace.WithAttributes(attrs...))
+	defer span.End()
+
+	result, err := tool.Execute(ctx, arguments)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return result, err
 }
 
 // GetToolNames returns a list of all available tool names
