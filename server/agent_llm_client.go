@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
 	config "github.com/inference-gateway/adk/server/config"
 	sdk "github.com/inference-gateway/sdk"
+	otel "go.opentelemetry.io/otel"
+	propagation "go.opentelemetry.io/otel/propagation"
 	zap "go.uber.org/zap"
 )
 
@@ -63,6 +66,8 @@ func NewOpenAICompatibleLLMClient(cfg *config.AgentConfig, logger *zap.Logger) (
 	if len(cfg.CustomHeaders) > 0 {
 		clientOptions.Headers = cfg.CustomHeaders
 	}
+
+	clientOptions.Transport = propagatingTransport{base: http.DefaultTransport}
 
 	client := sdk.NewClient(clientOptions)
 
@@ -257,4 +262,15 @@ func parseModelName(model, provider string) string {
 		}
 	}
 	return model
+}
+
+// propagatingTransport injects W3C trace-context and baggage headers into
+// every outgoing LLM request so gateway spans join the task's trace instead
+// of starting a new one. With telemetry disabled the global propagator is a
+// no-op and nothing is added.
+type propagatingTransport struct{ base http.RoundTripper }
+
+func (t propagatingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	otel.GetTextMapPropagator().Inject(req.Context(), propagation.HeaderCarrier(req.Header))
+	return t.base.RoundTrip(req)
 }

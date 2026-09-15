@@ -1,13 +1,52 @@
 package server_test
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/inference-gateway/adk/server"
 	"github.com/inference-gateway/adk/server/config"
+	"github.com/inference-gateway/sdk"
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
+
+func TestLLMClient_PropagatesTraceContext(t *testing.T) {
+	prev := otel.GetTextMapPropagator()
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
+
+	var traceparent string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		traceparent = r.Header.Get("traceparent")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","created":0,"model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`))
+	}))
+	defer srv.Close()
+
+	client, err := server.NewOpenAICompatibleLLMClient(&config.AgentConfig{
+		Provider: "openai",
+		Model:    "gpt-4",
+		BaseURL:  srv.URL + "/v1",
+	}, zap.NewNop())
+	assert.NoError(t, err)
+
+	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    trace.TraceID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+		SpanID:     trace.SpanID{1, 2, 3, 4, 5, 6, 7, 8},
+		TraceFlags: trace.FlagsSampled,
+	})
+	ctx := trace.ContextWithSpanContext(context.Background(), spanCtx)
+
+	_, err = client.CreateChatCompletion(ctx, []sdk.Message{{Role: sdk.User, Content: sdk.NewMessageContent("hi")}})
+	assert.NoError(t, err)
+	assert.Equal(t, "00-0102030405060708090a0b0c0d0e0f10-0102030405060708-01", traceparent)
+}
 
 func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 	tests := []struct {
