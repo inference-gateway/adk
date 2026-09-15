@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.6](https://github.com/inference-gateway/adk/compare/v0.26.5...v0.26.6) (2026-09-15)
+
+### 🐛 Bug Fixes
+
+* **server:** propagate trace context on LLM client requests ([#304](https://github.com/inference-gateway/adk/issues/304)) ([8e884ec](https://github.com/inference-gateway/adk/commit/8e884ec2c605bda7ed8798034cc290b15077e1e3))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.245 -> 2.1.266 ([#302](https://github.com/inference-gateway/adk/issues/302)) ([3695e2f](https://github.com/inference-gateway/adk/commit/3695e2f754aeefd8c80452b14286003f4ed7c03d))
+* **deps:** bump go-task, markdownlint-cli and golangci-lint flox pins ([#301](https://github.com/inference-gateway/adk/issues/301)) ([0366587](https://github.com/inference-gateway/adk/commit/0366587c2ff90636ce8bc1a62def7653057bf611))
+* **deps:** bump infer CLI v0.183.0 -> v0.192.0 ([#303](https://github.com/inference-gateway/adk/issues/303)) ([1ebcac1](https://github.com/inference-gateway/adk/commit/1ebcac144b46116049281b55ed9d91052a267ef7))
+
 ## [0.26.5](https://github.com/inference-gateway/adk/compare/v0.26.4...v0.26.5) (2026-09-11)
 
 ### 🐛 Bug Fixes
