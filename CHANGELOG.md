@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.27.0](https://github.com/inference-gateway/adk/compare/v0.26.6...v0.27.0) (2026-09-15)
+
+### ✨ Features
+
+* **server:** wrap every tool execution in a tool.<name> span ([#305](https://github.com/inference-gateway/adk/issues/305)) ([8523c8a](https://github.com/inference-gateway/adk/commit/8523c8a35cb9959e3f2980f448a8ce7fe0691307))
+
 ## [0.26.6](https://github.com/inference-gateway/adk/compare/v0.26.5...v0.26.6) (2026-09-15)
 
 ### 🐛 Bug Fixes
