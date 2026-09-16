@@ -77,6 +77,9 @@ jobs:
       - name: Run Lint
         run: golangci-lint run
 
+      - name: Run Lint (example modules)
+        run: for d in $(find examples -name go.mod -exec dirname {} \;); do (cd "$d" && golangci-lint run --config "$GITHUB_WORKSPACE/.golangci.yml" ./...) || exit 1; done
+
       - name: Build
         run: go build .
 

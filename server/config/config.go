@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sethvargo/go-envconfig"
+	envconfig "github.com/sethvargo/go-envconfig"
 )
 
 // Config holds all application configuration

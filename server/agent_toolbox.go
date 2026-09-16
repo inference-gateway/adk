@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	config "github.com/inference-gateway/adk/server/config"
-	types "github.com/inference-gateway/adk/types"
-	sdk "github.com/inference-gateway/sdk"
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	baggage "go.opentelemetry.io/otel/baggage"
 	codes "go.opentelemetry.io/otel/codes"
 	trace "go.opentelemetry.io/otel/trace"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // ToolBox defines the interface for a collection of tools that can be used by OpenAI-compatible agents
@@ -63,7 +65,7 @@ func NewToolBox() *DefaultToolBox {
 
 // NewDefaultToolBox creates a new DefaultToolBox with built-in tools
 // The config parameter determines which tools are enabled
-func NewDefaultToolBox(cfg *config.ToolBoxConfig) *DefaultToolBox {
+func NewDefaultToolBox(cfg *serverConfig.ToolBoxConfig) *DefaultToolBox {
 	toolBox := NewToolBox()
 
 	inputRequiredTool := NewBasicTool(
@@ -170,12 +172,12 @@ func (tb *DefaultToolBox) ExecuteTool(ctx context.Context, toolName string, argu
 
 	attrs := []attribute.KeyValue{attribute.String("gen_ai.tool.name", toolName)}
 	bag := baggage.FromContext(ctx)
-	for _, key := range []string{config.DefaultAttrSessionIDKey, config.DefaultAttrToolCallIDKey} {
+	for _, key := range []string{serverConfig.DefaultAttrSessionIDKey, serverConfig.DefaultAttrToolCallIDKey} {
 		if v := bag.Member(key).Value(); v != "" {
 			attrs = append(attrs, attribute.String(key, v))
 		}
 	}
-	ctx, span := otel.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "tool."+toolName,
+	ctx, span := otelapi.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "tool."+toolName,
 		trace.WithAttributes(attrs...))
 	defer span.End()
 

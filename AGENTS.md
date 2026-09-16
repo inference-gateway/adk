@@ -12,6 +12,7 @@ Use Task for common workflows (`task` lists all tasks):
 
 - `task format` — gofmt on Go files, Prettier on Markdown
 - `task lint` — `golangci-lint run`
+- Import order is enforced by the `gci` formatter (see `.golangci.yml`): standard library, `github.com/stretchr/testify`, `server/mocks`, third-party, `github.com/inference-gateway/*`, then this module. Every non-standard-library import must be named after its last path element (`zap "go.uber.org/zap"`), enforced by `importas`; pin an alias in `.golangci.yml` only when two packages would collide. Fix locally with `golangci-lint fmt` and `golangci-lint run --fix`.
 - `task test` — `go test -v -cover ./...`
 - `task tidy` — `go mod tidy` in every module (root + examples)
 - `task a2a:generate-types` — regenerate `types/generated_types.go` from `schema.yaml`

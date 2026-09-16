@@ -14,11 +14,10 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
+	config "github.com/inference-gateway/adk/examples/protocol-methods/server/config"
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
-
-	config "github.com/inference-gateway/adk/examples/protocol-methods/server/config"
 )
 
 // SlowEchoTaskHandler is a background task handler that intentionally takes a
@@ -103,7 +102,7 @@ func (h *SlowEchoTaskHandler) HandleStreamingTask(ctx context.Context, task *typ
 
 		statusEvent := cloudevents.NewEvent()
 		statusEvent.SetType(types.EventTaskStatusChanged)
-		statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{State: types.TaskStateWorking})
+		_ = statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{State: types.TaskStateWorking})
 		eventChan <- statusEvent
 
 		words := []string{"resubscribed", "stream", "in", "progress", "from", "the", "server"}
@@ -130,7 +129,7 @@ func (h *SlowEchoTaskHandler) HandleStreamingTask(ctx context.Context, task *typ
 			}
 			event := cloudevents.NewEvent()
 			event.SetType(types.EventDelta)
-			event.SetData(cloudevents.ApplicationJSON, deltaMessage)
+			_ = event.SetData(cloudevents.ApplicationJSON, deltaMessage)
 			eventChan <- event
 		}
 

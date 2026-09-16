@@ -6,13 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	config "github.com/inference-gateway/adk/server/config"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 func TestFilesystemArtifactStorage_NewFilesystemArtifactStorage(t *testing.T) {
-	cfg := &config.ArtifactsStorageConfig{
+	cfg := &serverConfig.ArtifactsStorageConfig{
 		BasePath: "./test-artifacts",
 		BaseURL:  "http://localhost:8081",
 	}
@@ -27,7 +28,7 @@ func TestFilesystemArtifactStorage_NewFilesystemArtifactStorage(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_Store(t *testing.T) {
-	cfg := &config.ArtifactsStorageConfig{
+	cfg := &serverConfig.ArtifactsStorageConfig{
 		BasePath: "./test-artifacts",
 		BaseURL:  "http://localhost:8081",
 	}
@@ -51,7 +52,7 @@ func TestFilesystemArtifactStorage_Store(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_Retrieve(t *testing.T) {
-	cfg := &config.ArtifactsStorageConfig{
+	cfg := &serverConfig.ArtifactsStorageConfig{
 		BasePath: "./test-artifacts",
 		BaseURL:  "http://localhost:8081",
 	}
@@ -78,7 +79,7 @@ func TestFilesystemArtifactStorage_Retrieve(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_GetURL(t *testing.T) {
-	cfg := &config.ArtifactsStorageConfig{
+	cfg := &serverConfig.ArtifactsStorageConfig{
 		BasePath: "./test-artifacts",
 		BaseURL:  "http://localhost:8081",
 	}
@@ -91,7 +92,7 @@ func TestFilesystemArtifactStorage_GetURL(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_InvalidInputs(t *testing.T) {
-	cfg := &config.ArtifactsStorageConfig{
+	cfg := &serverConfig.ArtifactsStorageConfig{
 		BasePath: "./test-artifacts",
 		BaseURL:  "http://localhost:8081",
 	}
@@ -115,7 +116,7 @@ func TestFilesystemArtifactStorage_InvalidInputs(t *testing.T) {
 }
 
 func TestFilesystemArtifactStorage_ContextIsolation(t *testing.T) {
-	cfg := &config.ArtifactsStorageConfig{
+	cfg := &serverConfig.ArtifactsStorageConfig{
 		BasePath: "./test-artifacts-isolation",
 		BaseURL:  "http://localhost:8081",
 	}

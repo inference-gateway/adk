@@ -4,13 +4,16 @@ import (
 	"context"
 	"testing"
 
-	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
-	mocks "github.com/inference-gateway/adk/server/mocks"
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
 	zap "go.uber.org/zap"
+
+	server "github.com/inference-gateway/adk/server"
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestNewAgentBuilder(t *testing.T) {
@@ -45,12 +48,12 @@ func TestAgentBuilder_Build_WithDefaults(t *testing.T) {
 func TestAgentBuilder_WithConfig(t *testing.T) {
 	tests := []struct {
 		name     string
-		config   *config.AgentConfig
+		config   *serverConfig.AgentConfig
 		expected func(*testing.T, *server.OpenAICompatibleAgentImpl)
 	}{
 		{
 			name: "custom_system_prompt",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				SystemPrompt:                "Custom test prompt",
 				MaxChatCompletionIterations: 5,
 			},
@@ -60,7 +63,7 @@ func TestAgentBuilder_WithConfig(t *testing.T) {
 		},
 		{
 			name: "custom_max_iterations",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				SystemPrompt:                "You are a helpful AI assistant.",
 				MaxChatCompletionIterations: 20,
 			},
@@ -70,7 +73,7 @@ func TestAgentBuilder_WithConfig(t *testing.T) {
 		},
 		{
 			name: "full_config",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				Provider:                    "openai",
 				Model:                       "gpt-4",
 				SystemPrompt:                "Test system prompt",
@@ -262,7 +265,7 @@ func TestAgentBuilder_ChainedCalls(t *testing.T) {
 	logger := zap.NewNop()
 	mockLLMClient := &mocks.FakeLLMClient{}
 	mockToolBox := server.NewDefaultToolBox(nil)
-	customConfig := &config.AgentConfig{
+	customConfig := &serverConfig.AgentConfig{
 		Provider:                    "openai",
 		Model:                       "gpt-4",
 		SystemPrompt:                "Original prompt",
@@ -285,7 +288,7 @@ func TestAgentBuilder_ChainedCalls(t *testing.T) {
 func TestAgentBuilder_ConfigFromLLMClient(t *testing.T) {
 	logger := zap.NewNop()
 
-	agentConfig := &config.AgentConfig{
+	agentConfig := &serverConfig.AgentConfig{
 		Provider:                    "openai",
 		Model:                       "gpt-3.5-turbo",
 		BaseURL:                     "https://api.openai.com/v1",
@@ -319,7 +322,7 @@ func TestAgentBuilder_OverrideSystemPrompt(t *testing.T) {
 	logger := zap.NewNop()
 	mockLLMClient := &mocks.FakeLLMClient{}
 
-	configWithPrompt := &config.AgentConfig{
+	configWithPrompt := &serverConfig.AgentConfig{
 		SystemPrompt:                "Config prompt",
 		MaxChatCompletionIterations: 50,
 	}
@@ -358,7 +361,7 @@ func TestAgentBuilder_WithCompleteConfiguration(t *testing.T) {
 	)
 	mockToolBox.AddTool(testTool)
 
-	fullConfig := &config.AgentConfig{
+	fullConfig := &serverConfig.AgentConfig{
 		Provider:                    "openai",
 		Model:                       "gpt-4",
 		SystemPrompt:                "You are a test assistant",
@@ -389,7 +392,7 @@ func TestSimpleAgent(t *testing.T) {
 
 func TestAgentWithConfig(t *testing.T) {
 	logger := zap.NewNop()
-	testConfig := &config.AgentConfig{
+	testConfig := &serverConfig.AgentConfig{
 		Provider:                    "openai",
 		Model:                       "gpt-3.5-turbo",
 		SystemPrompt:                "Test config prompt",
@@ -419,7 +422,7 @@ func TestFullyConfiguredAgent(t *testing.T) {
 	logger := zap.NewNop()
 	mockLLMClient := &mocks.FakeLLMClient{}
 	mockToolBox := server.NewDefaultToolBox(nil)
-	testConfig := &config.AgentConfig{
+	testConfig := &serverConfig.AgentConfig{
 		SystemPrompt:                "Fully configured prompt",
 		MaxChatCompletionIterations: 12,
 	}
@@ -467,7 +470,7 @@ func TestAgentBuilder_MultipleBuilds(t *testing.T) {
 func TestAgentBuilder_ErrorHandling(t *testing.T) {
 	logger := zap.NewNop()
 
-	invalidConfig := &config.AgentConfig{
+	invalidConfig := &serverConfig.AgentConfig{
 		Provider: "invalid-provider",
 		Model:    "",
 		BaseURL:  "invalid-url",
@@ -487,7 +490,7 @@ func TestAgentBuilder_FluentInterface(t *testing.T) {
 
 	builder := server.NewAgentBuilder(logger)
 
-	result1 := builder.WithConfig(&config.AgentConfig{})
+	result1 := builder.WithConfig(&serverConfig.AgentConfig{})
 	result2 := result1.WithSystemPrompt("test")
 	result3 := result2.WithMaxChatCompletion(5)
 	result4 := result3.WithMaxConversationHistory(15)
@@ -526,7 +529,7 @@ func TestAgentBuilder_GetConfig(t *testing.T) {
 		{
 			name: "config_set_via_WithConfig",
 			setupBuilder: func(builder server.AgentBuilder) server.AgentBuilder {
-				cfg := &config.AgentConfig{
+				cfg := &serverConfig.AgentConfig{
 					MaxConversationHistory:      15,
 					SystemPrompt:                "Test prompt",
 					MaxChatCompletionIterations: 5,
@@ -593,7 +596,7 @@ func TestAgentBuilder_WithConfigPreservesUserValues(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := zap.NewNop()
 
-			userConfig := &config.AgentConfig{
+			userConfig := &serverConfig.AgentConfig{
 				MaxChatCompletionIterations: tt.maxChatCompletionIterations,
 				SystemPrompt:                tt.systemPrompt,
 			}

@@ -12,11 +12,10 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
+	config "github.com/inference-gateway/adk/examples/ai-powered/server/config"
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
-
-	config "github.com/inference-gateway/adk/examples/ai-powered/server/config"
 )
 
 // AITaskHandler implements a task handler with LLM integration

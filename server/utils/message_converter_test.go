@@ -3,11 +3,14 @@ package utils
 import (
 	"testing"
 
-	types "github.com/inference-gateway/adk/types"
-	sdk "github.com/inference-gateway/sdk"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
 	zap "go.uber.org/zap"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestMessageConverter_ConvertToSDK(t *testing.T) {

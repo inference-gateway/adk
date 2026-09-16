@@ -8,13 +8,15 @@ import (
 	"testing"
 	"time"
 
-	client "github.com/inference-gateway/adk/client"
-	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
 	zaptest "go.uber.org/zap/zaptest"
+
+	client "github.com/inference-gateway/adk/client"
+	server "github.com/inference-gateway/adk/server"
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // startAuthFlowServer builds and starts a real A2A server on the given port and
@@ -26,13 +28,13 @@ func startAuthFlowServer(t *testing.T, port string, extended *types.AgentCard) f
 
 	card := createTestAgentCard()
 	card.Capabilities.Streaming = new(false)
-	schemes, security := server.OIDCSecuritySchemes(config.AuthConfig{
+	schemes, security := server.OIDCSecuritySchemes(serverConfig.AuthConfig{
 		IssuerURL: "https://issuer.example.com/realms/test",
 	})
 	card.SecuritySchemes = schemes
 	card.Security = security
 
-	cfg := config.Config{}
+	cfg := serverConfig.Config{}
 	cfg.ServerConfig.Port = port
 
 	builder := server.NewA2AServerBuilder(cfg, zaptest.NewLogger(t)).

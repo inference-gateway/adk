@@ -11,16 +11,17 @@ import (
 
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
-	config "github.com/inference-gateway/adk/server/config"
-	middlewares "github.com/inference-gateway/adk/server/middlewares"
-	otel "github.com/inference-gateway/adk/server/otel"
-	types "github.com/inference-gateway/adk/types"
 	promhttp "github.com/prometheus/client_golang/prometheus/promhttp"
 	envconfig "github.com/sethvargo/go-envconfig"
-	sdkotel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	middlewares "github.com/inference-gateway/adk/server/middlewares"
+	otel "github.com/inference-gateway/adk/server/otel"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // A2AServer defines the interface for an A2A-compatible server
@@ -100,7 +101,7 @@ const (
 )
 
 type A2AServerImpl struct {
-	cfg            *config.Config
+	cfg            *serverConfig.Config
 	logger         *zap.Logger
 	storage        Storage
 	taskManager    TaskManager
@@ -134,7 +135,7 @@ type A2AServerImpl struct {
 var _ A2AServer = (*A2AServerImpl)(nil)
 
 // NewA2AServer creates a new A2A server with the provided configuration and logger
-func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
+func NewA2AServer(cfg *serverConfig.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
 	if cfg.AgentName == "" {
 		cfg.AgentName = BuildAgentName
 	}
@@ -186,7 +187,7 @@ func NewA2AServer(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetr
 }
 
 // NewA2AServerWithAgent creates a new A2A server with an optional OpenAI-compatible agent
-func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry, agent OpenAICompatibleAgent) *A2AServerImpl {
+func NewA2AServerWithAgent(cfg *serverConfig.Config, logger *zap.Logger, otel otel.OpenTelemetry, agent OpenAICompatibleAgent) *A2AServerImpl {
 	server := NewA2AServer(cfg, logger, otel)
 
 	if agent != nil {
@@ -197,11 +198,11 @@ func NewA2AServerWithAgent(cfg *config.Config, logger *zap.Logger, otel otel.Ope
 }
 
 // NewDefaultA2AServer creates a new default A2A server implementation
-func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl {
-	var finalCfg *config.Config
+func NewDefaultA2AServer(cfg *serverConfig.Config) *A2AServerImpl {
+	var finalCfg *serverConfig.Config
 	var err error
 
-	finalCfg, err = config.LoadWithLookuper(context.Background(), cfg, envconfig.OsLookuper())
+	finalCfg, err = serverConfig.LoadWithLookuper(context.Background(), cfg, envconfig.OsLookuper())
 	if err != nil {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
@@ -223,7 +224,7 @@ func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl {
 			logger.Fatal("failed to initialize telemetry", zap.Error(err))
 		}
 		resolvedTelemetry := finalCfg.ResolveTelemetry()
-		if resolvedTelemetry.MetricsExporter == config.MetricsExporterPrometheus {
+		if resolvedTelemetry.MetricsExporter == serverConfig.MetricsExporterPrometheus {
 			metricsAddr := resolvedTelemetry.PrometheusHost + ":" + resolvedTelemetry.PrometheusPort
 			logger.Info("telemetry enabled - metrics will be available", zap.String("metrics_url", metricsAddr+"/metrics"))
 		} else {
@@ -239,9 +240,9 @@ func NewDefaultA2AServer(cfg *config.Config) *A2AServerImpl {
 }
 
 // NewA2AServerEnvironmentAware creates a new A2A server with environment-aware configuration.
-func NewA2AServerEnvironmentAware(cfg *config.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
+func NewA2AServerEnvironmentAware(cfg *serverConfig.Config, logger *zap.Logger, otel otel.OpenTelemetry) *A2AServerImpl {
 	var err error
-	cfg, err = config.LoadWithLookuper(context.Background(), cfg, envconfig.OsLookuper())
+	cfg, err = serverConfig.LoadWithLookuper(context.Background(), cfg, envconfig.OsLookuper())
 	if err != nil {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
@@ -438,7 +439,7 @@ func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string, overrides map[str
 }
 
 // SetupRouter configures the HTTP router with A2A endpoints
-func (s *A2AServerImpl) setupRouter(cfg *config.Config) *gin.Engine {
+func (s *A2AServerImpl) setupRouter(cfg *serverConfig.Config) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	if cfg.Debug {
 		gin.SetMode(gin.DebugMode)
@@ -516,7 +517,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 	s.validateAuthConfiguration()
 
 	resolvedTelemetry := s.cfg.ResolveTelemetry()
-	if s.otel != nil && resolvedTelemetry.MetricsExporter == config.MetricsExporterPrometheus {
+	if s.otel != nil && resolvedTelemetry.MetricsExporter == serverConfig.MetricsExporterPrometheus {
 		go func() {
 			metricsRouter := gin.Default()
 			metricsRouter.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -627,7 +628,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 	ctx = extractTraceContext(ctx, queuedTask.TraceContext)
 	ctx = injectAuthContext(ctx, queuedTask)
-	ctx, span := sdkotel.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "task.process",
+	ctx, span := otelapi.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "task.process",
 		trace.WithAttributes(attribute.String("a2a.task.id", task.ID)))
 	defer span.End()
 

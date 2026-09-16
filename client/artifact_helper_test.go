@@ -10,9 +10,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/inference-gateway/adk/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {

@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
-	config "github.com/inference-gateway/adk/server/config"
-	sdk "github.com/inference-gateway/sdk"
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
 	zap "go.uber.org/zap"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // LLMClient defines the interface for Language Model clients
@@ -29,14 +31,14 @@ var _ LLMClient = (*OpenAICompatibleLLMClient)(nil)
 // OpenAICompatibleLLMClient implements LLMClient using an OpenAI-compatible API via the Inference Gateway SDK
 type OpenAICompatibleLLMClient struct {
 	client   sdk.Client
-	config   *config.AgentConfig
+	config   *serverConfig.AgentConfig
 	logger   *zap.Logger
 	provider sdk.Provider
 	model    string
 }
 
 // NewOpenAICompatibleLLMClient creates a new OpenAI-compatible LLM client
-func NewOpenAICompatibleLLMClient(cfg *config.AgentConfig, logger *zap.Logger) (*OpenAICompatibleLLMClient, error) {
+func NewOpenAICompatibleLLMClient(cfg *serverConfig.AgentConfig, logger *zap.Logger) (*OpenAICompatibleLLMClient, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("llm provider client config is required")
 	}
@@ -271,6 +273,6 @@ func parseModelName(model, provider string) string {
 type propagatingTransport struct{ base http.RoundTripper }
 
 func (t propagatingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	otel.GetTextMapPropagator().Inject(req.Context(), propagation.HeaderCarrier(req.Header))
+	otelapi.GetTextMapPropagator().Inject(req.Context(), propagation.HeaderCarrier(req.Header))
 	return t.base.RoundTrip(req)
 }

@@ -13,11 +13,10 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
+	config "github.com/inference-gateway/adk/examples/artifacts-with-default-handlers/server/config"
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
-
-	config "github.com/inference-gateway/adk/examples/artifacts-with-default-handlers/server/config"
 )
 
 // Artifacts with Default Handlers and Artifact Service Example
@@ -356,7 +355,7 @@ This report demonstrates how tools can create artifacts that are automatically e
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
 				task.ContextID,
-				fmt.Sprintf("%s Analysis Report", strings.Title(topic)),
+				fmt.Sprintf("%s Analysis Report", strings.Title(topic)), //nolint:staticcheck // example-only, ASCII input
 				fmt.Sprintf("Comprehensive analysis report about %s in %s format", topic, format),
 				filename,
 				[]byte(content),
@@ -526,7 +525,7 @@ note over User,Database : %s
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
 				task.ContextID,
-				fmt.Sprintf("%s - %s Diagram", title, strings.Title(diagramType)),
+				fmt.Sprintf("%s - %s Diagram", title, strings.Title(diagramType)), //nolint:staticcheck // example-only, ASCII input
 				fmt.Sprintf("PlantUML %s diagram: %s", diagramType, description),
 				filename,
 				[]byte(plantumlContent),
@@ -645,7 +644,7 @@ note over User,Database : %s
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
 				task.ContextID,
-				fmt.Sprintf("%s Dataset Export", strings.Title(dataset)),
+				fmt.Sprintf("%s Dataset Export", strings.Title(dataset)), //nolint:staticcheck // example-only, ASCII input
 				fmt.Sprintf("Data export of %s dataset in %s format", dataset, format),
 				filename,
 				[]byte(content),

@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"strings"
 
-	oidcV3 "github.com/coreos/go-oidc/v3/oidc"
-	"github.com/gin-gonic/gin"
-	config "github.com/inference-gateway/adk/server/config"
-	"go.uber.org/zap"
-	"golang.org/x/oauth2"
+	oidc "github.com/coreos/go-oidc/v3/oidc"
+	gin "github.com/gin-gonic/gin"
+	zap "go.uber.org/zap"
+	oauth2 "golang.org/x/oauth2"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 type contextKey string
@@ -27,7 +28,7 @@ type OIDCAuthenticator interface {
 // OIDCAuthenticatorImpl implements OIDC authentication
 type OIDCAuthenticatorImpl struct {
 	logger   *zap.Logger
-	verifier *oidcV3.IDTokenVerifier
+	verifier *oidc.IDTokenVerifier
 	config   oauth2.Config
 }
 
@@ -35,7 +36,7 @@ type OIDCAuthenticatorImpl struct {
 type OIDCAuthenticatorNoop struct{}
 
 // NewOIDCAuthenticatorMiddleware creates a new OIDC authenticator middleware
-func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDCAuthenticator, error) {
+func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg serverConfig.Config) (OIDCAuthenticator, error) {
 	if !cfg.AuthConfig.Enabled {
 		return &OIDCAuthenticatorNoop{}, nil
 	}
@@ -44,12 +45,12 @@ func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDC
 		return nil, errors.New("authentication is enabled but required OIDC fields (issuer URL, client ID, client secret) are missing")
 	}
 
-	provider, err := oidcV3.NewProvider(context.Background(), cfg.AuthConfig.IssuerURL)
+	provider, err := oidc.NewProvider(context.Background(), cfg.AuthConfig.IssuerURL)
 	if err != nil {
 		return nil, err
 	}
 
-	oidcConfig := &oidcV3.Config{
+	oidcConfig := &oidc.Config{
 		ClientID: cfg.AuthConfig.ClientID,
 	}
 
@@ -60,7 +61,7 @@ func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDC
 			ClientID:     cfg.AuthConfig.ClientID,
 			ClientSecret: cfg.AuthConfig.ClientSecret,
 			Endpoint:     provider.Endpoint(),
-			Scopes:       []string{oidcV3.ScopeOpenID, "profile", "email"},
+			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 		},
 	}, nil
 }

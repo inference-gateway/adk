@@ -6,20 +6,23 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/inference-gateway/adk/server"
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/sdk"
-	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
+	assert "github.com/stretchr/testify/assert"
+
+	otelapi "go.opentelemetry.io/otel"
+	propagation "go.opentelemetry.io/otel/propagation"
+	trace "go.opentelemetry.io/otel/trace"
+	zap "go.uber.org/zap"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	server "github.com/inference-gateway/adk/server"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 func TestLLMClient_PropagatesTraceContext(t *testing.T) {
-	prev := otel.GetTextMapPropagator()
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-	t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
+	prev := otelapi.GetTextMapPropagator()
+	otelapi.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() { otelapi.SetTextMapPropagator(prev) })
 
 	var traceparent string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +32,7 @@ func TestLLMClient_PropagatesTraceContext(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, err := server.NewOpenAICompatibleLLMClient(&config.AgentConfig{
+	client, err := server.NewOpenAICompatibleLLMClient(&serverConfig.AgentConfig{
 		Provider: "openai",
 		Model:    "gpt-4",
 		BaseURL:  srv.URL + "/v1",
@@ -51,12 +54,12 @@ func TestLLMClient_PropagatesTraceContext(t *testing.T) {
 func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 	tests := []struct {
 		name        string
-		config      *config.AgentConfig
+		config      *serverConfig.AgentConfig
 		expectError bool
 	}{
 		{
 			name: "valid OpenAI config",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				Provider: "openai",
 				Model:    "gpt-4",
 				APIKey:   "test-key",
@@ -66,7 +69,7 @@ func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 		},
 		{
 			name: "valid Anthropic config",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				Provider: "anthropic",
 				Model:    "claude-3",
 				APIKey:   "test-key",
@@ -76,7 +79,7 @@ func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 		},
 		{
 			name: "config with custom parameters",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				Provider:    "openai",
 				Model:       "gpt-3.5-turbo",
 				APIKey:      "test-key",
@@ -89,7 +92,7 @@ func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 		},
 		{
 			name: "config without API key (optional)",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				Provider: "openai",
 				Model:    "gpt-4",
 				BaseURL:  "https://api.openai.com/v1",
@@ -98,7 +101,7 @@ func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 		},
 		{
 			name: "missing provider",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				Model:   "gpt-4",
 				APIKey:  "test-key",
 				BaseURL: "https://api.openai.com/v1",
@@ -107,7 +110,7 @@ func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 		},
 		{
 			name: "missing model",
-			config: &config.AgentConfig{
+			config: &serverConfig.AgentConfig{
 				Provider: "openai",
 				APIKey:   "test-key",
 				BaseURL:  "https://api.openai.com/v1",
@@ -135,7 +138,7 @@ func TestNewOpenAICompatibleLLMClient(t *testing.T) {
 
 func TestLLMClient_Interface(t *testing.T) {
 	logger := zap.NewNop()
-	config := &config.AgentConfig{
+	config := &serverConfig.AgentConfig{
 		Provider: "openai",
 		Model:    "gpt-4",
 		APIKey:   "test-key",
@@ -155,7 +158,7 @@ func TestLLMClient_ConfigValidation(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, client)
 
-	emptyConfig := &config.AgentConfig{}
+	emptyConfig := &serverConfig.AgentConfig{}
 	client, err = server.NewOpenAICompatibleLLMClient(emptyConfig, logger)
 	assert.Error(t, err)
 	assert.Nil(t, client)
@@ -164,7 +167,7 @@ func TestLLMClient_ConfigValidation(t *testing.T) {
 func TestLLMClient_WithMockSDK(t *testing.T) {
 	logger := zap.NewNop()
 
-	config := &config.AgentConfig{
+	config := &serverConfig.AgentConfig{
 		Provider:         "openai",
 		Model:            "gpt-4",
 		APIKey:           "test-key",

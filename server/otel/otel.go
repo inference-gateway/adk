@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	otlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	otlpmetrichttp "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
@@ -15,14 +15,15 @@ import (
 	metric "go.opentelemetry.io/otel/metric"
 	propagation "go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	sdkresource "go.opentelemetry.io/otel/sdk/resource"
+	resource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
 	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
 	sdk "github.com/inference-gateway/sdk"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // OpenTelemetry defines the operations for telemetry
@@ -71,7 +72,7 @@ type TelemetryAttributes struct {
 }
 
 // NewOpenTelemetry creates a new OpenTelemetry implementation with proper dependency injection
-func NewOpenTelemetry(cfg *config.Config, logger *zap.Logger) (OpenTelemetry, error) {
+func NewOpenTelemetry(cfg *serverConfig.Config, logger *zap.Logger) (OpenTelemetry, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config cannot be nil")
 	}
@@ -90,12 +91,12 @@ func NewOpenTelemetry(cfg *config.Config, logger *zap.Logger) (OpenTelemetry, er
 	return o, nil
 }
 
-func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
+func (o *OpenTelemetryImpl) initialize(cfg *serverConfig.Config) error {
 	o.logger.Info("initializing opentelemetry",
 		zap.String("agent_name", cfg.AgentName),
 		zap.String("version", cfg.AgentVersion))
 
-	res := sdkresource.NewWithAttributes(
+	res := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceName(cfg.AgentName),
 		semconv.ServiceVersion(cfg.AgentVersion),
@@ -119,7 +120,7 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 		return err
 	}
 
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+	otelapi.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
@@ -129,7 +130,7 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 	return nil
 }
 
-func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresource.Resource, resolved config.ResolvedTelemetry) error {
+func (o *OpenTelemetryImpl) initializeMetrics(cfg *serverConfig.Config, res *resource.Resource, resolved serverConfig.ResolvedTelemetry) error {
 	histogramBoundaries := []float64{1, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
 
 	latencyView := sdkmetric.NewView(
@@ -151,9 +152,9 @@ func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresour
 	}
 
 	switch resolved.MetricsExporter {
-	case config.ExporterNone:
+	case serverConfig.ExporterNone:
 		o.logger.Info("metrics exporter disabled (metrics exporter=none)")
-	case config.ExporterOTLP:
+	case serverConfig.ExporterOTLP:
 		exporter, err := o.newOTLPMetricExporter(resolved)
 		if err != nil {
 			o.logger.Error("failed to create otlp metric exporter", zap.Error(err))
@@ -174,7 +175,7 @@ func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresour
 	}
 
 	o.meterProvider = sdkmetric.NewMeterProvider(opts...)
-	otel.SetMeterProvider(o.meterProvider)
+	otelapi.SetMeterProvider(o.meterProvider)
 
 	o.logger.Debug("meter provider created and set globally")
 
@@ -209,9 +210,9 @@ func SignalEndpointURL(endpoint, signalPath string) string {
 }
 
 // newOTLPMetricExporter builds an OTLP metric exporter for the resolved protocol.
-func (o *OpenTelemetryImpl) newOTLPMetricExporter(resolved config.ResolvedTelemetry) (sdkmetric.Exporter, error) {
+func (o *OpenTelemetryImpl) newOTLPMetricExporter(resolved serverConfig.ResolvedTelemetry) (sdkmetric.Exporter, error) {
 	ctx := context.Background()
-	if resolved.OTLPProtocol == config.OTLPProtocolGRPC {
+	if resolved.OTLPProtocol == serverConfig.OTLPProtocolGRPC {
 		grpcOpts := []otlpmetricgrpc.Option{}
 		if resolved.OTLPEndpoint != "" {
 			grpcOpts = append(grpcOpts, otlpmetricgrpc.WithEndpointURL(resolved.OTLPEndpoint))
@@ -226,8 +227,8 @@ func (o *OpenTelemetryImpl) newOTLPMetricExporter(resolved config.ResolvedTeleme
 	return otlpmetrichttp.New(ctx, httpOpts...)
 }
 
-func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresource.Resource, resolved config.ResolvedTelemetry) error {
-	if resolved.TracesExporter != config.ExporterOTLP {
+func (o *OpenTelemetryImpl) initializeTraces(cfg *serverConfig.Config, res *resource.Resource, resolved serverConfig.ResolvedTelemetry) error {
+	if resolved.TracesExporter != serverConfig.ExporterOTLP {
 		o.logger.Debug("OTLP trace export is disabled")
 		return nil
 	}
@@ -246,7 +247,7 @@ func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresourc
 		sdktrace.WithResource(res),
 		sdktrace.WithBatcher(traceExporter),
 	)
-	otel.SetTracerProvider(o.tracerProvider)
+	otelapi.SetTracerProvider(o.tracerProvider)
 
 	o.logger.Info("OTLP trace exporter initialized successfully",
 		zap.String("endpoint", resolved.OTLPEndpoint))
@@ -257,11 +258,11 @@ func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresourc
 // newOTLPTraceExporter builds an OTLP trace exporter for the resolved protocol.
 // TELEMETRY_TRACE_HEADERS are applied when set; otherwise the SDK's own
 // OTEL_EXPORTER_OTLP_HEADERS parsing still applies.
-func (o *OpenTelemetryImpl) newOTLPTraceExporter(cfg *config.Config, resolved config.ResolvedTelemetry) (sdktrace.SpanExporter, error) {
+func (o *OpenTelemetryImpl) newOTLPTraceExporter(cfg *serverConfig.Config, resolved serverConfig.ResolvedTelemetry) (sdktrace.SpanExporter, error) {
 	ctx := context.Background()
 	headers := cfg.TelemetryConfig.TraceConfig.Headers
 
-	if resolved.OTLPProtocol == config.OTLPProtocolGRPC {
+	if resolved.OTLPProtocol == serverConfig.OTLPProtocolGRPC {
 		grpcOpts := []otlptracegrpc.Option{}
 		if resolved.OTLPEndpoint != "" {
 			grpcOpts = append(grpcOpts, otlptracegrpc.WithEndpointURL(resolved.OTLPEndpoint))
@@ -287,7 +288,7 @@ func (o *OpenTelemetryImpl) TracerProvider() trace.TracerProvider {
 	if o.tracerProvider != nil {
 		return o.tracerProvider
 	}
-	return otel.GetTracerProvider()
+	return otelapi.GetTracerProvider()
 }
 
 func (o *OpenTelemetryImpl) RecordTokenUsage(ctx context.Context, attrs TelemetryAttributes, usage sdk.CompletionUsage) {

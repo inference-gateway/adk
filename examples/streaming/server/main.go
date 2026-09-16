@@ -13,11 +13,10 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
+	config "github.com/inference-gateway/adk/examples/streaming/server/config"
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
-
-	config "github.com/inference-gateway/adk/examples/streaming/server/config"
 )
 
 // MockAgent provides a mock OpenAI-compatible agent
@@ -44,7 +43,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 		// Send initial status change event - task is now working
 		statusEvent := cloudevents.NewEvent()
 		statusEvent.SetType(types.EventTaskStatusChanged)
-		statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+		_ = statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
 			State: types.TaskStateWorking,
 		})
 		eventChan <- statusEvent
@@ -85,7 +84,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 
 				event := cloudevents.NewEvent()
 				event.SetType(types.EventDelta)
-				event.SetData(cloudevents.ApplicationJSON, deltaMessage)
+				_ = event.SetData(cloudevents.ApplicationJSON, deltaMessage)
 
 				m.logger.Debug("sending delta", zap.String("delta", delta))
 				eventChan <- event

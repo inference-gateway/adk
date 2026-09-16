@@ -5,11 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+
+	zap "go.uber.org/zap"
+	zaptest "go.uber.org/zap/zaptest"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 func TestStorageFactoryRegistry(t *testing.T) {
@@ -61,7 +63,7 @@ func TestCreateStorageWithValidation(t *testing.T) {
 	registry.Register("test", mockFactory)
 
 	logger := zaptest.NewLogger(t)
-	cfg := config.QueueConfig{
+	cfg := serverConfig.QueueConfig{
 		Provider: "test",
 	}
 
@@ -83,7 +85,7 @@ func TestCreateStorageWithValidationFailure(t *testing.T) {
 	registry.Register("test", mockFactory)
 
 	logger := zaptest.NewLogger(t)
-	cfg := config.QueueConfig{
+	cfg := serverConfig.QueueConfig{
 		Provider: "test",
 	}
 
@@ -97,7 +99,7 @@ func TestInMemoryStorageFactory(t *testing.T) {
 
 	assert.Equal(t, "memory", factory.SupportedProvider())
 
-	cfg := config.QueueConfig{
+	cfg := serverConfig.QueueConfig{
 		Provider: "memory",
 	}
 	err := factory.ValidateConfig(cfg)
@@ -116,7 +118,7 @@ func TestInMemoryStorageFactoryWithCustomHistory(t *testing.T) {
 	factory := &InMemoryStorageFactory{}
 	logger := zaptest.NewLogger(t)
 
-	cfg := config.QueueConfig{
+	cfg := serverConfig.QueueConfig{
 		Provider: "memory",
 		Options: map[string]string{
 			"max_conversation_history": "50",
@@ -143,7 +145,7 @@ func TestGlobalRegistryFunctions(t *testing.T) {
 	assert.NotNil(t, factory)
 
 	logger := zaptest.NewLogger(t)
-	cfg := config.QueueConfig{
+	cfg := serverConfig.QueueConfig{
 		Provider: "memory",
 	}
 
@@ -162,7 +164,7 @@ func (m *MockStorageFactory) SupportedProvider() string {
 	return m.provider
 }
 
-func (m *MockStorageFactory) ValidateConfig(config.QueueConfig) error {
+func (m *MockStorageFactory) ValidateConfig(serverConfig.QueueConfig) error {
 	if m.shouldFail {
 		return assert.AnError
 	}
@@ -172,7 +174,7 @@ func (m *MockStorageFactory) ValidateConfig(config.QueueConfig) error {
 	return nil
 }
 
-func (m *MockStorageFactory) CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error) {
+func (m *MockStorageFactory) CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (Storage, error) {
 	if m.shouldFail {
 		return nil, assert.AnError
 	}
@@ -184,14 +186,14 @@ func TestConfigQueueConfigExtensions(t *testing.T) {
 	tests := []struct {
 		name     string
 		envVars  map[string]string
-		expected config.QueueConfig
+		expected serverConfig.QueueConfig
 	}{
 		{
 			name:    "default memory provider",
 			envVars: map[string]string{
 				// No QUEUE_* env vars set
 			},
-			expected: config.QueueConfig{
+			expected: serverConfig.QueueConfig{
 				Provider:        "memory",
 				MaxSize:         100,
 				CleanupInterval: 120 * time.Second,
@@ -203,7 +205,7 @@ func TestConfigQueueConfigExtensions(t *testing.T) {
 				"QUEUE_PROVIDER": "redis",
 				"QUEUE_URL":      "redis://localhost:6379",
 			},
-			expected: config.QueueConfig{
+			expected: serverConfig.QueueConfig{
 				Provider:        "redis",
 				URL:             "redis://localhost:6379",
 				MaxSize:         100,
@@ -217,7 +219,7 @@ func TestConfigQueueConfigExtensions(t *testing.T) {
 				"QUEUE_URL":      "redis://localhost:6379",
 				"QUEUE_MAX_SIZE": "200",
 			},
-			expected: config.QueueConfig{
+			expected: serverConfig.QueueConfig{
 				Provider:        "redis",
 				URL:             "redis://localhost:6379",
 				MaxSize:         200,
@@ -230,9 +232,9 @@ func TestConfigQueueConfigExtensions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lookuper := &testLookuper{envVars: tt.envVars}
 
-			baseConfig := &config.Config{}
+			baseConfig := &serverConfig.Config{}
 
-			cfg, err := config.LoadWithLookuper(context.Background(), baseConfig, lookuper)
+			cfg, err := serverConfig.LoadWithLookuper(context.Background(), baseConfig, lookuper)
 			require.NoError(t, err)
 
 			assert.Equal(t, tt.expected.Provider, cfg.QueueConfig.Provider)

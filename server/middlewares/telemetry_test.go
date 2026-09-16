@@ -8,24 +8,25 @@ import (
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
 
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
 	gin "github.com/gin-gonic/gin"
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	tracetest "go.opentelemetry.io/otel/sdk/trace/tracetest"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	middlewares "github.com/inference-gateway/adk/server/middlewares"
-	mocks "github.com/inference-gateway/adk/server/mocks"
 )
 
 func TestTelemetryMiddleware_RecordsRequestMetrics(t *testing.T) {
-	cfg := config.Config{
-		TelemetryConfig: config.TelemetryConfig{
+	cfg := serverConfig.Config{
+		TelemetryConfig: serverConfig.TelemetryConfig{
 			Enable: true,
 		},
-		AgentConfig: config.AgentConfig{
+		AgentConfig: serverConfig.AgentConfig{
 			Provider: "test-provider",
 			Model:    "test-model",
 		},
@@ -55,8 +56,8 @@ func TestTelemetryMiddleware_RecordsRequestMetrics(t *testing.T) {
 }
 
 func TestTelemetryMiddleware_NonA2APath(t *testing.T) {
-	cfg := config.Config{
-		TelemetryConfig: config.TelemetryConfig{
+	cfg := serverConfig.Config{
+		TelemetryConfig: serverConfig.TelemetryConfig{
 			Enable: true,
 		},
 	}
@@ -87,7 +88,7 @@ func TestTelemetryMiddleware_NonA2APath(t *testing.T) {
 // TestTelemetryMiddleware_ExtractsTraceContextAndBaggage verifies that incoming
 // W3C trace context and baggage are surfaced on the request span.
 func TestTelemetryMiddleware_ExtractsTraceContextAndBaggage(t *testing.T) {
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+	otelapi.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
@@ -95,8 +96,8 @@ func TestTelemetryMiddleware_ExtractsTraceContextAndBaggage(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
 	tracerProvider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
 
-	cfg := config.Config{
-		AgentConfig: config.AgentConfig{
+	cfg := serverConfig.Config{
+		AgentConfig: serverConfig.AgentConfig{
 			Provider: "test-provider",
 			Model:    "test-model",
 		},
@@ -142,7 +143,7 @@ func TestTelemetryMiddleware_ExtractsTraceContextAndBaggage(t *testing.T) {
 // TestTelemetryMiddleware_ConfigurableAttributeKeys verifies that the session-id
 // and tool-call-id attribute/baggage keys can be overridden via config.
 func TestTelemetryMiddleware_ConfigurableAttributeKeys(t *testing.T) {
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+	otelapi.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
@@ -150,8 +151,8 @@ func TestTelemetryMiddleware_ConfigurableAttributeKeys(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
 	tracerProvider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
 
-	cfg := config.Config{
-		TelemetryConfig: config.TelemetryConfig{
+	cfg := serverConfig.Config{
+		TelemetryConfig: serverConfig.TelemetryConfig{
 			AttrSessionIDKey:  "custom.session",
 			AttrToolCallIDKey: "custom.tool.call",
 		},

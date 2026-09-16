@@ -3,16 +3,18 @@ package server
 import (
 	"testing"
 
-	config "github.com/inference-gateway/adk/server/config"
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
+
+	zap "go.uber.org/zap"
+	observer "go.uber.org/zap/zaptest/observer"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestOIDCSecuritySchemes(t *testing.T) {
-	schemes, security := OIDCSecuritySchemes(config.AuthConfig{
+	schemes, security := OIDCSecuritySchemes(serverConfig.AuthConfig{
 		IssuerURL: "https://issuer.example.com/realms/test/",
 	})
 
@@ -65,14 +67,14 @@ func TestValidateAuthConfiguration(t *testing.T) {
 			core, logs := observer.New(zap.WarnLevel)
 			card := &types.AgentCard{Name: "agent"}
 			if tt.declareScheme {
-				schemes, _ := OIDCSecuritySchemes(config.AuthConfig{IssuerURL: "https://x"})
+				schemes, _ := OIDCSecuritySchemes(serverConfig.AuthConfig{IssuerURL: "https://x"})
 				card.SecuritySchemes = schemes
 			}
 			s := &A2AServerImpl{
 				logger:          zap.New(core),
 				customAgentCard: card,
 			}
-			s.cfg = &config.Config{}
+			s.cfg = &serverConfig.Config{}
 			s.cfg.AuthConfig.Enabled = tt.authEnabled
 
 			s.validateAuthConfiguration()

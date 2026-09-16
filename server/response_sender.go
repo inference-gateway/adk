@@ -2,8 +2,9 @@ package server
 
 import (
 	gin "github.com/gin-gonic/gin"
-	adk "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 // ResponseSender defines how to send JSON-RPC responses
@@ -29,7 +30,7 @@ func NewDefaultResponseSender(logger *zap.Logger) *DefaultResponseSender {
 
 // SendSuccess sends a JSON-RPC success response
 func (rs *DefaultResponseSender) SendSuccess(c *gin.Context, id any, result any) {
-	resp := adk.JSONRPCSuccessResponse{
+	resp := types.JSONRPCSuccessResponse{
 		JSONRPC: "2.0",
 		ID:      id,
 		Result:  result,
@@ -40,10 +41,10 @@ func (rs *DefaultResponseSender) SendSuccess(c *gin.Context, id any, result any)
 
 // SendError sends a JSON-RPC error response
 func (rs *DefaultResponseSender) SendError(c *gin.Context, id any, code int, message string) {
-	resp := adk.JSONRPCErrorResponse{
+	resp := types.JSONRPCErrorResponse{
 		JSONRPC: "2.0",
 		ID:      id,
-		Error: &adk.JSONRPCError{
+		Error: &types.JSONRPCError{
 			Code:    code,
 			Message: message,
 		},

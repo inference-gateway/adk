@@ -8,8 +8,9 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
-	types "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 // Context keys for injecting dependencies into tool execution

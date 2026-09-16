@@ -7,36 +7,36 @@ import (
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
 
-	zap "go.uber.org/zap"
-
 	mocks "github.com/inference-gateway/adk/server/mocks"
 
+	zap "go.uber.org/zap"
+
 	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
 func TestA2AServerBuilder_BasicConstruction(t *testing.T) {
 	tests := []struct {
 		name        string
-		setupConfig func() config.Config
+		setupConfig func() serverConfig.Config
 		expectPanic bool
 	}{
 		{
 			name: "build with valid config",
-			setupConfig: func() config.Config {
-				return config.Config{
+			setupConfig: func() serverConfig.Config {
+				return serverConfig.Config{
 					AgentName:        "test-agent",
 					AgentDescription: "Test agent description",
-					ServerConfig:     config.ServerConfig{Port: "8080"},
+					ServerConfig:     serverConfig.ServerConfig{Port: "8080"},
 				}
 			},
 			expectPanic: false,
 		},
 		{
 			name: "build with minimal config",
-			setupConfig: func() config.Config {
-				return config.Config{}
+			setupConfig: func() serverConfig.Config {
+				return serverConfig.Config{}
 			},
 			expectPanic: false,
 		},
@@ -66,9 +66,9 @@ func TestA2AServerBuilder_BasicConstruction(t *testing.T) {
 }
 
 func TestA2AServerBuilder_WithTaskHandler(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
@@ -88,9 +88,9 @@ func TestA2AServerBuilder_WithTaskHandler(t *testing.T) {
 }
 
 func TestA2AServerBuilder_WithTaskResultProcessor(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
 	mockProcessor := &mocks.FakeTaskResultProcessor{}
@@ -107,9 +107,9 @@ func TestA2AServerBuilder_WithTaskResultProcessor(t *testing.T) {
 }
 
 func TestA2AServerBuilder_WithAgent(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
 	systemPrompt := "You are a helpful assistant"
@@ -131,12 +131,12 @@ func TestA2AServerBuilder_WithAgent(t *testing.T) {
 }
 
 func TestA2AServerBuilder_WithAgentAndConfig(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
-	agentConfig := &config.AgentConfig{
+	agentConfig := &serverConfig.AgentConfig{
 		Provider: "openai",
 		Model:    "gpt-4",
 		APIKey:   "test-key",
@@ -158,9 +158,9 @@ func TestA2AServerBuilder_WithAgentAndConfig(t *testing.T) {
 }
 
 func TestA2AServerBuilder_ChainedCalls(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
@@ -206,15 +206,15 @@ func TestA2AServerBuilder_UsageMetadataWiring(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := config.Config{
+			cfg := serverConfig.Config{
 				AgentName:    "test-agent",
-				ServerConfig: config.ServerConfig{Port: "8080"},
-				AgentConfig: config.AgentConfig{
+				ServerConfig: serverConfig.ServerConfig{Port: "8080"},
+				AgentConfig: serverConfig.AgentConfig{
 					SystemPrompt:                "You are a test assistant.",
 					MaxChatCompletionIterations: 10,
 					EnableUsageMetadata:         tt.enabled,
 				},
-				CapabilitiesConfig: config.CapabilitiesConfig{
+				CapabilitiesConfig: serverConfig.CapabilitiesConfig{
 					Streaming: true,
 				},
 			}
@@ -238,9 +238,9 @@ func TestA2AServerBuilder_UsageMetadataWiring(t *testing.T) {
 }
 
 func TestCustomA2AServer(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "custom-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
 	mockTaskHandler := &mocks.FakeTaskHandler{}
@@ -292,9 +292,9 @@ func TestA2AServerBuilderInterface_WithMocks(t *testing.T) {
 }
 
 func TestA2AServerBuilderInterface_Polymorphism(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
 
@@ -348,7 +348,7 @@ func TestA2AServerBuilderInterface_AllMethods(t *testing.T) {
 }
 
 func TestA2AServerBuilder_WithDefaultBackgroundTaskHandler(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
 		AgentVersion: "0.1.0",
 	}
@@ -362,7 +362,7 @@ func TestA2AServerBuilder_WithDefaultBackgroundTaskHandler(t *testing.T) {
 }
 
 func TestA2AServerBuilder_WithDefaultStreamingTaskHandler(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
 		AgentVersion: "0.1.0",
 	}
@@ -378,11 +378,11 @@ func TestA2AServerBuilder_WithDefaultStreamingTaskHandler(t *testing.T) {
 func TestServerBuilderAppliesAgentConfigDefaults(t *testing.T) {
 	logger := zap.NewNop()
 
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 		Debug:        true,
-		QueueConfig: config.QueueConfig{
+		QueueConfig: serverConfig.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
 	}
@@ -407,16 +407,16 @@ func TestServerBuilderAppliesAgentConfigDefaults(t *testing.T) {
 func TestServerBuilderPreservesExplicitAgentConfig(t *testing.T) {
 	logger := zap.NewNop()
 
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 		Debug:        true,
-		AgentConfig: config.AgentConfig{
+		AgentConfig: serverConfig.AgentConfig{
 			MaxConversationHistory:      5,
 			SystemPrompt:                "Custom system prompt",
 			MaxChatCompletionIterations: 50,
 		},
-		QueueConfig: config.QueueConfig{
+		QueueConfig: serverConfig.QueueConfig{
 			CleanupInterval: 5 * time.Minute,
 		},
 	}
@@ -435,9 +435,9 @@ func TestServerBuilderPreservesExplicitAgentConfig(t *testing.T) {
 }
 
 func TestA2AServerBuilder_Build_RequiresAgentCard(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
 
@@ -450,9 +450,9 @@ func TestA2AServerBuilder_Build_RequiresAgentCard(t *testing.T) {
 }
 
 func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
 	}
 	logger := zap.NewNop()
 
@@ -554,10 +554,10 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 }
 
 func TestA2AServerBuilder_WithTelemetry(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:    "test-agent",
-		ServerConfig: config.ServerConfig{Port: "8080"},
-		TelemetryConfig: config.TelemetryConfig{
+		ServerConfig: serverConfig.ServerConfig{Port: "8080"},
+		TelemetryConfig: serverConfig.TelemetryConfig{
 			Enable: false,
 		},
 	}

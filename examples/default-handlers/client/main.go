@@ -10,8 +10,8 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/adk/client"
-	"github.com/inference-gateway/adk/types"
+	client "github.com/inference-gateway/adk/client"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // Config holds client configuration

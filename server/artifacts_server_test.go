@@ -9,16 +9,17 @@ import (
 	"testing"
 	"time"
 
-	gin "github.com/gin-gonic/gin"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
-	zap "go.uber.org/zap"
-	zaptest "go.uber.org/zap/zaptest"
 
 	mocks "github.com/inference-gateway/adk/server/mocks"
 
+	gin "github.com/gin-gonic/gin"
+	zap "go.uber.org/zap"
+	zaptest "go.uber.org/zap/zaptest"
+
 	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 func init() {
@@ -27,12 +28,12 @@ func init() {
 
 func TestNewArtifactsServer(t *testing.T) {
 	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8082",
 		},
-		StorageConfig: config.ArtifactsStorageConfig{
+		StorageConfig: serverConfig.ArtifactsStorageConfig{
 			Provider: "filesystem",
 			BasePath: "./test-artifacts-new",
 		},
@@ -48,9 +49,9 @@ func TestNewArtifactsServer(t *testing.T) {
 
 func TestArtifactsServer_WithMockService(t *testing.T) {
 	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8082",
 		},
 	}
@@ -62,9 +63,9 @@ func TestArtifactsServer_WithMockService(t *testing.T) {
 
 func TestArtifactsServer_StartWithoutService(t *testing.T) {
 	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8083",
 		},
 	}
@@ -80,12 +81,12 @@ func TestArtifactsServer_StartWithoutService(t *testing.T) {
 
 func TestArtifactsServer_HealthEndpoint(t *testing.T) {
 	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8084",
 		},
-		StorageConfig: config.ArtifactsStorageConfig{
+		StorageConfig: serverConfig.ArtifactsStorageConfig{
 			Provider: "filesystem",
 			BasePath: "./test-artifacts-health",
 		},
@@ -120,9 +121,9 @@ func TestArtifactsServer_HealthEndpoint(t *testing.T) {
 
 func TestArtifactsServer_ArtifactDownload(t *testing.T) {
 	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8085",
 		},
 	}
@@ -165,9 +166,9 @@ func TestArtifactsServer_ArtifactDownload(t *testing.T) {
 
 func TestArtifactsServer_ArtifactNotFound(t *testing.T) {
 	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8086",
 		},
 	}
@@ -201,9 +202,9 @@ func TestArtifactsServer_ArtifactNotFound(t *testing.T) {
 
 func TestArtifactsServer_BadRequest(t *testing.T) {
 	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8087",
 		},
 	}
@@ -229,9 +230,9 @@ func TestArtifactsServer_BadRequest(t *testing.T) {
 
 func TestArtifactsServer_StorageError(t *testing.T) {
 	logger := zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel))
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8088",
 		},
 	}

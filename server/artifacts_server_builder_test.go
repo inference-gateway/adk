@@ -4,20 +4,21 @@ import (
 	"testing"
 
 	assert "github.com/stretchr/testify/assert"
+
 	zaptest "go.uber.org/zap/zaptest"
 
 	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 func TestNewArtifactsServerBuilder(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8081",
 		},
-		StorageConfig: config.ArtifactsStorageConfig{
+		StorageConfig: serverConfig.ArtifactsStorageConfig{
 			Provider: "filesystem",
 			BasePath: "./test-artifacts",
 		},
@@ -29,12 +30,12 @@ func TestNewArtifactsServerBuilder(t *testing.T) {
 
 func TestArtifactsServerBuilder_AutoConfigureStorage(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8081",
 		},
-		StorageConfig: config.ArtifactsStorageConfig{
+		StorageConfig: serverConfig.ArtifactsStorageConfig{
 			Provider: "filesystem",
 			BasePath: "./test-artifacts",
 		},
@@ -50,7 +51,7 @@ func TestArtifactsServerBuilder_AutoConfigureStorage(t *testing.T) {
 func TestArtifactsServerBuilder_WithLogger(t *testing.T) {
 	originalLogger := zaptest.NewLogger(t)
 	newLogger := zaptest.NewLogger(t)
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
 	}
 
@@ -62,12 +63,12 @@ func TestArtifactsServerBuilder_WithLogger(t *testing.T) {
 
 func TestSimpleArtifactsServerWithFilesystem(t *testing.T) {
 	logger := zaptest.NewLogger(t)
-	cfg := &config.ArtifactsConfig{
+	cfg := &serverConfig.ArtifactsConfig{
 		Enable: true,
-		ServerConfig: config.ArtifactsServerConfig{
+		ServerConfig: serverConfig.ArtifactsServerConfig{
 			Port: "8081",
 		},
-		StorageConfig: config.ArtifactsStorageConfig{
+		StorageConfig: serverConfig.ArtifactsStorageConfig{
 			Provider: "filesystem",
 			BasePath: "./test-artifacts",
 		},

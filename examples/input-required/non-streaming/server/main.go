@@ -376,7 +376,7 @@ func getPreviousContext(task *types.Task) string {
 func main() {
 	// Initialize logger
 	logger, _ := zap.NewDevelopment()
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	// Load configuration from environment
 	cfg := &config.Config{}

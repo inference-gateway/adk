@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
+	minio "github.com/minio/minio-go/v7"
+	credentials "github.com/minio/minio-go/v7/pkg/credentials"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // MinIOArtifactStorage implements ArtifactStorageProvider using MinIO/S3
@@ -21,7 +22,7 @@ type MinIOArtifactStorage struct {
 }
 
 // NewMinIOArtifactStorage creates a new MinIO-based artifact storage provider
-func NewMinIOArtifactStorage(cfg *config.ArtifactsStorageConfig) (*MinIOArtifactStorage, error) {
+func NewMinIOArtifactStorage(cfg *serverConfig.ArtifactsStorageConfig) (*MinIOArtifactStorage, error) {
 	client, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
 		Secure: cfg.UseSSL,

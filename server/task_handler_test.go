@@ -4,12 +4,15 @@ import (
 	"context"
 	"testing"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2"
-	server "github.com/inference-gateway/adk/server"
-	mocks "github.com/inference-gateway/adk/server/mocks"
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	zap "go.uber.org/zap"
+
+	server "github.com/inference-gateway/adk/server"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {

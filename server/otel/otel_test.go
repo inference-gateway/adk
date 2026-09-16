@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
-	envconfig "github.com/sethvargo/go-envconfig"
 	require "github.com/stretchr/testify/require"
+
+	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
-	adkotel "github.com/inference-gateway/adk/server/otel"
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	otel "github.com/inference-gateway/adk/server/otel"
 )
 
 // TestNewOpenTelemetry_Exporters verifies that the OTLP and none exporter paths
@@ -49,12 +50,12 @@ func TestNewOpenTelemetry_Exporters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := config.LoadWithLookuper(context.Background(), nil, envconfig.MapLookuper(tt.envVars))
+			cfg, err := serverConfig.LoadWithLookuper(context.Background(), nil, envconfig.MapLookuper(tt.envVars))
 			require.NoError(t, err)
 			cfg.AgentName = "test-agent"
 			cfg.AgentVersion = "0.0.1"
 
-			tel, err := adkotel.NewOpenTelemetry(cfg, zap.NewNop())
+			tel, err := otel.NewOpenTelemetry(cfg, zap.NewNop())
 			require.NoError(t, err)
 			require.NotNil(t, tel)
 			require.NotNil(t, tel.TracerProvider())
@@ -62,7 +63,7 @@ func TestNewOpenTelemetry_Exporters(t *testing.T) {
 			// Recording must not panic regardless of the exporter selection,
 			// including when metrics are dropped (none).
 			ctx := context.Background()
-			attrs := adkotel.TelemetryAttributes{Provider: "test", Model: "test"}
+			attrs := otel.TelemetryAttributes{Provider: "test", Model: "test"}
 			require.NotPanics(t, func() {
 				tel.RecordRequestCount(ctx, attrs, "POST")
 			})
@@ -85,7 +86,7 @@ func TestSignalEndpointURL(t *testing.T) {
 		"https://otlp.example.com/custom": "https://otlp.example.com/custom",
 	}
 	for in, want := range cases {
-		require.Equal(t, want, adkotel.SignalEndpointURL(in, "v1/traces"))
+		require.Equal(t, want, otel.SignalEndpointURL(in, "v1/traces"))
 	}
-	require.Equal(t, "http://localhost:4318/v1/metrics", adkotel.SignalEndpointURL("http://localhost:4318", "v1/metrics"))
+	require.Equal(t, "http://localhost:4318/v1/metrics", otel.SignalEndpointURL("http://localhost:4318", "v1/metrics"))
 }

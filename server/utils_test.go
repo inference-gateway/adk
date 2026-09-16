@@ -3,8 +3,9 @@ package server_test
 import (
 	"testing"
 
-	"github.com/inference-gateway/adk/server"
-	"github.com/stretchr/testify/assert"
+	assert "github.com/stretchr/testify/assert"
+
+	server "github.com/inference-gateway/adk/server"
 )
 
 func TestGenerateTaskID(t *testing.T) {

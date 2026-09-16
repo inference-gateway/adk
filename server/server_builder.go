@@ -8,7 +8,7 @@ import (
 
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	otel "github.com/inference-gateway/adk/server/otel"
 	types "github.com/inference-gateway/adk/types"
 )
@@ -89,7 +89,7 @@ var _ A2AServerBuilder = (*A2AServerBuilderImpl)(nil)
 // It provides a fluent interface for building A2A servers with custom configurations.
 // This struct holds the configuration and optional components that will be used to create the server.
 type A2AServerBuilderImpl struct {
-	cfg                  config.Config         // Base configuration for the server
+	cfg                  serverConfig.Config   // Base configuration for the server
 	logger               *zap.Logger           // Logger instance for the server
 	pollingTaskHandler   TaskHandler           // Optional custom task handler for polling scenarios
 	streamingTaskHandler StreamableTaskHandler // Optional custom task handler for streaming scenarios
@@ -124,11 +124,11 @@ type A2AServerBuilderImpl struct {
 //	server := NewA2AServerBuilder(cfg, logger).
 //	  WithAgent(myAgent).
 //	  Build()
-func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder {
+func NewA2AServerBuilder(cfg serverConfig.Config, logger *zap.Logger) A2AServerBuilder {
 	needsDefaults := isCapabilitiesConfigEmpty(cfg.CapabilitiesConfig) || isAgentConfigEmpty(cfg.AgentConfig)
 
 	if needsDefaults {
-		defaultCfg, err := config.NewWithDefaults(context.Background(), nil)
+		defaultCfg, err := serverConfig.NewWithDefaults(context.Background(), nil)
 		if err == nil {
 			if isCapabilitiesConfigEmpty(cfg.CapabilitiesConfig) {
 				cfg.CapabilitiesConfig = defaultCfg.CapabilitiesConfig
@@ -146,12 +146,12 @@ func NewA2AServerBuilder(cfg config.Config, logger *zap.Logger) A2AServerBuilder
 }
 
 // isCapabilitiesConfigEmpty checks if the capabilities config has all zero values
-func isCapabilitiesConfigEmpty(capabilities config.CapabilitiesConfig) bool {
+func isCapabilitiesConfigEmpty(capabilities serverConfig.CapabilitiesConfig) bool {
 	return !capabilities.Streaming && !capabilities.PushNotifications && !capabilities.StateTransitionHistory
 }
 
 // isAgentConfigEmpty checks if the agent config has all zero values (needs defaults)
-func isAgentConfigEmpty(agentConfig config.AgentConfig) bool {
+func isAgentConfigEmpty(agentConfig serverConfig.AgentConfig) bool {
 	return agentConfig.Provider == "" &&
 		agentConfig.Model == "" &&
 		agentConfig.MaxConversationHistory == 0 &&
@@ -400,7 +400,7 @@ func (b *A2AServerBuilderImpl) validateTaskHandlerConfiguration() error {
 
 // SimpleA2AServerWithAgent creates a basic A2A server with an OpenAI-compatible agent
 // This is a convenience function for agent-based use cases
-func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenAICompatibleAgent, agentCard types.AgentCard) (A2AServer, error) {
+func SimpleA2AServerWithAgent(cfg serverConfig.Config, logger *zap.Logger, agent OpenAICompatibleAgent, agentCard types.AgentCard) (A2AServer, error) {
 	return NewA2AServerBuilder(cfg, logger).
 		WithAgent(agent).
 		WithAgentCard(agentCard).
@@ -410,7 +410,7 @@ func SimpleA2AServerWithAgent(cfg config.Config, logger *zap.Logger, agent OpenA
 // CustomA2AServer creates an A2A server with custom components
 // This provides more control over the server configuration
 func CustomA2AServer(
-	cfg config.Config,
+	cfg serverConfig.Config,
 	logger *zap.Logger,
 	pollingTaskHandler TaskHandler,
 	streamingTaskHandler StreamableTaskHandler,
@@ -428,7 +428,7 @@ func CustomA2AServer(
 // CustomA2AServerWithAgent creates an A2A server with custom components and an agent
 // This provides maximum control over the server configuration
 func CustomA2AServerWithAgent(
-	cfg config.Config,
+	cfg serverConfig.Config,
 	logger *zap.Logger,
 	agent OpenAICompatibleAgent,
 	toolBox ToolBox,

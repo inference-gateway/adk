@@ -3,8 +3,9 @@ package server
 import (
 	"fmt"
 
-	"github.com/inference-gateway/adk/server/config"
-	"go.uber.org/zap"
+	zap "go.uber.org/zap"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // ArtifactsServerBuilder provides a fluent interface for building artifacts servers with custom configurations.
@@ -32,7 +33,7 @@ var _ ArtifactsServerBuilder = (*ArtifactsServerBuilderImpl)(nil)
 // It provides a fluent interface for building artifacts servers with custom configurations.
 // This struct holds the configuration and optional components that will be used to create the server.
 type ArtifactsServerBuilderImpl struct {
-	config          *config.ArtifactsConfig
+	config          *serverConfig.ArtifactsConfig
 	logger          *zap.Logger
 	artifactService ArtifactService
 }
@@ -63,7 +64,7 @@ type ArtifactsServerBuilderImpl struct {
 //	logger, _ := zap.NewDevelopment()
 //	server := NewArtifactsServerBuilder(cfg, logger).
 //	  Build()
-func NewArtifactsServerBuilder(cfg *config.ArtifactsConfig, logger *zap.Logger) ArtifactsServerBuilder {
+func NewArtifactsServerBuilder(cfg *serverConfig.ArtifactsConfig, logger *zap.Logger) ArtifactsServerBuilder {
 	return &ArtifactsServerBuilderImpl{
 		config: cfg,
 		logger: logger,

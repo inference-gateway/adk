@@ -4,10 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/inference-gateway/adk/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+
+	zap "go.uber.org/zap"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestQueueCentricOperations(t *testing.T) {

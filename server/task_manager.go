@@ -7,9 +7,10 @@ import (
 	"time"
 
 	uuid "github.com/google/uuid"
-	"github.com/inference-gateway/adk/server/config"
-	types "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // TaskManager defines task lifecycle management
@@ -72,7 +73,7 @@ type TaskManager interface {
 	IsTaskPaused(taskID string) (bool, error)
 
 	// SetRetentionConfig sets the task retention configuration and starts automatic cleanup
-	SetRetentionConfig(retentionConfig config.TaskRetentionConfig)
+	SetRetentionConfig(retentionConfig serverConfig.TaskRetentionConfig)
 
 	// StopCleanup stops the automatic cleanup process
 	StopCleanup()
@@ -85,7 +86,7 @@ type DefaultTaskManager struct {
 	pushNotificationConfigs   map[string]map[string]*types.TaskPushNotificationConfig
 	notificationSender        PushNotificationSender
 	pushNotificationConfigsMu sync.RWMutex
-	retentionConfig           config.TaskRetentionConfig
+	retentionConfig           serverConfig.TaskRetentionConfig
 	cleanupTicker             *time.Ticker
 	stopCleanup               chan struct{}
 	runningTasks              map[string]context.CancelFunc
@@ -814,7 +815,7 @@ func (tm *DefaultTaskManager) IsTaskPaused(taskID string) (bool, error) {
 }
 
 // SetRetentionConfig sets the task retention configuration and starts automatic cleanup
-func (tm *DefaultTaskManager) SetRetentionConfig(retentionConfig config.TaskRetentionConfig) {
+func (tm *DefaultTaskManager) SetRetentionConfig(retentionConfig serverConfig.TaskRetentionConfig) {
 	tm.retentionConfig = retentionConfig
 
 	// Stop existing cleanup if running

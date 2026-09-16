@@ -8,10 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/adk/types"
-	"go.uber.org/zap"
+	uuid "github.com/google/uuid"
+	zap "go.uber.org/zap"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // ArtifactService defines the interface for artifact operations with storage support.
@@ -81,7 +82,7 @@ type ArtifactServiceImpl struct {
 
 // NewArtifactService creates a new artifact service from configuration.
 // It creates and manages its own storage provider internally.
-func NewArtifactService(cfg *config.ArtifactsConfig, logger *zap.Logger) (ArtifactService, error) {
+func NewArtifactService(cfg *serverConfig.ArtifactsConfig, logger *zap.Logger) (ArtifactService, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("artifacts configuration is required")
 	}

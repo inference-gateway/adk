@@ -3,8 +3,9 @@ package server
 import (
 	"context"
 
-	config "github.com/inference-gateway/adk/server/config"
 	zap "go.uber.org/zap"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // AgentBuilder provides a fluent interface for building OpenAI-compatible agents with custom configurations.
@@ -23,7 +24,7 @@ import (
 //	  Build()
 type AgentBuilder interface {
 	// WithConfig sets the agent configuration
-	WithConfig(config *config.AgentConfig) AgentBuilder
+	WithConfig(config *serverConfig.AgentConfig) AgentBuilder
 	// WithLLMClient sets a pre-configured LLM client
 	WithLLMClient(client LLMClient) AgentBuilder
 	// WithToolBox sets a custom toolbox
@@ -41,7 +42,7 @@ type AgentBuilder interface {
 	// including before/after agent execution, model calls, and tool execution
 	WithCallbacks(config *CallbackConfig) AgentBuilder
 	// GetConfig returns the current agent configuration (for testing purposes)
-	GetConfig() *config.AgentConfig
+	GetConfig() *serverConfig.AgentConfig
 	// Build creates and returns the configured agent
 	Build() (*OpenAICompatibleAgentImpl, error)
 }
@@ -52,7 +53,7 @@ var _ AgentBuilder = (*AgentBuilderImpl)(nil)
 // It provides a fluent interface for building OpenAI-compatible agents with custom configurations.
 type AgentBuilderImpl struct {
 	logger         *zap.Logger
-	config         *config.AgentConfig
+	config         *serverConfig.AgentConfig
 	llmClient      LLMClient
 	toolBox        ToolBox
 	systemPrompt   *string // Use pointer to distinguish between not set and empty string
@@ -75,8 +76,8 @@ type AgentBuilderImpl struct {
 //	  WithConfig(agentConfig).
 //	  Build()
 func NewAgentBuilder(logger *zap.Logger) AgentBuilder {
-	defaultCfg, err := config.NewWithDefaults(context.Background(), nil)
-	var agentConfig *config.AgentConfig
+	defaultCfg, err := serverConfig.NewWithDefaults(context.Background(), nil)
+	var agentConfig *serverConfig.AgentConfig
 	if err == nil && defaultCfg != nil {
 		agentConfig = &defaultCfg.AgentConfig
 
@@ -87,7 +88,7 @@ func NewAgentBuilder(logger *zap.Logger) AgentBuilder {
 			agentConfig.Model = "gpt-3.5-turbo"
 		}
 	} else {
-		agentConfig = &config.AgentConfig{
+		agentConfig = &serverConfig.AgentConfig{
 			Provider:                    "openai",
 			Model:                       "gpt-3.5-turbo",
 			MaxChatCompletionIterations: 50,
@@ -103,7 +104,7 @@ func NewAgentBuilder(logger *zap.Logger) AgentBuilder {
 }
 
 // WithConfig sets the agent configuration
-func (b *AgentBuilderImpl) WithConfig(userConfig *config.AgentConfig) AgentBuilder {
+func (b *AgentBuilderImpl) WithConfig(userConfig *serverConfig.AgentConfig) AgentBuilder {
 	if userConfig != nil {
 		b.config = userConfig
 	}
@@ -154,7 +155,7 @@ func (b *AgentBuilderImpl) WithCallbacks(config *CallbackConfig) AgentBuilder {
 }
 
 // GetConfig returns the current agent configuration (for testing purposes)
-func (b *AgentBuilderImpl) GetConfig() *config.AgentConfig {
+func (b *AgentBuilderImpl) GetConfig() *serverConfig.AgentConfig {
 	return b.config
 }
 
@@ -171,7 +172,7 @@ func (b *AgentBuilderImpl) Build() (*OpenAICompatibleAgentImpl, error) {
 	// Override system prompt if explicitly set
 	if b.systemPrompt != nil {
 		if agent.config == nil {
-			agent.config = &config.AgentConfig{}
+			agent.config = &serverConfig.AgentConfig{}
 		}
 		agent.config.SystemPrompt = *b.systemPrompt
 	}
@@ -198,7 +199,7 @@ func SimpleAgent(logger *zap.Logger) (*OpenAICompatibleAgentImpl, error) {
 }
 
 // AgentWithConfig creates an agent with the provided configuration
-func AgentWithConfig(logger *zap.Logger, config *config.AgentConfig) (*OpenAICompatibleAgentImpl, error) {
+func AgentWithConfig(logger *zap.Logger, config *serverConfig.AgentConfig) (*OpenAICompatibleAgentImpl, error) {
 	return NewAgentBuilder(logger).WithConfig(config).Build()
 }
 
@@ -208,7 +209,7 @@ func AgentWithLLM(logger *zap.Logger, llmClient LLMClient) (*OpenAICompatibleAge
 }
 
 // FullyConfiguredAgent creates an agent with all components configured
-func FullyConfiguredAgent(logger *zap.Logger, config *config.AgentConfig, llmClient LLMClient, toolBox ToolBox) (*OpenAICompatibleAgentImpl, error) {
+func FullyConfiguredAgent(logger *zap.Logger, config *serverConfig.AgentConfig, llmClient LLMClient, toolBox ToolBox) (*OpenAICompatibleAgentImpl, error) {
 	return NewAgentBuilder(logger).
 		WithConfig(config).
 		WithLLMClient(llmClient).

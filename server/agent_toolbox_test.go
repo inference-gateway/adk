@@ -4,16 +4,19 @@ import (
 	"context"
 	"testing"
 
-	config "github.com/inference-gateway/adk/server/config"
-	types "github.com/inference-gateway/adk/types"
-	sdk "github.com/inference-gateway/sdk"
 	assert "github.com/stretchr/testify/assert"
-	otel "go.opentelemetry.io/otel"
+
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	baggage "go.opentelemetry.io/otel/baggage"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	tracetest "go.opentelemetry.io/otel/sdk/trace/tracetest"
 	trace "go.opentelemetry.io/otel/trace"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestNewDefaultToolBox_IncludesInputRequiredTool(t *testing.T) {
@@ -141,7 +144,7 @@ func TestNewDefaultToolBox_OnlyInputRequired(t *testing.T) {
 }
 
 func TestDefaultToolBox_WithCreateArtifactAdded(t *testing.T) {
-	toolBox := NewDefaultToolBox(&config.ToolBoxConfig{
+	toolBox := NewDefaultToolBox(&serverConfig.ToolBoxConfig{
 		EnableCreateArtifact: true,
 	})
 
@@ -177,7 +180,7 @@ func TestNewDefaultToolBox_DefaultBehavior(t *testing.T) {
 }
 
 func TestCreateArtifactTool_GetTools(t *testing.T) {
-	toolBox := NewDefaultToolBox(&config.ToolBoxConfig{
+	toolBox := NewDefaultToolBox(&serverConfig.ToolBoxConfig{
 		EnableCreateArtifact: true,
 	})
 
@@ -399,9 +402,9 @@ func TestExecuteCreateArtifact_MissingService(t *testing.T) {
 func TestDefaultToolBox_ExecuteToolSpan(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
-	prev := otel.GetTracerProvider()
-	otel.SetTracerProvider(tp)
-	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+	prev := otelapi.GetTracerProvider()
+	otelapi.SetTracerProvider(tp)
+	t.Cleanup(func() { otelapi.SetTracerProvider(prev) })
 
 	toolBox := NewDefaultToolBox(nil)
 	toolBox.AddTool(NewBasicTool("navigate", "nav", map[string]any{"type": "object"},
@@ -410,7 +413,7 @@ func TestDefaultToolBox_ExecuteToolSpan(t *testing.T) {
 			return "ok", nil
 		}))
 
-	member, _ := baggage.NewMember(config.DefaultAttrSessionIDKey, "s1")
+	member, _ := baggage.NewMember(serverConfig.DefaultAttrSessionIDKey, "s1")
 	bag, _ := baggage.New(member)
 	ctx := baggage.ContextWithBaggage(context.Background(), bag)
 	ctx, parent := tp.Tracer("test").Start(ctx, "task.process")
@@ -422,6 +425,6 @@ func TestDefaultToolBox_ExecuteToolSpan(t *testing.T) {
 	if assert.Len(t, spans, 2) {
 		assert.Equal(t, "tool.navigate", spans[0].Name)
 		assert.Equal(t, parent.SpanContext().SpanID(), spans[0].Parent.SpanID())
-		assert.Contains(t, spans[0].Attributes, attribute.String(config.DefaultAttrSessionIDKey, "s1"))
+		assert.Contains(t, spans[0].Attributes, attribute.String(serverConfig.DefaultAttrSessionIDKey, "s1"))
 	}
 }

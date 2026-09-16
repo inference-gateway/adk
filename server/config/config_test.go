@@ -5,22 +5,24 @@ import (
 	"testing"
 	"time"
 
-	config "github.com/inference-gateway/adk/server/config"
-	envconfig "github.com/sethvargo/go-envconfig"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
+	envconfig "github.com/sethvargo/go-envconfig"
+
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 func TestConfig_LoadWithLookuper(t *testing.T) {
 	tests := []struct {
 		name         string
 		envVars      map[string]string
-		validateFunc func(t *testing.T, cfg *config.Config)
+		validateFunc func(t *testing.T, cfg *serverConfig.Config)
 	}{
 		{
 			name:    "loads defaults when no env vars set",
 			envVars: map[string]string{},
-			validateFunc: func(t *testing.T, cfg *config.Config) {
+			validateFunc: func(t *testing.T, cfg *serverConfig.Config) {
 				assert.Equal(t, "", cfg.AgentName)
 				assert.Equal(t, "", cfg.AgentDescription)
 				assert.Equal(t, "", cfg.AgentURL)
@@ -95,7 +97,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				"SERVER_WRITE_TIMEOUT":                        "180s",
 				"SERVER_IDLE_TIMEOUT":                         "300s",
 			},
-			validateFunc: func(t *testing.T, cfg *config.Config) {
+			validateFunc: func(t *testing.T, cfg *serverConfig.Config) {
 				assert.Equal(t, "", cfg.AgentName)
 				assert.Equal(t, "", cfg.AgentDescription)
 				assert.Equal(t, "http://localhost:9090", cfg.AgentURL)
@@ -158,7 +160,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				"AGENT_CLIENT_MODEL":    "claude-3",
 				"QUEUE_MAX_SIZE":        "200",
 			},
-			validateFunc: func(t *testing.T, cfg *config.Config) {
+			validateFunc: func(t *testing.T, cfg *serverConfig.Config) {
 				assert.Equal(t, "", cfg.AgentName)
 				assert.True(t, cfg.Debug)
 
@@ -182,7 +184,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			lookuper := envconfig.MapLookuper(tt.envVars)
-			cfg, err := config.LoadWithLookuper(ctx, nil, lookuper)
+			cfg, err := serverConfig.LoadWithLookuper(ctx, nil, lookuper)
 			require.NoError(t, err, "should process config without error")
 			tt.validateFunc(t, cfg)
 		})
@@ -234,7 +236,7 @@ func TestConfig_LoadWithLookuper_InvalidValues(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			lookuper := envconfig.MapLookuper(tt.envVars)
-			_, err := config.LoadWithLookuper(ctx, nil, lookuper)
+			_, err := serverConfig.LoadWithLookuper(ctx, nil, lookuper)
 
 			if tt.expectError {
 				require.Error(t, err, "should return error for invalid input")
@@ -274,7 +276,7 @@ func TestConfig_TelemetryAttributeKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			lookuper := envconfig.MapLookuper(tt.envVars)
-			cfg, err := config.LoadWithLookuper(ctx, nil, lookuper)
+			cfg, err := serverConfig.LoadWithLookuper(ctx, nil, lookuper)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedSession, cfg.TelemetryConfig.SessionIDKey())
 			assert.Equal(t, tt.expectedTool, cfg.TelemetryConfig.ToolCallIDKey())
@@ -286,15 +288,15 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 	tests := []struct {
 		name     string
 		envVars  map[string]string
-		validate func(t *testing.T, r config.ResolvedTelemetry)
+		validate func(t *testing.T, r serverConfig.ResolvedTelemetry)
 	}{
 		{
 			name:    "defaults to prometheus metrics and no traces",
 			envVars: map[string]string{},
-			validate: func(t *testing.T, r config.ResolvedTelemetry) {
-				assert.Equal(t, config.MetricsExporterPrometheus, r.MetricsExporter)
-				assert.Equal(t, config.ExporterNone, r.TracesExporter)
-				assert.Equal(t, config.OTLPProtocolHTTP, r.OTLPProtocol)
+			validate: func(t *testing.T, r serverConfig.ResolvedTelemetry) {
+				assert.Equal(t, serverConfig.MetricsExporterPrometheus, r.MetricsExporter)
+				assert.Equal(t, serverConfig.ExporterNone, r.TracesExporter)
+				assert.Equal(t, serverConfig.OTLPProtocolHTTP, r.OTLPProtocol)
 				assert.Equal(t, "9090", r.PrometheusPort)
 				assert.Equal(t, "http://localhost:4318", r.OTLPEndpoint)
 			},
@@ -309,11 +311,11 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 				"OTEL_EXPORTER_PROMETHEUS_PORT": "9464",
 				"OTEL_EXPORTER_PROMETHEUS_HOST": "127.0.0.1",
 			},
-			validate: func(t *testing.T, r config.ResolvedTelemetry) {
-				assert.Equal(t, config.ExporterOTLP, r.MetricsExporter)
-				assert.Equal(t, config.ExporterOTLP, r.TracesExporter)
+			validate: func(t *testing.T, r serverConfig.ResolvedTelemetry) {
+				assert.Equal(t, serverConfig.ExporterOTLP, r.MetricsExporter)
+				assert.Equal(t, serverConfig.ExporterOTLP, r.TracesExporter)
 				assert.Equal(t, "http://collector:4318", r.OTLPEndpoint)
-				assert.Equal(t, config.OTLPProtocolGRPC, r.OTLPProtocol)
+				assert.Equal(t, serverConfig.OTLPProtocolGRPC, r.OTLPProtocol)
 				assert.Equal(t, "9464", r.PrometheusPort)
 				assert.Equal(t, "127.0.0.1", r.PrometheusHost)
 			},
@@ -323,8 +325,8 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 			envVars: map[string]string{
 				"TELEMETRY_ENABLED": "true",
 			},
-			validate: func(t *testing.T, r config.ResolvedTelemetry) {
-				assert.Equal(t, config.ExporterOTLP, r.TracesExporter)
+			validate: func(t *testing.T, r serverConfig.ResolvedTelemetry) {
+				assert.Equal(t, serverConfig.ExporterOTLP, r.TracesExporter)
 			},
 		},
 		{
@@ -333,8 +335,8 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 				"TELEMETRY_ENABLED":    "true",
 				"OTEL_TRACES_EXPORTER": "none",
 			},
-			validate: func(t *testing.T, r config.ResolvedTelemetry) {
-				assert.Equal(t, config.ExporterNone, r.TracesExporter)
+			validate: func(t *testing.T, r serverConfig.ResolvedTelemetry) {
+				assert.Equal(t, serverConfig.ExporterNone, r.TracesExporter)
 			},
 		},
 		{
@@ -344,8 +346,8 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 				"TELEMETRY_TRACE_ENDPOINT": "http://legacy:4318",
 				"TELEMETRY_METRICS_PORT":   "9191",
 			},
-			validate: func(t *testing.T, r config.ResolvedTelemetry) {
-				assert.Equal(t, config.ExporterOTLP, r.TracesExporter)
+			validate: func(t *testing.T, r serverConfig.ResolvedTelemetry) {
+				assert.Equal(t, serverConfig.ExporterOTLP, r.TracesExporter)
 				assert.Equal(t, "http://legacy:4318", r.OTLPEndpoint)
 				assert.Equal(t, "9191", r.PrometheusPort)
 			},
@@ -357,7 +359,7 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 				"TELEMETRY_TRACE_ENDPOINT":    "http://legacy:4318",
 				"OTEL_EXPORTER_OTLP_ENDPOINT": "http://standard:4318",
 			},
-			validate: func(t *testing.T, r config.ResolvedTelemetry) {
+			validate: func(t *testing.T, r serverConfig.ResolvedTelemetry) {
 				assert.Equal(t, "http://standard:4318", r.OTLPEndpoint)
 			},
 		},
@@ -366,8 +368,8 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 			envVars: map[string]string{
 				"OTEL_METRICS_EXPORTER": "none",
 			},
-			validate: func(t *testing.T, r config.ResolvedTelemetry) {
-				assert.Equal(t, config.ExporterNone, r.MetricsExporter)
+			validate: func(t *testing.T, r serverConfig.ResolvedTelemetry) {
+				assert.Equal(t, serverConfig.ExporterNone, r.MetricsExporter)
 			},
 		},
 	}
@@ -376,7 +378,7 @@ func TestConfig_ResolveTelemetry(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			lookuper := envconfig.MapLookuper(tt.envVars)
-			cfg, err := config.LoadWithLookuper(ctx, nil, lookuper)
+			cfg, err := serverConfig.LoadWithLookuper(ctx, nil, lookuper)
 			require.NoError(t, err)
 			tt.validate(t, cfg.ResolveTelemetry())
 		})
@@ -416,7 +418,7 @@ func TestConfig_Validate(t *testing.T) {
 			ctx := context.Background()
 			lookuper := envconfig.MapLookuper(tt.envVars)
 
-			cfg, err := config.LoadWithLookuper(ctx, nil, lookuper)
+			cfg, err := serverConfig.LoadWithLookuper(ctx, nil, lookuper)
 
 			require.NoError(t, err)
 			require.NotNil(t, cfg.AgentConfig)

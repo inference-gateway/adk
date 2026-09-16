@@ -13,10 +13,9 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
+	config "github.com/inference-gateway/adk/examples/static-agent-card/server/config"
 	server "github.com/inference-gateway/adk/server"
 	types "github.com/inference-gateway/adk/types"
-
-	config "github.com/inference-gateway/adk/examples/static-agent-card/server/config"
 )
 
 // StaticCardTaskHandler implements a basic task handler that demonstrates

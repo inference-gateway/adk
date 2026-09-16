@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"github.com/gin-gonic/gin"
+	gin "github.com/gin-gonic/gin"
 )
 
 // LoggingMiddleware returns a gin middleware that logs requests,
