@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.28.0](https://github.com/inference-gateway/adk/compare/v0.27.0...v0.28.0) (2026-09-16)
+
+### ✨ Features
+
+* **auth:** Verify bearer tokens by issuer and audience ([#308](https://github.com/inference-gateway/adk/issues/308)) ([82d3506](https://github.com/inference-gateway/adk/commit/82d3506db23f91ace1283c82ce0fe862f8d9fea6))
+
+### 🔧 Miscellaneous
+
+* **lint:** enforce Go import grouping and named imports ([#307](https://github.com/inference-gateway/adk/issues/307)) ([b83541a](https://github.com/inference-gateway/adk/commit/b83541a2fac4a598593f6ad1e5e651db273e205e))
+
 ## [0.27.0](https://github.com/inference-gateway/adk/compare/v0.26.6...v0.27.0) (2026-09-15)
 
 ### ✨ Features
