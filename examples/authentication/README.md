@@ -32,29 +32,31 @@ exercised end to end.
 ## Running with Keycloak (on-prem OIDC)
 
 `docker-compose.yaml` brings up Keycloak with a pre-imported realm
-(`keycloak/realm-import.json`): realm `inference-gateway-realm`, a confidential client
-`inference-gateway-client` (secret `inference-gateway-secret`) with direct-access grants, a demo
-user `demo`/`demo`, and an audience mapper so issued tokens carry `aud=inference-gateway-client`
-(what the ADK OIDC middleware verifies against).
+(`keycloak/realm-import.json`): realm `inference-gateway-realm` and a confidential client
+`inference-gateway-client` (secret `very-secret`) with a service account. An audience mapper puts
+`inference-gateway-client` into the access token `aud`, which is what the ADK OIDC middleware
+verifies against. The server only checks signatures against the issuer's public keys, so it never
+needs the client secret; only the token request does.
 
 ```bash
-# terminal 1 - start the issuer (Keycloak on :8080)
-docker compose up -d
+# terminal 1 - start the issuer and wait for the realm to be importable
+docker compose up -d --wait
 
 # terminal 2 - server with auth enforced against Keycloak (A2A on :8090)
 cd server && A2A_AUTH_ENABLED=true go run .
 
-# terminal 3 - client with a token issued by Keycloak
+# terminal 3 - client with a token issued by Keycloak (client credentials grant)
 TOKEN=$(curl -s http://localhost:8080/realms/inference-gateway-realm/protocol/openid-connect/token \
-  -d grant_type=password -d client_id=inference-gateway-client \
-  -d client_secret=inference-gateway-secret -d username=demo -d password=demo -d scope=openid \
+  -d grant_type=client_credentials -d client_id=inference-gateway-client -d client_secret=very-secret \
   | jq -r .access_token)
 cd client && TOKEN=$TOKEN go run .
 ```
 
-Keycloak owns `:8080` (the issuer), so the A2A server runs on `:8090`. `KC_HOSTNAME_STRICT=false`
-makes Keycloak mint tokens with `iss=http://localhost:8080/realms/inference-gateway-realm`, matching
-the issuer the server and client use on the host.
+Keycloak owns `:8080` (the issuer), so the A2A server runs on `:8090`. `KC_HOSTNAME` pins the
+issuer to `http://localhost:8080`, so tokens always carry the issuer the server discovered at
+startup. Nothing here is Keycloak-specific: any OpenID Connect issuer works with
+`A2A_AUTH_ISSUER_URL` plus `A2A_AUTH_AUDIENCE` (or `A2A_AUTH_CLIENT_ID`), see
+[`docs/authentication.md`](../../docs/authentication.md#other-identity-providers).
 
 ## End-to-end test
 

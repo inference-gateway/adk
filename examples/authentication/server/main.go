@@ -87,9 +87,8 @@ func defaultConfig() *config.Config {
 			QueueConfig:  serverConfig.QueueConfig{CleanupInterval: 5 * time.Minute},
 			ServerConfig: serverConfig.ServerConfig{Port: "8090"},
 			AuthConfig: serverConfig.AuthConfig{
-				IssuerURL:    "http://localhost:8080/realms/inference-gateway-realm",
-				ClientID:     "inference-gateway-client",
-				ClientSecret: "inference-gateway-secret",
+				IssuerURL: "http://localhost:8080/realms/inference-gateway-realm",
+				ClientID:  "inference-gateway-client",
 			},
 		},
 	}
@@ -143,7 +142,7 @@ func main() {
 	cfg := defaultConfig()
 
 	ctx := context.Background()
-	if err := envconfig.Process(ctx, cfg); err != nil {
+	if err := envconfig.ProcessWith(ctx, &envconfig.Config{Target: cfg, DefaultOverwrite: true}); err != nil {
 		log.Fatalf("failed to load configuration: %v", err)
 	}
 

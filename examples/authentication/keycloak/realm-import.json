@@ -2,47 +2,33 @@
   "realm": "inference-gateway-realm",
   "enabled": true,
   "sslRequired": "none",
-  "accessTokenLifespan": 300,
+  "registrationAllowed": false,
+  "displayName": "Inference Gateway",
+  "accessTokenLifespan": 3600,
   "clients": [
     {
       "clientId": "inference-gateway-client",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "inference-gateway-secret",
       "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "very-secret",
       "fullScopeAllowed": true,
       "protocolMappers": [
         {
-          "name": "audience-mapper",
+          "name": "inference-gateway-audience",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
-          "consentRequired": false,
           "config": {
             "included.client.audience": "inference-gateway-client",
-            "id.token.claim": "true",
-            "access.token.claim": "true"
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
           }
-        }
-      ]
-    }
-  ],
-  "users": [
-    {
-      "username": "demo",
-      "enabled": true,
-      "emailVerified": true,
-      "email": "demo@example.com",
-      "firstName": "Demo",
-      "lastName": "User",
-      "credentials": [
-        {
-          "type": "password",
-          "value": "demo",
-          "temporary": false
         }
       ]
     }

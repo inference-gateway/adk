@@ -1,32 +1,33 @@
 ---
 # On-prem OIDC issuer for the card-driven authentication flow.
 #
-# Brings up Keycloak with a pre-imported realm (inference-gateway-realm), a
-# confidential client (inference-gateway-client) with direct-access grants, and
-# a demo user (demo/demo). An audience mapper puts the client id into the token
-# `aud` so the ADK OIDC middleware accepts it.
+# Brings up Keycloak with a pre-imported realm (inference-gateway-realm) and a
+# confidential client (inference-gateway-client) with a service account. An
+# audience mapper puts the client id into the access token `aud`, which is what
+# the ADK OIDC middleware verifies against (AUTH_AUDIENCE, default AUTH_CLIENT_ID).
 #
 #   docker compose up -d
 #   # then run the server with auth enforced against Keycloak:
 #   cd server && A2A_AUTH_ENABLED=true go run .
 #
-# Keycloak issues tokens with iss=http://localhost:8080/realms/inference-gateway-realm
-# (KC_HOSTNAME_STRICT=false → uses the request host), matching the issuer the
-# server and client use on the host.
+# KC_HOSTNAME pins the issuer to http://localhost:8080 so every token carries the
+# same iss the host-side server discovers at startup. Deployments that run the
+# agent inside the compose network pin it to the service name instead.
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
-    command: ["start-dev", "--import-realm"]
+    image: quay.io/keycloak/keycloak:26.3.2
+    command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_HOSTNAME_STRICT: "false"
-      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: http://localhost:8080
       KC_HEALTH_ENABLED: "true"
     ports:
       - "8080:8080"
     volumes:
       - ./keycloak/realm-import.json:/opt/keycloak/data/import/realm-import.json:ro
+    # Ready only once the realm import finished, so `docker compose up --wait`
+    # returns when discovery answers. The image has no curl; bash /dev/tcp will do.
     healthcheck:
       test:
         [

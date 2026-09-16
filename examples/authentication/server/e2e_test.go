@@ -14,11 +14,13 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -29,23 +31,23 @@ import (
 )
 
 const (
-	keycloakBase = "http://localhost:8080/realms/inference-gateway-realm"
-	serverPort   = "8090"
-	serverBase   = "http://localhost:" + serverPort
+	serverPort = "8090"
+	serverBase = "http://localhost:" + serverPort
 )
 
-// fetchToken performs a Keycloak direct-access-grant (password) login and
-// returns the access token. Skips the whole test if Keycloak is unreachable.
+// keycloakBase is the realm the server verifies against; override it with A2A_AUTH_ISSUER_URL
+// when Keycloak is published on another port.
+var keycloakBase = cmp.Or(os.Getenv("A2A_AUTH_ISSUER_URL"), "http://localhost:8080/realms/inference-gateway-realm")
+
+// fetchToken performs a Keycloak client-credentials grant for the demo client's
+// service account and returns the access token. Skips if Keycloak is unreachable.
 func fetchToken(t *testing.T) string {
 	t.Helper()
 
 	form := url.Values{
-		"grant_type":    {"password"},
+		"grant_type":    {"client_credentials"},
 		"client_id":     {"inference-gateway-client"},
-		"client_secret": {"inference-gateway-secret"},
-		"username":      {"demo"},
-		"password":      {"demo"},
-		"scope":         {"openid"},
+		"client_secret": {"very-secret"},
 	}
 
 	resp, err := http.PostForm(keycloakBase+"/protocol/openid-connect/token", form)

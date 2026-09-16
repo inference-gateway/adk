@@ -90,7 +90,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				"AUTH_ENABLED":                                "true",
 				"AUTH_ISSUER_URL":                             "http://custom-keycloak:8080/realms/custom",
 				"AUTH_CLIENT_ID":                              "custom-client",
-				"AUTH_CLIENT_SECRET":                          "custom-secret",
+				"AUTH_AUDIENCE":                               "https://api.example.com",
 				"QUEUE_MAX_SIZE":                              "500",
 				"QUEUE_CLEANUP_INTERVAL":                      "60s",
 				"SERVER_READ_TIMEOUT":                         "180s",
@@ -137,7 +137,7 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				assert.True(t, cfg.AuthConfig.Enabled)
 				assert.Equal(t, "http://custom-keycloak:8080/realms/custom", cfg.AuthConfig.IssuerURL)
 				assert.Equal(t, "custom-client", cfg.AuthConfig.ClientID)
-				assert.Equal(t, "custom-secret", cfg.AuthConfig.ClientSecret)
+				assert.Equal(t, "https://api.example.com", cfg.AuthConfig.Audience)
 
 				// Test Queue config overrides
 				require.NotNil(t, cfg.QueueConfig)

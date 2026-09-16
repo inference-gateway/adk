@@ -102,10 +102,10 @@ type TLSConfig struct {
 
 // AuthConfig holds authentication configuration
 type AuthConfig struct {
-	Enabled      bool   `env:"ENABLED,default=false"`
-	IssuerURL    string `env:"ISSUER_URL,default=http://keycloak:8080/realms/inference-gateway-realm"`
-	ClientID     string `env:"CLIENT_ID,default=inference-gateway-client"`
-	ClientSecret string `env:"CLIENT_SECRET"`
+	Enabled   bool   `env:"ENABLED,default=false"`
+	IssuerURL string `env:"ISSUER_URL,default=http://keycloak:8080/realms/inference-gateway-realm"`
+	ClientID  string `env:"CLIENT_ID,default=inference-gateway-client" description:"OIDC client ID, used as the expected token audience when AUTH_AUDIENCE is empty"`
+	Audience  string `env:"AUDIENCE" description:"Comma-separated list of accepted aud values, for example an API identifier. Defaults to AUTH_CLIENT_ID"`
 }
 
 // QueueConfig holds task queue configuration
