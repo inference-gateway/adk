@@ -853,13 +853,13 @@ func TestArtifactHelper_DownloadFileData(t *testing.T) {
 				fileName := "test.txt"
 				mimeType := "text/plain"
 				return FileData{
-					Name:     &fileName,
-					MIMEType: &mimeType,
-					Data:     []byte("Hello, World!"),
-				}, &DownloadConfig{
-					OutputDir:         tempDir,
-					OverwriteExisting: false,
-				}
+						Name:     &fileName,
+						MIMEType: &mimeType,
+						Data:     []byte("Hello, World!"),
+					}, &DownloadConfig{
+						OutputDir:         tempDir,
+						OverwriteExisting: false,
+					}
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result *DownloadResult, tempDir string) {
@@ -875,10 +875,10 @@ func TestArtifactHelper_DownloadFileData(t *testing.T) {
 			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
 				fileName := "downloaded.txt"
 				return FileData{
-					Name: &fileName,
-				}, &DownloadConfig{
-					OutputDir: tempDir,
-				}
+						Name: &fileName,
+					}, &DownloadConfig{
+						OutputDir: tempDir,
+					}
 			},
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -903,12 +903,12 @@ func TestArtifactHelper_DownloadFileData(t *testing.T) {
 				require.NoError(t, err)
 
 				return FileData{
-					Name: &fileName,
-					Data: []byte("new content"),
-				}, &DownloadConfig{
-					OutputDir:         tempDir,
-					OverwriteExisting: false,
-				}
+						Name: &fileName,
+						Data: []byte("new content"),
+					}, &DownloadConfig{
+						OutputDir:         tempDir,
+						OverwriteExisting: false,
+					}
 			},
 			wantErr: true,
 		},
@@ -921,12 +921,12 @@ func TestArtifactHelper_DownloadFileData(t *testing.T) {
 				require.NoError(t, err)
 
 				return FileData{
-					Name: &fileName,
-					Data: []byte("new content"),
-				}, &DownloadConfig{
-					OutputDir:         tempDir,
-					OverwriteExisting: true,
-				}
+						Name: &fileName,
+						Data: []byte("new content"),
+					}, &DownloadConfig{
+						OutputDir:         tempDir,
+						OverwriteExisting: true,
+					}
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result *DownloadResult, tempDir string) {
@@ -940,10 +940,10 @@ func TestArtifactHelper_DownloadFileData(t *testing.T) {
 			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
 				fileName := "error.txt"
 				return FileData{
-					Name: &fileName,
-				}, &DownloadConfig{
-					OutputDir: tempDir,
-				}
+						Name: &fileName,
+					}, &DownloadConfig{
+						OutputDir: tempDir,
+					}
 			},
 			setupServer: func() *httptest.Server {
 				return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -956,10 +956,10 @@ func TestArtifactHelper_DownloadFileData(t *testing.T) {
 			name: "default filename when not provided",
 			setupFileData: func(t *testing.T, tempDir string) (FileData, *DownloadConfig) {
 				return FileData{
-					Data: []byte("content"),
-				}, &DownloadConfig{
-					OutputDir: tempDir,
-				}
+						Data: []byte("content"),
+					}, &DownloadConfig{
+						OutputDir: tempDir,
+					}
 			},
 			wantErr: false,
 			validate: func(t *testing.T, result *DownloadResult, tempDir string) {
