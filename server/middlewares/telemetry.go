@@ -16,7 +16,7 @@ import (
 	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	otel "github.com/inference-gateway/adk/server/otel"
 )
 
@@ -25,13 +25,13 @@ type Telemetry interface {
 }
 
 type TelemetryImpl struct {
-	cfg       config.Config
+	cfg       serverConfig.Config
 	telemetry otel.OpenTelemetry
 	logger    *zap.Logger
 	tracer    trace.Tracer
 }
 
-func NewTelemetryMiddleware(cfg config.Config, telemetry otel.OpenTelemetry, logger *zap.Logger) (Telemetry, error) {
+func NewTelemetryMiddleware(cfg serverConfig.Config, telemetry otel.OpenTelemetry, logger *zap.Logger) (Telemetry, error) {
 	tp := telemetry.TracerProvider()
 	if tp == nil {
 		tp = otelapi.GetTracerProvider()

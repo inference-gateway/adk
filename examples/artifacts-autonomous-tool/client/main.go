@@ -25,7 +25,7 @@ func main() {
 	ctx := context.Background()
 	cfg := loadConfig(ctx)
 	logger := initLogger(cfg.Environment)
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	logger.Info("client starting",
 		zap.String("server_url", cfg.ServerURL),

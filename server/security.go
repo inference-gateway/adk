@@ -3,7 +3,7 @@ package server
 import (
 	"strings"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -22,7 +22,7 @@ const OIDCSchemeName = "openId"
 //	schemes, security := server.OIDCSecuritySchemes(cfg.AuthConfig)
 //	card.SecuritySchemes = schemes
 //	card.Security = security
-func OIDCSecuritySchemes(cfg config.AuthConfig) (map[string]types.SecurityScheme, []types.Security) {
+func OIDCSecuritySchemes(cfg serverConfig.AuthConfig) (map[string]types.SecurityScheme, []types.Security) {
 	discoveryURL := strings.TrimRight(cfg.IssuerURL, "/") + "/.well-known/openid-configuration"
 
 	schemes := map[string]types.SecurityScheme{

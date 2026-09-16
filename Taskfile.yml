@@ -61,9 +61,10 @@ tasks:
       - golangci-lint run
   
   lint:examples:
-    desc: 'Run markdownlint on all examples'
+    desc: 'Run markdownlint and golangci-lint (root config) on all example modules'
     cmds:
       - markdownlint --fix 'examples/**/*.md'
+      - for d in $(find examples -name go.mod -exec dirname {} \;); do (cd "$d" && golangci-lint run --config "{{.ROOT_DIR}}/.golangci.yml" ./...) || exit 1; done
 
   test:
     desc: 'Run tests'

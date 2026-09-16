@@ -6,6 +6,8 @@ linters:
     importas:
       no-unaliased: true
       alias:
+        - pkg: github.com/inference-gateway/adk/server/config
+          alias: serverConfig
         - pkg: go.opentelemetry.io/otel
           alias: otelapi
         - pkg: go.opentelemetry.io/otel/sdk/metric

@@ -32,7 +32,7 @@ func main() {
 
 	// Initialize logger
 	logger, _ := zap.NewDevelopment()
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	// Create A2A client
 	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)

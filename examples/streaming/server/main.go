@@ -43,7 +43,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 		// Send initial status change event - task is now working
 		statusEvent := cloudevents.NewEvent()
 		statusEvent.SetType(types.EventTaskStatusChanged)
-		statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+		_ = statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
 			State: types.TaskStateWorking,
 		})
 		eventChan <- statusEvent
@@ -84,7 +84,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 
 				event := cloudevents.NewEvent()
 				event.SetType(types.EventDelta)
-				event.SetData(cloudevents.ApplicationJSON, deltaMessage)
+				_ = event.SetData(cloudevents.ApplicationJSON, deltaMessage)
 
 				m.logger.Debug("sending delta", zap.String("delta", delta))
 				eventChan <- event

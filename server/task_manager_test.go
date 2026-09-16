@@ -11,7 +11,7 @@ import (
 	zap "go.uber.org/zap"
 
 	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -525,7 +525,7 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 		assert.NotNil(t, task)
 	}
 
-	retentionConfig := config.TaskRetentionConfig{
+	retentionConfig := serverConfig.TaskRetentionConfig{
 		MaxCompletedTasks: 2,
 		MaxFailedTasks:    1,
 		CleanupInterval:   0,

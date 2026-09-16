@@ -11,7 +11,7 @@ import (
 	gin "github.com/gin-gonic/gin"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // ArtifactsServer provides HTTP endpoints for artifact download
@@ -25,7 +25,7 @@ type ArtifactsServer interface {
 
 // ArtifactsServerImpl implements the ArtifactsServer interface
 type ArtifactsServerImpl struct {
-	config          *config.ArtifactsConfig
+	config          *serverConfig.ArtifactsConfig
 	logger          *zap.Logger
 	artifactService ArtifactService
 	server          *http.Server
@@ -35,7 +35,7 @@ type ArtifactsServerImpl struct {
 }
 
 // NewArtifactsServer creates a new artifacts server instance with the provided service
-func NewArtifactsServer(cfg *config.ArtifactsConfig, logger *zap.Logger, artifactService ArtifactService) ArtifactsServer {
+func NewArtifactsServer(cfg *serverConfig.ArtifactsConfig, logger *zap.Logger, artifactService ArtifactService) ArtifactsServer {
 	return &ArtifactsServerImpl{
 		config:          cfg,
 		logger:          logger,

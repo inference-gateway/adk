@@ -8,19 +8,19 @@ import (
 
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // StorageFactory defines the interface for creating storage instances
 type StorageFactory interface {
 	// CreateStorage creates a storage instance with the given configuration
-	CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error)
+	CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (Storage, error)
 
 	// SupportedProvider returns the provider name this factory supports
 	SupportedProvider() string
 
 	// ValidateConfig validates the configuration for this provider
-	ValidateConfig(config config.QueueConfig) error
+	ValidateConfig(config serverConfig.QueueConfig) error
 }
 
 // StorageFactoryRegistry manages registered storage providers
@@ -50,7 +50,7 @@ func GetSupportedProviders() []string {
 }
 
 // CreateStorage creates a storage instance using the registered factories
-func CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error) {
+func CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (Storage, error) {
 	return globalRegistry.CreateStorage(ctx, config, logger)
 }
 
@@ -96,7 +96,7 @@ func (r *StorageFactoryRegistry) getProviderNames() []string {
 }
 
 // CreateStorage creates a storage instance using the appropriate factory
-func (r *StorageFactoryRegistry) CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error) {
+func (r *StorageFactoryRegistry) CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (Storage, error) {
 	factory, err := r.GetFactory(config.Provider)
 	if err != nil {
 		return nil, err
@@ -118,13 +118,13 @@ func (f *InMemoryStorageFactory) SupportedProvider() string {
 }
 
 // ValidateConfig validates the configuration for in-memory storage
-func (f *InMemoryStorageFactory) ValidateConfig(config config.QueueConfig) error {
+func (f *InMemoryStorageFactory) ValidateConfig(config serverConfig.QueueConfig) error {
 	// In-memory storage doesn't require URL or credentials
 	return nil
 }
 
 // CreateStorage creates an in-memory storage instance
-func (f *InMemoryStorageFactory) CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error) {
+func (f *InMemoryStorageFactory) CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (Storage, error) {
 	maxConversationHistory := 20
 
 	if maxHistoryStr, exists := config.Options["max_conversation_history"]; exists {

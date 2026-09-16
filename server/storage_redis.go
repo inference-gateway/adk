@@ -12,7 +12,7 @@ import (
 	redis "github.com/redis/go-redis/v9"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -61,7 +61,7 @@ func (f *RedisStorageFactory) SupportedProvider() string {
 }
 
 // ValidateConfig validates the configuration for Redis storage
-func (f *RedisStorageFactory) ValidateConfig(config config.QueueConfig) error {
+func (f *RedisStorageFactory) ValidateConfig(config serverConfig.QueueConfig) error {
 	if config.URL == "" {
 		return fmt.Errorf("URL is required for Redis storage provider")
 	}
@@ -69,7 +69,7 @@ func (f *RedisStorageFactory) ValidateConfig(config config.QueueConfig) error {
 }
 
 // CreateStorage creates a Redis storage instance
-func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config config.QueueConfig, logger *zap.Logger) (Storage, error) {
+func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (Storage, error) {
 	opt, err := redis.ParseURL(config.URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Redis URL: %w", err)
@@ -123,7 +123,7 @@ func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config config.Q
 type RedisStorage struct {
 	client RedisClient
 	logger *zap.Logger
-	config config.QueueConfig
+	config serverConfig.QueueConfig
 }
 
 var _ Storage = (*RedisStorage)(nil)

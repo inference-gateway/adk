@@ -7,7 +7,7 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	utils "github.com/inference-gateway/adk/server/utils"
 	types "github.com/inference-gateway/adk/types"
 )
@@ -31,12 +31,12 @@ type OpenAICompatibleAgentImpl struct {
 	toolBox          ToolBox
 	callbackExecutor CallbackExecutor
 	converter        utils.MessageConverter
-	config           *config.AgentConfig
+	config           *serverConfig.AgentConfig
 }
 
 // NewOpenAICompatibleAgent creates a new OpenAICompatibleAgentImpl
 func NewOpenAICompatibleAgent(logger *zap.Logger) *OpenAICompatibleAgentImpl {
-	defaultConfig := &config.AgentConfig{
+	defaultConfig := &serverConfig.AgentConfig{
 		MaxChatCompletionIterations: 50,
 		SystemPrompt:                "You are a helpful AI assistant.",
 	}
@@ -48,7 +48,7 @@ func NewOpenAICompatibleAgent(logger *zap.Logger) *OpenAICompatibleAgentImpl {
 }
 
 // NewOpenAICompatibleAgentWithConfig creates a new OpenAICompatibleAgentImpl with configuration
-func NewOpenAICompatibleAgentWithConfig(logger *zap.Logger, cfg *config.AgentConfig) *OpenAICompatibleAgentImpl {
+func NewOpenAICompatibleAgentWithConfig(logger *zap.Logger, cfg *serverConfig.AgentConfig) *OpenAICompatibleAgentImpl {
 	return &OpenAICompatibleAgentImpl{
 		logger:    logger,
 		converter: utils.NewMessageConverter(logger),
@@ -64,7 +64,7 @@ func NewOpenAICompatibleAgentWithLLM(logger *zap.Logger, llmClient LLMClient) *O
 }
 
 // NewOpenAICompatibleAgentWithLLMConfig creates a new agent with LLM configuration
-func NewOpenAICompatibleAgentWithLLMConfig(logger *zap.Logger, config *config.AgentConfig) (*OpenAICompatibleAgentImpl, error) {
+func NewOpenAICompatibleAgentWithLLMConfig(logger *zap.Logger, config *serverConfig.AgentConfig) (*OpenAICompatibleAgentImpl, error) {
 	client, err := NewOpenAICompatibleLLMClient(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create llm client: %w", err)

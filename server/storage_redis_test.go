@@ -16,7 +16,7 @@ import (
 	zaptest "go.uber.org/zap/zaptest"
 
 	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -36,7 +36,7 @@ func newTestRedisStorage(t *testing.T) (*server.RedisStorage, *mocks.FakeRedisCl
 	fakeClient := &mocks.FakeRedisClient{}
 	fakePipe := &mocks.FakeRedisPipeliner{}
 	fakeClient.PipelineReturns(fakePipe)
-	storage := server.NewRedisStorageForTest(fakeClient, zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel)), config.QueueConfig{URL: "redis://fake"})
+	storage := server.NewRedisStorageForTest(fakeClient, zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel)), serverConfig.QueueConfig{URL: "redis://fake"})
 	return storage, fakeClient, fakePipe
 }
 
@@ -45,7 +45,7 @@ func TestRedisStorageFactory(t *testing.T) {
 
 	assert.Equal(t, "redis", factory.SupportedProvider())
 
-	cfg := config.QueueConfig{Provider: "redis"}
+	cfg := serverConfig.QueueConfig{Provider: "redis"}
 	err := factory.ValidateConfig(cfg)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "URL is required")
@@ -58,7 +58,7 @@ func TestRedisStorageFactoryWithInvalidURL(t *testing.T) {
 	factory := &server.RedisStorageFactory{}
 	logger := zaptest.NewLogger(t)
 
-	storage, err := factory.CreateStorage(context.Background(), config.QueueConfig{
+	storage, err := factory.CreateStorage(context.Background(), serverConfig.QueueConfig{
 		Provider: "redis",
 		URL:      "invalid-url",
 	}, logger)

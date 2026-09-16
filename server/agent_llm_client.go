@@ -14,7 +14,7 @@ import (
 
 	sdk "github.com/inference-gateway/sdk"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // LLMClient defines the interface for Language Model clients
@@ -31,14 +31,14 @@ var _ LLMClient = (*OpenAICompatibleLLMClient)(nil)
 // OpenAICompatibleLLMClient implements LLMClient using an OpenAI-compatible API via the Inference Gateway SDK
 type OpenAICompatibleLLMClient struct {
 	client   sdk.Client
-	config   *config.AgentConfig
+	config   *serverConfig.AgentConfig
 	logger   *zap.Logger
 	provider sdk.Provider
 	model    string
 }
 
 // NewOpenAICompatibleLLMClient creates a new OpenAI-compatible LLM client
-func NewOpenAICompatibleLLMClient(cfg *config.AgentConfig, logger *zap.Logger) (*OpenAICompatibleLLMClient, error) {
+func NewOpenAICompatibleLLMClient(cfg *serverConfig.AgentConfig, logger *zap.Logger) (*OpenAICompatibleLLMClient, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("llm provider client config is required")
 	}

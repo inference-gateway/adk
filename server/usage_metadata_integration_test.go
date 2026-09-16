@@ -12,7 +12,7 @@ import (
 
 	sdk "github.com/inference-gateway/sdk"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -49,7 +49,7 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 		},
 	}
 
-	agent := NewOpenAICompatibleAgentWithConfig(logger, &config.AgentConfig{
+	agent := NewOpenAICompatibleAgentWithConfig(logger, &serverConfig.AgentConfig{
 		MaxChatCompletionIterations: 10,
 		SystemPrompt:                "You are a test assistant",
 	})
@@ -126,7 +126,7 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 		},
 	}
 
-	agent := NewOpenAICompatibleAgentWithConfig(logger, &config.AgentConfig{
+	agent := NewOpenAICompatibleAgentWithConfig(logger, &serverConfig.AgentConfig{
 		MaxChatCompletionIterations: 10,
 		SystemPrompt:                "You are a test assistant",
 	})
@@ -217,7 +217,7 @@ func TestUsageMetadata_BackgroundTaskHandler_Disabled(t *testing.T) {
 		},
 	}
 
-	agent := NewOpenAICompatibleAgentWithConfig(logger, &config.AgentConfig{
+	agent := NewOpenAICompatibleAgentWithConfig(logger, &serverConfig.AgentConfig{
 		MaxChatCompletionIterations: 10,
 		SystemPrompt:                "You are a test assistant",
 	})
@@ -280,7 +280,7 @@ func TestUsageMetadata_StreamingTaskHandler_Disabled(t *testing.T) {
 		},
 	}
 
-	agent := NewOpenAICompatibleAgentWithConfig(logger, &config.AgentConfig{
+	agent := NewOpenAICompatibleAgentWithConfig(logger, &serverConfig.AgentConfig{
 		MaxChatCompletionIterations: 10,
 		SystemPrompt:                "You are a test assistant",
 	})

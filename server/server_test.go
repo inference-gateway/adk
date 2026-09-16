@@ -18,7 +18,7 @@ import (
 	sdk "github.com/inference-gateway/sdk"
 
 	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -144,8 +144,8 @@ func TestA2AServer_ResponseSender_SendError(t *testing.T) {
 }
 
 func TestA2AServer_DirectTaskCreation_Integration(t *testing.T) {
-	cfg := &config.Config{
-		AgentConfig: config.AgentConfig{
+	cfg := &serverConfig.Config{
+		AgentConfig: serverConfig.AgentConfig{
 			MaxChatCompletionIterations: 50,
 			SystemPrompt:                "You are a helpful AI assistant.",
 		},
@@ -167,22 +167,22 @@ func TestA2AServer_DirectTaskCreation_Integration(t *testing.T) {
 }
 
 func TestA2AServer_TaskProcessing_Background(t *testing.T) {
-	baseConfig := config.Config{
-		QueueConfig: config.QueueConfig{
+	baseConfig := serverConfig.Config{
+		QueueConfig: serverConfig.QueueConfig{
 			MaxSize:         10,
 			CleanupInterval: 50 * time.Millisecond,
 		},
-		CapabilitiesConfig: config.CapabilitiesConfig{
+		CapabilitiesConfig: serverConfig.CapabilitiesConfig{
 			Streaming:              true,
 			PushNotifications:      false,
 			StateTransitionHistory: true,
 		},
-		AuthConfig: config.AuthConfig{
+		AuthConfig: serverConfig.AuthConfig{
 			Enabled: false,
 		},
 	}
 
-	cfg, err := config.NewWithDefaults(context.Background(), &baseConfig)
+	cfg, err := serverConfig.NewWithDefaults(context.Background(), &baseConfig)
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -200,12 +200,12 @@ func TestA2AServer_TaskProcessing_Background(t *testing.T) {
 }
 
 func TestDefaultA2AServer_SetDependencies(t *testing.T) {
-	customConfig := &config.Config{
+	customConfig := &serverConfig.Config{
 		AgentName:        "custom-test-agent",
 		AgentDescription: "A custom test agent for dependency injection",
 		AgentURL:         "http://custom-agent:9090",
 		AgentVersion:     "2.5.0",
-		ServerConfig:     config.ServerConfig{Port: "9090"},
+		ServerConfig:     serverConfig.ServerConfig{Port: "9090"},
 		Debug:            true,
 	}
 
@@ -223,12 +223,12 @@ func TestDefaultA2AServer_SetDependencies(t *testing.T) {
 }
 
 func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
-	partialCfg := &config.Config{
+	partialCfg := &serverConfig.Config{
 		AgentName:        "test-custom-agent",
 		AgentDescription: "A test agent with custom configuration",
 		AgentURL:         "http://test-agent:9999",
 		AgentVersion:     "2.0.0",
-		ServerConfig:     config.ServerConfig{Port: "9999"},
+		ServerConfig:     serverConfig.ServerConfig{Port: "9999"},
 		Debug:            true,
 	}
 
@@ -249,13 +249,13 @@ func TestA2AServerBuilder_UsesProvidedConfiguration(t *testing.T) {
 }
 
 func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
-	cfg := config.Config{
+	cfg := serverConfig.Config{
 		AgentName:        "test-agent",
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
 		AgentVersion:     "0.1.0",
-		ServerConfig:     config.ServerConfig{Port: "8080"},
-		CapabilitiesConfig: config.CapabilitiesConfig{
+		ServerConfig:     serverConfig.ServerConfig{Port: "8080"},
+		CapabilitiesConfig: serverConfig.CapabilitiesConfig{
 			Streaming:              false,
 			PushNotifications:      false,
 			StateTransitionHistory: true,
@@ -300,12 +300,12 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 }
 
 func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
-	partialCfg := &config.Config{
+	partialCfg := &serverConfig.Config{
 		AgentName:        "test-agent",
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
 		AgentVersion:     "0.1.0",
-		ServerConfig:     config.ServerConfig{Port: "8080"},
+		ServerConfig:     serverConfig.ServerConfig{Port: "8080"},
 	}
 
 	logger := zap.NewNop()
@@ -367,20 +367,20 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 		},
 	}, nil)
 
-	baseCfg := &config.Config{
+	baseCfg := &serverConfig.Config{
 		AgentName:        "test-agent",
 		AgentDescription: "A test agent",
 		AgentURL:         "http://test-agent:8080",
 		AgentVersion:     "0.1.0",
-		ServerConfig:     config.ServerConfig{Port: "8080"},
+		ServerConfig:     serverConfig.ServerConfig{Port: "8080"},
 		Debug:            false,
-		QueueConfig: config.QueueConfig{
+		QueueConfig: serverConfig.QueueConfig{
 			MaxSize:         10,
 			CleanupInterval: 1 * time.Second,
 		},
 	}
 
-	cfg, err := config.NewWithDefaults(context.Background(), baseCfg)
+	cfg, err := serverConfig.NewWithDefaults(context.Background(), baseCfg)
 	require.NoError(t, err)
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)
@@ -443,20 +443,20 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 		},
 	}, nil)
 
-	baseCfg := &config.Config{
+	baseCfg := &serverConfig.Config{
 		AgentName:        "weather-agent",
 		AgentDescription: "A weather agent",
 		AgentURL:         "http://weather-agent:8080",
 		AgentVersion:     "0.1.0",
-		ServerConfig:     config.ServerConfig{Port: "8080"},
+		ServerConfig:     serverConfig.ServerConfig{Port: "8080"},
 		Debug:            false,
-		QueueConfig: config.QueueConfig{
+		QueueConfig: serverConfig.QueueConfig{
 			MaxSize:         10,
 			CleanupInterval: 1 * time.Second,
 		},
 	}
 
-	cfg, err := config.NewWithDefaults(context.Background(), baseCfg)
+	cfg, err := serverConfig.NewWithDefaults(context.Background(), baseCfg)
 	require.NoError(t, err)
 
 	serverInstance := server.NewA2AServer(cfg, logger, nil)

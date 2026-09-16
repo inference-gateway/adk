@@ -10,7 +10,7 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	otel "github.com/inference-gateway/adk/server/otel"
 )
 
@@ -50,7 +50,7 @@ func TestNewOpenTelemetry_Exporters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := config.LoadWithLookuper(context.Background(), nil, envconfig.MapLookuper(tt.envVars))
+			cfg, err := serverConfig.LoadWithLookuper(context.Background(), nil, envconfig.MapLookuper(tt.envVars))
 			require.NoError(t, err)
 			cfg.AgentName = "test-agent"
 			cfg.AgentVersion = "0.0.1"

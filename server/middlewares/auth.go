@@ -11,7 +11,7 @@ import (
 	zap "go.uber.org/zap"
 	oauth2 "golang.org/x/oauth2"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 type contextKey string
@@ -36,7 +36,7 @@ type OIDCAuthenticatorImpl struct {
 type OIDCAuthenticatorNoop struct{}
 
 // NewOIDCAuthenticatorMiddleware creates a new OIDC authenticator middleware
-func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDCAuthenticator, error) {
+func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg serverConfig.Config) (OIDCAuthenticator, error) {
 	if !cfg.AuthConfig.Enabled {
 		return &OIDCAuthenticatorNoop{}, nil
 	}

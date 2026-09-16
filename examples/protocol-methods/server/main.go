@@ -102,7 +102,7 @@ func (h *SlowEchoTaskHandler) HandleStreamingTask(ctx context.Context, task *typ
 
 		statusEvent := cloudevents.NewEvent()
 		statusEvent.SetType(types.EventTaskStatusChanged)
-		statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{State: types.TaskStateWorking})
+		_ = statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{State: types.TaskStateWorking})
 		eventChan <- statusEvent
 
 		words := []string{"resubscribed", "stream", "in", "progress", "from", "the", "server"}
@@ -129,7 +129,7 @@ func (h *SlowEchoTaskHandler) HandleStreamingTask(ctx context.Context, task *typ
 			}
 			event := cloudevents.NewEvent()
 			event.SetType(types.EventDelta)
-			event.SetData(cloudevents.ApplicationJSON, deltaMessage)
+			_ = event.SetData(cloudevents.ApplicationJSON, deltaMessage)
 			eventChan <- event
 		}
 

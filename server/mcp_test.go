@@ -14,7 +14,7 @@ import (
 
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // fakeMCPClient is an in-process mcpToolCaller for tests - no network, no server.
@@ -62,8 +62,8 @@ func (f *fakeMCPClient) CallTool(_ context.Context, name string, arguments map[s
 	return f.callResult, nil
 }
 
-func testMCPConfig(servers ...string) config.MCPConfig {
-	return config.MCPConfig{
+func testMCPConfig(servers ...string) serverConfig.MCPConfig {
+	return serverConfig.MCPConfig{
 		Enable:           true,
 		Servers:          servers,
 		Endpoint:         "/mcp",
@@ -194,7 +194,7 @@ func TestMCPManager_ConnectRetriesWithBackoff(t *testing.T) {
 }
 
 func TestMCPManager_NoServers(t *testing.T) {
-	_, err := NewMCPClientManager(config.MCPConfig{Enable: true}, zap.NewNop())
+	_, err := NewMCPClientManager(serverConfig.MCPConfig{Enable: true}, zap.NewNop())
 	assert.Error(t, err)
 }
 

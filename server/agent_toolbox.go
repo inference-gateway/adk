@@ -13,7 +13,7 @@ import (
 
 	sdk "github.com/inference-gateway/sdk"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -65,7 +65,7 @@ func NewToolBox() *DefaultToolBox {
 
 // NewDefaultToolBox creates a new DefaultToolBox with built-in tools
 // The config parameter determines which tools are enabled
-func NewDefaultToolBox(cfg *config.ToolBoxConfig) *DefaultToolBox {
+func NewDefaultToolBox(cfg *serverConfig.ToolBoxConfig) *DefaultToolBox {
 	toolBox := NewToolBox()
 
 	inputRequiredTool := NewBasicTool(
@@ -172,7 +172,7 @@ func (tb *DefaultToolBox) ExecuteTool(ctx context.Context, toolName string, argu
 
 	attrs := []attribute.KeyValue{attribute.String("gen_ai.tool.name", toolName)}
 	bag := baggage.FromContext(ctx)
-	for _, key := range []string{config.DefaultAttrSessionIDKey, config.DefaultAttrToolCallIDKey} {
+	for _, key := range []string{serverConfig.DefaultAttrSessionIDKey, serverConfig.DefaultAttrToolCallIDKey} {
 		if v := bag.Member(key).Value(); v != "" {
 			attrs = append(attrs, attribute.String(key, v))
 		}

@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create logger: %v", err)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	logger.Info("client starting", zap.String("server_url", cfg.ServerURL))
 	logger.Info("in-memory queue storage demo")

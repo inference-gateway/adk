@@ -15,7 +15,7 @@ import (
 
 	sdk "github.com/inference-gateway/sdk"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -144,7 +144,7 @@ func TestNewDefaultToolBox_OnlyInputRequired(t *testing.T) {
 }
 
 func TestDefaultToolBox_WithCreateArtifactAdded(t *testing.T) {
-	toolBox := NewDefaultToolBox(&config.ToolBoxConfig{
+	toolBox := NewDefaultToolBox(&serverConfig.ToolBoxConfig{
 		EnableCreateArtifact: true,
 	})
 
@@ -180,7 +180,7 @@ func TestNewDefaultToolBox_DefaultBehavior(t *testing.T) {
 }
 
 func TestCreateArtifactTool_GetTools(t *testing.T) {
-	toolBox := NewDefaultToolBox(&config.ToolBoxConfig{
+	toolBox := NewDefaultToolBox(&serverConfig.ToolBoxConfig{
 		EnableCreateArtifact: true,
 	})
 
@@ -413,7 +413,7 @@ func TestDefaultToolBox_ExecuteToolSpan(t *testing.T) {
 			return "ok", nil
 		}))
 
-	member, _ := baggage.NewMember(config.DefaultAttrSessionIDKey, "s1")
+	member, _ := baggage.NewMember(serverConfig.DefaultAttrSessionIDKey, "s1")
 	bag, _ := baggage.New(member)
 	ctx := baggage.ContextWithBaggage(context.Background(), bag)
 	ctx, parent := tp.Tracer("test").Start(ctx, "task.process")
@@ -425,6 +425,6 @@ func TestDefaultToolBox_ExecuteToolSpan(t *testing.T) {
 	if assert.Len(t, spans, 2) {
 		assert.Equal(t, "tool.navigate", spans[0].Name)
 		assert.Equal(t, parent.SpanContext().SpanID(), spans[0].Parent.SpanID())
-		assert.Contains(t, spans[0].Attributes, attribute.String(config.DefaultAttrSessionIDKey, "s1"))
+		assert.Contains(t, spans[0].Attributes, attribute.String(serverConfig.DefaultAttrSessionIDKey, "s1"))
 	}
 }

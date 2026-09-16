@@ -11,7 +11,7 @@ import (
 	http "github.com/metoro-io/mcp-golang/transport/http"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
 // mcpToolEntry is the metadata the manager keeps for a single discovered MCP tool.
@@ -49,7 +49,7 @@ type mcpConn struct {
 // It only makes sense alongside a configured LLM/agent: the selector tools are
 // registered into the agent's toolbox via RegisterTools.
 type MCPClientManager struct {
-	cfg    config.MCPConfig
+	cfg    serverConfig.MCPConfig
 	logger *zap.Logger
 
 	// newClient builds a client for a server URL. Overridable in tests.
@@ -63,7 +63,7 @@ type MCPClientManager struct {
 
 // NewMCPClientManager creates a manager for the configured MCP servers. It does
 // not connect until Start is called.
-func NewMCPClientManager(cfg config.MCPConfig, logger *zap.Logger) (*MCPClientManager, error) {
+func NewMCPClientManager(cfg serverConfig.MCPConfig, logger *zap.Logger) (*MCPClientManager, error) {
 	if logger == nil {
 		logger = zap.NewNop()
 	}

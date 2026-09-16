@@ -11,7 +11,7 @@ import (
 	uuid "github.com/google/uuid"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
+	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -82,7 +82,7 @@ type ArtifactServiceImpl struct {
 
 // NewArtifactService creates a new artifact service from configuration.
 // It creates and manages its own storage provider internally.
-func NewArtifactService(cfg *config.ArtifactsConfig, logger *zap.Logger) (ArtifactService, error) {
+func NewArtifactService(cfg *serverConfig.ArtifactsConfig, logger *zap.Logger) (ArtifactService, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("artifacts configuration is required")
 	}
