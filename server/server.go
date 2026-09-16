@@ -439,7 +439,7 @@ func (s *A2AServerImpl) LoadAgentCardFromFile(filePath string, overrides map[str
 }
 
 // SetupRouter configures the HTTP router with A2A endpoints
-func (s *A2AServerImpl) setupRouter(cfg *serverConfig.Config) *gin.Engine {
+func (s *A2AServerImpl) setupRouter(cfg *serverConfig.Config) (*gin.Engine, error) {
 	gin.SetMode(gin.ReleaseMode)
 	if cfg.Debug {
 		gin.SetMode(gin.DebugMode)
@@ -473,12 +473,11 @@ func (s *A2AServerImpl) setupRouter(cfg *serverConfig.Config) *gin.Engine {
 			r.POST("/a2a", s.handleA2ARequest)
 		}
 		s.logger.Warn("authentication is disabled, oidcAuthenticator will be nil")
-		return r
+		return r, nil
 	}
 	oidcAuthenticator, err := middlewares.NewOIDCAuthenticatorMiddleware(s.logger, *s.cfg)
 	if err != nil {
-		s.logger.Error("failed to create OIDC authenticator", zap.Error(err))
-		return r
+		return nil, fmt.Errorf("failed to create OIDC authenticator: %w", err)
 	}
 
 	s.logger.Info("oidcAuthenticator is valid, setting up authentication")
@@ -488,7 +487,7 @@ func (s *A2AServerImpl) setupRouter(cfg *serverConfig.Config) *gin.Engine {
 		r.POST("/a2a", oidcAuthenticator.Middleware(), s.handleA2ARequest)
 	}
 
-	return r
+	return r, nil
 }
 
 // Start starts the A2A server
@@ -497,7 +496,10 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 		return fmt.Errorf("agent card must be configured before starting the server - use SetAgentCard() or LoadAgentCardFromFile()")
 	}
 
-	router := s.setupRouter(s.cfg)
+	router, err := s.setupRouter(s.cfg)
+	if err != nil {
+		return err
+	}
 
 	s.httpServer = &http.Server{
 		Addr:         fmt.Sprintf(":%s", s.cfg.ServerConfig.Port),

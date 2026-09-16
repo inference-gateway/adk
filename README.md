@@ -545,12 +545,12 @@ Configure your A2A agent using environment variables. All configuration is optio
 
 #### Authentication (Optional)
 
-| Variable             | Default | Description                |
-| -------------------- | ------- | -------------------------- |
-| `AUTH_ENABLED`       | `false` | Enable OIDC authentication |
-| `AUTH_ISSUER_URL`    | -       | OIDC issuer URL            |
-| `AUTH_CLIENT_ID`     | -       | OIDC client ID             |
-| `AUTH_CLIENT_SECRET` | -       | OIDC client secret         |
+| Variable          | Default | Description                                                                                    |
+| ----------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `AUTH_ENABLED`    | `false` | Enable OIDC authentication                                                                     |
+| `AUTH_ISSUER_URL` | -       | OIDC issuer URL; discovery runs at startup against `{issuer}/.well-known/openid-configuration` |
+| `AUTH_CLIENT_ID`  | -       | OIDC client ID, used as the expected token audience when `AUTH_AUDIENCE` is empty              |
+| `AUTH_AUDIENCE`   | -       | Comma-separated accepted `aud` values, for example an API identifier                           |
 
 See [docs/authentication.md](docs/authentication.md) for the full card-driven auth flow: discovery, out-of-band credentials, the authenticated extended card, and authorization via callbacks.
 
