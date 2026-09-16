@@ -8,9 +8,10 @@ import (
 
 	oidcV3 "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"
-	config "github.com/inference-gateway/adk/server/config"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
+
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 type contextKey string

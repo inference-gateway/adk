@@ -42,8 +42,9 @@ package server
 import (
 	"context"
 
-	"github.com/inference-gateway/adk/types"
 	"go.uber.org/zap"
+
+	"github.com/inference-gateway/adk/types"
 )
 
 // CallbackContext provides context information to callback functions during execution

@@ -5,10 +5,12 @@ import (
 	"testing"
 	"time"
 
-	config "github.com/inference-gateway/adk/server/config"
-	envconfig "github.com/sethvargo/go-envconfig"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
+	envconfig "github.com/sethvargo/go-envconfig"
+
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 func TestConfig_LoadWithLookuper(t *testing.T) {

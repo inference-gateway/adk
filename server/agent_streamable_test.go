@@ -7,13 +7,17 @@ import (
 	"testing"
 	"time"
 
-	server "github.com/inference-gateway/adk/server"
-	mocks "github.com/inference-gateway/adk/server/mocks"
-	types "github.com/inference-gateway/adk/types"
-	sdk "github.com/inference-gateway/sdk"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
 	zap "go.uber.org/zap"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	server "github.com/inference-gateway/adk/server"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestStreamingMessageAccumulation(t *testing.T) {

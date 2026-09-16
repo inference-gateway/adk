@@ -21,8 +21,9 @@ import (
 	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/server/config"
 	sdk "github.com/inference-gateway/sdk"
+
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 // OpenTelemetry defines the operations for telemetry

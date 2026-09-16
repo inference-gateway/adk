@@ -6,11 +6,13 @@ import (
 	"testing"
 	"time"
 
+	assert "github.com/stretchr/testify/assert"
+
+	zap "go.uber.org/zap"
+
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
-	assert "github.com/stretchr/testify/assert"
-	zap "go.uber.org/zap"
 )
 
 func TestDefaultTaskManager_CreateTask(t *testing.T) {

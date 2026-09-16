@@ -7,15 +7,19 @@ import (
 	"testing"
 	"time"
 
-	gin "github.com/gin-gonic/gin"
-	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
-	mocks "github.com/inference-gateway/adk/server/mocks"
-	types "github.com/inference-gateway/adk/types"
-	sdk "github.com/inference-gateway/sdk"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
+	gin "github.com/gin-gonic/gin"
 	zap "go.uber.org/zap"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // createTestAgentCard creates a test agent card for use in tests

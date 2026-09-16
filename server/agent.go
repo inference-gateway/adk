@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	zap "go.uber.org/zap"
+
 	config "github.com/inference-gateway/adk/server/config"
 	utils "github.com/inference-gateway/adk/server/utils"
 	types "github.com/inference-gateway/adk/types"
-	zap "go.uber.org/zap"
 )
 
 // OpenAICompatibleAgent represents an agent that can interact with OpenAI-compatible LLM APIs and execute tools

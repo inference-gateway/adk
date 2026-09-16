@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	envconfig "github.com/sethvargo/go-envconfig"
 	require "github.com/stretchr/testify/require"
+
+	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
 	config "github.com/inference-gateway/adk/server/config"

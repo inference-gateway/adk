@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/inference-gateway/adk/server/config"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	"github.com/inference-gateway/adk/server/config"
 )
 
 // MinIOArtifactStorage implements ArtifactStorageProvider using MinIO/S3

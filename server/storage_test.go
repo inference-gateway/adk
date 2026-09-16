@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
+	assert "github.com/stretchr/testify/assert"
+
+	zap "go.uber.org/zap"
+
 	server "github.com/inference-gateway/adk/server"
 	types "github.com/inference-gateway/adk/types"
-	assert "github.com/stretchr/testify/assert"
-	zap "go.uber.org/zap"
 )
 
 func TestInMemoryStorage_QueueCentricOperations(t *testing.T) {

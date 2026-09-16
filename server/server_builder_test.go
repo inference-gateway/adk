@@ -7,9 +7,9 @@ import (
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
 
-	zap "go.uber.org/zap"
-
 	mocks "github.com/inference-gateway/adk/server/mocks"
+
+	zap "go.uber.org/zap"
 
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"

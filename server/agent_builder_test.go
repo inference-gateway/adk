@@ -4,13 +4,16 @@ import (
 	"context"
 	"testing"
 
-	server "github.com/inference-gateway/adk/server"
-	config "github.com/inference-gateway/adk/server/config"
-	mocks "github.com/inference-gateway/adk/server/mocks"
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
 	zap "go.uber.org/zap"
+
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestNewAgentBuilder(t *testing.T) {

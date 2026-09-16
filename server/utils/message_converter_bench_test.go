@@ -3,9 +3,11 @@ package utils
 import (
 	"testing"
 
-	types "github.com/inference-gateway/adk/types"
-	sdk "github.com/inference-gateway/sdk"
 	zap "go.uber.org/zap"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 func BenchmarkMessageConverter_ConvertToSDK(b *testing.B) {

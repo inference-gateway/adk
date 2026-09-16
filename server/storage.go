@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	middlewares "github.com/inference-gateway/adk/server/middlewares"
-	types "github.com/inference-gateway/adk/types"
 	otel "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
 	zap "go.uber.org/zap"
+
+	middlewares "github.com/inference-gateway/adk/server/middlewares"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // injectTraceContext serializes the trace context and baggage from ctx into a

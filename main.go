@@ -1,8 +1,9 @@
 package main
 
 import (
-	_ "github.com/inference-gateway/sdk"
 	_ "github.com/sethvargo/go-envconfig"
+
+	_ "github.com/inference-gateway/sdk"
 )
 
 func main() {

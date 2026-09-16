@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
-	config "github.com/inference-gateway/adk/server/config"
-	sdk "github.com/inference-gateway/sdk"
 	otel "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
 	zap "go.uber.org/zap"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 // LLMClient defines the interface for Language Model clients

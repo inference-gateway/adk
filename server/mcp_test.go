@@ -9,10 +9,12 @@ import (
 	"testing"
 	"time"
 
-	config "github.com/inference-gateway/adk/server/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	zap "go.uber.org/zap"
+
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 // fakeMCPClient is an in-process mcpToolCaller for tests - no network, no server.

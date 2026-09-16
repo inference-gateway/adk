@@ -11,11 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inference-gateway/adk/client"
-	types "github.com/inference-gateway/adk/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"go.uber.org/zap"
+
+	"github.com/inference-gateway/adk/client"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestNewClient(t *testing.T) {

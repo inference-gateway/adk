@@ -9,10 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/adk/types"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+
+	"github.com/inference-gateway/adk/server/config"
+	"github.com/inference-gateway/adk/types"
 )
 
 // RedisClient is the subset of *redis.Client methods used by RedisStorage.

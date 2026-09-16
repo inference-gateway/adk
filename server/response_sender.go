@@ -2,8 +2,9 @@ package server
 
 import (
 	gin "github.com/gin-gonic/gin"
-	adk "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
+
+	adk "github.com/inference-gateway/adk/types"
 )
 
 // ResponseSender defines how to send JSON-RPC responses

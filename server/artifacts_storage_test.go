@@ -6,9 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	config "github.com/inference-gateway/adk/server/config"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 func TestFilesystemArtifactStorage_NewFilesystemArtifactStorage(t *testing.T) {

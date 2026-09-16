@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	types "github.com/inference-gateway/adk/types"
-	sdk "github.com/inference-gateway/sdk"
 	zap "go.uber.org/zap"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 // MessageConverter defines the interface for converting between A2A and SDK formats

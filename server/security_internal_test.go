@@ -3,12 +3,14 @@ package server
 import (
 	"testing"
 
-	config "github.com/inference-gateway/adk/server/config"
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestOIDCSecuritySchemes(t *testing.T) {

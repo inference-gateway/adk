@@ -11,16 +11,17 @@ import (
 
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
-	config "github.com/inference-gateway/adk/server/config"
-	middlewares "github.com/inference-gateway/adk/server/middlewares"
-	otel "github.com/inference-gateway/adk/server/otel"
-	types "github.com/inference-gateway/adk/types"
 	promhttp "github.com/prometheus/client_golang/prometheus/promhttp"
 	envconfig "github.com/sethvargo/go-envconfig"
 	sdkotel "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
+
+	config "github.com/inference-gateway/adk/server/config"
+	middlewares "github.com/inference-gateway/adk/server/middlewares"
+	otel "github.com/inference-gateway/adk/server/otel"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // A2AServer defines the interface for an A2A-compatible server

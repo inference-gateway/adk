@@ -6,14 +6,17 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/inference-gateway/adk/server"
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/sdk"
 	"github.com/stretchr/testify/assert"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+
+	"github.com/inference-gateway/sdk"
+
+	"github.com/inference-gateway/adk/server"
+	"github.com/inference-gateway/adk/server/config"
 )
 
 func TestLLMClient_PropagatesTraceContext(t *testing.T) {

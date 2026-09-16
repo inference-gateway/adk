@@ -3,8 +3,9 @@ package server
 import (
 	"fmt"
 
-	"github.com/inference-gateway/adk/server/config"
 	"go.uber.org/zap"
+
+	"github.com/inference-gateway/adk/server/config"
 )
 
 // ArtifactsServerBuilder provides a fluent interface for building artifacts servers with custom configurations.

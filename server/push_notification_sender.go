@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"time"
 
-	types "github.com/inference-gateway/adk/types"
 	zap "go.uber.org/zap"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 // PushNotificationSender handles sending push notifications

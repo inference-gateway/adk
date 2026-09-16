@@ -8,6 +8,8 @@ import (
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
 
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
 	gin "github.com/gin-gonic/gin"
 	otel "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
@@ -17,7 +19,6 @@ import (
 
 	config "github.com/inference-gateway/adk/server/config"
 	middlewares "github.com/inference-gateway/adk/server/middlewares"
-	mocks "github.com/inference-gateway/adk/server/mocks"
 )
 
 func TestTelemetryMiddleware_RecordsRequestMetrics(t *testing.T) {

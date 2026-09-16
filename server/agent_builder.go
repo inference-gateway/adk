@@ -3,8 +3,9 @@ package server
 import (
 	"context"
 
-	config "github.com/inference-gateway/adk/server/config"
 	zap "go.uber.org/zap"
+
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 // AgentBuilder provides a fluent interface for building OpenAI-compatible agents with custom configurations.

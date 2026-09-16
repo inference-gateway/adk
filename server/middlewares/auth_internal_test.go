@@ -5,8 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	gin "github.com/gin-gonic/gin"
 	assert "github.com/stretchr/testify/assert"
+
+	gin "github.com/gin-gonic/gin"
 	zap "go.uber.org/zap"
 )
 

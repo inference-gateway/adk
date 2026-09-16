@@ -7,10 +7,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/inference-gateway/adk/client"
-	"github.com/inference-gateway/adk/types"
 	"github.com/sethvargo/go-envconfig"
 	"go.uber.org/zap"
+
+	"github.com/inference-gateway/adk/client"
+	"github.com/inference-gateway/adk/types"
 )
 
 // Config holds the client configuration

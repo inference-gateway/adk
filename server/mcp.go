@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	config "github.com/inference-gateway/adk/server/config"
 	mcp "github.com/metoro-io/mcp-golang"
 	mcphttp "github.com/metoro-io/mcp-golang/transport/http"
 	zap "go.uber.org/zap"
+
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 // mcpToolEntry is the metadata the manager keeps for a single discovered MCP tool.

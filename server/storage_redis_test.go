@@ -6,13 +6,14 @@ import (
 	"errors"
 	"testing"
 
-	redis "github.com/redis/go-redis/v9"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
-	zap "go.uber.org/zap"
-	zaptest "go.uber.org/zap/zaptest"
 
 	mocks "github.com/inference-gateway/adk/server/mocks"
+
+	redis "github.com/redis/go-redis/v9"
+	zap "go.uber.org/zap"
+	zaptest "go.uber.org/zap/zaptest"
 
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"

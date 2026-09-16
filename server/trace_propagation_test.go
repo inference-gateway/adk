@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"testing"
 
-	types "github.com/inference-gateway/adk/types"
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
+
 	otel "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 // TestTraceContextPropagation verifies that the trace context of the request

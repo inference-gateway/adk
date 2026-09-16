@@ -8,13 +8,15 @@ import (
 	"testing"
 	"time"
 
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
+
+	zaptest "go.uber.org/zap/zaptest"
+
 	client "github.com/inference-gateway/adk/client"
 	server "github.com/inference-gateway/adk/server"
 	config "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
-	assert "github.com/stretchr/testify/assert"
-	require "github.com/stretchr/testify/require"
-	zaptest "go.uber.org/zap/zaptest"
 )
 
 // startAuthFlowServer builds and starts a real A2A server on the given port and

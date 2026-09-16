@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	config "github.com/inference-gateway/adk/server/config"
-	types "github.com/inference-gateway/adk/types"
-	sdk "github.com/inference-gateway/sdk"
 	otel "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	baggage "go.opentelemetry.io/otel/baggage"
 	codes "go.opentelemetry.io/otel/codes"
 	trace "go.opentelemetry.io/otel/trace"
+
+	sdk "github.com/inference-gateway/sdk"
+
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // ToolBox defines the interface for a collection of tools that can be used by OpenAI-compatible agents

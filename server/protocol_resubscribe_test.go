@@ -7,14 +7,17 @@ import (
 	"strings"
 	"testing"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/gin-gonic/gin"
-	server "github.com/inference-gateway/adk/server"
-	mocks "github.com/inference-gateway/adk/server/mocks"
-	types "github.com/inference-gateway/adk/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	mocks "github.com/inference-gateway/adk/server/mocks"
+
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	server "github.com/inference-gateway/adk/server"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // makeProtocolHandlerWithMocks wires a DefaultA2AProtocolHandler against fresh mocks and a

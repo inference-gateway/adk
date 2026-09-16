@@ -5,11 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/inference-gateway/adk/server/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/inference-gateway/adk/server/config"
 )
 
 func TestStorageFactoryRegistry(t *testing.T) {

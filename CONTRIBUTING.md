@@ -55,7 +55,7 @@ Before contributing, ensure you have the following installed:
 
 - **Go 1.26 or later**
 - **[Task](https://taskfile.dev/)** for build automation
-- **[golangci-lint](https://golangci-lint.run/)** for linting
+- **[golangci-lint](https://golangci-lint.run/)** for linting (imports are grouped by `gci`: standard library, `testify`, `server/mocks`, third-party, `github.com/inference-gateway/*`, this module; run `golangci-lint fmt` to fix the order)
 - **Git** for version control
 
 ### Setting Up Your Development Environment
