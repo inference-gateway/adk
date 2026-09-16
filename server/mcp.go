@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	mcp "github.com/metoro-io/mcp-golang"
-	mcphttp "github.com/metoro-io/mcp-golang/transport/http"
+	golang "github.com/metoro-io/mcp-golang"
+	http "github.com/metoro-io/mcp-golang/transport/http"
 	zap "go.uber.org/zap"
 
 	config "github.com/inference-gateway/adk/server/config"
@@ -351,16 +351,16 @@ func sleepCtx(ctx context.Context, d time.Duration) bool {
 // mcpToolCaller.
 type httpMCPClient struct {
 	url   string
-	inner *mcp.Client
+	inner *golang.Client
 }
 
 // newHTTPMCPClient builds an MCP client for a server base URL and endpoint path.
 func newHTTPMCPClient(url, endpoint string) *httpMCPClient {
-	transport := mcphttp.NewHTTPClientTransport(endpoint)
+	transport := http.NewHTTPClientTransport(endpoint)
 	transport.WithBaseURL(url)
 	return &httpMCPClient{
 		url:   url,
-		inner: mcp.NewClient(transport),
+		inner: golang.NewClient(transport),
 	}
 }
 

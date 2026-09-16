@@ -6,23 +6,23 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	assert "github.com/stretchr/testify/assert"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
+	otelapi "go.opentelemetry.io/otel"
+	propagation "go.opentelemetry.io/otel/propagation"
+	trace "go.opentelemetry.io/otel/trace"
+	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/sdk"
+	sdk "github.com/inference-gateway/sdk"
 
-	"github.com/inference-gateway/adk/server"
-	"github.com/inference-gateway/adk/server/config"
+	server "github.com/inference-gateway/adk/server"
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 func TestLLMClient_PropagatesTraceContext(t *testing.T) {
-	prev := otel.GetTextMapPropagator()
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-	t.Cleanup(func() { otel.SetTextMapPropagator(prev) })
+	prev := otelapi.GetTextMapPropagator()
+	otelapi.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() { otelapi.SetTextMapPropagator(prev) })
 
 	var traceparent string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

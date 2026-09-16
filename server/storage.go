@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
 	zap "go.uber.org/zap"
 
@@ -18,7 +18,7 @@ import (
 // to propagate.
 func injectTraceContext(ctx context.Context) map[string]string {
 	carrier := propagation.MapCarrier{}
-	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	otelapi.GetTextMapPropagator().Inject(ctx, carrier)
 	if len(carrier) == 0 {
 		return nil
 	}
@@ -31,7 +31,7 @@ func extractTraceContext(ctx context.Context, traceContext map[string]string) co
 	if len(traceContext) == 0 {
 		return ctx
 	}
-	return otel.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(traceContext))
+	return otelapi.GetTextMapPropagator().Extract(ctx, propagation.MapCarrier(traceContext))
 }
 
 // extractClaimsFromCtx retrieves the verified OIDC claims from the

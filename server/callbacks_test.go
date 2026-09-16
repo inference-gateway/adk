@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	assert "github.com/stretchr/testify/assert"
 
-	"go.uber.org/zap/zaptest"
+	zaptest "go.uber.org/zap/zaptest"
 
-	"github.com/inference-gateway/adk/server/testutils"
-	"github.com/inference-gateway/adk/types"
+	testutils "github.com/inference-gateway/adk/server/testutils"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestCallbackExecutor_ExecuteBeforeAgent(t *testing.T) {

@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 
-	"go.uber.org/zap"
+	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/adk/client"
+	client "github.com/inference-gateway/adk/client"
 	types "github.com/inference-gateway/adk/types"
 )
 

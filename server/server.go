@@ -13,7 +13,7 @@ import (
 	uuid "github.com/google/uuid"
 	promhttp "github.com/prometheus/client_golang/prometheus/promhttp"
 	envconfig "github.com/sethvargo/go-envconfig"
-	sdkotel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	trace "go.opentelemetry.io/otel/trace"
 	zap "go.uber.org/zap"
@@ -628,7 +628,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 	ctx = extractTraceContext(ctx, queuedTask.TraceContext)
 	ctx = injectAuthContext(ctx, queuedTask)
-	ctx, span := sdkotel.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "task.process",
+	ctx, span := otelapi.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "task.process",
 		trace.WithAttributes(attribute.String("a2a.task.id", task.ID)))
 	defer span.End()
 

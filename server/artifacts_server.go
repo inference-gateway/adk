@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+	gin "github.com/gin-gonic/gin"
+	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/adk/server/config"
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 // ArtifactsServer provides HTTP endpoints for artifact download

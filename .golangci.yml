@@ -1,4 +1,23 @@
 version: '2'
+linters:
+  enable:
+    - importas
+  settings:
+    importas:
+      no-unaliased: true
+      alias:
+        - pkg: go.opentelemetry.io/otel
+          alias: otelapi
+        - pkg: go.opentelemetry.io/otel/sdk/metric
+          alias: sdkmetric
+        - pkg: go.opentelemetry.io/otel/sdk/trace
+          alias: sdktrace
+        - pkg: github.com/cloudevents/sdk-go/v2
+          alias: cloudevents
+        - pkg: '^[^/]+\.[^/]+/.*?([a-z][a-z0-9]*)(?:-go)?(?:\.v[0-9]+)?(?:/v[0-9][0-9.]*)?$'
+          alias: '$1'
+  exclusions:
+    generated: lax
 formatters:
   enable:
     - gofmt

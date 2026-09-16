@@ -4,12 +4,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	assert "github.com/stretchr/testify/assert"
 
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+	gin "github.com/gin-gonic/gin"
+	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/adk/server"
+	server "github.com/inference-gateway/adk/server"
 )
 
 func TestDefaultResponseSender_SendSuccess(t *testing.T) {

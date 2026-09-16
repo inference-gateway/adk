@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/uuid"
-	"go.uber.org/zap"
+	uuid "github.com/google/uuid"
+	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/adk/server/config"
-	"github.com/inference-gateway/adk/types"
+	config "github.com/inference-gateway/adk/server/config"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // ArtifactService defines the interface for artifact operations with storage support.

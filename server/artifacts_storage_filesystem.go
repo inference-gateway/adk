@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/inference-gateway/adk/server/config"
+	config "github.com/inference-gateway/adk/server/config"
 )
 
 // FilesystemArtifactStorage implements ArtifactStorageProvider using local filesystem

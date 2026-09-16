@@ -8,7 +8,7 @@ import (
 	"time"
 
 	gin "github.com/gin-gonic/gin"
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	baggage "go.opentelemetry.io/otel/baggage"
 	codes "go.opentelemetry.io/otel/codes"
@@ -17,7 +17,7 @@ import (
 	zap "go.uber.org/zap"
 
 	config "github.com/inference-gateway/adk/server/config"
-	adkotel "github.com/inference-gateway/adk/server/otel"
+	otel "github.com/inference-gateway/adk/server/otel"
 )
 
 type Telemetry interface {
@@ -26,15 +26,15 @@ type Telemetry interface {
 
 type TelemetryImpl struct {
 	cfg       config.Config
-	telemetry adkotel.OpenTelemetry
+	telemetry otel.OpenTelemetry
 	logger    *zap.Logger
 	tracer    trace.Tracer
 }
 
-func NewTelemetryMiddleware(cfg config.Config, telemetry adkotel.OpenTelemetry, logger *zap.Logger) (Telemetry, error) {
+func NewTelemetryMiddleware(cfg config.Config, telemetry otel.OpenTelemetry, logger *zap.Logger) (Telemetry, error) {
 	tp := telemetry.TracerProvider()
 	if tp == nil {
-		tp = otel.GetTracerProvider()
+		tp = otelapi.GetTracerProvider()
 	}
 	tracer := tp.Tracer("github.com/inference-gateway/adk/server/middlewares")
 	return &TelemetryImpl{
@@ -66,7 +66,7 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 
 		startTime := time.Now()
 
-		propagator := otel.GetTextMapPropagator()
+		propagator := otelapi.GetTextMapPropagator()
 		ctx := propagator.Extract(c.Request.Context(), propagationHeaderCarrier(c.Request.Header))
 		c.Request = c.Request.WithContext(ctx)
 
@@ -96,7 +96,7 @@ func (t *TelemetryImpl) Middleware() gin.HandlerFunc {
 
 		c.Request = c.Request.WithContext(ctx)
 
-		attrs := adkotel.TelemetryAttributes{
+		attrs := otel.TelemetryAttributes{
 			Provider: t.cfg.AgentConfig.Provider,
 			Model:    t.cfg.AgentConfig.Model,
 			TaskID:   "",

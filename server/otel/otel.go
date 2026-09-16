@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	otlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	otlpmetrichttp "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
@@ -15,7 +15,7 @@ import (
 	metric "go.opentelemetry.io/otel/metric"
 	propagation "go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	sdkresource "go.opentelemetry.io/otel/sdk/resource"
+	resource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.32.0"
 	trace "go.opentelemetry.io/otel/trace"
@@ -96,7 +96,7 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 		zap.String("agent_name", cfg.AgentName),
 		zap.String("version", cfg.AgentVersion))
 
-	res := sdkresource.NewWithAttributes(
+	res := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceName(cfg.AgentName),
 		semconv.ServiceVersion(cfg.AgentVersion),
@@ -120,7 +120,7 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 		return err
 	}
 
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+	otelapi.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
@@ -130,7 +130,7 @@ func (o *OpenTelemetryImpl) initialize(cfg *config.Config) error {
 	return nil
 }
 
-func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresource.Resource, resolved config.ResolvedTelemetry) error {
+func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *resource.Resource, resolved config.ResolvedTelemetry) error {
 	histogramBoundaries := []float64{1, 5, 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000}
 
 	latencyView := sdkmetric.NewView(
@@ -175,7 +175,7 @@ func (o *OpenTelemetryImpl) initializeMetrics(cfg *config.Config, res *sdkresour
 	}
 
 	o.meterProvider = sdkmetric.NewMeterProvider(opts...)
-	otel.SetMeterProvider(o.meterProvider)
+	otelapi.SetMeterProvider(o.meterProvider)
 
 	o.logger.Debug("meter provider created and set globally")
 
@@ -227,7 +227,7 @@ func (o *OpenTelemetryImpl) newOTLPMetricExporter(resolved config.ResolvedTeleme
 	return otlpmetrichttp.New(ctx, httpOpts...)
 }
 
-func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresource.Resource, resolved config.ResolvedTelemetry) error {
+func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *resource.Resource, resolved config.ResolvedTelemetry) error {
 	if resolved.TracesExporter != config.ExporterOTLP {
 		o.logger.Debug("OTLP trace export is disabled")
 		return nil
@@ -247,7 +247,7 @@ func (o *OpenTelemetryImpl) initializeTraces(cfg *config.Config, res *sdkresourc
 		sdktrace.WithResource(res),
 		sdktrace.WithBatcher(traceExporter),
 	)
-	otel.SetTracerProvider(o.tracerProvider)
+	otelapi.SetTracerProvider(o.tracerProvider)
 
 	o.logger.Info("OTLP trace exporter initialized successfully",
 		zap.String("endpoint", resolved.OTLPEndpoint))
@@ -288,7 +288,7 @@ func (o *OpenTelemetryImpl) TracerProvider() trace.TracerProvider {
 	if o.tracerProvider != nil {
 		return o.tracerProvider
 	}
-	return otel.GetTracerProvider()
+	return otelapi.GetTracerProvider()
 }
 
 func (o *OpenTelemetryImpl) RecordTokenUsage(ctx context.Context, attrs TelemetryAttributes, usage sdk.CompletionUsage) {

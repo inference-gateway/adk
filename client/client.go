@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
+	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/adk/types"
+	types "github.com/inference-gateway/adk/types"
 )
 
 // A2AClient defines the interface for an A2A protocol client

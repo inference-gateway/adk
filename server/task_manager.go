@@ -9,7 +9,7 @@ import (
 	uuid "github.com/google/uuid"
 	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/adk/server/config"
+	config "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
 

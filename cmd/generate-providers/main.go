@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // Schema represents the relevant subset of the openapi.yaml structure.

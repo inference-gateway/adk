@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	assert "github.com/stretchr/testify/assert"
 
-	"go.uber.org/zap"
+	zap "go.uber.org/zap"
 
-	"github.com/inference-gateway/adk/types"
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestTaskCancellation(t *testing.T) {

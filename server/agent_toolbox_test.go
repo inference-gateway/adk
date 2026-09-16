@@ -6,7 +6,7 @@ import (
 
 	assert "github.com/stretchr/testify/assert"
 
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	baggage "go.opentelemetry.io/otel/baggage"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -402,9 +402,9 @@ func TestExecuteCreateArtifact_MissingService(t *testing.T) {
 func TestDefaultToolBox_ExecuteToolSpan(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
-	prev := otel.GetTracerProvider()
-	otel.SetTracerProvider(tp)
-	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+	prev := otelapi.GetTracerProvider()
+	otelapi.SetTracerProvider(tp)
+	t.Cleanup(func() { otelapi.SetTracerProvider(prev) })
 
 	toolBox := NewDefaultToolBox(nil)
 	toolBox.AddTool(NewBasicTool("navigate", "nav", map[string]any{"type": "object"},

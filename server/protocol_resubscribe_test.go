@@ -7,14 +7,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 
 	mocks "github.com/inference-gateway/adk/server/mocks"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
+	gin "github.com/gin-gonic/gin"
+	zap "go.uber.org/zap"
 
 	server "github.com/inference-gateway/adk/server"
 	types "github.com/inference-gateway/adk/types"

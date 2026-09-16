@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	attribute "go.opentelemetry.io/otel/attribute"
 	baggage "go.opentelemetry.io/otel/baggage"
 	codes "go.opentelemetry.io/otel/codes"
@@ -177,7 +177,7 @@ func (tb *DefaultToolBox) ExecuteTool(ctx context.Context, toolName string, argu
 			attrs = append(attrs, attribute.String(key, v))
 		}
 	}
-	ctx, span := otel.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "tool."+toolName,
+	ctx, span := otelapi.Tracer("github.com/inference-gateway/adk/server").Start(ctx, "tool."+toolName,
 		trace.WithAttributes(attrs...))
 	defer span.End()
 

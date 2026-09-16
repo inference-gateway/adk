@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	oidcV3 "github.com/coreos/go-oidc/v3/oidc"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
-	"golang.org/x/oauth2"
+	oidc "github.com/coreos/go-oidc/v3/oidc"
+	gin "github.com/gin-gonic/gin"
+	zap "go.uber.org/zap"
+	oauth2 "golang.org/x/oauth2"
 
 	config "github.com/inference-gateway/adk/server/config"
 )
@@ -28,7 +28,7 @@ type OIDCAuthenticator interface {
 // OIDCAuthenticatorImpl implements OIDC authentication
 type OIDCAuthenticatorImpl struct {
 	logger   *zap.Logger
-	verifier *oidcV3.IDTokenVerifier
+	verifier *oidc.IDTokenVerifier
 	config   oauth2.Config
 }
 
@@ -45,12 +45,12 @@ func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDC
 		return nil, errors.New("authentication is enabled but required OIDC fields (issuer URL, client ID, client secret) are missing")
 	}
 
-	provider, err := oidcV3.NewProvider(context.Background(), cfg.AuthConfig.IssuerURL)
+	provider, err := oidc.NewProvider(context.Background(), cfg.AuthConfig.IssuerURL)
 	if err != nil {
 		return nil, err
 	}
 
-	oidcConfig := &oidcV3.Config{
+	oidcConfig := &oidc.Config{
 		ClientID: cfg.AuthConfig.ClientID,
 	}
 
@@ -61,7 +61,7 @@ func NewOIDCAuthenticatorMiddleware(logger *zap.Logger, cfg config.Config) (OIDC
 			ClientID:     cfg.AuthConfig.ClientID,
 			ClientSecret: cfg.AuthConfig.ClientSecret,
 			Endpoint:     provider.Endpoint(),
-			Scopes:       []string{oidcV3.ScopeOpenID, "profile", "email"},
+			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 		},
 	}, nil
 }

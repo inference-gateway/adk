@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	otel "go.opentelemetry.io/otel"
+	otelapi "go.opentelemetry.io/otel"
 	propagation "go.opentelemetry.io/otel/propagation"
 	zap "go.uber.org/zap"
 
@@ -273,6 +273,6 @@ func parseModelName(model, provider string) string {
 type propagatingTransport struct{ base http.RoundTripper }
 
 func (t propagatingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	otel.GetTextMapPropagator().Inject(req.Context(), propagation.HeaderCarrier(req.Header))
+	otelapi.GetTextMapPropagator().Inject(req.Context(), propagation.HeaderCarrier(req.Header))
 	return t.base.RoundTrip(req)
 }
