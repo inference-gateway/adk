@@ -15,7 +15,7 @@
 # agent inside the compose network pin it to the service name instead.
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.3.2
+    image: quay.io/keycloak/keycloak:26.7.4
     command: start-dev --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -30,10 +30,8 @@ services:
     # returns when discovery answers. The image has no curl; bash /dev/tcp will do.
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'",
-        ]
+        - CMD-SHELL
+        - "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'"
       interval: 5s
       timeout: 5s
       retries: 40
