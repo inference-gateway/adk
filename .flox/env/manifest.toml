@@ -1,4 +1,4 @@
-schema-version = "1.16.0"
+schema-version = "1.17.0"
 
 [install]
 go.pkg-path = "go"
@@ -17,7 +17,7 @@ go-task.pkg-path = "go-task"
 go-task.version = "3.53.1"
 infer.flake = "github:inference-gateway/cli/v0.192.0"
 claude-code.pkg-path = "claude-code"
-claude-code.version = "^2.1.266"
+claude-code.version = "^2.1.278"
 claude-code.pkg-group = "claude-code"
 codex.pkg-path = "codex"
 codex.version = "^0.142.3"
