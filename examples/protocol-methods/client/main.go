@@ -145,7 +145,7 @@ func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, task
 
 	// 2. get: read back the first config to verify the round-trip.
 	getResp, err := a2a.GetTaskPushNotificationConfig(ctx, types.GetTaskPushNotificationConfigParams{
-		Name: taskID,
+		Name: &taskID,
 	})
 	if err != nil {
 		logger.Error("failed to get push notification config", zap.Error(err))
@@ -156,7 +156,7 @@ func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, task
 
 	// 3. list: show every config attached to this task - should contain both.
 	listResp, err := a2a.ListTaskPushNotificationConfig(ctx, types.ListTaskPushNotificationConfigParams{
-		Parent: taskID,
+		Parent: &taskID,
 	})
 	if err != nil {
 		logger.Error("failed to list push notification configs", zap.Error(err))
@@ -209,7 +209,7 @@ func waitForTaskAndCleanupPushConfig(ctx context.Context, a2a client.A2AClient, 
 func deletePushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID string, logger *zap.Logger) {
 	fmt.Println("\n=== tasks/pushNotificationConfig/delete ===")
 	if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigParams{
-		Name: taskID,
+		Name: &taskID,
 	}); err != nil {
 		logger.Error("failed to delete push notification config", zap.Error(err))
 		return
@@ -290,7 +290,7 @@ func demonstrateResubscribe(ctx context.Context, a2a client.A2AClient, logger *z
 
 	// Reattach with tasks/resubscribe. The server first re-emits the current
 	// task state, then forwards any further streaming events.
-	resubCh, err := a2a.ResubscribeTask(ctx, types.TaskResubscriptionParams{Name: taskID})
+	resubCh, err := a2a.ResubscribeTask(ctx, types.TaskResubscriptionParams{Name: &taskID})
 	if err != nil {
 		logger.Error("resubscribe failed", zap.Error(err))
 		return

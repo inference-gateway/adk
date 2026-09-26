@@ -60,7 +60,9 @@ func extractMessageContent(message *types.Message) (string, string, string) {
 
 		// Extract file content
 		if part.File != nil {
-			fileName = part.File.Name
+			if part.File.Name != nil {
+				fileName = *part.File.Name
+			}
 			if part.File.FileWithBytes != nil {
 				if decoded, err := base64.StdEncoding.DecodeString(*part.File.FileWithBytes); err == nil {
 					fileContent = string(decoded)

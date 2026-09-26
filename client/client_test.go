@@ -2189,8 +2189,9 @@ func TestClient_GetTaskPushNotificationConfig(t *testing.T) {
 	defer server.Close()
 
 	c := client.NewClient(server.URL)
+	taskName := "task-1"
 	resp, err := c.GetTaskPushNotificationConfig(context.Background(), types.GetTaskPushNotificationConfigParams{
-		Name: "task-1",
+		Name: &taskName,
 	})
 
 	assert.NoError(t, err)
@@ -2219,8 +2220,9 @@ func TestClient_ListTaskPushNotificationConfig(t *testing.T) {
 	defer server.Close()
 
 	c := client.NewClient(server.URL)
+	parent := "tasks/task-1"
 	resp, err := c.ListTaskPushNotificationConfig(context.Background(), types.ListTaskPushNotificationConfigParams{
-		Parent: "tasks/task-1",
+		Parent: &parent,
 	})
 
 	assert.NoError(t, err)
@@ -2246,8 +2248,9 @@ func TestClient_DeleteTaskPushNotificationConfig(t *testing.T) {
 	defer server.Close()
 
 	c := client.NewClient(server.URL)
+	taskName := "task-1"
 	resp, err := c.DeleteTaskPushNotificationConfig(context.Background(), types.DeleteTaskPushNotificationConfigParams{
-		Name: "task-1",
+		Name: &taskName,
 	})
 
 	assert.NoError(t, err)
@@ -2283,8 +2286,9 @@ func TestClient_GetAuthenticatedExtendedCard(t *testing.T) {
 	defer server.Close()
 
 	c := client.NewClient(server.URL)
+	tenant := "tenant-1"
 	resp, err := c.GetAuthenticatedExtendedCard(context.Background(), types.GetAuthenticatedExtendedCardParams{
-		Tenant: "tenant-1",
+		Tenant: &tenant,
 	})
 
 	assert.NoError(t, err)
@@ -2352,8 +2356,9 @@ func TestClient_ResubscribeTask(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	resubTaskName := "task-resub-1"
 	eventChan, err := c.ResubscribeTask(ctx, types.TaskResubscriptionParams{
-		Name: "task-resub-1",
+		Name: &resubTaskName,
 	})
 
 	require.NoError(t, err)
@@ -2384,8 +2389,9 @@ func TestClient_ResubscribeTask_ServerError(t *testing.T) {
 	defer server.Close()
 
 	c := client.NewClient(server.URL)
+	missingTaskName := "missing-task"
 	eventChan, err := c.ResubscribeTask(context.Background(), types.TaskResubscriptionParams{
-		Name: "missing-task",
+		Name: &missingTaskName,
 	})
 
 	assert.Error(t, err)

@@ -444,7 +444,7 @@ func (c *Client) SetTaskPushNotificationConfig(ctx context.Context, params types
 func (c *Client) GetTaskPushNotificationConfig(ctx context.Context, params types.GetTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("getting task push notification config",
 		zap.String("method", "tasks/pushNotificationConfig/get"),
-		zap.String("task_name", params.Name))
+		zap.Stringp("task_name", params.Name))
 	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/get", params)
 }
 
@@ -453,7 +453,7 @@ func (c *Client) GetTaskPushNotificationConfig(ctx context.Context, params types
 func (c *Client) ListTaskPushNotificationConfig(ctx context.Context, params types.ListTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("listing task push notification configs",
 		zap.String("method", "tasks/pushNotificationConfig/list"),
-		zap.String("parent", params.Parent))
+		zap.Stringp("parent", params.Parent))
 	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/list", params)
 }
 
@@ -462,7 +462,7 @@ func (c *Client) ListTaskPushNotificationConfig(ctx context.Context, params type
 func (c *Client) DeleteTaskPushNotificationConfig(ctx context.Context, params types.DeleteTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("deleting task push notification config",
 		zap.String("method", "tasks/pushNotificationConfig/delete"),
-		zap.String("task_name", params.Name))
+		zap.Stringp("task_name", params.Name))
 	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/delete", params)
 }
 
@@ -473,7 +473,7 @@ func (c *Client) DeleteTaskPushNotificationConfig(ctx context.Context, params ty
 func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context, params types.GetAuthenticatedExtendedCardParams) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("retrieving authenticated extended agent card",
 		zap.String("method", "agent/getAuthenticatedExtendedCard"),
-		zap.String("tenant", params.Tenant))
+		zap.Stringp("tenant", params.Tenant))
 	return c.doJSONRPCCall(ctx, "agent/getAuthenticatedExtendedCard", params)
 }
 
@@ -484,7 +484,7 @@ func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context, params types.
 func (c *Client) ResubscribeTask(ctx context.Context, params types.TaskResubscriptionParams) (<-chan types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("resubscribing to task",
 		zap.String("method", "tasks/resubscribe"),
-		zap.String("task_name", params.Name))
+		zap.Stringp("task_name", params.Name))
 
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",

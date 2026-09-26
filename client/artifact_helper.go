@@ -211,8 +211,8 @@ func (ah *ArtifactHelper) isPartOfKind(part types.Part, kind string) bool {
 // extractFileFromPart extracts file data from a FilePart
 func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData, error) {
 	fileData := FileData{
-		Name:     &filePart.Name,
-		MIMEType: &filePart.MediaType,
+		Name:     filePart.Name,
+		MIMEType: filePart.MediaType,
 	}
 
 	if filePart.FileWithBytes != nil && *filePart.FileWithBytes != "" {
