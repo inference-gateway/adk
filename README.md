@@ -215,7 +215,7 @@ func main() {
 	defer logger.Sync()
 
 	// Get port from environment or use default
-	port := os.Getenv("PORT")
+	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = "8080"
 	}
@@ -234,17 +234,22 @@ func main() {
 		},
 	}
 
-	// Build and start server with default handlers
+	// AgentCard.URL is a *string
+	agentURL := fmt.Sprintf("http://localhost:%s", port)
+
+	// Build and start server with default handlers. No agent is configured
+	// here, and the default streaming handler requires one, so the card
+	// advertises streaming: false - see examples/ai-powered/ to enable it.
 	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
 		WithDefaultTaskHandlers().
 		WithAgentCard(types.AgentCard{
 			Name:            cfg.AgentName,
 			Description:     cfg.AgentDescription,
 			Version:         cfg.AgentVersion,
-			URL:             fmt.Sprintf("http://localhost:%s", port),
+			URL:             &agentURL,
 			ProtocolVersion: "0.3.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &[]bool{true}[0],
+				Streaming:              &[]bool{false}[0],
 				PushNotifications:      &[]bool{false}[0],
 				StateTransitionHistory: &[]bool{false}[0],
 			},
@@ -313,6 +318,7 @@ Build A2A servers with custom configurations using a fluent interface. The build
 - `WithBackgroundTaskHandler()` - Custom background task handling
 - `WithStreamingTaskHandler()` - Custom streaming task handling
 - `WithAgentCardFromFile()` - Load agent metadata from JSON
+- `WithExtendedAgentCard()` - Serve a richer card to authenticated callers via `agent/getAuthenticatedExtendedCard`
 
 See [examples](./examples/) for complete usage patterns.
 
@@ -346,7 +352,7 @@ Client interface for communicating with A2A servers. Supports:
 - Agent card retrieval
 - Custom configuration
 
-See [client examples](./examples/client/) for usage patterns.
+See [`examples/protocol-methods/`](./examples/protocol-methods/) for usage patterns.
 
 #### A2A JSON-RPC Methods
 
@@ -453,8 +459,11 @@ if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotif
 }
 ```
 
-Server-side push notifications require `CapabilitiesConfig.PushNotifications`
-to be `true` on the server.
+Server-side push notifications require the agent card's
+`capabilities.pushNotifications` to be `true`: the builder only installs the
+webhook sender when the card passed to `WithAgentCard()` /
+`WithAgentCardFromFile()` declares it. `CAPABILITIES_PUSH_NOTIFICATIONS` has no
+effect on its own.
 
 ##### `tasks/resubscribe`
 
@@ -478,10 +487,24 @@ for evt := range events {
 ##### `agent/getAuthenticatedExtendedCard`
 
 The JSON-RPC counterpart to the public `.well-known/agent-card.json`
-endpoint. The response is the same `AgentCard` object, but the call passes
-through the JSON-RPC route and is therefore subject to the server's
-authentication middleware - useful when the extended card should only be
-visible to authenticated callers.
+endpoint. It returns a _separate_, richer card - the one registered with
+`WithExtendedAgentCard()` - through the JSON-RPC route, so it is subject to the
+server's authentication middleware and can stay invisible to anonymous callers.
+
+Unlike the other snippets in this section, this one does not work against a
+default ADK server. The server answers `-32004` (unsupported operation) when the
+public card does not set `supportsExtendedAgentCard: true`, and `-32007` when it
+does but no extended card is configured; the client surfaces both as errors, so
+the snippet below would exit via `log.Fatalf`. Register an extended card first:
+
+```go
+server.NewA2AServerBuilder(cfg, logger).
+    WithAgentCard(publicCard).
+    WithExtendedAgentCard(extendedCard). // also flips supportsExtendedAgentCard on the public card
+    Build()
+```
+
+See [`docs/authentication.md`](./docs/authentication.md) for the full setup.
 
 ```go
 resp, err := a2a.GetAuthenticatedExtendedCard(ctx, types.GetAuthenticatedExtendedCardParams{})
@@ -512,45 +535,54 @@ Configure your A2A agent using environment variables. All configuration is optio
 
 #### Core Server Configuration
 
-| Variable                           | Default                        | Description                                |
-| ---------------------------------- | ------------------------------ | ------------------------------------------ |
-| `PORT`                             | `8080`                         | Server port                                |
-| `DEBUG`                            | `false`                        | Enable debug logging                       |
-| `AGENT_URL`                        | `http://helloworld-agent:8080` | Agent URL for internal references          |
-| `STREAMING_STATUS_UPDATE_INTERVAL` | `1s`                           | How often to send streaming status updates |
+| Variable                           | Default | Description                                                                                            |
+| ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| `SERVER_PORT`                      | `8080`  | HTTP server listen port                                                                                |
+| `DEBUG`                            | `false` | Enable debug logging                                                                                   |
+| `AGENT_URL`                        | -       | Stored on the config but never read by the library; the advertised URL comes from the agent card `url` |
+| `STREAMING_STATUS_UPDATE_INTERVAL` | `1s`    | Unused - parsed but not read anywhere in `server/`                                                     |
 
 #### Agent & LLM Configuration
 
-| Variable                                      | Default | Description                                  |
-| --------------------------------------------- | ------- | -------------------------------------------- |
-| `AGENT_CLIENT_PROVIDER`                       | -       | LLM provider (openai, anthropic, groq, etc.) |
-| `AGENT_CLIENT_MODEL`                          | -       | Model name (e.g., `openai/gpt-4`)            |
-| `AGENT_CLIENT_BASE_URL`                       | -       | Custom LLM endpoint URL                      |
-| `AGENT_CLIENT_API_KEY`                        | -       | API key for LLM provider                     |
-| `AGENT_CLIENT_TIMEOUT`                        | `30s`   | Request timeout                              |
-| `AGENT_CLIENT_MAX_RETRIES`                    | `3`     | Maximum retry attempts                       |
-| `AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS` | `50`    | Max chat completion rounds                   |
-| `AGENT_CLIENT_MAX_TOKENS`                     | `4096`  | Maximum tokens per response                  |
-| `AGENT_CLIENT_TEMPERATURE`                    | `0.7`   | LLM temperature (0.0-2.0)                    |
-| `AGENT_CLIENT_SYSTEM_PROMPT`                  | -       | System prompt for the agent                  |
-| `AGENT_CLIENT_ENABLE_USAGE_METADATA`          | `true`  | Track token usage and execution metrics      |
+| Variable                                      | Default                 | Description                                  |
+| --------------------------------------------- | ----------------------- | -------------------------------------------- |
+| `AGENT_CLIENT_PROVIDER`                       | -                       | LLM provider (openai, anthropic, groq, etc.) |
+| `AGENT_CLIENT_MODEL`                          | -                       | Model name (e.g., `openai/gpt-4`)            |
+| `AGENT_CLIENT_BASE_URL`                       | -                       | Custom LLM endpoint URL                      |
+| `AGENT_CLIENT_API_KEY`                        | -                       | API key for LLM provider                     |
+| `AGENT_CLIENT_TIMEOUT`                        | `30s`                   | Request timeout                              |
+| `AGENT_CLIENT_MAX_RETRIES`                    | `3`                     | Maximum retry attempts                       |
+| `AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS` | `50`                    | Max chat completion rounds                   |
+| `AGENT_CLIENT_MAX_TOKENS`                     | `4096`                  | Maximum tokens per response                  |
+| `AGENT_CLIENT_TEMPERATURE`                    | `0.7`                   | LLM temperature (0.0-2.0)                    |
+| `AGENT_CLIENT_SYSTEM_PROMPT`                  | _(built-in, see below)_ | System prompt for the agent                  |
+| `AGENT_CLIENT_ENABLE_USAGE_METADATA`          | `true`                  | Track token usage and execution metrics      |
+
+`AGENT_CLIENT_SYSTEM_PROMPT` is not empty by default - when unset the agent uses
+the built-in prompt "You are a helpful AI assistant processing an A2A
+(Agent-to-Agent) task. Please provide helpful and accurate responses."
 
 #### Agent Capabilities
 
 | Variable                                | Default | Description                  |
 | --------------------------------------- | ------- | ---------------------------- |
 | `CAPABILITIES_STREAMING`                | `true`  | Enable streaming responses   |
-| `CAPABILITIES_PUSH_NOTIFICATIONS`       | `false` | Enable webhook notifications |
+| `CAPABILITIES_PUSH_NOTIFICATIONS`       | `true`  | Enable webhook notifications |
 | `CAPABILITIES_STATE_TRANSITION_HISTORY` | `false` | Track state changes          |
+
+The server does not read `CAPABILITIES_*` itself. The capabilities it advertises
+and acts on come from the agent card passed to `WithAgentCard()` /
+`WithAgentCardFromFile()`, so these variables only matter when your application
+copies them into the card, as the examples do.
 
 #### Authentication (Optional)
 
-| Variable          | Default | Description                                                                                    |
-| ----------------- | ------- | ---------------------------------------------------------------------------------------------- |
-| `AUTH_ENABLED`    | `false` | Enable OIDC authentication                                                                     |
-| `AUTH_ISSUER_URL` | -       | OIDC issuer URL; discovery runs at startup against `{issuer}/.well-known/openid-configuration` |
-| `AUTH_CLIENT_ID`  | -       | OIDC client ID, used as the expected token audience when `AUTH_AUDIENCE` is empty              |
-| `AUTH_AUDIENCE`   | -       | Comma-separated accepted `aud` values, for example an API identifier                           |
+| Variable          | Default                                               | Description                                                                                                                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_ENABLED`    | `false`                                               | Enable OIDC authentication                                                                                                                                                                                                                                  |
+| `AUTH_ISSUER_URL` | `http://keycloak:8080/realms/inference-gateway-realm` | OIDC issuer URL; discovery runs at startup against `{issuer}/.well-known/openid-configuration`. Because a default is set, leaving it unset with `AUTH_ENABLED=true` runs discovery against this Keycloak URL rather than failing - always set it explicitly |
+| `AUTH_CLIENT_ID`  | `inference-gateway-client`                            | OIDC client ID, used as the expected token audience when `AUTH_AUDIENCE` is empty                                                                                                                                                                           |
+| `AUTH_AUDIENCE`   | -                                                     | Comma-separated accepted `aud` values, for example an API identifier                                                                                                                                                                                        |
 
 See [docs/authentication.md](docs/authentication.md) for the full card-driven auth flow: discovery, out-of-band credentials, the authenticated extended card, and authorization via callbacks.
 
@@ -564,12 +596,12 @@ See [docs/authentication.md](docs/authentication.md) for the full card-driven au
 
 #### Storage Configuration (Optional)
 
-| Variable                 | Default  | Description                                      |
-| ------------------------ | -------- | ------------------------------------------------ |
-| `QUEUE_PROVIDER`         | `memory` | Storage backend: `memory` or `redis`             |
-| `QUEUE_URL`              | -        | Redis connection URL (required when using Redis) |
-| `QUEUE_MAX_SIZE`         | `100`    | Maximum queue size                               |
-| `QUEUE_CLEANUP_INTERVAL` | `120s`   | How often to clean up completed tasks            |
+| Variable                 | Default  | Description                                        |
+| ------------------------ | -------- | -------------------------------------------------- |
+| `QUEUE_PROVIDER`         | `memory` | Storage backend: `memory` or `redis`               |
+| `QUEUE_URL`              | -        | Redis connection URL (required when using Redis)   |
+| `QUEUE_MAX_SIZE`         | `100`    | Unused - parsed but not read anywhere in `server/` |
+| `QUEUE_CLEANUP_INTERVAL` | `120s`   | How often to clean up completed tasks              |
 
 **Storage Backends:**
 
@@ -602,22 +634,22 @@ Connect the agent to [MCP](https://modelcontextprotocol.io) servers and expose t
 
 Enable file artifacts support for downloadable files generated by your agent:
 
-| Variable                               | Default            | Description                              |
-| -------------------------------------- | ------------------ | ---------------------------------------- |
-| `ARTIFACTS_ENABLED`                    | `false`            | Enable artifacts support                 |
-| `ARTIFACTS_SERVER_HOST`                | `localhost`        | Artifacts server host                    |
-| `ARTIFACTS_SERVER_PORT`                | `8081`             | Artifacts server port                    |
-| `ARTIFACTS_STORAGE_PROVIDER`           | `filesystem`       | Storage backend: `filesystem` or `minio` |
-| `ARTIFACTS_STORAGE_BASE_PATH`          | `./artifacts`      | Base path for filesystem storage         |
-| `ARTIFACTS_STORAGE_BASE_URL`           | _(auto-generated)_ | Override base URL for direct downloads   |
-| `ARTIFACTS_STORAGE_ENDPOINT`           | -                  | MinIO/S3 endpoint URL                    |
-| `ARTIFACTS_STORAGE_ACCESS_KEY`         | -                  | MinIO/S3 access key                      |
-| `ARTIFACTS_STORAGE_SECRET_KEY`         | -                  | MinIO/S3 secret key                      |
-| `ARTIFACTS_STORAGE_BUCKET_NAME`        | `artifacts`        | MinIO/S3 bucket name                     |
-| `ARTIFACTS_STORAGE_USE_SSL`            | `true`             | Use SSL for MinIO/S3 connections         |
-| `ARTIFACTS_RETENTION_MAX_ARTIFACTS`    | `5`                | Max artifacts per task (0 = unlimited)   |
-| `ARTIFACTS_RETENTION_MAX_AGE`          | `7d`               | Max artifact age (0 = no age limit)      |
-| `ARTIFACTS_RETENTION_CLEANUP_INTERVAL` | `24h`              | Cleanup frequency (0 = manual only)      |
+| Variable                               | Default            | Description                                                                                           |
+| -------------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------- |
+| `ARTIFACTS_ENABLED`                    | `false`            | Enable artifacts support                                                                              |
+| `ARTIFACTS_SERVER_HOST`                | `localhost`        | Artifacts server host                                                                                 |
+| `ARTIFACTS_SERVER_PORT`                | `8081`             | Artifacts server port                                                                                 |
+| `ARTIFACTS_STORAGE_PROVIDER`           | `filesystem`       | Storage backend: `filesystem` or `minio`                                                              |
+| `ARTIFACTS_STORAGE_BASE_PATH`          | `./artifacts`      | Base path for filesystem storage                                                                      |
+| `ARTIFACTS_STORAGE_BASE_URL`           | _(auto-generated)_ | Override base URL for direct downloads                                                                |
+| `ARTIFACTS_STORAGE_ENDPOINT`           | -                  | MinIO/S3 endpoint URL                                                                                 |
+| `ARTIFACTS_STORAGE_ACCESS_KEY`         | -                  | MinIO/S3 access key                                                                                   |
+| `ARTIFACTS_STORAGE_SECRET_KEY`         | -                  | MinIO/S3 secret key                                                                                   |
+| `ARTIFACTS_STORAGE_BUCKET_NAME`        | `artifacts`        | MinIO/S3 bucket name                                                                                  |
+| `ARTIFACTS_STORAGE_USE_SSL`            | `true`             | Use SSL for MinIO/S3 connections                                                                      |
+| `ARTIFACTS_RETENTION_MAX_ARTIFACTS`    | `5`                | Max artifacts per task (0 = unlimited)                                                                |
+| `ARTIFACTS_RETENTION_MAX_AGE`          | `168h`             | Max artifact age, as a Go duration (0 = no age limit). `d` is not a valid unit - use `168h`, not `7d` |
+| `ARTIFACTS_RETENTION_CLEANUP_INTERVAL` | `24h`              | Cleanup frequency (0 = manual only)                                                                   |
 
 **Storage Backends:**
 
