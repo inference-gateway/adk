@@ -46,7 +46,9 @@ export OTEL_TRACES_EXPORTER=otlp             # otlp | none
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 ```
 
-> The variable names below are the library's own (`TELEMETRY_*`). Consumers that embed the ADK config under an `A2A_` prefix will see them as `A2A_TELEMETRY_*`. The `OTEL_*` variables follow the OpenTelemetry specification and are read without a prefix.
+> **Prefixes.** The variable names in this document are the library's own. Consumers that embed the ADK config under a prefix - as every example does, with `A2A serverConfig.Config` tagged `env:",prefix=A2A_"` - see them as `A2A_TELEMETRY_*`.
+>
+> The same applies to the `OTEL_*` variables. `OTelConfig` is an untagged nested struct of `config.Config`, so the parent prefix is applied to its fields too: `OTEL_METRICS_EXPORTER`, `OTEL_TRACES_EXPORTER`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_PROMETHEUS_HOST` and `OTEL_EXPORTER_PROMETHEUS_PORT` are read under the standard, unprefixed names **only when `config.Config` is loaded at the process root**. Under an `A2A_` prefix you must set `A2A_OTEL_*` - the unprefixed names are ignored, so `OTEL_TRACES_EXPORTER=none` silently fails to turn off trace export while `A2A_OTEL_TRACES_EXPORTER=none` works.
 
 ## Configuration
 
@@ -62,6 +64,8 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 | `OTEL_EXPORTER_PROMETHEUS_PORT` | `9090`                  | Port for the Prometheus pull endpoint                          |
 
 The OTLP path (`/v1/traces`, `/v1/metrics`) is appended to `OTEL_EXPORTER_OTLP_ENDPOINT` automatically. When using `grpc`, point the endpoint at the collector's gRPC receiver (typically port `4317`).
+
+These names take the config prefix when the ADK config is nested - see the note under [Enabling Telemetry](#enabling-telemetry).
 
 ### Deprecated TELEMETRY Aliases
 
@@ -98,6 +102,12 @@ For each setting, the standard `OTEL_*` variable wins when set; otherwise the de
 - **OTLP endpoint** - `OTEL_EXPORTER_OTLP_ENDPOINT`, else `TELEMETRY_TRACE_ENDPOINT`.
 - **OTLP protocol** - `OTEL_EXPORTER_OTLP_PROTOCOL`, else `http/protobuf`.
 - **Prometheus host/port** - `OTEL_EXPORTER_PROMETHEUS_HOST`/`PORT`, else `TELEMETRY_METRICS_HOST`/`PORT`.
+
+#### ADK-resolved settings vs. SDK-native lookups
+
+The ADK resolves the endpoint itself and passes it to the OTLP exporters as an explicit option, from the (possibly prefixed) `OTEL_EXPORTER_OTLP_ENDPOINT` or else `TELEMETRY_TRACE_ENDPOINT`, defaulting to `http://localhost:4318`. An explicit option beats the SDK's own environment lookup, so in a prefixed deployment an unprefixed `OTEL_EXPORTER_OTLP_ENDPOINT` does **not** change the export target - set `A2A_OTEL_EXPORTER_OTLP_ENDPOINT` (or `A2A_TELEMETRY_TRACE_ENDPOINT`) instead.
+
+SDK-native variables the ADK does not set explicitly are still read unprefixed by the OpenTelemetry SDK. For example, when `TELEMETRY_TRACE_HEADERS` is empty the ADK passes no headers option, so the SDK's own unprefixed `OTEL_EXPORTER_OTLP_HEADERS` applies.
 
 ## Metrics
 
