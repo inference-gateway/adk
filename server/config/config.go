@@ -113,7 +113,7 @@ type QueueConfig struct {
 	Provider        string            `env:"PROVIDER,default=memory" description:"Message broker provider (memory, redis, sqs, pubsub)"`
 	URL             string            `env:"URL" description:"Connection URL for the message broker"`
 	MaxSize         int               `env:"MAX_SIZE,default=100"`
-	CleanupInterval time.Duration     `env:"CLEANUP_INTERVAL,default=120s"`
+	CleanupInterval time.Duration     `env:"CLEANUP_INTERVAL,default=120s" description:"Deprecated and unused, finished task cleanup is governed by TASK_RETENTION_CLEANUP_INTERVAL"`
 	Credentials     map[string]string `env:"CREDENTIALS" description:"Broker-specific credentials"`
 	Options         map[string]string `env:"OPTIONS" description:"Broker-specific configuration options"`
 }

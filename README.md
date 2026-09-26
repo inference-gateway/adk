@@ -601,7 +601,7 @@ See [docs/authentication.md](docs/authentication.md) for the full card-driven au
 | `QUEUE_PROVIDER`         | `memory` | Storage backend: `memory` or `redis`               |
 | `QUEUE_URL`              | -        | Redis connection URL (required when using Redis)   |
 | `QUEUE_MAX_SIZE`         | `100`    | Unused - parsed but not read anywhere in `server/` |
-| `QUEUE_CLEANUP_INTERVAL` | `120s`   | How often to clean up completed tasks              |
+| `QUEUE_CLEANUP_INTERVAL` | `120s`   | Deprecated, unused (see `TASK_RETENTION_*`)        |
 
 **Storage Backends:**
 
