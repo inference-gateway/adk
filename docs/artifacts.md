@@ -28,8 +28,6 @@ This document explains how to use artifacts in the A2A Agent Development Kit (AD
   - [Handling Streaming Artifact Updates](#handling-streaming-artifact-updates)
 - [Storage Layout](#storage-layout)
 - [Examples](#examples)
-  - [Complete Server Example](#complete-server-example)
-  - [Complete Client Example](#complete-client-example)
 - [Best Practices](#best-practices)
   - [Server-Side](#server-side)
   - [Client-Side](#client-side)
@@ -55,62 +53,87 @@ type Artifact struct {
     Name        *string        // Optional: Human-readable name
     Description *string        // Optional: Description of the artifact
     Extensions  []string       // Optional: Protocol extension URIs
-    Metadata    map[string]any // Optional: Extension-specific metadata
+    Metadata    *types.Struct  // Optional: Extension-specific metadata (*map[string]any)
     Parts       []Part         // Required: Array of content parts
 }
 ```
 
 ### Content Parts
 
-Artifacts contain one or more parts of different types:
+`types.Part` is a single struct with optional fields - a part carries text, file or data content depending on which field is set:
 
-1. **TextPart**: Plain text content
-2. **FilePart**: File data (bytes or URI reference)
-3. **DataPart**: Structured JSON data
+```go
+type Part struct {
+    Text     *string   // Plain text content
+    File     *FilePart // File data (bytes or URI reference)
+    Data     *DataPart // Structured JSON data
+    Metadata *Struct   // Optional part metadata
+}
+```
+
+Build parts with the helpers in `types/part_marshaling.go`: `types.CreateTextPart`, `types.CreateDataPart` and `types.CreateFilePart`.
 
 ## Server-Side Usage
+
+Server-side artifact operations live on the `server.ArtifactService` interface. It is created from the artifacts configuration and owns its storage provider:
+
+```go
+import (
+    "github.com/inference-gateway/adk/server"
+    "github.com/inference-gateway/adk/server/config"
+)
+
+artifactService, err := server.NewArtifactService(&cfg.ArtifactsConfig, logger)
+if err != nil {
+    return fmt.Errorf("failed to create artifact service: %w", err)
+}
+defer artifactService.Close()
+```
+
+Pass it to the server (and the artifacts server) with `WithArtifactService(artifactService)`.
 
 ### Basic Artifact Creation
 
 ```go
-import "github.com/inference-gateway/adk/server"
-
-// Create artifact helper
-artifactHelper := server.NewArtifactHelper()
-
 // Create a text artifact
-textArtifact := artifactHelper.CreateTextArtifact(
+textArtifact := artifactService.CreateTextArtifact(
     "Analysis Report",                    // name
     "Detailed analysis of the request",   // description
     "This is the analysis content...",    // text content
 )
 
 // Add to task
-artifactHelper.AddArtifactToTask(task, textArtifact)
+artifactService.AddArtifactToTask(task, textArtifact)
 ```
 
 ### File Artifacts
 
 ```go
-// Create file artifact from bytes
+// Create file artifact from bytes - the content is stored via the configured
+// storage provider and the returned artifact references it by URI
 data := []byte("Hello, World!")
-mimeType := artifactHelper.GetMimeTypeFromExtension("hello.txt")
+mimeType := artifactService.GetMimeTypeFromExtension("hello.txt")
 
-fileArtifact := artifactHelper.CreateFileArtifactFromBytes(
+fileArtifact, err := artifactService.CreateFileArtifact(
+    task.ContextID,
     "Generated File",
     "A simple text file",
     "hello.txt",
     data,
     mimeType,
 )
+if err != nil {
+    return fmt.Errorf("failed to create file artifact: %w", err)
+}
 
-// Create file artifact from URI
-uriArtifact := artifactHelper.CreateFileArtifactFromURI(
+// Create file artifact from an existing URI (nothing is stored)
+htmlMimeType := "text/html"
+uriArtifact := artifactService.CreateFileArtifactFromURI(
     "External Resource",
     "Link to documentation",
     "docs.html",
     "https://example.com/docs.html",
-    new("text/html"),
+    &htmlMimeType,
 )
 ```
 
@@ -127,7 +150,7 @@ analysisData := map[string]any{
     "results": []string{"item1", "item2", "item3"},
 }
 
-dataArtifact := artifactHelper.CreateDataArtifact(
+dataArtifact := artifactService.CreateDataArtifact(
     "Analysis Results",
     "Structured analysis data",
     analysisData,
@@ -139,20 +162,14 @@ dataArtifact := artifactHelper.CreateDataArtifact(
 ```go
 // Combine different content types
 parts := []types.Part{
-    types.TextPart{
-        Kind: "text",
-        Text: "Summary of the analysis",
-    },
-    types.DataPart{
-        Kind: "data",
-        Data: map[string]any{
-            "confidence": 0.95,
-            "category": "positive",
-        },
-    },
+    types.CreateTextPart("Summary of the analysis"),
+    types.CreateDataPart(map[string]any{
+        "confidence": 0.95,
+        "category":   "positive",
+    }),
 }
 
-multiArtifact := artifactHelper.CreateMultiPartArtifact(
+multiArtifact := artifactService.CreateMultiPartArtifact(
     "Complete Analysis",
     "Analysis with both summary and data",
     parts,
@@ -179,10 +196,13 @@ agentConfig := &config.AgentConfig{
 }
 
 // Create agent with toolbox configured through AgentConfig
-agent := server.NewAgentBuilder(logger).
+agent, err := server.NewAgentBuilder(logger).
     WithConfig(agentConfig).
     WithDefaultToolBox().
     Build()
+if err != nil {
+    return fmt.Errorf("failed to build agent: %w", err)
+}
 ```
 
 #### How the CreateArtifact Tool Works
@@ -246,7 +266,7 @@ The URL path is grouped by the A2A context (session) ID - see [Storage Layout](#
 For the CreateArtifact tool to work properly, you need:
 
 1. **Artifact Storage**: Configure artifact storage (filesystem, MinIO, S3, etc.)
-2. **Context Setup**: The tool requires the current `task` and `artifactHelper` in the execution context via `TaskContextKey` and `ArtifactHelperContextKey`
+2. **Context Setup**: The tool reads the current task from `server.TaskContextKey` and an `server.ArtifactService` from `server.ArtifactServiceContextKey` in the execution context
 
 This is automatically handled when using the standard ADK server setup with artifact storage enabled.
 
@@ -254,21 +274,21 @@ This is automatically handled when using the standard ADK server setup with arti
 
 ```go
 type MyTaskHandler struct {
-    logger         *zap.Logger
-    artifactHelper *server.ArtifactHelper
+    logger          *zap.Logger
+    artifactService server.ArtifactService
 }
 
 func (h *MyTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
     // Process the task...
 
     // Create artifacts based on processing results
-    resultArtifact := h.artifactHelper.CreateTextArtifact(
+    resultArtifact := h.artifactService.CreateTextArtifact(
         "Processing Result",
         "Result of task processing",
         "Task completed with result: success",
     )
 
-    h.artifactHelper.AddArtifactToTask(task, resultArtifact)
+    h.artifactService.AddArtifactToTask(task, resultArtifact)
 
     // Mark task as completed
     task.Status.State = types.TaskStateCompleted
@@ -279,42 +299,58 @@ func (h *MyTaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 
 ### Streaming Artifacts
 
-For real-time streaming scenarios, you can send artifact updates:
+`StreamableTaskHandler.HandleStreamingTask` returns a channel of CloudEvents (`<-chan cloudevents.Event`). Attach the artifact to the task as you produce it - the task snapshot streamed to the client carries its `artifacts` - and emit CloudEvents for progress and state changes:
 
 ```go
-// In a StreamableTaskHandler
-func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan server.StreamEvent, error) {
-    eventsChan := make(chan server.StreamEvent, 100)
+import (
+    cloudevents "github.com/cloudevents/sdk-go/v2"
+    "github.com/inference-gateway/adk/types"
+)
+
+func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
+    eventsChan := make(chan cloudevents.Event, 100)
 
     go func() {
         defer close(eventsChan)
 
-        // Create artifact during processing
-        artifact := h.artifactHelper.CreateTextArtifact(
+        // Create artifact during processing and attach it to the task
+        artifact := h.artifactService.CreateTextArtifact(
             "Streaming Result",
             "Partial result from streaming",
             "Current progress: 50%",
         )
+        h.artifactService.AddArtifactToTask(task, artifact)
 
-        // Send artifact update event
-        artifactEvent := h.artifactHelper.CreateTaskArtifactUpdateEvent(
-            task.ID,
-            task.ContextID,
-            artifact,
-            new(false), // append
-            new(false), // lastChunk
-        )
-
-        eventsChan <- &server.ArtifactUpdateStreamEvent{
-            Event: artifactEvent,
+        // Emit a delta so the client sees progress along with the task artifacts
+        deltaEvent := cloudevents.NewEvent()
+        deltaEvent.SetType(types.EventDelta)
+        if err := deltaEvent.SetData(cloudevents.ApplicationJSON, types.Message{
+            MessageID: uuid.New().String(),
+            ContextID: &task.ContextID,
+            TaskID:    &task.ID,
+            Role:      types.RoleAgent,
+            Parts:     []types.Part{types.CreateTextPart("artifact ready for download")},
+        }); err != nil {
+            return
         }
+        eventsChan <- deltaEvent
 
-        // Continue processing...
+        // Mark the task completed
+        completedEvent := cloudevents.NewEvent()
+        completedEvent.SetType(types.EventTaskStatusChanged)
+        if err := completedEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
+            State: types.TaskStateCompleted,
+        }); err != nil {
+            return
+        }
+        eventsChan <- completedEvent
     }()
 
     return eventsChan, nil
 }
 ```
+
+If you drive your own transport and need a protocol `TaskArtifactUpdateEvent`, build one with `artifactService.CreateTaskArtifactUpdateEvent(task.ID, task.ContextID, artifact, appendFlag, lastChunkFlag)`.
 
 ## Client-Side Usage
 
@@ -418,9 +454,9 @@ The ADK provides built-in utilities to download artifact files to disk:
 helper := a2aClient.GetArtifactHelper()
 
 downloadConfig := &client.DownloadConfig{
-    OutputDir:            "downloads",      // Directory to save files
-    OverwriteExisting:    true,            // Allow overwriting existing files
-    OrganizeByArtifactID: true,            // Create subdirectories by artifact ID (default: true)
+    OutputDir:            "downloads", // Directory to save files
+    OverwriteExisting:    true,        // Allow overwriting existing files
+    OrganizeByArtifactID: true,        // Create subdirectories by artifact ID
 }
 
 results, err := helper.DownloadAllArtifacts(ctx, task, downloadConfig)
@@ -452,12 +488,14 @@ type DownloadConfig struct {
     // OverwriteExisting: Allow overwriting existing files (default: false)
     OverwriteExisting bool
 
-    // OrganizeByArtifactID: Create subdirectories by artifact ID (default: true)
+    // OrganizeByArtifactID: Create subdirectories by artifact ID
     // When enabled, files are saved to: OutputDir/{artifact-id}/filename
     // This prevents collisions when multiple artifacts have the same filename
     OrganizeByArtifactID bool
 }
 ```
+
+> Note on defaults: a `DownloadConfig` you build yourself starts with `OrganizeByArtifactID: false` unless you set it. Only `DownloadAllArtifacts` called with a `nil` config falls back to `OrganizeByArtifactID: true`; `DownloadArtifact` and `DownloadFileData` with a `nil` config leave it `false`. Set it explicitly if you want per-artifact subdirectories.
 
 #### Download Individual Artifacts
 
@@ -498,7 +536,7 @@ for _, file := range files {
 
 #### File Organization
 
-When `OrganizeByArtifactID` is enabled (default), files are organized as:
+When `OrganizeByArtifactID` is enabled, files are organized as:
 
 ```
 downloads/
@@ -577,32 +615,31 @@ for _, result := range results {
 
 ### Handling Streaming Artifact Updates
 
-```go
-// Handle streaming responses
-eventChan := make(chan any, 100)
+`SendTaskStreaming` returns a channel of JSON-RPC responses, each carrying the current task snapshot - including its artifacts:
 
-err := a2aClient.SendTaskStreaming(ctx, params, eventChan)
+```go
+responses, err := a2aClient.SendTaskStreaming(ctx, params)
 if err != nil {
     return err
 }
 
-for event := range eventChan {
-    // Check for artifact updates
-    if artifactEvent, isArtifact := artifactHelper.ExtractArtifactUpdateFromStreamEvent(event); isArtifact {
-        fmt.Printf("Received artifact update: %s\n", artifactEvent.Artifact.ArtifactID)
+for response := range responses {
+    task, err := artifactHelper.ExtractTaskFromResponse(&response)
+    if err != nil {
+        continue
+    }
 
-        // Process the artifact
-        if artifactEvent.Artifact.Name != nil {
-            fmt.Printf("Artifact name: %s\n", *artifactEvent.Artifact.Name)
+    for _, artifact := range artifactHelper.ExtractArtifactsFromTask(task) {
+        name := artifact.ArtifactID
+        if artifact.Name != nil {
+            name = *artifact.Name
         }
-
-        // Check if this is the last chunk
-        if artifactEvent.LastChunk != nil && *artifactEvent.LastChunk {
-            fmt.Println("This is the final artifact update")
-        }
+        fmt.Printf("Artifact available: %s\n", name)
     }
 }
 ```
+
+If your transport delivers raw `artifact-update` events (for example a custom SSE consumer), `artifactHelper.ExtractArtifactUpdateFromStreamEvent(eventData)` converts a `types.TaskArtifactUpdateEvent` or its decoded `map[string]any` form into a typed event.
 
 ## Storage Layout
 
@@ -632,30 +669,19 @@ The `contextId` is taken from the task the artifact is created for (`task.Contex
 
 ## Examples
 
-### Complete Server Example
+Each example below is a self-contained `server/` + `client/` module pair with its own `docker-compose.yaml`:
 
-See `examples/server/cmd/artifacts/main.go` for a complete server implementation that demonstrates:
-
-- Creating various types of artifacts
-- Adding artifacts to tasks during processing
-- Implementing a custom task handler with artifact support
-- Proper artifact validation and error handling
-
-### Complete Client Example
-
-See `examples/client/cmd/artifacts/main.go` for a complete client implementation that demonstrates:
-
-- Sending tasks and retrieving responses with artifacts
-- Extracting different types of content from artifacts
-- Searching and filtering artifacts
-- Handling file data and structured data
+- `examples/artifacts-filesystem/` - custom task handler creating file artifacts backed by filesystem storage, plus a client that downloads them
+- `examples/artifacts-minio/` - the same flow with MinIO (S3) storage
+- `examples/artifacts-autonomous-tool/` - an LLM-powered agent that creates artifacts on its own via the built-in `create_artifact` tool
+- `examples/artifacts-with-default-handlers/` - artifacts with the default task handlers, no custom handler code
 
 ## Best Practices
 
 ### Server-Side
 
-1. **Validate Artifacts**: Use `artifactHelper.ValidateArtifact()` to ensure artifacts conform to the specification
-2. **Use Appropriate MIME Types**: Use `artifactHelper.GetMimeTypeFromExtension()` for file artifacts
+1. **Validate Artifacts**: Use `artifactService.ValidateArtifact()` to ensure artifacts conform to the specification
+2. **Use Appropriate MIME Types**: Use `artifactService.GetMimeTypeFromExtension()` for file artifacts
 3. **Limit Artifact Size**: Be mindful of artifact size, especially for embedded files
 4. **Meaningful Names**: Provide descriptive names and descriptions for artifacts
 5. **Structured Data**: Use consistent data structures for DataPart content
@@ -667,7 +693,7 @@ See `examples/client/cmd/artifacts/main.go` for a complete client implementation
 3. **Memory Management**: Large file artifacts can consume significant memory
 4. **URI Validation**: Validate URIs before attempting to fetch external resources
 5. **Type Checking**: Use appropriate type checking when working with extracted data
-6. **File Organization**: Use `OrganizeByArtifactID: true` (default) to prevent filename collisions
+6. **File Organization**: Set `OrganizeByArtifactID: true` explicitly to prevent filename collisions
 7. **Download Results**: Check individual `DownloadResult.Error` fields for per-file error handling
 8. **Custom HTTP Client**: Provide a custom `HTTPClient` with timeouts and retry logic for URI downloads
 
@@ -677,7 +703,7 @@ Common error scenarios and how to handle them:
 
 ```go
 // Server-side validation
-if err := artifactHelper.ValidateArtifact(artifact); err != nil {
+if err := artifactService.ValidateArtifact(artifact); err != nil {
     return fmt.Errorf("invalid artifact: %w", err)
 }
 
