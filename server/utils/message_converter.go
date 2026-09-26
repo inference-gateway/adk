@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	zap "go.uber.org/zap"
@@ -66,20 +67,44 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 	var toolCallId *string
 	var toolCalls *[]sdk.ChatCompletionMessageToolCall
 	var reasoningContent *string
+	var contentParts []sdk.ContentPart
+	imageParts := 0
+
+	appendTextPart := func(text string) {
+		if text == "" {
+			return
+		}
+		part, err := sdk.NewTextContentPart(text)
+		if err != nil {
+			c.logger.Warn("failed to build text content part",
+				zap.String("message_id", msg.MessageID),
+				zap.Error(err))
+			return
+		}
+		contentParts = append(contentParts, part)
+	}
 
 	for _, part := range msg.Parts {
-		if part.Text != nil {
+		switch {
+		case part.Text != nil:
 			content += *part.Text
-		} else if part.Data != nil {
+			appendTextPart(*part.Text)
+		case part.Data != nil:
+			before := len(content)
 			if err := c.processDataPart(part.Data.Data, string(role), &content, &toolCallId, &toolCalls, &reasoningContent); err != nil {
 				c.logger.Warn("failed to process DataPart",
 					zap.String("message_id", msg.MessageID),
 					zap.Error(err))
 			}
-		} else if part.File != nil {
-			c.logger.Debug("file part detected in message",
-				zap.String("message_id", msg.MessageID))
-		} else {
+			appendTextPart(content[before:])
+		case part.File != nil:
+			imagePart, ok := c.imageContentPart(msg.MessageID, role, part.File)
+			if !ok {
+				continue
+			}
+			contentParts = append(contentParts, imagePart)
+			imageParts++
+		default:
 			c.logger.Warn("empty part detected",
 				zap.String("message_id", msg.MessageID))
 		}
@@ -111,11 +136,52 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 		ReasoningContent: reasoningContent,
 	}
 
+	if imageParts > 0 {
+		if err := sdkMsg.Content.FromMessageContent1(contentParts); err != nil {
+			return sdk.Message{}, fmt.Errorf("failed to set multimodal message content: %w", err)
+		}
+		return sdkMsg, nil
+	}
+
 	if err := sdkMsg.Content.FromMessageContent0(content); err != nil {
 		return sdk.Message{}, fmt.Errorf("failed to set message content: %w", err)
 	}
 
 	return sdkMsg, nil
+}
+
+// imageContentPart converts an image FilePart of a user message into an SDK
+// image_url content part. Non-image files, and files on agent messages, are
+// skipped because OpenAI-compatible assistant/tool messages cannot carry images.
+func (c *messageConverter) imageContentPart(messageID string, role types.Role, file *types.FilePart) (sdk.ContentPart, bool) {
+	if role == types.RoleAgent || !strings.HasPrefix(file.MediaType, "image/") {
+		c.logger.Debug("file part detected in message",
+			zap.String("message_id", messageID),
+			zap.String("media_type", file.MediaType))
+		return sdk.ContentPart{}, false
+	}
+
+	var url string
+	switch {
+	case file.FileWithBytes != nil:
+		url = fmt.Sprintf("data:%s;base64,%s", file.MediaType, *file.FileWithBytes)
+	case file.FileWithURI != nil:
+		url = *file.FileWithURI
+	default:
+		c.logger.Warn("image file part has neither bytes nor uri",
+			zap.String("message_id", messageID))
+		return sdk.ContentPart{}, false
+	}
+
+	part, err := sdk.NewImageContentPart(url, nil)
+	if err != nil {
+		c.logger.Warn("failed to build image content part",
+			zap.String("message_id", messageID),
+			zap.Error(err))
+		return sdk.ContentPart{}, false
+	}
+
+	return part, true
 }
 
 // processDataPart handles the extraction of data from data parts for both typed and map formats

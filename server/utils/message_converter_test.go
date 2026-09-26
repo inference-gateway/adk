@@ -186,6 +186,110 @@ func TestMessageConverter_ConvertToSDK(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "convert user message with base64 image file part",
+			input: []types.Message{
+				{
+					MessageID: "test-msg-img-1",
+					Role:      types.RoleUser,
+					Parts: []types.Part{
+						types.CreateFilePart("captcha.png", "image/png", new("aW1hZ2U="), nil),
+					},
+				},
+			},
+			expectedOutput: []sdk.Message{
+				func() sdk.Message {
+					image, _ := sdk.NewImageContentPart("data:image/png;base64,aW1hZ2U=", nil)
+					msg, _ := sdk.NewImageMessage(sdk.User, []sdk.ContentPart{image})
+					return msg
+				}(),
+			},
+			expectError: false,
+		},
+		{
+			name: "convert user message with image uri file part",
+			input: []types.Message{
+				{
+					MessageID: "test-msg-img-2",
+					Role:      types.RoleUser,
+					Parts: []types.Part{
+						types.CreateFilePart("shot.jpg", "image/jpeg", nil, new("https://example.com/shot.jpg")),
+					},
+				},
+			},
+			expectedOutput: []sdk.Message{
+				func() sdk.Message {
+					image, _ := sdk.NewImageContentPart("https://example.com/shot.jpg", nil)
+					msg, _ := sdk.NewImageMessage(sdk.User, []sdk.ContentPart{image})
+					return msg
+				}(),
+			},
+			expectError: false,
+		},
+		{
+			name: "convert user message preserving text and image order",
+			input: []types.Message{
+				{
+					MessageID: "test-msg-img-3",
+					Role:      types.RoleUser,
+					Parts: []types.Part{
+						types.CreateTextPart("solve this: "),
+						types.CreateFilePart("captcha.png", "image/png", new("aW1hZ2U="), nil),
+						types.CreateTextPart(" thanks"),
+					},
+				},
+			},
+			expectedOutput: []sdk.Message{
+				func() sdk.Message {
+					first, _ := sdk.NewTextContentPart("solve this: ")
+					image, _ := sdk.NewImageContentPart("data:image/png;base64,aW1hZ2U=", nil)
+					last, _ := sdk.NewTextContentPart(" thanks")
+					msg, _ := sdk.NewImageMessage(sdk.User, []sdk.ContentPart{first, image, last})
+					return msg
+				}(),
+			},
+			expectError: false,
+		},
+		{
+			name: "non-image file part is still skipped",
+			input: []types.Message{
+				{
+					MessageID: "test-msg-img-4",
+					Role:      types.RoleUser,
+					Parts: []types.Part{
+						types.CreateTextPart("read this: "),
+						types.CreateFilePart("doc.pdf", "application/pdf", new("cGRm"), nil),
+					},
+				},
+			},
+			expectedOutput: []sdk.Message{
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.User, "read this: ")
+					return msg
+				}(),
+			},
+			expectError: false,
+		},
+		{
+			name: "agent message with image file part is ignored",
+			input: []types.Message{
+				{
+					MessageID: "test-msg-img-5",
+					Role:      types.RoleAgent,
+					Parts: []types.Part{
+						types.CreateTextPart("here is the screenshot"),
+						types.CreateFilePart("shot.png", "image/png", new("aW1hZ2U="), nil),
+					},
+				},
+			},
+			expectedOutput: []sdk.Message{
+				func() sdk.Message {
+					msg, _ := sdk.NewTextMessage(sdk.Assistant, "here is the screenshot")
+					return msg
+				}(),
+			},
+			expectError: false,
+		},
+		{
 			name: "convert multiple messages",
 			input: []types.Message{
 				{
