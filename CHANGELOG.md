@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.29.0](https://github.com/inference-gateway/adk/compare/v0.28.0...v0.29.0) (2026-09-26)
+
+### ✨ Features
+
+* forward image file parts to vision models ([#325](https://github.com/inference-gateway/adk/issues/325)) ([05a3d38](https://github.com/inference-gateway/adk/commit/05a3d38e7e2651317ebe5cd336c4a1f5a6d2b69a))
+
+### 🐛 Bug Fixes
+
+* apply TASK_RETENTION_* instead of purging finished tasks ([#323](https://github.com/inference-gateway/adk/issues/323)) ([aa580a2](https://github.com/inference-gateway/adk/commit/aa580a20ccc9d7f23503d28b4c7db699cc50cc75))
+
+### 👷 CI
+
+* **claude:** centralize claude.yml via reusable workflow ([#314](https://github.com/inference-gateway/adk/issues/314)) ([2a6d7b8](https://github.com/inference-gateway/adk/commit/2a6d7b81ab910513d2cb0601ec9530392c8a9534))
+* **deps:** bump github.com/go-jose/go-jose/v4 from 4.1.4 to 4.1.5 in the gomod group ([#311](https://github.com/inference-gateway/adk/issues/311)) ([62f2de0](https://github.com/inference-gateway/adk/commit/62f2de0919294c73750803f024e6360bf0348357))
+
+### 📚 Documentation
+
+* align artifacts guide with ArtifactService API ([#322](https://github.com/inference-gateway/adk/issues/322)) ([d672e48](https://github.com/inference-gateway/adk/commit/d672e4824539c5778390a5b1a4d183408d892278))
+* clarify OTEL_* prefixing in telemetry docs ([#321](https://github.com/inference-gateway/adk/issues/321)) ([d9fcb43](https://github.com/inference-gateway/adk/commit/d9fcb43074264e5683f190871e3cc0664a5ea5fb))
+* correct README config tables and examples ([#324](https://github.com/inference-gateway/adk/issues/324)) ([d5d6c97](https://github.com/inference-gateway/adk/commit/d5d6c9708510095b7f69d606085c38f069ac6821))
+* refresh AGENTS.md with verified commands and conventions ([#310](https://github.com/inference-gateway/adk/issues/310)) ([29b0030](https://github.com/inference-gateway/adk/commit/29b0030922d05c33282c6bc6f2f270093bbc868f))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.266 -> 2.1.278 ([#312](https://github.com/inference-gateway/adk/issues/312)) ([09985f0](https://github.com/inference-gateway/adk/commit/09985f0fdd50cf84b7b756d57253a6a9bed27998))
+* **deps:** bump claude-code 2.1.278 -> 2.1.280 ([#315](https://github.com/inference-gateway/adk/issues/315)) ([a1de251](https://github.com/inference-gateway/adk/commit/a1de2518449c910cfcbfd408b1c172ae83e3c0ea))
+* **deps:** bump infer CLI v0.192.0 -> v0.205.3 ([#313](https://github.com/inference-gateway/adk/issues/313)) ([bc8997f](https://github.com/inference-gateway/adk/commit/bc8997fac3ade99c0cb712a093ac3337ec8f8df1))
+* **deps:** bump infer CLI v0.205.3 -> v0.208.0 ([#316](https://github.com/inference-gateway/adk/issues/316)) ([977fb69](https://github.com/inference-gateway/adk/commit/977fb69470a8f406f314c3000097807cce0cf385))
+* **examples:** Bump Keycloak to 26.7.4 ([#309](https://github.com/inference-gateway/adk/issues/309)) ([845dce5](https://github.com/inference-gateway/adk/commit/845dce540fe099638d7881a7d93a7242696149cb))
+
 ## [0.28.0](https://github.com/inference-gateway/adk/compare/v0.27.0...v0.28.0) (2026-09-16)
 
 ### ✨ Features
