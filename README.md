@@ -529,6 +529,41 @@ See [client examples](./examples/) for implementation.
 
 Create OpenAI-compatible LLM clients for agent integration. See [AI examples](./examples/ai-powered/) for setup details.
 
+#### Sending Images to a Vision Model
+
+A client can attach an image to a user message as a `FilePart`, and the default
+agent forwards it to the model as an `image_url` content part, in order with the
+text parts:
+
+```go
+img, _ := os.ReadFile("captcha.png")
+b64 := base64.StdEncoding.EncodeToString(img)
+
+resp, err := a2a.SendTask(ctx, types.MessageSendParams{
+    Message: types.Message{
+        Role: types.RoleUser,
+        Parts: []types.Part{
+            types.CreateTextPart("What does this captcha say?"),
+            types.CreateFilePart("captcha.png", "image/png", &b64, nil),
+        },
+    },
+})
+```
+
+Notes:
+
+- `fileWithBytes` is inlined as a `data:` URL; `fileWithUri` is passed through
+  unchanged, so the provider itself must be able to fetch that URL.
+- The operator picks the model: configure a vision-capable one via
+  `AGENT_CLIENT_MODEL`. A model without vision support rejects the request and
+  the task ends as `failed` with the provider's error.
+- Advertise what you accept on the agent card, for example
+  `DefaultInputModes: []string{"text/plain", "image/png"}` - the bundled
+  examples only advertise `text/plain`.
+- Only `image/*` files on user messages are forwarded. Other media types (PDF,
+  audio) are still skipped, and agent-role file parts are never sent, because
+  OpenAI-compatible assistant messages cannot carry images.
+
 ### Configuration
 
 Configure your A2A agent using environment variables. All configuration is optional and includes sensible defaults.

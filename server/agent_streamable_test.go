@@ -1474,3 +1474,72 @@ func TestRunWithStream_StreamFailedEventEmitted(t *testing.T) {
 	}
 	assert.Contains(t, failedStatusText, "streaming connection error", "TaskStatus.Message must carry the underlying error as a TextPart")
 }
+
+func TestRunWithStream_ImageFilePartForwardedAndProviderErrorFailsTask(t *testing.T) {
+	logger := zap.NewNop()
+	mockLLMClient := &mocks.FakeLLMClient{}
+
+	var sentMessages []sdk.Message
+	mockLLMClient.CreateStreamingChatCompletionStub = func(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (<-chan *sdk.CreateChatCompletionStreamResponse, <-chan error) {
+		sentMessages = messages
+		responseChan := make(chan *sdk.CreateChatCompletionStreamResponse, 1)
+		errorChan := make(chan error, 1)
+
+		go func() {
+			defer close(responseChan)
+			defer close(errorChan)
+
+			errorChan <- fmt.Errorf("this model does not support image input")
+		}()
+
+		return responseChan, errorChan
+	}
+
+	agent, err := server.NewAgentBuilder(logger).
+		WithLLMClient(mockLLMClient).
+		Build()
+	require.NoError(t, err)
+
+	messages := []types.Message{
+		{
+			Role: "user",
+			Parts: []types.Part{
+				types.CreateTextPart("what does the captcha say?"),
+				types.CreateFilePart("captcha.png", "image/png", new("aW1hZ2U="), nil),
+			},
+		},
+	}
+
+	eventChan, err := agent.RunWithStream(context.Background(), messages)
+	require.NoError(t, err)
+
+	var failedTaskStatus *types.TaskStatus
+	for event := range eventChan {
+		if event.Type() != types.EventTaskStatusChanged {
+			continue
+		}
+		var status types.TaskStatus
+		require.NoError(t, event.DataAs(&status))
+		if status.State == types.TaskStateFailed {
+			failedTaskStatus = &status
+		}
+	}
+
+	userMsg := sentMessages[len(sentMessages)-1]
+	parts, err := userMsg.Content.AsMessageContent1()
+	require.NoError(t, err, "user message with an image must be sent as content parts")
+	require.Len(t, parts, 2)
+	imagePart, err := parts[1].AsImageContentPart()
+	require.NoError(t, err)
+	assert.Equal(t, "data:image/png;base64,aW1hZ2U=", imagePart.ImageURL.URL)
+
+	require.NotNil(t, failedTaskStatus, "provider rejecting the image must fail the task")
+	require.NotNil(t, failedTaskStatus.Message)
+	var failedText string
+	for _, p := range failedTaskStatus.Message.Parts {
+		if p.Text != nil {
+			failedText = *p.Text
+		}
+	}
+	assert.Contains(t, failedText, "this model does not support image input")
+}
