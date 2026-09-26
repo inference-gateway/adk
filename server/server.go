@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
@@ -599,7 +598,8 @@ func (s *A2AServerImpl) GetAgentCard() *types.AgentCard {
 func (s *A2AServerImpl) StartTaskProcessor(ctx context.Context) {
 	s.logger.Info("starting task processor")
 
-	go s.startTaskCleanup(ctx)
+	s.taskManager.SetRetentionConfig(s.cfg.TaskRetentionConfig)
+	defer s.taskManager.StopCleanup()
 
 	for {
 		select {
@@ -702,30 +702,6 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 // ctx.Value(middlewares.ClaimsContextKey).
 func injectAuthContext(ctx context.Context, qt *QueuedTask) context.Context {
 	return context.WithValue(ctx, middlewares.ClaimsContextKey, qt.Claims)
-}
-
-// startTaskCleanup starts the background task cleanup process
-func (s *A2AServerImpl) startTaskCleanup(ctx context.Context) {
-	cleanupInterval := s.cfg.QueueConfig.CleanupInterval
-
-	if cleanupInterval <= 0 {
-		s.logger.Info("task cleanup disabled", zap.Duration("cleanup_interval", cleanupInterval))
-		<-ctx.Done()
-		return
-	}
-
-	ticker := time.NewTicker(cleanupInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			s.logger.Info("task cleanup shutting down")
-			return
-		case <-ticker.C:
-			s.taskManager.CleanupCompletedTasks()
-		}
-	}
 }
 
 // handleAgentInfo returns agent capabilities and metadata
