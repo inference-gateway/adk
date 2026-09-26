@@ -609,13 +609,8 @@ func TestMessageConverter_ValidateMessagePart(t *testing.T) {
 			errorMsg:    "text part has empty text field",
 		},
 		{
-			name: "invalid file part (missing name)",
-			input: types.Part{
-				File: &types.FilePart{
-					Name:      "",
-					MediaType: "text/plain",
-				},
-			},
+			name:        "invalid file part (missing name)",
+			input:       types.CreateFilePart("", "text/plain", nil, nil),
 			expectError: true,
 			errorMsg:    "file part missing name",
 		},

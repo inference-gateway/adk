@@ -369,7 +369,7 @@ func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message)
 // sendPushNotifications sends push notifications for a task update
 func (tm *DefaultTaskManager) sendPushNotifications(taskID string, task *types.Task) {
 	configs, err := tm.ListTaskPushNotificationConfigs(types.ListTaskPushNotificationConfigParams{
-		Parent: taskID,
+		Parent: &taskID,
 	})
 	if err != nil {
 		tm.logger.Error("failed to retrieve push notification configs",
@@ -657,7 +657,7 @@ func (tm *DefaultTaskManager) GetTaskPushNotificationConfig(params types.GetTask
 	tm.pushNotificationConfigsMu.RLock()
 	defer tm.pushNotificationConfigsMu.RUnlock()
 
-	taskID := params.Name
+	taskID := derefString(params.Name)
 	if configs, ok := tm.pushNotificationConfigs[taskID]; ok {
 		for _, config := range configs {
 			return config, nil
@@ -672,7 +672,7 @@ func (tm *DefaultTaskManager) ListTaskPushNotificationConfigs(params types.ListT
 	tm.pushNotificationConfigsMu.RLock()
 	defer tm.pushNotificationConfigsMu.RUnlock()
 
-	taskID := params.Parent
+	taskID := derefString(params.Parent)
 	if configs, ok := tm.pushNotificationConfigs[taskID]; ok {
 		var result []types.TaskPushNotificationConfig
 		for _, config := range configs {
@@ -689,7 +689,7 @@ func (tm *DefaultTaskManager) DeleteTaskPushNotificationConfig(params types.Dele
 	tm.pushNotificationConfigsMu.Lock()
 	defer tm.pushNotificationConfigsMu.Unlock()
 
-	taskID := params.Name
+	taskID := derefString(params.Name)
 	if configs, ok := tm.pushNotificationConfigs[taskID]; ok {
 		for configID := range configs {
 			delete(configs, configID)
@@ -701,6 +701,14 @@ func (tm *DefaultTaskManager) DeleteTaskPushNotificationConfig(params types.Dele
 	}
 
 	return fmt.Errorf("push notification config not found for task %s", taskID)
+}
+
+// derefString returns the pointed-to string, or "" when p is nil.
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }
 
 // TaskNotFoundError represents an error when a task is not found

@@ -186,16 +186,16 @@ type AgentCardSignature struct {
 // AgentExtension A declaration of a protocol extension supported by an Agent.
 type AgentExtension struct {
 	// Description A human-readable description of how this agent uses the extension.
-	Description string `json:"description"`
+	Description *string `json:"description,omitempty"`
 
 	// Params Optional, extension-specific configuration parameters.
 	Params *Struct `json:"params,omitempty"`
 
 	// Required If true, the client must understand and comply with the extension's requirements.
-	Required bool `json:"required"`
+	Required *bool `json:"required,omitempty"`
 
 	// URI The unique URI identifying the extension.
-	URI string `json:"uri"`
+	URI *string `json:"uri,omitempty"`
 }
 
 // AgentInterface Declares a combination of a target URL and a transport protocol for interacting with the agent.
@@ -304,10 +304,10 @@ type AuthorizationCodeOAuthFlow struct {
 type CancelTaskRequest struct {
 	// Name The resource name of the task to cancel.
 	//  Format: tasks/{task_id}
-	Name string `json:"name"`
+	Name *string `json:"name,omitempty"`
 
 	// Tenant Optional tenant, provided as a path parameter.
-	Tenant string `json:"tenant"`
+	Tenant *string `json:"tenant,omitempty"`
 }
 
 // ClientCredentialsOAuthFlow Defines configuration details for the OAuth 2.0 Client Credentials flow.
@@ -332,10 +332,10 @@ type DataPart struct {
 type DeleteTaskPushNotificationConfigRequest struct {
 	// Name The resource name of the config to delete.
 	//  Format: tasks/{task_id}/pushNotificationConfigs/{config_id}
-	Name string `json:"name"`
+	Name *string `json:"name,omitempty"`
 
 	// Tenant Optional tenant, provided as a path parameter.
-	Tenant string `json:"tenant"`
+	Tenant *string `json:"tenant,omitempty"`
 }
 
 // FilePart FilePart represents the different ways files can be provided. If files are
@@ -351,26 +351,26 @@ type FilePart struct {
 	FileWithURI *string `json:"fileWithUri,omitempty"`
 
 	// MediaType The media type of the file (e.g., "application/pdf").
-	MediaType string `json:"mediaType"`
+	MediaType *string `json:"mediaType,omitempty"`
 
 	// Name An optional name for the file (e.g., "document.pdf").
-	Name string `json:"name"`
+	Name *string `json:"name,omitempty"`
 }
 
 // GetExtendedAgentCardRequest defines model for GetExtendedAgentCardRequest.
 type GetExtendedAgentCardRequest struct {
 	// Tenant Optional tenant, provided as a path parameter.
-	Tenant string `json:"tenant"`
+	Tenant *string `json:"tenant,omitempty"`
 }
 
 // GetTaskPushNotificationConfigRequest defines model for GetTaskPushNotificationConfigRequest.
 type GetTaskPushNotificationConfigRequest struct {
 	// Name The resource name of the config to retrieve.
 	//  Format: tasks/{task_id}/pushNotificationConfigs/{config_id}
-	Name string `json:"name"`
+	Name *string `json:"name,omitempty"`
 
 	// Tenant Optional tenant, provided as a path parameter.
-	Tenant string `json:"tenant"`
+	Tenant *string `json:"tenant,omitempty"`
 }
 
 // GetTaskRequest Represents a request for the `tasks/get` method.
@@ -416,17 +416,17 @@ type ImplicitOAuthFlow struct {
 // ListTaskPushNotificationConfigRequest defines model for ListTaskPushNotificationConfigRequest.
 type ListTaskPushNotificationConfigRequest struct {
 	// PageSize The maximum number of configurations to return.
-	PageSize int `json:"pageSize"`
+	PageSize *int `json:"pageSize,omitempty"`
 
 	// PageToken A page token received from a previous ListTaskPushNotificationConfigRequest call.
-	PageToken string `json:"pageToken"`
+	PageToken *string `json:"pageToken,omitempty"`
 
 	// Parent The parent task resource.
 	//  Format: tasks/{task_id}
-	Parent string `json:"parent"`
+	Parent *string `json:"parent,omitempty"`
 
 	// Tenant Optional tenant, provided as a path parameter.
-	Tenant string `json:"tenant"`
+	Tenant *string `json:"tenant,omitempty"`
 }
 
 // ListTaskPushNotificationConfigResponse Represents a successful response for the `tasks/pushNotificationConfig/list`
@@ -438,13 +438,13 @@ type ListTaskPushNotificationConfigResponse struct {
 
 	// NextPageToken A token, which can be sent as `page_token` to retrieve the next page.
 	//  If this field is omitted, there are no subsequent pages.
-	NextPageToken string `json:"nextPageToken"`
+	NextPageToken *string `json:"nextPageToken,omitempty"`
 }
 
 // ListTasksRequest Parameters for listing tasks with optional filtering criteria.
 type ListTasksRequest struct {
 	// ContextID Filter tasks by context ID to get tasks from a specific conversation or session.
-	ContextID string `json:"contextId"`
+	ContextID *string `json:"contextId,omitempty"`
 
 	// HistoryLength The maximum number of messages to include in each task's history.
 	HistoryLength *int `json:"historyLength,omitempty"`
@@ -455,20 +455,20 @@ type ListTasksRequest struct {
 
 	// LastUpdatedAfter Filter tasks updated after this timestamp (milliseconds since epoch).
 	//  Only tasks with a last updated time greater than or equal to this value will be returned.
-	LastUpdatedAfter int `json:"lastUpdatedAfter"`
+	LastUpdatedAfter *int `json:"lastUpdatedAfter,omitempty"`
 
 	// PageSize Maximum number of tasks to return. Must be between 1 and 100.
 	//  Defaults to 50 if not specified.
 	PageSize *int `json:"pageSize,omitempty"`
 
 	// PageToken Token for pagination. Use the next_page_token from a previous ListTasksResponse.
-	PageToken string `json:"pageToken"`
+	PageToken *string `json:"pageToken,omitempty"`
 
 	// Status Filter tasks by their current status state.
-	Status TaskState `json:"status"`
+	Status *TaskState `json:"status,omitempty"`
 
 	// Tenant Optional tenant, provided as a path parameter.
-	Tenant string `json:"tenant"`
+	Tenant *string `json:"tenant,omitempty"`
 }
 
 // ListTasksResponse Result object for tasks/list method containing an array of tasks and pagination information.
@@ -528,7 +528,7 @@ type Message struct {
 // MutualTLSSecurityScheme Defines a security scheme using mTLS authentication.
 type MutualTLSSecurityScheme struct {
 	// Description An optional description for the security scheme.
-	Description string `json:"description"`
+	Description *string `json:"description,omitempty"`
 }
 
 // OAuth2SecurityScheme Defines a security scheme using OAuth 2.0.
@@ -649,7 +649,7 @@ type SendMessageConfiguration struct {
 	AcceptedOutputModes []string `json:"acceptedOutputModes,omitempty"`
 
 	// Blocking If true, the operation waits until the task reaches a terminal state before returning. Default is false.
-	Blocking bool `json:"blocking"`
+	Blocking *bool `json:"blocking,omitempty"`
 
 	// HistoryLength The maximum number of messages to include in the history.
 	HistoryLength *int `json:"historyLength,omitempty"`
@@ -666,13 +666,13 @@ type SendMessageRequest struct {
 	Configuration *SendMessageConfiguration `json:"configuration,omitempty"`
 
 	// Message The message to send to the agent.
-	Message *Message `json:"message,omitempty"`
+	Message Message `json:"message"`
 
 	// Metadata A flexible key-value map for passing additional context or parameters.
 	Metadata *Struct `json:"metadata,omitempty"`
 
 	// Tenant Optional tenant, provided as a path parameter.
-	Tenant string `json:"tenant"`
+	Tenant *string `json:"tenant,omitempty"`
 }
 
 // SendMessageResponse ////// Response Messages ///////////
@@ -736,10 +736,10 @@ type Struct = map[string]any
 type SubscribeToTaskRequest struct {
 	// Name The resource name of the task to subscribe to.
 	//  Format: tasks/{task_id}
-	Name string `json:"name"`
+	Name *string `json:"name,omitempty"`
 
 	// Tenant Optional tenant, provided as a path parameter.
-	Tenant string `json:"tenant"`
+	Tenant *string `json:"tenant,omitempty"`
 }
 
 // Task Task is the core unit of action for A2A. It has a current status

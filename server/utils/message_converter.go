@@ -154,17 +154,17 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 // image_url content part. Non-image files, and files on agent messages, are
 // skipped because OpenAI-compatible assistant/tool messages cannot carry images.
 func (c *messageConverter) imageContentPart(messageID string, role types.Role, file *types.FilePart) (sdk.ContentPart, bool) {
-	if role == types.RoleAgent || !strings.HasPrefix(file.MediaType, "image/") {
+	if role == types.RoleAgent || file.MediaType == nil || !strings.HasPrefix(*file.MediaType, "image/") {
 		c.logger.Debug("file part detected in message",
 			zap.String("message_id", messageID),
-			zap.String("media_type", file.MediaType))
+			zap.Stringp("media_type", file.MediaType))
 		return sdk.ContentPart{}, false
 	}
 
 	var url string
 	switch {
 	case file.FileWithBytes != nil:
-		url = fmt.Sprintf("data:%s;base64,%s", file.MediaType, *file.FileWithBytes)
+		url = fmt.Sprintf("data:%s;base64,%s", *file.MediaType, *file.FileWithBytes)
 	case file.FileWithURI != nil:
 		url = *file.FileWithURI
 	default:
@@ -467,10 +467,10 @@ func (c *messageConverter) ValidateMessagePart(part types.Part) error {
 	}
 
 	if part.File != nil {
-		if part.File.Name == "" {
+		if part.File.Name == nil || *part.File.Name == "" {
 			return fmt.Errorf("file part missing name field")
 		}
-		if part.File.MediaType == "" {
+		if part.File.MediaType == nil || *part.File.MediaType == "" {
 			return fmt.Errorf("file part missing mediaType field")
 		}
 	}

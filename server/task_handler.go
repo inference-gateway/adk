@@ -1000,7 +1000,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 		return
 	}
 
-	h.logger.Info("getting push notification config for task", zap.String("task_name", params.Name))
+	h.logger.Info("getting push notification config for task", zap.Stringp("task_name", params.Name))
 
 	config, err := h.taskManager.GetTaskPushNotificationConfig(params)
 	if err != nil {
@@ -1009,7 +1009,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 		return
 	}
 
-	h.logger.Info("push notification config retrieved successfully", zap.String("task_name", params.Name))
+	h.logger.Info("push notification config retrieved successfully", zap.Stringp("task_name", params.Name))
 	h.responseSender.SendSuccess(c, req.ID, config)
 }
 
@@ -1029,7 +1029,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 		return
 	}
 
-	h.logger.Info("listing push notification configs for task", zap.String("parent", params.Parent))
+	h.logger.Info("listing push notification configs for task", zap.Stringp("parent", params.Parent))
 
 	configs, err := h.taskManager.ListTaskPushNotificationConfigs(params)
 	if err != nil {
@@ -1039,7 +1039,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 	}
 
 	h.logger.Info("push notification configs listed successfully",
-		zap.String("parent", params.Parent),
+		zap.Stringp("parent", params.Parent),
 		zap.Int("count", len(configs)))
 	h.responseSender.SendSuccess(c, req.ID, configs)
 }
@@ -1061,7 +1061,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	}
 
 	h.logger.Info("deleting push notification config",
-		zap.String("task_name", params.Name))
+		zap.Stringp("task_name", params.Name))
 
 	err = h.taskManager.DeleteTaskPushNotificationConfig(params)
 	if err != nil {
@@ -1071,7 +1071,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	}
 
 	h.logger.Info("push notification config deleted successfully",
-		zap.String("task_name", params.Name))
+		zap.Stringp("task_name", params.Name))
 	h.responseSender.SendSuccess(c, req.ID, nil)
 }
 
@@ -1097,7 +1097,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		return
 	}
 
-	if params.Name == "" {
+	if params.Name == nil || *params.Name == "" {
 		h.logger.Error("tasks/resubscribe missing task name")
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "task name is required")
 		return
@@ -1109,9 +1109,9 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("Access-Control-Allow-Headers", "Cache-Control")
 
-	task, exists := h.taskManager.GetTask(params.Name)
+	task, exists := h.taskManager.GetTask(*params.Name)
 	if !exists {
-		h.logger.Error("task not found for resubscribe", zap.String("task_id", params.Name))
+		h.logger.Error("task not found for resubscribe", zap.String("task_id", *params.Name))
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -1298,7 +1298,7 @@ func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Co
 			h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 			return
 		}
-		h.logger.Info("returning authenticated extended agent card", zap.String("tenant", params.Tenant))
+		h.logger.Info("returning authenticated extended agent card", zap.Stringp("tenant", params.Tenant))
 	} else {
 		h.logger.Info("returning authenticated extended agent card")
 	}

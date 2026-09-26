@@ -106,8 +106,8 @@ func CreateDataPart(data map[string]any, metadata ...map[string]any) Part {
 func CreateFilePart(name, mediaType string, fileWithBytes *string, fileWithURI *string, metadata ...map[string]any) Part {
 	part := Part{
 		File: &FilePart{
-			Name:          name,
-			MediaType:     mediaType,
+			Name:          &name,
+			MediaType:     &mediaType,
 			FileWithBytes: fileWithBytes,
 			FileWithURI:   fileWithURI,
 		},
