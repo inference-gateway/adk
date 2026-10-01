@@ -31,7 +31,7 @@ func (e Role) Valid() bool {
 // Defines values for TaskState.
 const (
 	TaskStateAuthRequired  TaskState = "TASK_STATE_AUTH_REQUIRED"
-	TaskStateCancelled     TaskState = "TASK_STATE_CANCELLED"
+	TaskStateCanceled      TaskState = "TASK_STATE_CANCELED"
 	TaskStateCompleted     TaskState = "TASK_STATE_COMPLETED"
 	TaskStateFailed        TaskState = "TASK_STATE_FAILED"
 	TaskStateInputRequired TaskState = "TASK_STATE_INPUT_REQUIRED"
@@ -46,7 +46,7 @@ func (e TaskState) Valid() bool {
 	switch e {
 	case TaskStateAuthRequired:
 		return true
-	case TaskStateCancelled:
+	case TaskStateCanceled:
 		return true
 	case TaskStateCompleted:
 		return true
@@ -81,28 +81,25 @@ type APIKeySecurityScheme struct {
 
 // AgentCapabilities Defines optional capabilities supported by an agent.
 type AgentCapabilities struct {
+	// ExtendedAgentCard Indicates if the agent supports providing an extended agent card when authenticated.
+	ExtendedAgentCard *bool `json:"extendedAgentCard,omitempty"`
+
 	// Extensions A list of protocol extensions supported by the agent.
 	Extensions []AgentExtension `json:"extensions,omitempty"`
 
 	// PushNotifications Indicates if the agent supports sending push notifications for asynchronous task updates.
 	PushNotifications *bool `json:"pushNotifications,omitempty"`
 
-	// StateTransitionHistory Indicates if the agent provides a history of state transitions for a task.
-	StateTransitionHistory *bool `json:"stateTransitionHistory,omitempty"`
-
 	// Streaming Indicates if the agent supports streaming responses.
 	Streaming *bool `json:"streaming,omitempty"`
 }
 
-// AgentCard AgentCard is a self-describing manifest for an agent. It provides essential
+// AgentCard A self-describing manifest for an agent. It provides essential
 //
 //	metadata including the agent's identity, capabilities, skills, supported
 //	communication methods, and security requirements.
 //	Next ID: 20
 type AgentCard struct {
-	// AdditionalInterfaces DEPRECATED: Use 'supported_interfaces' instead.
-	AdditionalInterfaces []AgentInterface `json:"additionalInterfaces,omitempty"`
-
 	// Capabilities A2A Capability set supported by the agent.
 	Capabilities AgentCapabilities `json:"capabilities"`
 
@@ -119,49 +116,35 @@ type AgentCard struct {
 	//  Example: "Agent that helps users with recipes and cooking."
 	Description string `json:"description"`
 
-	// DocumentationURL A url to provide additional documentation about the agent.
+	// DocumentationURL A URL providing additional documentation about the agent.
 	DocumentationURL *string `json:"documentationUrl,omitempty"`
 
-	// IconURL An optional URL to an icon for the agent.
+	// IconURL Optional. A URL to an icon for the agent.
 	IconURL *string `json:"iconUrl,omitempty"`
 
 	// Name A human readable name for the agent.
 	//  Example: "Recipe Agent"
 	Name string `json:"name"`
 
-	// PreferredTransport DEPRECATED: Use 'supported_interfaces' instead.
-	PreferredTransport *string `json:"preferredTransport,omitempty"`
-
-	// ProtocolVersion The version of the A2A protocol this agent supports.
-	//  Default: "1.0"
-	ProtocolVersion string `json:"protocolVersion"`
-
 	// Provider The service provider of the agent.
 	Provider *AgentProvider `json:"provider,omitempty"`
 
-	// Security protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
-	//  Security requirements for contacting the agent.
-	Security []Security `json:"security,omitempty"`
+	// SecurityRequirements Security requirements for contacting the agent.
+	SecurityRequirements []SecurityRequirement `json:"securityRequirements,omitempty"`
 
 	// SecuritySchemes The security scheme details used for authenticating with this agent.
 	SecuritySchemes map[string]SecurityScheme `json:"securitySchemes,omitempty"`
 
-	// Signatures JSON Web Signatures computed for this AgentCard.
+	// Signatures JSON Web Signatures computed for this `AgentCard`.
 	Signatures []AgentCardSignature `json:"signatures,omitempty"`
 
-	// Skills Skills represent an ability of an agent. It is largely
-	//  a descriptive concept but represents a more focused set of behaviors that the
+	// Skills Skills represent the abilities of an agent.
+	//  It is largely a descriptive concept but represents a more focused set of behaviors that the
 	//  agent is likely to succeed at.
 	Skills []AgentSkill `json:"skills"`
 
-	// SupportedInterfaces Ordered list of supported interfaces. First entry is preferred.
-	SupportedInterfaces []AgentInterface `json:"supportedInterfaces,omitempty"`
-
-	// SupportsExtendedAgentCard Whether the agent supports providing an extended agent card when authenticated.
-	SupportsExtendedAgentCard *bool `json:"supportsExtendedAgentCard,omitempty"`
-
-	// URL DEPRECATED: Use 'supported_interfaces' instead.
-	URL *string `json:"url,omitempty"`
+	// SupportedInterfaces Ordered list of supported interfaces. The first entry is preferred.
+	SupportedInterfaces []AgentInterface `json:"supportedInterfaces"`
 
 	// Version The version of the agent.
 	//  Example: "1.0.0"
@@ -175,11 +158,13 @@ type AgentCardSignature struct {
 	// Header The unprotected JWS header values.
 	Header *Struct `json:"header,omitempty"`
 
-	// Protected The protected JWS header for the signature. This is always a
-	//  base64url-encoded JSON object. Required.
+	// Protected (-- api-linter: core::0140::reserved-words=disabled
+	//      aip.dev/not-precedent: Backwards compatibility --)
+	//  Required. The protected JWS header for the signature. This is always a
+	//  base64url-encoded JSON object.
 	Protected string `json:"protected"`
 
-	// Signature The computed signature, base64url-encoded. Required.
+	// Signature Required. The computed signature, base64url-encoded.
 	Signature string `json:"signature"`
 }
 
@@ -188,7 +173,7 @@ type AgentExtension struct {
 	// Description A human-readable description of how this agent uses the extension.
 	Description *string `json:"description,omitempty"`
 
-	// Params Optional, extension-specific configuration parameters.
+	// Params Optional. Extension-specific configuration parameters.
 	Params *Struct `json:"params,omitempty"`
 
 	// Required If true, the client must understand and comply with the extension's requirements.
@@ -198,7 +183,7 @@ type AgentExtension struct {
 	URI *string `json:"uri,omitempty"`
 }
 
-// AgentInterface Declares a combination of a target URL and a transport protocol for interacting with the agent.
+// AgentInterface Declares a combination of a target URL, transport and protocol version for interacting with the agent.
 //
 //	This allows agents to expose the same functionality over multiple protocol binding mechanisms.
 type AgentInterface struct {
@@ -207,7 +192,17 @@ type AgentInterface struct {
 	//  supported are `JSONRPC`, `GRPC` and `HTTP+JSON`.
 	ProtocolBinding string `json:"protocolBinding"`
 
-	// Tenant Tenant to be set in the request when calling the agent.
+	// ProtocolVersion The version of the A2A protocol this interface exposes.
+	//  Use the latest supported minor version per major version.
+	//  Examples: "0.3", "1.0"
+	ProtocolVersion string `json:"protocolVersion"`
+
+	// Tenant Optional. An opaque string used for routing requests to a specific agent
+	//  or tenant when multiple agents are served behind a single A2A endpoint.
+	//  When set, clients MUST include this value in the `tenant` field of all
+	//  request messages sent to this interface. The server is responsible for
+	//  interpreting the value and routing requests accordingly; the protocol
+	//  does not define its format or semantics.
 	Tenant *string `json:"tenant,omitempty"`
 
 	// URL The URL where this interface is available. Must be a valid absolute HTTPS URL in production.
@@ -246,9 +241,8 @@ type AgentSkill struct {
 	// OutputModes The set of supported output media types for this skill, overriding the agent's defaults.
 	OutputModes []string `json:"outputModes,omitempty"`
 
-	// Security protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
-	//  Security schemes necessary for this skill.
-	Security []Security `json:"security,omitempty"`
+	// SecurityRequirements Security schemes necessary for this skill.
+	SecurityRequirements []SecurityRequirement `json:"securityRequirements,omitempty"`
 
 	// Tags A set of keywords describing the skill's capabilities.
 	Tags []string `json:"tags"`
@@ -256,17 +250,16 @@ type AgentSkill struct {
 
 // Artifact Artifacts represent task outputs.
 type Artifact struct {
-	// ArtifactID Unique identifier (e.g. UUID) for the artifact. It must be at least unique
-	//  within a task.
+	// ArtifactID Unique identifier (e.g. UUID) for the artifact. It must be unique within a task.
 	ArtifactID string `json:"artifactId"`
 
-	// Description A human readable description of the artifact, optional.
+	// Description Optional. A human readable description of the artifact.
 	Description *string `json:"description,omitempty"`
 
 	// Extensions The URIs of extensions that are present or contributed to this Artifact.
 	Extensions []string `json:"extensions,omitempty"`
 
-	// Metadata Optional metadata included with the artifact.
+	// Metadata Optional. Metadata included with the artifact.
 	Metadata *Struct `json:"metadata,omitempty"`
 
 	// Name A human readable name for the artifact.
@@ -278,17 +271,23 @@ type Artifact struct {
 
 // AuthenticationInfo Defines authentication details, used for push notifications.
 type AuthenticationInfo struct {
-	// Credentials Optional credentials
+	// Credentials Push Notification credentials. Format depends on the scheme (e.g., token for Bearer).
 	Credentials *string `json:"credentials,omitempty"`
 
-	// Schemes A list of supported authentication schemes (e.g., 'Basic', 'Bearer').
-	Schemes []string `json:"schemes"`
+	// Scheme HTTP Authentication Scheme from the [IANA registry](https://www.iana.org/assignments/http-authschemes/).
+	//  Examples: `Bearer`, `Basic`, `Digest`.
+	//  Scheme names are case-insensitive per [RFC 9110 Section 11.1](https://www.rfc-editor.org/rfc/rfc9110#section-11.1).
+	Scheme string `json:"scheme"`
 }
 
 // AuthorizationCodeOAuthFlow Defines configuration details for the OAuth 2.0 Authorization Code flow.
 type AuthorizationCodeOAuthFlow struct {
 	// AuthorizationURL The authorization URL to be used for this flow.
 	AuthorizationURL string `json:"authorizationUrl"`
+
+	// PkceRequired Indicates if PKCE (RFC 7636) is required for this flow.
+	//  PKCE should always be used for public clients and is recommended for all clients.
+	PkceRequired *bool `json:"pkceRequired,omitempty"`
 
 	// RefreshURL The URL to be used for obtaining refresh tokens.
 	RefreshURL *string `json:"refreshUrl,omitempty"`
@@ -300,13 +299,16 @@ type AuthorizationCodeOAuthFlow struct {
 	TokenURL string `json:"tokenUrl"`
 }
 
-// CancelTaskRequest Represents a request for the `tasks/cancel` method.
+// CancelTaskRequest Represents a request for the `CancelTask` method.
 type CancelTaskRequest struct {
-	// Name The resource name of the task to cancel.
-	//  Format: tasks/{task_id}
-	Name *string `json:"name,omitempty"`
+	// ID The resource ID of the task to cancel.
+	ID string `json:"id"`
 
-	// Tenant Optional tenant, provided as a path parameter.
+	// Metadata A flexible key-value map for passing additional context or parameters.
+	Metadata *Struct `json:"metadata,omitempty"`
+
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
@@ -322,74 +324,77 @@ type ClientCredentialsOAuthFlow struct {
 	TokenURL string `json:"tokenUrl"`
 }
 
-// DataPart DataPart represents a structured blob.
-type DataPart struct {
-	// Data A JSON object containing arbitrary data.
-	Data Struct `json:"data"`
-}
-
-// DeleteTaskPushNotificationConfigRequest Represents a request for the `tasks/pushNotificationConfig/delete` method.
+// DeleteTaskPushNotificationConfigRequest Represents a request for the `DeleteTaskPushNotificationConfig` method.
 type DeleteTaskPushNotificationConfigRequest struct {
-	// Name The resource name of the config to delete.
-	//  Format: tasks/{task_id}/pushNotificationConfigs/{config_id}
-	Name *string `json:"name,omitempty"`
+	// ID The resource ID of the configuration to delete.
+	ID string `json:"id"`
 
-	// Tenant Optional tenant, provided as a path parameter.
+	// TaskID The parent task resource ID.
+	TaskID string `json:"taskId"`
+
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
-// FilePart FilePart represents the different ways files can be provided. If files are
+// DeviceCodeOAuthFlow Defines configuration details for the OAuth 2.0 Device Code flow (RFC 8628).
 //
-//	small, directly feeding the bytes is supported via file_with_bytes. If the
-//	file is large, the agent should read the content as appropriate directly
-//	from the file_with_uri source.
-type FilePart struct {
-	// FileWithBytes The base64-encoded content of the file.
-	FileWithBytes *string `json:"fileWithBytes,omitempty"`
+//	This flow is designed for input-constrained devices such as IoT devices,
+//	and CLI tools where the user authenticates on a separate device.
+type DeviceCodeOAuthFlow struct {
+	// DeviceAuthorizationURL The device authorization endpoint URL.
+	DeviceAuthorizationURL string `json:"deviceAuthorizationUrl"`
 
-	// FileWithURI A URL pointing to the file's content.
-	FileWithURI *string `json:"fileWithUri,omitempty"`
+	// RefreshURL The URL to be used for obtaining refresh tokens.
+	RefreshURL *string `json:"refreshUrl,omitempty"`
 
-	// MediaType The media type of the file (e.g., "application/pdf").
-	MediaType *string `json:"mediaType,omitempty"`
+	// Scopes The available scopes for the OAuth2 security scheme.
+	Scopes map[string]string `json:"scopes"`
 
-	// Name An optional name for the file (e.g., "document.pdf").
-	Name *string `json:"name,omitempty"`
+	// TokenURL The token URL to be used for this flow.
+	TokenURL string `json:"tokenUrl"`
 }
 
-// GetExtendedAgentCardRequest defines model for GetExtendedAgentCardRequest.
+// GetExtendedAgentCardRequest Represents a request for the `GetExtendedAgentCard` method.
 type GetExtendedAgentCardRequest struct {
-	// Tenant Optional tenant, provided as a path parameter.
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
-// GetTaskPushNotificationConfigRequest defines model for GetTaskPushNotificationConfigRequest.
+// GetTaskPushNotificationConfigRequest Represents a request for the `GetTaskPushNotificationConfig` method.
 type GetTaskPushNotificationConfigRequest struct {
-	// Name The resource name of the config to retrieve.
-	//  Format: tasks/{task_id}/pushNotificationConfigs/{config_id}
-	Name *string `json:"name,omitempty"`
+	// ID The resource ID of the configuration to retrieve.
+	ID string `json:"id"`
 
-	// Tenant Optional tenant, provided as a path parameter.
+	// TaskID The parent task resource ID.
+	TaskID string `json:"taskId"`
+
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
-// GetTaskRequest Represents a request for the `tasks/get` method.
+// GetTaskRequest Represents a request for the `GetTask` method.
 type GetTaskRequest struct {
-	// HistoryLength The maximum number of messages to include in the history.
+	// HistoryLength The maximum number of most recent messages from the task's history to retrieve. An
+	//  unset value means the client does not impose any limit. A value of zero is
+	//  a request to not include any messages. The server MUST NOT return more
+	//  messages than the provided value, but MAY apply a lower limit.
 	HistoryLength *int `json:"historyLength,omitempty"`
 
-	// Name The resource name of the task.
-	//  Format: tasks/{task_id}
-	Name string `json:"name"`
+	// ID The resource ID of the task to retrieve.
+	ID string `json:"id"`
 
-	// Tenant Optional tenant, provided as a path parameter.
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
 // HTTPAuthSecurityScheme Defines a security scheme using HTTP authentication.
 type HTTPAuthSecurityScheme struct {
 	// BearerFormat A hint to the client to identify how the bearer token is formatted (e.g., "JWT").
-	//  This is primarily for documentation purposes.
+	//  Primarily for documentation purposes.
 	BearerFormat *string `json:"bearerFormat,omitempty"`
 
 	// Description An optional description for the security scheme.
@@ -401,43 +406,45 @@ type HTTPAuthSecurityScheme struct {
 	Scheme string `json:"scheme"`
 }
 
-// ImplicitOAuthFlow Defines configuration details for the OAuth 2.0 Implicit flow.
+// ImplicitOAuthFlow Deprecated: Use Authorization Code + PKCE instead.
 type ImplicitOAuthFlow struct {
-	// AuthorizationURL The authorization URL to be used for this flow.
-	AuthorizationURL string `json:"authorizationUrl"`
+	// AuthorizationURL The authorization URL to be used for this flow. This MUST be in the
+	//  form of a URL. The OAuth2 standard requires the use of TLS
+	AuthorizationURL *string `json:"authorizationUrl,omitempty"`
 
-	// RefreshURL The URL to be used for obtaining refresh tokens.
+	// RefreshURL The URL to be used for obtaining refresh tokens. This MUST be in the
+	//  form of a URL. The OAuth2 standard requires the use of TLS.
 	RefreshURL *string `json:"refreshUrl,omitempty"`
 
-	// Scopes The available scopes for the OAuth2 security scheme.
-	Scopes map[string]string `json:"scopes"`
+	// Scopes The available scopes for the OAuth2 security scheme. A map between the
+	//  scope name and a short description for it. The map MAY be empty.
+	Scopes map[string]string `json:"scopes,omitempty"`
 }
 
-// ListTaskPushNotificationConfigRequest defines model for ListTaskPushNotificationConfigRequest.
-type ListTaskPushNotificationConfigRequest struct {
+// ListTaskPushNotificationConfigsRequest Represents a request for the `ListTaskPushNotificationConfigs` method.
+type ListTaskPushNotificationConfigsRequest struct {
 	// PageSize The maximum number of configurations to return.
 	PageSize *int `json:"pageSize,omitempty"`
 
-	// PageToken A page token received from a previous ListTaskPushNotificationConfigRequest call.
+	// PageToken A page token received from a previous `ListTaskPushNotificationConfigsRequest` call.
 	PageToken *string `json:"pageToken,omitempty"`
 
-	// Parent The parent task resource.
-	//  Format: tasks/{task_id}
-	Parent *string `json:"parent,omitempty"`
+	// TaskID The parent task resource ID.
+	TaskID string `json:"taskId"`
 
-	// Tenant Optional tenant, provided as a path parameter.
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
-// ListTaskPushNotificationConfigResponse Represents a successful response for the `tasks/pushNotificationConfig/list`
+// ListTaskPushNotificationConfigsResponse Represents a successful response for the `ListTaskPushNotificationConfigs`
 //
 //	method.
-type ListTaskPushNotificationConfigResponse struct {
+type ListTaskPushNotificationConfigsResponse struct {
 	// Configs The list of push notification configurations.
 	Configs []TaskPushNotificationConfig `json:"configs,omitempty"`
 
-	// NextPageToken A token, which can be sent as `page_token` to retrieve the next page.
-	//  If this field is omitted, there are no subsequent pages.
+	// NextPageToken A token to retrieve the next page of results, or empty if there are no more results in the list.
 	NextPageToken *string `json:"nextPageToken,omitempty"`
 }
 
@@ -453,30 +460,35 @@ type ListTasksRequest struct {
 	//  Defaults to false to reduce payload size.
 	IncludeArtifacts *bool `json:"includeArtifacts,omitempty"`
 
-	// LastUpdatedAfter Filter tasks updated after this timestamp (milliseconds since epoch).
-	//  Only tasks with a last updated time greater than or equal to this value will be returned.
-	LastUpdatedAfter *int `json:"lastUpdatedAfter,omitempty"`
-
-	// PageSize Maximum number of tasks to return. Must be between 1 and 100.
-	//  Defaults to 50 if not specified.
+	// PageSize The maximum number of tasks to return. The service may return fewer than this value.
+	//  If unspecified, at most 50 tasks will be returned.
+	//  The minimum value is 1.
+	//  The maximum value is 100.
 	PageSize *int `json:"pageSize,omitempty"`
 
-	// PageToken Token for pagination. Use the next_page_token from a previous ListTasksResponse.
+	// PageToken A page token, received from a previous `ListTasks` call.
+	//  `ListTasksResponse.next_page_token`.
+	//  Provide this to retrieve the subsequent page.
 	PageToken *string `json:"pageToken,omitempty"`
 
 	// Status Filter tasks by their current status state.
 	Status *TaskState `json:"status,omitempty"`
 
-	// Tenant Optional tenant, provided as a path parameter.
+	// StatusTimestampAfter Filter tasks which have a status updated after the provided timestamp in ISO 8601 format (e.g., "2023-10-27T10:00:00Z").
+	//  Only tasks with a status timestamp time greater than or equal to this value will be returned.
+	StatusTimestampAfter *Timestamp `json:"statusTimestampAfter,omitempty"`
+
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
-// ListTasksResponse Result object for tasks/list method containing an array of tasks and pagination information.
+// ListTasksResponse Result object for `ListTasks` method containing an array of tasks and pagination information.
 type ListTasksResponse struct {
-	// NextPageToken Token for retrieving the next page. Empty string if no more results.
+	// NextPageToken A token to retrieve the next page of results, or empty if there are no more results in the list.
 	NextPageToken string `json:"nextPageToken"`
 
-	// PageSize The size of page requested.
+	// PageSize The page size used for this response.
 	PageSize int `json:"pageSize"`
 
 	// Tasks Array of tasks matching the specified criteria.
@@ -486,32 +498,27 @@ type ListTasksResponse struct {
 	TotalSize int `json:"totalSize"`
 }
 
-// Message Message is one unit of communication between client and server. It is
+// Message `Message` is one unit of communication between client and server. It can be
 //
-//	associated with a context and optionally a task. Since the server is
-//	responsible for the context definition, it must always provide a context_id
-//	in its messages. The client can optionally provide the context_id if it
-//	knows the context to associate the message to. Similarly for task_id,
-//	except the server decides if a task is created and whether to include the
-//	task_id.
+//	associated with a context and/or a task. For server messages, `context_id` must
+//	be provided, and `task_id` only if a task was created. For client messages, both
+//	fields are optional, with the caveat that if both are provided, they have to
+//	match (the `context_id` has to be the one that is set on the task). If only
+//	`task_id` is provided, the server will infer `context_id` from it.
 type Message struct {
-	// ContextID The context id of the message. This is optional and if set, the message
-	//  will be associated with the given context.
+	// ContextID Optional. The context id of the message. If set, the message will be associated with the given context.
 	ContextID *string `json:"contextId,omitempty"`
 
 	// Extensions The URIs of extensions that are present or contributed to this Message.
 	Extensions []string `json:"extensions,omitempty"`
 
-	// MessageID The unique identifier (e.g. UUID) of the message. This is required and
-	//  created by the message creator.
+	// MessageID The unique identifier (e.g. UUID) of the message. This is created by the message creator.
 	MessageID string `json:"messageId"`
 
-	// Metadata protolint:enable REPEATED_FIELD_NAMES_PLURALIZED
-	//  Any optional metadata to provide along with the message.
+	// Metadata Optional. Any metadata to provide along with the message.
 	Metadata *Struct `json:"metadata,omitempty"`
 
-	// Parts protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
-	//  Parts is the container of the message content.
+	// Parts Parts is the container of the message content.
 	Parts []Part `json:"parts"`
 
 	// ReferenceTaskIds A list of task IDs that this message references for additional context.
@@ -520,8 +527,7 @@ type Message struct {
 	// Role Identifies the sender of the message.
 	Role Role `json:"role"`
 
-	// TaskID The task id of the message. This is optional and if set, the message
-	//  will be associated with the given task.
+	// TaskID Optional. The task id of the message. If set, the message will be associated with the given task.
 	TaskID *string `json:"taskId,omitempty"`
 }
 
@@ -539,8 +545,8 @@ type OAuth2SecurityScheme struct {
 	// Flows An object containing configuration information for the supported OAuth 2.0 flows.
 	Flows OAuthFlows `json:"flows"`
 
-	// Oauth2MetadataURL URL to the oauth2 authorization server metadata
-	//  RFC8414 (https://datatracker.ietf.org/doc/html/rfc8414). TLS is required.
+	// Oauth2MetadataURL URL to the OAuth2 authorization server metadata [RFC 8414](https://datatracker.ietf.org/doc/html/rfc8414).
+	//  TLS is required.
 	Oauth2MetadataURL *string `json:"oauth2MetadataUrl,omitempty"`
 }
 
@@ -552,10 +558,13 @@ type OAuthFlows struct {
 	// ClientCredentials Configuration for the OAuth Client Credentials flow.
 	ClientCredentials *ClientCredentialsOAuthFlow `json:"clientCredentials,omitempty"`
 
-	// Implicit Configuration for the OAuth Implicit flow.
+	// DeviceCode Configuration for the OAuth Device Code flow.
+	DeviceCode *DeviceCodeOAuthFlow `json:"deviceCode,omitempty"`
+
+	// Implicit Deprecated: Use Authorization Code + PKCE instead.
 	Implicit *ImplicitOAuthFlow `json:"implicit,omitempty"`
 
-	// Password Configuration for the OAuth Resource Owner Password flow.
+	// Password Deprecated: Use Authorization Code + PKCE or Device Code.
 	Password *PasswordOAuthFlow `json:"password,omitempty"`
 }
 
@@ -564,61 +573,59 @@ type OpenIDConnectSecurityScheme struct {
 	// Description An optional description for the security scheme.
 	Description *string `json:"description,omitempty"`
 
-	// OpenIDConnectURL The OpenID Connect Discovery URL for the OIDC provider's metadata.
-	//  See: https://openid.net/specs/openid-connect-discovery-1_0.html
+	// OpenIDConnectURL The [OpenID Connect Discovery URL](https://openid.net/specs/openid-connect-discovery-1_0.html) for the OIDC provider's metadata.
 	OpenIDConnectURL string `json:"openIdConnectUrl"`
 }
 
-// Part Part represents a container for a section of communication content.
+// Part `Part` represents a container for a section of communication content.
 //
 //	Parts can be purely textual, some sort of file (image, video, etc) or
 //	a structured data blob (i.e. JSON).
 type Part struct {
-	// Data The structured data content.
-	Data *DataPart `json:"data,omitempty"`
+	// Data Arbitrary structured `data` as a JSON value (object, array, string, number, boolean, or null).
+	Data *Value `json:"data,omitempty"`
 
-	// File The file content, represented as either a URI or as base64-encoded bytes.
-	File *FilePart `json:"file,omitempty"`
+	// Filename An optional `filename` for the file (e.g., "document.pdf").
+	Filename *string `json:"filename,omitempty"`
 
-	// Metadata Optional metadata associated with this part.
+	// MediaType The `media_type` (MIME type) of the part content (e.g., "text/plain", "application/json", "image/png").
+	//  This field is available for all part types.
+	MediaType *string `json:"mediaType,omitempty"`
+
+	// Metadata Optional. metadata associated with this part.
 	Metadata *Struct `json:"metadata,omitempty"`
 
-	// Text The string content of the text part.
+	// Raw The `raw` byte content of a file. In JSON serialization, this is encoded as a base64 string.
+	Raw *string `json:"raw,omitempty"`
+
+	// Text The string content of the `text` part.
 	Text *string `json:"text,omitempty"`
+
+	// URL A `url` pointing to the file's content.
+	URL *string `json:"url,omitempty"`
 }
 
-// PasswordOAuthFlow Defines configuration details for the OAuth 2.0 Resource Owner Password flow.
+// PasswordOAuthFlow Deprecated: Use Authorization Code + PKCE or Device Code.
 type PasswordOAuthFlow struct {
-	// RefreshURL The URL to be used for obtaining refresh tokens.
+	// RefreshURL The URL to be used for obtaining refresh tokens. This MUST be in the
+	//  form of a URL. The OAuth2 standard requires the use of TLS.
 	RefreshURL *string `json:"refreshUrl,omitempty"`
 
-	// Scopes The available scopes for the OAuth2 security scheme.
-	Scopes map[string]string `json:"scopes"`
+	// Scopes The available scopes for the OAuth2 security scheme. A map between the
+	//  scope name and a short description for it. The map MAY be empty.
+	Scopes map[string]string `json:"scopes,omitempty"`
 
-	// TokenURL The token URL to be used for this flow.
-	TokenURL string `json:"tokenUrl"`
-}
-
-// PushNotificationConfig Configuration for setting up push notifications for task updates.
-type PushNotificationConfig struct {
-	// Authentication Information about the authentication to sent with the notification
-	Authentication *AuthenticationInfo `json:"authentication,omitempty"`
-
-	// ID A unique identifier (e.g. UUID) for this push notification.
-	ID *string `json:"id,omitempty"`
-
-	// Token Token unique for this task/session
-	Token *string `json:"token,omitempty"`
-
-	// URL Url to send the notification too
-	URL string `json:"url"`
+	// TokenURL The token URL to be used for this flow. This MUST be in the form of a URL.
+	//  The OAuth2 standard requires the use of TLS.
+	TokenURL *string `json:"tokenUrl,omitempty"`
 }
 
 // Role Identifies the sender of the message.
 type Role string
 
-// Security defines model for Security.
-type Security struct {
+// SecurityRequirement Defines the security requirements for an agent.
+type SecurityRequirement struct {
+	// Schemes A map of security schemes to the required scopes.
 	Schemes map[string]StringList `json:"schemes,omitempty"`
 }
 
@@ -645,22 +652,29 @@ type SecurityScheme struct {
 
 // SendMessageConfiguration Configuration of a send message request.
 type SendMessageConfiguration struct {
-	// AcceptedOutputModes A list of media types the client is prepared to accept for response parts. Agents SHOULD use this to tailor their output.
+	// AcceptedOutputModes A list of media types the client is prepared to accept for response parts.
+	//  Agents SHOULD use this to tailor their output.
 	AcceptedOutputModes []string `json:"acceptedOutputModes,omitempty"`
 
-	// Blocking If true, the operation waits until the task reaches a terminal state before returning. Default is false.
-	Blocking *bool `json:"blocking,omitempty"`
-
-	// HistoryLength The maximum number of messages to include in the history.
+	// HistoryLength The maximum number of most recent messages from the task's history to retrieve in
+	//  the response. An unset value means the client does not impose any limit. A
+	//  value of zero is a request to not include any messages. The server MUST NOT
+	//  return more messages than the provided value, but MAY apply a lower limit.
 	HistoryLength *int `json:"historyLength,omitempty"`
 
-	// PushNotificationConfig Configuration for the agent to send push notifications for task updates.
-	PushNotificationConfig *PushNotificationConfig `json:"pushNotificationConfig,omitempty"`
+	// ReturnImmediately If `true`, the operation returns immediately after creating the task,
+	//  even if processing is still in progress.
+	//  If `false` (default), the operation MUST wait until the task reaches a
+	//  terminal (`COMPLETED`, `FAILED`, `CANCELED`, `REJECTED`) or interrupted
+	//  (`INPUT_REQUIRED`, `AUTH_REQUIRED`) state before returning.
+	ReturnImmediately *bool `json:"returnImmediately,omitempty"`
+
+	// TaskPushNotificationConfig Configuration for the agent to send push notifications for task updates.
+	//  Task id should be empty when sending this configuration in a `SendMessage` request.
+	TaskPushNotificationConfig *TaskPushNotificationConfig `json:"taskPushNotificationConfig,omitempty"`
 }
 
-// SendMessageRequest /////////// Request Messages ///////////
-//
-//	Represents a request for the `message/send` method.
+// SendMessageRequest Represents a request for the `SendMessage` method.
 type SendMessageRequest struct {
 	// Configuration Configuration for the send request.
 	Configuration *SendMessageConfiguration `json:"configuration,omitempty"`
@@ -671,42 +685,18 @@ type SendMessageRequest struct {
 	// Metadata A flexible key-value map for passing additional context or parameters.
 	Metadata *Struct `json:"metadata,omitempty"`
 
-	// Tenant Optional tenant, provided as a path parameter.
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
-// SendMessageResponse ////// Response Messages ///////////
+// SendMessageResponse Represents the response for the `SendMessage` method.
 type SendMessageResponse struct {
-	// Message Message is one unit of communication between client and server. It is
-	//  associated with a context and optionally a task. Since the server is
-	//  responsible for the context definition, it must always provide a context_id
-	//  in its messages. The client can optionally provide the context_id if it
-	//  knows the context to associate the message to. Similarly for task_id,
-	//  except the server decides if a task is created and whether to include the
-	//  task_id.
+	// Message A message from the agent.
 	Message *Message `json:"message,omitempty"`
 
-	// Task Task is the core unit of action for A2A. It has a current status
-	//  and when results are created for the task they are stored in the
-	//  artifact. If there are multiple turns for a task, these are stored in
-	//  history.
+	// Task The task created or updated by the message.
 	Task *Task `json:"task,omitempty"`
-}
-
-// SetTaskPushNotificationConfigRequest Represents a request for the `tasks/pushNotificationConfig/set` method.
-type SetTaskPushNotificationConfigRequest struct {
-	// Config The configuration to create.
-	Config TaskPushNotificationConfig `json:"config"`
-
-	// ConfigID The ID for the new config.
-	ConfigID string `json:"configId"`
-
-	// Parent The parent task resource for this config.
-	//  Format: tasks/{task_id}
-	Parent string `json:"parent"`
-
-	// Tenant Optional tenant, provided as a path parameter.
-	Tenant *string `json:"tenant,omitempty"`
 }
 
 // StreamResponse A wrapper object used in streaming operations to encapsulate different types of response data.
@@ -725,38 +715,41 @@ type StreamResponse struct {
 }
 
 // StringList protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
+//
+//	A list of strings.
 type StringList struct {
+	// List The individual string values.
 	List []string `json:"list,omitempty"`
 }
 
 // Struct defines model for Struct.
 type Struct = map[string]any
 
-// SubscribeToTaskRequest defines model for SubscribeToTaskRequest.
+// SubscribeToTaskRequest Represents a request for the `SubscribeToTask` method.
 type SubscribeToTaskRequest struct {
-	// Name The resource name of the task to subscribe to.
-	//  Format: tasks/{task_id}
-	Name *string `json:"name,omitempty"`
+	// ID The resource ID of the task to subscribe to.
+	ID string `json:"id"`
 
-	// Tenant Optional tenant, provided as a path parameter.
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
 	Tenant *string `json:"tenant,omitempty"`
 }
 
-// Task Task is the core unit of action for A2A. It has a current status
+// Task `Task` is the core unit of action for A2A. It has a current status
 //
 //	and when results are created for the task they are stored in the
 //	artifact. If there are multiple turns for a task, these are stored in
 //	history.
 type Task struct {
-	// Artifacts A set of output artifacts for a Task.
+	// Artifacts A set of output artifacts for a `Task`.
 	Artifacts []Artifact `json:"artifacts,omitempty"`
 
 	// ContextID Unique identifier (e.g. UUID) for the contextual collection of interactions
-	//  (tasks and messages). Created by the A2A server.
-	ContextID string `json:"contextId"`
+	//  (tasks and messages).
+	ContextID *string `json:"contextId,omitempty"`
 
 	// History protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
-	//  The history of interactions from a task.
+	//  The history of interactions from a `Task`.
 	History []Message `json:"history,omitempty"`
 
 	// ID Unique identifier (e.g. UUID) for the task, generated by the server for a
@@ -767,13 +760,11 @@ type Task struct {
 	//  A key/value object to store custom metadata about a task.
 	Metadata *Struct `json:"metadata,omitempty"`
 
-	// Status The current status of a Task, including state and a message.
+	// Status The current status of a `Task`, including `state` and a `message`.
 	Status TaskStatus `json:"status"`
 }
 
-// TaskArtifactUpdateEvent TaskArtifactUpdateEvent represents a task delta where an artifact has
-//
-//	been generated.
+// TaskArtifactUpdateEvent A task delta where an artifact has been generated.
 type TaskArtifactUpdateEvent struct {
 	// Append If true, the content of this artifact should be appended to a previously
 	//  sent artifact with the same ID.
@@ -782,29 +773,40 @@ type TaskArtifactUpdateEvent struct {
 	// Artifact The artifact that was generated or updated.
 	Artifact Artifact `json:"artifact"`
 
-	// ContextID The id of the context that this task belongs to.
+	// ContextID The ID of the context that this task belongs to.
 	ContextID string `json:"contextId"`
 
 	// LastChunk If true, this is the final chunk of the artifact.
 	LastChunk *bool `json:"lastChunk,omitempty"`
 
-	// Metadata Optional metadata associated with the artifact update.
+	// Metadata Optional. Metadata associated with the artifact update.
 	Metadata *Struct `json:"metadata,omitempty"`
 
-	// TaskID The id of the task for this artifact.
+	// TaskID The ID of the task for this artifact.
 	TaskID string `json:"taskId"`
 }
 
-// TaskPushNotificationConfig A container associating a push notification configuration with a specific
-//
-//	task.
+// TaskPushNotificationConfig A container associating a push notification configuration with a specific task.
 type TaskPushNotificationConfig struct {
-	// Name The resource name of the config.
-	//  Format: tasks/{task_id}/pushNotificationConfigs/{config_id}
-	Name string `json:"name"`
+	// Authentication Authentication information required to send the notification.
+	Authentication *AuthenticationInfo `json:"authentication,omitempty"`
 
-	// PushNotificationConfig The push notification configuration details.
-	PushNotificationConfig PushNotificationConfig `json:"pushNotificationConfig"`
+	// ID The push notification configuration details.
+	//  A unique identifier (e.g. UUID) for this push notification configuration.
+	ID *string `json:"id,omitempty"`
+
+	// TaskID The ID of the task this configuration is associated with.
+	TaskID *string `json:"taskId,omitempty"`
+
+	// Tenant Optional. Opaque routing identifier. Must match the `tenant` value from
+	//  the selected `AgentInterface` in the Agent Card when that field is set.
+	Tenant *string `json:"tenant,omitempty"`
+
+	// Token A token unique for this task or session.
+	Token *string `json:"token,omitempty"`
+
+	// URL The URL where the notification should be sent.
+	URL string `json:"url"`
 }
 
 // TaskState Filter tasks by their current status state.
@@ -823,25 +825,23 @@ type TaskStatus struct {
 	Timestamp *Timestamp `json:"timestamp,omitempty"`
 }
 
-// TaskStatusUpdateEvent An event sent by the agent to notify the client of a change in a task's
-//
-//	status.
+// TaskStatusUpdateEvent An event sent by the agent to notify the client of a change in a task's status.
 type TaskStatusUpdateEvent struct {
-	// ContextID The id of the context that the task belongs to
+	// ContextID The ID of the context that the task belongs to.
 	ContextID string `json:"contextId"`
 
-	// Final If true, this is the final event in the stream for this interaction.
-	Final bool `json:"final"`
-
-	// Metadata Optional metadata to associate with the task update.
+	// Metadata Optional. Metadata associated with the task update.
 	Metadata *Struct `json:"metadata,omitempty"`
 
 	// Status The new status of the task.
 	Status TaskStatus `json:"status"`
 
-	// TaskID The id of the task that is changed
+	// TaskID The ID of the task that has changed.
 	TaskID string `json:"taskId"`
 }
 
 // Timestamp defines model for Timestamp.
 type Timestamp = time.Time
+
+// Value defines model for Value.
+type Value = interface{}
