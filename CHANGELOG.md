@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.30.0](https://github.com/inference-gateway/adk/compare/v0.29.0...v0.30.0) (2026-10-01)
+
+### ✨ Features
+
+* add schemas-sync task and workflow caller ([#335](https://github.com/inference-gateway/adk/issues/335)) ([2c7d40a](https://github.com/inference-gateway/adk/commit/2c7d40acda64709c4accddf051527621a02cdb49))
+* **server:** bind address and static bearer-token auth ([#338](https://github.com/inference-gateway/adk/issues/338)) ([7acc1d2](https://github.com/inference-gateway/adk/commit/7acc1d211e109bf4e4b1d78a98582a6d43c1c673)), closes [#330](https://github.com/inference-gateway/adk/issues/330)
+
+### ♻️ Improvements
+
+* migrate client, server and examples to a2a v1.0.1 types ([#337](https://github.com/inference-gateway/adk/issues/337)) ([02f354b](https://github.com/inference-gateway/adk/commit/02f354badd88a10c3b44b109e1cb7f99028d699d)), closes [#329](https://github.com/inference-gateway/adk/issues/329)
+* regenerate a2a types after required-array fix ([#327](https://github.com/inference-gateway/adk/issues/327)) ([23ed137](https://github.com/inference-gateway/adk/commit/23ed137bcfb72891afc728500a897dca7ea76459))
+
+### 👷 CI
+
+* **deps:** bump github.com/inference-gateway/sdk from 1.37.2 to 1.40.2 in the gomod group ([#333](https://github.com/inference-gateway/adk/issues/333)) ([91dd6f9](https://github.com/inference-gateway/adk/commit/91dd6f9aba5437a74231f833877125369aab9f58))
+
+### 📚 Documentation
+
+* **agents:** add code readability guidelines ([#328](https://github.com/inference-gateway/adk/issues/328)) ([2a61535](https://github.com/inference-gateway/adk/commit/2a61535c0e7ee46081395fb1d2dc741ce922b909))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.280 -> 2.1.283 ([#331](https://github.com/inference-gateway/adk/issues/331)) ([febe243](https://github.com/inference-gateway/adk/commit/febe243bbc457bd21afa129d0456a7115a135378))
+* **deps:** bump infer CLI v0.208.0 -> v0.218.0 ([#332](https://github.com/inference-gateway/adk/issues/332)) ([0ca392b](https://github.com/inference-gateway/adk/commit/0ca392b568a50381ec810ac18a1fc8ed37599a10))
+* **deps:** bump infer CLI v0.218.0 -> v0.221.1 ([#334](https://github.com/inference-gateway/adk/issues/334)) ([9f4e3b7](https://github.com/inference-gateway/adk/commit/9f4e3b795c63ea97ead11ff47ac0aacba70f9d78))
+
 ## [0.29.0](https://github.com/inference-gateway/adk/compare/v0.28.0...v0.29.0) (2026-09-26)
 
 ### ✨ Features
