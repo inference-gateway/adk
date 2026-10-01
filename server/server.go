@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -380,13 +381,14 @@ func (s *A2AServerImpl) validateAuthConfiguration() {
 	}
 
 	declaresSchemes := len(s.customAgentCard.SecuritySchemes) > 0
+	authEnabled := s.cfg.AuthConfig.Enabled || s.cfg.AuthConfig.Token != ""
 
 	switch {
-	case s.cfg.AuthConfig.Enabled && !declaresSchemes:
+	case authEnabled && !declaresSchemes:
 		s.logger.Warn("authentication is enabled but the agent card declares no securitySchemes",
 			zap.String("impact", "clients cannot discover how to authenticate"),
-			zap.String("suggestion", "declare schemes on the card, e.g. via server.OIDCSecuritySchemes(cfg.AuthConfig)"))
-	case !s.cfg.AuthConfig.Enabled && declaresSchemes:
+			zap.String("suggestion", "declare schemes on the card, e.g. via server.OIDCSecuritySchemes(cfg.AuthConfig) or server.BearerTokenSecuritySchemes()"))
+	case !authEnabled && declaresSchemes:
 		s.logger.Warn("the agent card declares securitySchemes but authentication is disabled",
 			zap.String("impact", "advertised schemes are not enforced"),
 			zap.String("suggestion", "set AUTH_ENABLED=true or remove the securitySchemes from the card"))
@@ -465,28 +467,43 @@ func (s *A2AServerImpl) setupRouter(cfg *serverConfig.Config) (*gin.Engine, erro
 		}
 	}
 
-	if !cfg.AuthConfig.Enabled {
-		if telemetryMiddleware != nil {
-			r.POST("/a2a", telemetryMiddleware, s.handleA2ARequest)
-		} else {
-			r.POST("/a2a", s.handleA2ARequest)
-		}
-		s.logger.Warn("authentication is disabled, oidcAuthenticator will be nil")
-		return r, nil
-	}
-	oidcAuthenticator, err := middlewares.NewOIDCAuthenticatorMiddleware(s.logger, *s.cfg)
+	authMiddleware, err := s.authMiddleware(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create OIDC authenticator: %w", err)
+		return nil, err
 	}
 
-	s.logger.Info("oidcAuthenticator is valid, setting up authentication")
+	handlers := make([]gin.HandlerFunc, 0, 3)
 	if telemetryMiddleware != nil {
-		r.POST("/a2a", telemetryMiddleware, oidcAuthenticator.Middleware(), s.handleA2ARequest)
-	} else {
-		r.POST("/a2a", oidcAuthenticator.Middleware(), s.handleA2ARequest)
+		handlers = append(handlers, telemetryMiddleware)
 	}
+	if authMiddleware != nil {
+		handlers = append(handlers, authMiddleware)
+	}
+	r.POST("/a2a", append(handlers, s.handleA2ARequest)...)
 
 	return r, nil
+}
+
+// authMiddleware picks the /a2a guard from the auth config: a static bearer token
+// (AUTH_TOKEN), OIDC (AUTH_ENABLED), or none. Setting both is a configuration error.
+func (s *A2AServerImpl) authMiddleware(cfg *serverConfig.Config) (gin.HandlerFunc, error) {
+	switch {
+	case cfg.AuthConfig.Token != "" && cfg.AuthConfig.Enabled:
+		return nil, fmt.Errorf("AUTH_TOKEN and AUTH_ENABLED are mutually exclusive: use static bearer-token auth or OIDC, not both")
+	case cfg.AuthConfig.Token != "":
+		s.logger.Info("static bearer-token authentication enabled for /a2a")
+		return middlewares.NewBearerTokenMiddleware(cfg.AuthConfig.Token), nil
+	case cfg.AuthConfig.Enabled:
+		oidcAuthenticator, err := middlewares.NewOIDCAuthenticatorMiddleware(s.logger, *s.cfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create OIDC authenticator: %w", err)
+		}
+		s.logger.Info("oidcAuthenticator is valid, setting up authentication")
+		return oidcAuthenticator.Middleware(), nil
+	default:
+		s.logger.Warn("authentication is disabled, oidcAuthenticator will be nil")
+		return nil, nil
+	}
 }
 
 // Start starts the A2A server
@@ -501,7 +518,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 	}
 
 	s.httpServer = &http.Server{
-		Addr:         fmt.Sprintf(":%s", s.cfg.ServerConfig.Port),
+		Addr:         net.JoinHostPort(s.cfg.ServerConfig.Host, s.cfg.ServerConfig.Port),
 		Handler:      router,
 		ReadTimeout:  s.cfg.ServerConfig.ReadTimeout,
 		WriteTimeout: s.cfg.ServerConfig.WriteTimeout,
@@ -509,6 +526,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 	}
 
 	s.logger.Info("starting A2A server",
+		zap.String("host", s.cfg.ServerConfig.Host),
 		zap.String("port", s.cfg.ServerConfig.Port),
 		zap.String("agent_name", s.cfg.AgentName),
 		zap.String("agent_description", s.cfg.AgentDescription),

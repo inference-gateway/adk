@@ -3,6 +3,7 @@ package middlewares
 import (
 	"cmp"
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/http"
@@ -127,6 +128,26 @@ func (auth *OIDCAuthenticatorImpl) Middleware() gin.HandlerFunc {
 		reqCtx := context.WithValue(c.Request.Context(), ClaimsContextKey, claims)
 		c.Request = c.Request.WithContext(reqCtx)
 
+		c.Next()
+	}
+}
+
+// NewBearerTokenMiddleware protects a route with one static bearer token (AUTH_TOKEN),
+// compared in constant time. It is the no-infrastructure alternative to OIDC for
+// embedded or loopback-only servers.
+func NewBearerTokenMiddleware(token string) gin.HandlerFunc {
+	expected := []byte(token)
+	return func(c *gin.Context) {
+		scheme, presented, _ := strings.Cut(c.GetHeader("Authorization"), " ")
+		presented = strings.TrimSpace(presented)
+		if !strings.EqualFold(scheme, bearerScheme) || presented == "" {
+			unauthorized(c, wwwAuthenticateMissing, "missing bearer token")
+			return
+		}
+		if subtle.ConstantTimeCompare([]byte(presented), expected) != 1 {
+			unauthorized(c, wwwAuthenticateInvalid, "invalid token")
+			return
+		}
 		c.Next()
 	}
 }

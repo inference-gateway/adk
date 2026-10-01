@@ -573,6 +573,7 @@ Configure your A2A agent using environment variables. All configuration is optio
 
 | Variable                           | Default | Description                                                                                            |
 | ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------------ |
+| `SERVER_HOST`                      | -       | Bind address; empty listens on every interface, `127.0.0.1` keeps an embedded server loopback-only     |
 | `SERVER_PORT`                      | `8080`  | HTTP server listen port                                                                                |
 | `DEBUG`                            | `false` | Enable debug logging                                                                                   |
 | `AGENT_URL`                        | -       | Stored on the config but never read by the library; the advertised URL comes from the agent card `url` |
@@ -618,6 +619,7 @@ copies them into the card, as the examples do.
 | `AUTH_ISSUER_URL` | `http://keycloak:8080/realms/inference-gateway-realm` | OIDC issuer URL; discovery runs at startup against `{issuer}/.well-known/openid-configuration`. Because a default is set, leaving it unset with `AUTH_ENABLED=true` runs discovery against this Keycloak URL rather than failing - always set it explicitly |
 | `AUTH_CLIENT_ID`  | `inference-gateway-client`                            | OIDC client ID, used as the expected token audience when `AUTH_AUDIENCE` is empty                                                                                                                                                                           |
 | `AUTH_AUDIENCE`   | -                                                     | Comma-separated accepted `aud` values, for example an API identifier                                                                                                                                                                                        |
+| `AUTH_TOKEN`      | -                                                     | Static bearer token that protects `/a2a` without an OIDC issuer (compared in constant time). Mutually exclusive with `AUTH_ENABLED`; declare it on the card with `server.BearerTokenSecuritySchemes()`                                                      |
 
 See [docs/authentication.md](docs/authentication.md) for the full card-driven auth flow: discovery, out-of-band credentials, the authenticated extended card, and authorization via callbacks.
 

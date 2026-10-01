@@ -105,6 +105,7 @@ type AuthConfig struct {
 	IssuerURL string `env:"ISSUER_URL,default=http://keycloak:8080/realms/inference-gateway-realm"`
 	ClientID  string `env:"CLIENT_ID,default=inference-gateway-client" description:"OIDC client ID, used as the expected token audience when AUTH_AUDIENCE is empty"`
 	Audience  string `env:"AUDIENCE" description:"Comma-separated list of accepted aud values, for example an API identifier. Defaults to AUTH_CLIENT_ID"`
+	Token     string `env:"TOKEN" description:"Static bearer token that protects /a2a; mutually exclusive with ENABLED (OIDC)"`
 }
 
 // QueueConfig holds task queue configuration
@@ -126,6 +127,7 @@ type TaskRetentionConfig struct {
 
 // ServerConfig holds HTTP server configuration
 type ServerConfig struct {
+	Host                  string        `env:"HOST,default=" description:"HTTP server bind address (empty for all interfaces)"`
 	Port                  string        `env:"PORT,default=8080" description:"HTTP server port"`
 	ReadTimeout           time.Duration `env:"READ_TIMEOUT,default=120s" description:"HTTP server read timeout"`
 	WriteTimeout          time.Duration `env:"WRITE_TIMEOUT,default=120s" description:"HTTP server write timeout"`
