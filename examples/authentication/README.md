@@ -13,7 +13,7 @@ The flow has three steps:
    provider) and attaches it as an `Authorization` header on every request.
 3. **Extended card** - the authenticated client calls `agent/getAuthenticatedExtendedCard` to
    receive a richer card. The server exposes it via `WithExtendedAgentCard()`, which also
-   advertises `supportsExtendedAgentCard: true` on the public card.
+   advertises `capabilities.extendedAgentCard: true` on the public card.
 
 ## Running (no auth)
 
@@ -77,7 +77,7 @@ The test skips itself if Keycloak is not reachable.
 
 `agent/getAuthenticatedExtendedCard` returns:
 
-- `-32004` (unsupported operation) when the card does not advertise `supportsExtendedAgentCard`.
+- `-32004` (unsupported operation) when the card does not advertise `capabilities.extendedAgentCard`.
 - `-32007` (extended card not configured) when the flag is set but no extended card is configured.
 - the extended card otherwise.
 

@@ -79,8 +79,6 @@ func (fake *FakeOIDCAuthenticator) MiddlewareReturnsOnCall(i int, result1 gin.Ha
 func (fake *FakeOIDCAuthenticator) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.middlewareMutex.RLock()
-	defer fake.middlewareMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -246,12 +246,12 @@ func main() {
 			Name:            cfg.AgentName,
 			Description:     cfg.AgentDescription,
 			Version:         cfg.AgentVersion,
-			URL:             &agentURL,
-			ProtocolVersion: "0.3.0",
+			SupportedInterfaces: []types.AgentInterface{
+				{URL: agentURL, ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"},
+			},
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &[]bool{false}[0],
-				PushNotifications:      &[]bool{false}[0],
-				StateTransitionHistory: &[]bool{false}[0],
+				Streaming:         &[]bool{false}[0],
+				PushNotifications: &[]bool{false}[0],
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
@@ -367,7 +367,7 @@ Cancel an in-flight task. Works for tasks in any non-terminal state
 (`SUBMITTED`, `WORKING`, `INPUT_REQUIRED`, `AUTH_REQUIRED`, `UNSPECIFIED`).
 
 ```go
-resp, err := a2a.CancelTask(ctx, types.TaskIdParams{ID: taskID})
+resp, err := a2a.CancelTask(ctx, types.CancelTaskRequest{ID: taskID})
 if err != nil {
     log.Fatalf("cancel failed: %v", err)
 }
@@ -380,32 +380,33 @@ log.Printf("cancelled task %s → state=%s", task.ID, task.Status.State)
 
 ##### `tasks/list`
 
-List tasks the server knows about. `Limit` controls page size (server caps
-the limit at 100; default is 50) and `Offset` controls where the page starts.
-Iterate until `offset >= TotalSize` to walk the full result set.
+List tasks the server knows about. `PageSize` controls the page size (server caps
+it at 100; default is 50) and `PageToken` selects the page: pass the
+`NextPageToken` from the previous response, or leave it empty for the first page.
+Iterate until no `NextPageToken` comes back to walk the full result set.
 
 ```go
-const pageSize = 20
-offset := 0
+pageSize := 20
+pageToken := ""
 for {
-    resp, err := a2a.ListTasks(ctx, types.TaskListParams{
-        Limit:  pageSize,
-        Offset: offset,
+    resp, err := a2a.ListTasks(ctx, types.ListTasksRequest{
+        PageSize:  &pageSize,
+        PageToken: &pageToken,
     })
     if err != nil {
         log.Fatalf("list failed: %v", err)
     }
 
     listBytes, _ := json.Marshal(resp.Result)
-    var list types.TaskList
+    var list types.ListTasksResponse
     _ = json.Unmarshal(listBytes, &list)
 
     for _, t := range list.Tasks {
         log.Printf("  task %s [%s]", t.ID, t.Status.State)
     }
 
-    offset += len(list.Tasks)
-    if len(list.Tasks) == 0 || offset >= list.TotalSize {
+    pageToken = list.NextPageToken
+    if len(list.Tasks) == 0 || pageToken == "" {
         break
     }
 }
@@ -427,33 +428,33 @@ authToken := "shared-secret"
 
 // set: register a webhook for the task.
 if _, err := a2a.SetTaskPushNotificationConfig(ctx, types.TaskPushNotificationConfig{
-    Name: taskID,
-    PushNotificationConfig: types.PushNotificationConfig{
-        ID:    &configID,
-        URL:   "https://example.com/webhook",
-        Token: &authToken,
-    },
+    TaskID: &taskID,
+    ID:     &configID,
+    URL:    "https://example.com/webhook",
+    Token:  &authToken,
 }); err != nil {
     log.Fatalf("set failed: %v", err)
 }
 
 // get: read the active config.
-if _, err := a2a.GetTaskPushNotificationConfig(ctx, types.GetTaskPushNotificationConfigParams{
-    Name: taskID,
+if _, err := a2a.GetTaskPushNotificationConfig(ctx, types.GetTaskPushNotificationConfigRequest{
+    TaskID: taskID,
+    ID:     configID,
 }); err != nil {
     log.Fatalf("get failed: %v", err)
 }
 
 // list: enumerate every config attached to a task.
-if _, err := a2a.ListTaskPushNotificationConfig(ctx, types.ListTaskPushNotificationConfigParams{
-    Parent: taskID,
+if _, err := a2a.ListTaskPushNotificationConfig(ctx, types.ListTaskPushNotificationConfigsRequest{
+    TaskID: taskID,
 }); err != nil {
     log.Fatalf("list failed: %v", err)
 }
 
 // delete: tear the config down.
-if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigParams{
-    Name: taskID,
+if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigRequest{
+    TaskID: taskID,
+    ID:     configID,
 }); err != nil {
     log.Fatalf("delete failed: %v", err)
 }
@@ -472,8 +473,8 @@ The server first re-emits the current task state, then forwards any further
 streaming events as they happen.
 
 ```go
-events, err := a2a.ResubscribeTask(ctx, types.TaskResubscriptionParams{
-    Name: taskID,
+events, err := a2a.ResubscribeTask(ctx, types.SubscribeToTaskRequest{
+    ID: taskID,
 })
 if err != nil {
     log.Fatalf("resubscribe failed: %v", err)
@@ -493,21 +494,21 @@ server's authentication middleware and can stay invisible to anonymous callers.
 
 Unlike the other snippets in this section, this one does not work against a
 default ADK server. The server answers `-32004` (unsupported operation) when the
-public card does not set `supportsExtendedAgentCard: true`, and `-32007` when it
+public card does not set `capabilities.extendedAgentCard: true`, and `-32007` when it
 does but no extended card is configured; the client surfaces both as errors, so
 the snippet below would exit via `log.Fatalf`. Register an extended card first:
 
 ```go
 server.NewA2AServerBuilder(cfg, logger).
     WithAgentCard(publicCard).
-    WithExtendedAgentCard(extendedCard). // also flips supportsExtendedAgentCard on the public card
+    WithExtendedAgentCard(extendedCard). // also flips capabilities.extendedAgentCard on the public card
     Build()
 ```
 
 See [`docs/authentication.md`](./docs/authentication.md) for the full setup.
 
 ```go
-resp, err := a2a.GetAuthenticatedExtendedCard(ctx, types.GetAuthenticatedExtendedCardParams{})
+resp, err := a2a.GetAuthenticatedExtendedCard(ctx, types.GetExtendedAgentCardRequest{})
 if err != nil {
     log.Fatalf("authenticated card fetch failed: %v", err)
 }
@@ -531,7 +532,7 @@ Create OpenAI-compatible LLM clients for agent integration. See [AI examples](./
 
 #### Sending Images to a Vision Model
 
-A client can attach an image to a user message as a `FilePart`, and the default
+A client can attach an image to a user message as a file part (`raw` base64 bytes or a `url`), and the default
 agent forwards it to the model as an `image_url` content part, in order with the
 text parts:
 
@@ -539,7 +540,7 @@ text parts:
 img, _ := os.ReadFile("captcha.png")
 b64 := base64.StdEncoding.EncodeToString(img)
 
-resp, err := a2a.SendTask(ctx, types.MessageSendParams{
+resp, err := a2a.SendTask(ctx, types.SendMessageRequest{
     Message: types.Message{
         Role: types.RoleUser,
         Parts: []types.Part{
@@ -599,11 +600,10 @@ the built-in prompt "You are a helpful AI assistant processing an A2A
 
 #### Agent Capabilities
 
-| Variable                                | Default | Description                  |
-| --------------------------------------- | ------- | ---------------------------- |
-| `CAPABILITIES_STREAMING`                | `true`  | Enable streaming responses   |
-| `CAPABILITIES_PUSH_NOTIFICATIONS`       | `true`  | Enable webhook notifications |
-| `CAPABILITIES_STATE_TRANSITION_HISTORY` | `false` | Track state changes          |
+| Variable                          | Default | Description                  |
+| --------------------------------- | ------- | ---------------------------- |
+| `CAPABILITIES_STREAMING`          | `true`  | Enable streaming responses   |
+| `CAPABILITIES_PUSH_NOTIFICATIONS` | `true`  | Enable webhook notifications |
 
 The server does not read `CAPABILITIES_*` itself. The capabilities it advertises
 and acts on come from the agent card passed to `WithAgentCard()` /

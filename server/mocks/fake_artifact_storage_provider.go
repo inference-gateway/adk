@@ -644,22 +644,6 @@ func (fake *FakeArtifactStorageProvider) StoreReturnsOnCall(i int, result1 strin
 func (fake *FakeArtifactStorageProvider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.cleanupExpiredArtifactsMutex.RLock()
-	defer fake.cleanupExpiredArtifactsMutex.RUnlock()
-	fake.cleanupOldestArtifactsMutex.RLock()
-	defer fake.cleanupOldestArtifactsMutex.RUnlock()
-	fake.closeMutex.RLock()
-	defer fake.closeMutex.RUnlock()
-	fake.deleteMutex.RLock()
-	defer fake.deleteMutex.RUnlock()
-	fake.existsMutex.RLock()
-	defer fake.existsMutex.RUnlock()
-	fake.getURLMutex.RLock()
-	defer fake.getURLMutex.RUnlock()
-	fake.retrieveMutex.RLock()
-	defer fake.retrieveMutex.RUnlock()
-	fake.storeMutex.RLock()
-	defer fake.storeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

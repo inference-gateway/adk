@@ -21,8 +21,8 @@ const OIDCSchemeName = "openId"
 //
 //	schemes, security := server.OIDCSecuritySchemes(cfg.AuthConfig)
 //	card.SecuritySchemes = schemes
-//	card.Security = security
-func OIDCSecuritySchemes(cfg serverConfig.AuthConfig) (map[string]types.SecurityScheme, []types.Security) {
+//	card.SecurityRequirements = security
+func OIDCSecuritySchemes(cfg serverConfig.AuthConfig) (map[string]types.SecurityScheme, []types.SecurityRequirement) {
 	discoveryURL := strings.TrimRight(cfg.IssuerURL, "/") + "/.well-known/openid-configuration"
 
 	schemes := map[string]types.SecurityScheme{
@@ -33,7 +33,7 @@ func OIDCSecuritySchemes(cfg serverConfig.AuthConfig) (map[string]types.Security
 		},
 	}
 
-	security := []types.Security{
+	security := []types.SecurityRequirement{
 		{Schemes: map[string]types.StringList{OIDCSchemeName: {List: []string{}}}},
 	}
 

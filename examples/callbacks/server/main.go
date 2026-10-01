@@ -62,7 +62,7 @@ func (h *CallbacksTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 
 	responseMessage := types.Message{
 		MessageID: fmt.Sprintf("msg-%s", task.ID),
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		TaskID:    &task.ID,
 		Role:      types.RoleAgent,
 		Parts: []types.Part{
@@ -122,9 +122,8 @@ func main() {
 			AgentVersion:     "1.0.0",
 			Debug:            true,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
-				Streaming:              true,
-				PushNotifications:      false,
-				StateTransitionHistory: false,
+				Streaming:         true,
+				PushNotifications: false,
 			},
 			QueueConfig: serverConfig.QueueConfig{
 				CleanupInterval: 5 * time.Minute,
@@ -277,15 +276,13 @@ func main() {
 		WithStreamingTaskHandler(taskHandler).
 		WithAgent(agent).
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.A2A.AgentName,
-			Description:     cfg.A2A.AgentDescription,
-			Version:         cfg.A2A.AgentVersion,
-			URL:             &url,
-			ProtocolVersion: "0.3.0",
+			Name:                cfg.A2A.AgentName,
+			Description:         cfg.A2A.AgentDescription,
+			Version:             cfg.A2A.AgentVersion,
+			SupportedInterfaces: []types.AgentInterface{{URL: url, ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
-				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
-				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+				Streaming:         &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications: &cfg.A2A.CapabilitiesConfig.PushNotifications,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},

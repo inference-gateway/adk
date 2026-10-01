@@ -454,28 +454,6 @@ func (fake *FakeA2AProtocolHandler) HandleTaskResubscribeArgsForCall(i int) (*gi
 func (fake *FakeA2AProtocolHandler) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.handleGetAuthenticatedExtendedCardMutex.RLock()
-	defer fake.handleGetAuthenticatedExtendedCardMutex.RUnlock()
-	fake.handleMessageSendMutex.RLock()
-	defer fake.handleMessageSendMutex.RUnlock()
-	fake.handleMessageStreamMutex.RLock()
-	defer fake.handleMessageStreamMutex.RUnlock()
-	fake.handleTaskCancelMutex.RLock()
-	defer fake.handleTaskCancelMutex.RUnlock()
-	fake.handleTaskGetMutex.RLock()
-	defer fake.handleTaskGetMutex.RUnlock()
-	fake.handleTaskListMutex.RLock()
-	defer fake.handleTaskListMutex.RUnlock()
-	fake.handleTaskPushNotificationConfigDeleteMutex.RLock()
-	defer fake.handleTaskPushNotificationConfigDeleteMutex.RUnlock()
-	fake.handleTaskPushNotificationConfigGetMutex.RLock()
-	defer fake.handleTaskPushNotificationConfigGetMutex.RUnlock()
-	fake.handleTaskPushNotificationConfigListMutex.RLock()
-	defer fake.handleTaskPushNotificationConfigListMutex.RUnlock()
-	fake.handleTaskPushNotificationConfigSetMutex.RLock()
-	defer fake.handleTaskPushNotificationConfigSetMutex.RUnlock()
-	fake.handleTaskResubscribeMutex.RLock()
-	defer fake.handleTaskResubscribeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

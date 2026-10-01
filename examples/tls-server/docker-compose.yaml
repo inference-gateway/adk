@@ -40,7 +40,6 @@ services:
       A2A_SERVER_TLS_KEY_PATH: "/certs/server.key"
       A2A_CAPABILITIES_STREAMING: "true"
       A2A_CAPABILITIES_PUSH_NOTIFICATIONS: "false"
-      A2A_CAPABILITIES_STATE_TRANSITION_HISTORY: "false"
     volumes:
       - ./certs:/certs:ro
     depends_on:

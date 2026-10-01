@@ -59,7 +59,7 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-task-123",
-		ContextID: "test-context-456",
+		ContextID: new("test-context-456"),
 		Status: types.TaskStatus{
 			State: types.TaskStateSubmitted,
 		},
@@ -136,7 +136,7 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-streaming-task-123",
-		ContextID: "test-streaming-context-456",
+		ContextID: new("test-streaming-context-456"),
 		Status: types.TaskStatus{
 			State: types.TaskStateSubmitted,
 		},
@@ -230,7 +230,7 @@ func TestUsageMetadata_BackgroundTaskHandler_Disabled(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-task-disabled",
-		ContextID: "test-context-disabled",
+		ContextID: new("test-context-disabled"),
 		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 		History: []types.Message{
 			{
@@ -293,7 +293,7 @@ func TestUsageMetadata_StreamingTaskHandler_Disabled(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-streaming-disabled",
-		ContextID: "test-streaming-context-disabled",
+		ContextID: new("test-streaming-context-disabled"),
 		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 		History: []types.Message{
 			{

@@ -59,12 +59,12 @@ func extractMessageContent(message *types.Message) (string, string, string) {
 		}
 
 		// Extract file content
-		if part.File != nil {
-			if part.File.Name != nil {
-				fileName = *part.File.Name
+		if part.IsFile() {
+			if part.Filename != nil {
+				fileName = *part.Filename
 			}
-			if part.File.FileWithBytes != nil {
-				if decoded, err := base64.StdEncoding.DecodeString(*part.File.FileWithBytes); err == nil {
+			if part.Raw != nil {
+				if decoded, err := base64.StdEncoding.DecodeString(*part.Raw); err == nil {
 					fileContent = string(decoded)
 				}
 			}
@@ -139,7 +139,7 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	mimeType := "text/markdown"
 
 	artifact, err := h.artifactService.CreateFileArtifact(
-		task.ContextID,
+		task.GetContextID(),
 		"Analysis Report",
 		"A detailed analysis report based on your request, stored in MinIO cloud storage",
 		filename,
@@ -160,7 +160,7 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 
 	responseMessage := types.Message{
 		MessageID: uuid.New().String(),
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		TaskID:    &task.ID,
 		Role:      types.RoleAgent,
 		Parts: []types.Part{
@@ -225,9 +225,8 @@ func main() {
 			AgentVersion:     server.BuildAgentVersion,
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
-				Streaming:              false,
-				PushNotifications:      false,
-				StateTransitionHistory: false,
+				Streaming:         false,
+				PushNotifications: false,
 			},
 			QueueConfig: serverConfig.QueueConfig{
 				CleanupInterval: 5 * time.Minute,
@@ -305,15 +304,13 @@ func main() {
 		WithArtifactService(artifactService).
 		WithBackgroundTaskHandler(taskHandler).
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.A2A.AgentName,
-			Description:     cfg.A2A.AgentDescription,
-			Version:         cfg.A2A.AgentVersion,
-			URL:             new(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
-			ProtocolVersion: "0.3.0",
+			Name:                cfg.A2A.AgentName,
+			Description:         cfg.A2A.AgentDescription,
+			Version:             cfg.A2A.AgentVersion,
+			SupportedInterfaces: []types.AgentInterface{{URL: fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port), ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
-				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
-				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+				Streaming:         &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications: &cfg.A2A.CapabilitiesConfig.PushNotifications,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain", "application/json"},

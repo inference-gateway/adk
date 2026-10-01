@@ -198,12 +198,6 @@ func (fake *FakeTaskHandler) SetAgentArgsForCall(i int) server.OpenAICompatibleA
 func (fake *FakeTaskHandler) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.getAgentMutex.RLock()
-	defer fake.getAgentMutex.RUnlock()
-	fake.handleTaskMutex.RLock()
-	defer fake.handleTaskMutex.RUnlock()
-	fake.setAgentMutex.RLock()
-	defer fake.setAgentMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

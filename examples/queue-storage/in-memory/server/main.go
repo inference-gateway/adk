@@ -55,7 +55,7 @@ func (h *DemoTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 
 	h.logger.Info("Processing task with in-memory queue",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("input", inputContent))
 
 	// Simulate some processing work
@@ -71,7 +71,7 @@ func (h *DemoTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 
 	responseMessage := types.Message{
 		MessageID: fmt.Sprintf("response-%s", task.ID),
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		TaskID:    &task.ID,
 		Role:      types.RoleAgent,
 		Parts: []types.Part{
@@ -124,15 +124,13 @@ func main() {
 		WithBackgroundTaskHandler(taskHandler).
 		WithDefaultStreamingTaskHandler().
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.A2A.AgentName,
-			Description:     cfg.A2A.AgentDescription,
-			Version:         cfg.A2A.AgentVersion,
-			URL:             new(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
-			ProtocolVersion: "0.3.0",
+			Name:                cfg.A2A.AgentName,
+			Description:         cfg.A2A.AgentDescription,
+			Version:             cfg.A2A.AgentVersion,
+			SupportedInterfaces: []types.AgentInterface{{URL: fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port), ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
-				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
-				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+				Streaming:         &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications: &cfg.A2A.CapabilitiesConfig.PushNotifications,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},

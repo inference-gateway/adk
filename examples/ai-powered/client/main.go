@@ -72,7 +72,7 @@ func main() {
 		}
 
 		// Send the message
-		params := types.MessageSendParams{
+		params := types.SendMessageRequest{
 			Message: message,
 		}
 
@@ -104,7 +104,7 @@ func main() {
 			time.Sleep(500 * time.Millisecond)
 			fmt.Print(".")
 
-			taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{
+			taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{
 				ID: taskResult.ID,
 			})
 			if err != nil {

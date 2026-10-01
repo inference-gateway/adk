@@ -132,8 +132,8 @@ func (ah *ArtifactHelper) ExtractFileDataFromArtifact(artifact *types.Artifact) 
 	}
 
 	for _, part := range artifact.Parts {
-		if part.File != nil {
-			fileData, err := ah.extractFileFromPart(*part.File)
+		if part.IsFile() {
+			fileData, err := ah.extractFileFromPart(part)
 			if err != nil {
 				return nil, fmt.Errorf("failed to extract file from part: %w", err)
 			}
@@ -153,8 +153,8 @@ func (ah *ArtifactHelper) ExtractDataFromArtifact(artifact *types.Artifact) []ma
 	}
 
 	for _, part := range artifact.Parts {
-		if part.Data != nil {
-			dataList = append(dataList, part.Data.Data)
+		if data := part.DataMap(); data != nil {
+			dataList = append(dataList, data)
 		}
 	}
 
@@ -201,22 +201,22 @@ func (ah *ArtifactHelper) isPartOfKind(part types.Part, kind string) bool {
 	case "text":
 		return part.Text != nil
 	case "file":
-		return part.File != nil
+		return part.IsFile()
 	case "data":
 		return part.Data != nil
 	}
 	return false
 }
 
-// extractFileFromPart extracts file data from a FilePart
-func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData, error) {
+// extractFileFromPart extracts file data from a file part (inline raw bytes or a URL)
+func (ah *ArtifactHelper) extractFileFromPart(part types.Part) (FileData, error) {
 	fileData := FileData{
-		Name:     filePart.Name,
-		MIMEType: filePart.MediaType,
+		Name:     part.Filename,
+		MIMEType: part.MediaType,
 	}
 
-	if filePart.FileWithBytes != nil && *filePart.FileWithBytes != "" {
-		data, err := base64.StdEncoding.DecodeString(*filePart.FileWithBytes)
+	if part.Raw != nil && *part.Raw != "" {
+		data, err := base64.StdEncoding.DecodeString(*part.Raw)
 		if err != nil {
 			return FileData{}, fmt.Errorf("failed to decode base64 file data: %w", err)
 		}
@@ -224,8 +224,8 @@ func (ah *ArtifactHelper) extractFileFromPart(filePart types.FilePart) (FileData
 		return fileData, nil
 	}
 
-	if filePart.FileWithURI != nil && *filePart.FileWithURI != "" {
-		fileData.URI = filePart.FileWithURI
+	if part.URL != nil && *part.URL != "" {
+		fileData.URI = part.URL
 		return fileData, nil
 	}
 
@@ -281,7 +281,7 @@ func (ah *ArtifactHelper) GetArtifactSummary(task *types.Task) map[string]int {
 			if part.Text != nil {
 				summary["text"]++
 			}
-			if part.File != nil {
+			if part.IsFile() {
 				summary["file"]++
 			}
 			if part.Data != nil {

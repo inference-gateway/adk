@@ -60,18 +60,21 @@ type Artifact struct {
 
 ### Content Parts
 
-`types.Part` is a single struct with optional fields - a part carries text, file or data content depending on which field is set:
+`types.Part` is a single flat struct with optional fields - a part carries text, file or data content depending on which fields are set (A2A v1.0 removed the nested `FilePart` and `DataPart` wrappers):
 
 ```go
 type Part struct {
-    Text     *string   // Plain text content
-    File     *FilePart // File data (bytes or URI reference)
-    Data     *DataPart // Structured JSON data
-    Metadata *Struct   // Optional part metadata
+    Text      *string // Plain text content
+    Raw       *string // File bytes, base64-encoded
+    URL       *string // File location, as an alternative to Raw
+    Filename  *string // File name, for Raw or URL parts
+    MediaType *string // MIME type of the content
+    Data      *Value  // Structured JSON data (any JSON value)
+    Metadata  *Struct // Optional part metadata
 }
 ```
 
-Build parts with the helpers in `types/part_marshaling.go`: `types.CreateTextPart`, `types.CreateDataPart` and `types.CreateFilePart`.
+Build parts with the helpers in `types/part_marshaling.go`: `types.CreateTextPart`, `types.CreateDataPart` and `types.CreateFilePart`. Read them back with `part.IsFile()` and `part.DataMap()`.
 
 ## Server-Side Usage
 
@@ -565,7 +568,7 @@ downloads/
 The download utility handles both file types automatically:
 
 ```go
-// Works with both FileWithBytes and FileWithUri
+// Works with both Raw (inline bytes) and URL parts
 files, _ := helper.ExtractFileDataFromArtifact(artifact)
 
 for _, file := range files {
@@ -684,7 +687,7 @@ Each example below is a self-contained `server/` + `client/` module pair with it
 2. **Use Appropriate MIME Types**: Use `artifactService.GetMimeTypeFromExtension()` for file artifacts
 3. **Limit Artifact Size**: Be mindful of artifact size, especially for embedded files
 4. **Meaningful Names**: Provide descriptive names and descriptions for artifacts
-5. **Structured Data**: Use consistent data structures for DataPart content
+5. **Structured Data**: Use consistent data structures for data part content
 
 ### Client-Side
 

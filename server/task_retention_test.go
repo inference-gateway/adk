@@ -35,7 +35,7 @@ func TestStartTaskProcessor_AppliesTaskRetention(t *testing.T) {
 		now := time.Now()
 		assert.NoError(t, srv.storage.StoreDeadLetterTask(&types.Task{
 			ID:        id,
-			ContextID: "ctx-1",
+			ContextID: new("ctx-1"),
 			Status: types.TaskStatus{
 				State:     types.TaskStateCompleted,
 				Timestamp: &now,

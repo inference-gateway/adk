@@ -10,7 +10,7 @@ The ADK follows the [A2A specification, section 7](https://a2a-protocol.org/late
 2. **Credential acquisition is out-of-band** - the client obtains a token/key however the chosen scheme dictates.
 3. **Transmission** - the client sends the credential (e.g. `Authorization: Bearer <token>`) on every request.
 4. **Server enforcement** - with `AUTH_ENABLED=true` the `/a2a` endpoint is protected; unauthenticated requests get `401` with a `WWW-Authenticate` challenge.
-5. **Extended card** - if the card sets `supportsExtendedAgentCard: true`, an authenticated client MAY call `agent/getAuthenticatedExtendedCard` to receive a richer card and SHOULD replace its cached public card with the response.
+5. **Extended card** - if the card sets `capabilities.extendedAgentCard: true`, an authenticated client MAY call `agent/getAuthenticatedExtendedCard` to receive a richer card and SHOULD replace its cached public card with the response.
 
 ## Declaring security schemes on the card
 
@@ -67,7 +67,7 @@ Nothing in the ADK is Keycloak-specific: any provider that serves an OpenID Conn
 
 ## Configuring the extended card
 
-The extended card is served only to authenticated callers via `agent/getAuthenticatedExtendedCard`. Configure it with the builder; this also forces `supportsExtendedAgentCard: true` on the public card:
+The extended card is served only to authenticated callers via `agent/getAuthenticatedExtendedCard`. Configure it with the builder; this also forces `capabilities.extendedAgentCard: true` on the public card:
 
 ```go
 srv, _ := server.NewA2AServerBuilder(cfg, logger).
@@ -79,7 +79,7 @@ srv, _ := server.NewA2AServerBuilder(cfg, logger).
 
 ### Error contract (spec 3.3.4)
 
-- Card does not declare `supportsExtendedAgentCard` -> `-32004` (UnsupportedOperationError)
+- Card does not declare `capabilities.extendedAgentCard` -> `-32004` (UnsupportedOperationError)
 - Flag is `true` but no extended card is configured -> `-32007` (ExtendedAgentCardNotConfigured)
 - Flag is `true` and an extended card is configured -> the extended card is returned
 
@@ -100,7 +100,7 @@ authed := client.NewClientWithConfig(&client.Config{
 // (or c.(*client.Client).SetHeader("Authorization", "Bearer "+token) on a mutable client)
 
 // 3. Fetch the richer authenticated card.
-resp, _ := authed.GetAuthenticatedExtendedCard(ctx, types.GetAuthenticatedExtendedCardParams{})
+resp, _ := authed.GetAuthenticatedExtendedCard(ctx, types.GetExtendedAgentCardRequest{})
 ```
 
 ## Authorization via callbacks

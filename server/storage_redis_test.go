@@ -72,7 +72,7 @@ func TestRedisStorageEnqueueTask(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-task-1",
-		ContextID: "test-context",
+		ContextID: new("test-context"),
 		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 		History:   []types.Message{},
 	}
@@ -120,7 +120,7 @@ func TestRedisStorageEnqueueTaskPipelineExecError(t *testing.T) {
 	storage, _, fakePipe := newTestRedisStorage(t)
 	fakePipe.ExecReturns(nil, errors.New("boom"))
 
-	err := storage.EnqueueTask(context.Background(), &types.Task{ID: "t", ContextID: "c"}, "r")
+	err := storage.EnqueueTask(context.Background(), &types.Task{ID: "t", ContextID: new("c")}, "r")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to enqueue task")
 }
@@ -131,7 +131,7 @@ func TestRedisStorageDequeueTask(t *testing.T) {
 	queued := server.QueuedTask{
 		Task: &types.Task{
 			ID:        "test-task-1",
-			ContextID: "test-context",
+			ContextID: new("test-context"),
 			Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 		},
 		RequestID: "request-123",
@@ -191,7 +191,7 @@ func TestRedisStorageCreateActiveTask(t *testing.T) {
 	fakeClient.ExistsReturns(redis.NewIntResult(0, nil))
 	fakeClient.SetReturns(redis.NewStatusResult("OK", nil))
 
-	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
+	task := &types.Task{ID: "t1", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateSubmitted}}
 	require.NoError(t, storage.CreateActiveTask(task))
 
 	require.Equal(t, 1, fakeClient.ExistsCallCount())
@@ -211,7 +211,7 @@ func TestRedisStorageCreateActiveTaskAlreadyExists(t *testing.T) {
 	storage, fakeClient, _ := newTestRedisStorage(t)
 	fakeClient.ExistsReturns(redis.NewIntResult(1, nil))
 
-	err := storage.CreateActiveTask(&types.Task{ID: "t1", ContextID: "c1"})
+	err := storage.CreateActiveTask(&types.Task{ID: "t1", ContextID: new("c1")})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already exists")
 	assert.Equal(t, 0, fakeClient.SetCallCount())
@@ -229,7 +229,7 @@ func TestRedisStorageUpdateActiveTask(t *testing.T) {
 	fakeClient.ExistsReturns(redis.NewIntResult(1, nil))
 	fakeClient.SetReturns(redis.NewStatusResult("OK", nil))
 
-	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateWorking}}
+	task := &types.Task{ID: "t1", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateWorking}}
 	require.NoError(t, storage.UpdateActiveTask(task))
 
 	require.Equal(t, 1, fakeClient.SetCallCount())
@@ -241,7 +241,7 @@ func TestRedisStorageUpdateActiveTaskNotFound(t *testing.T) {
 	storage, fakeClient, _ := newTestRedisStorage(t)
 	fakeClient.ExistsReturns(redis.NewIntResult(0, nil))
 
-	err := storage.UpdateActiveTask(&types.Task{ID: "t1", ContextID: "c1"})
+	err := storage.UpdateActiveTask(&types.Task{ID: "t1", ContextID: new("c1")})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 	assert.Equal(t, 0, fakeClient.SetCallCount())
@@ -249,7 +249,7 @@ func TestRedisStorageUpdateActiveTaskNotFound(t *testing.T) {
 
 func TestRedisStorageGetActiveTask(t *testing.T) {
 	storage, fakeClient, _ := newTestRedisStorage(t)
-	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateWorking}}
+	task := &types.Task{ID: "t1", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateWorking}}
 	data, err := json.Marshal(task)
 	require.NoError(t, err)
 	fakeClient.GetReturns(redis.NewStringResult(string(data), nil))
@@ -279,7 +279,7 @@ func TestRedisStorageStoreDeadLetterTask(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "t1",
-		ContextID: "c1",
+		ContextID: new("c1"),
 		Status:    types.TaskStatus{State: types.TaskStateCompleted},
 	}
 	require.NoError(t, storage.StoreDeadLetterTask(task))
@@ -309,7 +309,7 @@ func TestRedisStorageStoreDeadLetterTaskNil(t *testing.T) {
 
 func TestRedisStorageGetTask(t *testing.T) {
 	storage, fakeClient, _ := newTestRedisStorage(t)
-	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}}
+	task := &types.Task{ID: "t1", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateCompleted}}
 	data, err := json.Marshal(task)
 	require.NoError(t, err)
 	fakeClient.GetReturns(redis.NewStringResult(string(data), nil))
@@ -332,7 +332,7 @@ func TestRedisStorageGetTaskMiss(t *testing.T) {
 
 func TestRedisStorageGetTaskByContextAndID(t *testing.T) {
 	storage, fakeClient, _ := newTestRedisStorage(t)
-	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}}
+	task := &types.Task{ID: "t1", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateCompleted}}
 	data, err := json.Marshal(task)
 	require.NoError(t, err)
 	fakeClient.GetReturns(redis.NewStringResult(string(data), nil))
@@ -348,7 +348,7 @@ func TestRedisStorageGetTaskByContextAndID(t *testing.T) {
 func TestRedisStorageDeleteTask(t *testing.T) {
 	storage, fakeClient, fakePipe := newTestRedisStorage(t)
 
-	task := &types.Task{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}}
+	task := &types.Task{ID: "t1", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateCompleted}}
 	data, err := json.Marshal(task)
 	require.NoError(t, err)
 	fakeClient.GetReturns(redis.NewStringResult(string(data), nil))
@@ -379,9 +379,9 @@ func TestRedisStorageListTasks(t *testing.T) {
 	storage, fakeClient, _ := newTestRedisStorage(t)
 
 	tasks := []*types.Task{
-		{ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}},
-		{ID: "t2", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateFailed}},
-		{ID: "t3", ContextID: "c2", Status: types.TaskStatus{State: types.TaskStateCompleted}},
+		{ID: "t1", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateCompleted}},
+		{ID: "t2", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateFailed}},
+		{ID: "t3", ContextID: new("c2"), Status: types.TaskStatus{State: types.TaskStateCompleted}},
 	}
 
 	deadLetterKeys := make([]string, 0, len(tasks))
@@ -440,8 +440,8 @@ func TestRedisStorageListTasksByContext(t *testing.T) {
 	fakeClient.SMembersReturns(redis.NewStringSliceResult([]string{"t1", "t2"}, nil))
 
 	taskByID := map[string]*types.Task{
-		"t1": {ID: "t1", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateCompleted}},
-		"t2": {ID: "t2", ContextID: "c1", Status: types.TaskStatus{State: types.TaskStateFailed}},
+		"t1": {ID: "t1", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateCompleted}},
+		"t2": {ID: "t2", ContextID: new("c1"), Status: types.TaskStatus{State: types.TaskStateFailed}},
 	}
 	fakeClient.GetStub = func(_ context.Context, key string) *redis.StringCmd {
 		taskID := key[len(testDeadLetterKeyPrefix):]
@@ -515,13 +515,13 @@ func TestRedisStorageGetStats(t *testing.T) {
 
 	completedTask := &types.Task{
 		ID:        "completed-task",
-		ContextID: "c1",
+		ContextID: new("c1"),
 		Status:    types.TaskStatus{State: types.TaskStateCompleted},
 		History:   []types.Message{{Role: "user", MessageID: "m1", Parts: []types.Part{types.CreateTextPart("hi")}}},
 	}
 	failedTask := &types.Task{
 		ID:        "failed-task",
-		ContextID: "c2",
+		ContextID: new("c2"),
 		Status:    types.TaskStatus{State: types.TaskStateFailed},
 		History:   []types.Message{{Role: "user", MessageID: "m2", Parts: []types.Part{types.CreateTextPart("oh no")}}},
 	}

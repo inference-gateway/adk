@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	zap "go.uber.org/zap"
@@ -15,7 +16,7 @@ import (
 
 // PushNotificationSender handles sending push notifications
 type PushNotificationSender interface {
-	SendTaskUpdate(ctx context.Context, config types.PushNotificationConfig, task *types.Task) error
+	SendTaskUpdate(ctx context.Context, config types.TaskPushNotificationConfig, task *types.Task) error
 }
 
 // HTTPPushNotificationSender implements push notifications via HTTP webhooks
@@ -44,7 +45,7 @@ type TaskUpdateNotification struct {
 }
 
 // SendTaskUpdate sends a push notification about a task update
-func (s *HTTPPushNotificationSender) SendTaskUpdate(ctx context.Context, config types.PushNotificationConfig, task *types.Task) error {
+func (s *HTTPPushNotificationSender) SendTaskUpdate(ctx context.Context, config types.TaskPushNotificationConfig, task *types.Task) error {
 	timestamp := ""
 	if task.Status.Timestamp != nil {
 		timestamp = time.Now().Format(time.RFC3339)
@@ -75,18 +76,12 @@ func (s *HTTPPushNotificationSender) SendTaskUpdate(ctx context.Context, config 
 		req.Header.Set("Authorization", "Bearer "+*config.Token)
 	}
 
-	if config.Authentication != nil {
-		for _, scheme := range config.Authentication.Schemes {
-			switch scheme {
-			case "bearer":
-				if config.Authentication.Credentials != nil {
-					req.Header.Set("Authorization", "Bearer "+*config.Authentication.Credentials)
-				}
-			case "basic":
-				if config.Authentication.Credentials != nil {
-					req.Header.Set("Authorization", "Basic "+*config.Authentication.Credentials)
-				}
-			}
+	if config.Authentication != nil && config.Authentication.Credentials != nil {
+		switch strings.ToLower(config.Authentication.Scheme) {
+		case "bearer":
+			req.Header.Set("Authorization", "Bearer "+*config.Authentication.Credentials)
+		case "basic":
+			req.Header.Set("Authorization", "Basic "+*config.Authentication.Credentials)
 		}
 	}
 

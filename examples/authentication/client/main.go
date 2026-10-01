@@ -63,7 +63,7 @@ func main() {
 			zap.String("openIdConnectUrl", scheme.OpenIDConnectSecurityScheme.OpenIDConnectURL))
 	}
 
-	if publicCard.SupportsExtendedAgentCard == nil || !*publicCard.SupportsExtendedAgentCard {
+	if publicCard.Capabilities.ExtendedAgentCard == nil || !*publicCard.Capabilities.ExtendedAgentCard {
 		logger.Fatal("server does not advertise an extended agent card")
 	}
 
@@ -74,7 +74,7 @@ func main() {
 	})
 
 	// 3. Fetch the extended card as an authenticated caller.
-	resp, err := authClient.GetAuthenticatedExtendedCard(ctx, types.GetAuthenticatedExtendedCardParams{})
+	resp, err := authClient.GetAuthenticatedExtendedCard(ctx, types.GetExtendedAgentCardRequest{})
 	if err != nil {
 		logger.Fatal("failed to fetch extended agent card", zap.Error(err))
 	}

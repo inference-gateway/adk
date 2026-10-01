@@ -68,7 +68,7 @@ func main() {
 	fmt.Println("📝 Sending message to create analysis report...")
 
 	// Send the message using SendTask
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: message,
 	}
 
@@ -102,7 +102,7 @@ func main() {
 	for range 20 {
 		time.Sleep(1 * time.Second)
 
-		getParams := types.TaskQueryParams{
+		getParams := types.GetTaskRequest{
 			ID: task.ID,
 		}
 

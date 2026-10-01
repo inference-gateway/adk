@@ -102,8 +102,6 @@ func (fake *FakeOpenAICompatibleAgent) RunWithStreamReturnsOnCall(i int, result1
 func (fake *FakeOpenAICompatibleAgent) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.runWithStreamMutex.RLock()
-	defer fake.runWithStreamMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

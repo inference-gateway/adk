@@ -91,14 +91,14 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 			appendTextPart(*part.Text)
 		case part.Data != nil:
 			before := len(content)
-			if err := c.processDataPart(part.Data.Data, string(role), &content, &toolCallId, &toolCalls, &reasoningContent); err != nil {
+			if err := c.processDataPart(part.DataMap(), string(role), &content, &toolCallId, &toolCalls, &reasoningContent); err != nil {
 				c.logger.Warn("failed to process DataPart",
 					zap.String("message_id", msg.MessageID),
 					zap.Error(err))
 			}
 			appendTextPart(content[before:])
-		case part.File != nil:
-			imagePart, ok := c.imageContentPart(msg.MessageID, role, part.File)
+		case part.IsFile():
+			imagePart, ok := c.imageContentPart(msg.MessageID, role, part)
 			if !ok {
 				continue
 			}
@@ -150,10 +150,10 @@ func (c *messageConverter) convertSingleMessage(msg types.Message) (sdk.Message,
 	return sdkMsg, nil
 }
 
-// imageContentPart converts an image FilePart of a user message into an SDK
+// imageContentPart converts an image file part of a user message into an SDK
 // image_url content part. Non-image files, and files on agent messages, are
 // skipped because OpenAI-compatible assistant/tool messages cannot carry images.
-func (c *messageConverter) imageContentPart(messageID string, role types.Role, file *types.FilePart) (sdk.ContentPart, bool) {
+func (c *messageConverter) imageContentPart(messageID string, role types.Role, file types.Part) (sdk.ContentPart, bool) {
 	if role == types.RoleAgent || file.MediaType == nil || !strings.HasPrefix(*file.MediaType, "image/") {
 		c.logger.Debug("file part detected in message",
 			zap.String("message_id", messageID),
@@ -163,10 +163,10 @@ func (c *messageConverter) imageContentPart(messageID string, role types.Role, f
 
 	var url string
 	switch {
-	case file.FileWithBytes != nil:
-		url = fmt.Sprintf("data:%s;base64,%s", *file.MediaType, *file.FileWithBytes)
-	case file.FileWithURI != nil:
-		url = *file.FileWithURI
+	case file.Raw != nil:
+		url = fmt.Sprintf("data:%s;base64,%s", *file.MediaType, *file.Raw)
+	case file.URL != nil:
+		url = *file.URL
 	default:
 		c.logger.Warn("image file part has neither bytes nor uri",
 			zap.String("message_id", messageID))
@@ -454,23 +454,23 @@ func (c *messageConverter) ConvertFromSDK(response sdk.Message) (*types.Message,
 
 // ValidateMessagePart validates message part structure and type
 func (c *messageConverter) ValidateMessagePart(part types.Part) error {
-	if part.Text == nil && part.Data == nil && part.File == nil {
-		return fmt.Errorf("part must have at least one field set (text, data, or file)")
+	if part.Text == nil && part.Data == nil && !part.IsFile() {
+		return fmt.Errorf("part must have at least one field set (text, data, raw, or url)")
 	}
 
 	if part.Text != nil && *part.Text == "" {
 		return fmt.Errorf("text part has empty text field")
 	}
 
-	if part.Data != nil && part.Data.Data == nil {
+	if part.Data != nil && *part.Data == nil {
 		return fmt.Errorf("data part missing data field")
 	}
 
-	if part.File != nil {
-		if part.File.Name == nil || *part.File.Name == "" {
-			return fmt.Errorf("file part missing name field")
+	if part.IsFile() {
+		if part.Filename == nil || *part.Filename == "" {
+			return fmt.Errorf("file part missing filename field")
 		}
-		if part.File.MediaType == nil || *part.File.MediaType == "" {
+		if part.MediaType == nil || *part.MediaType == "" {
 			return fmt.Errorf("file part missing mediaType field")
 		}
 	}

@@ -109,7 +109,7 @@ Total Renewable Energy: 3,615 GWh`
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	response, err := a2aClient.SendTask(ctx, types.MessageSendParams{Message: message})
+	response, err := a2aClient.SendTask(ctx, types.SendMessageRequest{Message: message})
 	if err != nil {
 		logger.Error("error sending task", zap.Error(err))
 		return
@@ -139,7 +139,7 @@ Total Renewable Energy: 3,615 GWh`
 			logger.Warn("timeout waiting for completion")
 			return
 		case <-ticker.C:
-			taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{ID: task.ID})
+			taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{ID: task.ID})
 			if err != nil {
 				logger.Debug("error getting task status", zap.Error(err))
 				continue

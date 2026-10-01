@@ -54,7 +54,7 @@ func TestProtocolHandler_HandleTaskResubscribe_TaskNotFound(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      &reqID,
 		Method:  "tasks/resubscribe",
-		Params:  map[string]any{"name": "missing-task"},
+		Params:  map[string]any{"id": "missing-task"},
 	}
 
 	h.HandleTaskResubscribe(c, req, &mocks.FakeStreamableTaskHandler{})
@@ -83,14 +83,14 @@ func TestProtocolHandler_HandleTaskResubscribe_MissingName(t *testing.T) {
 
 	assert.Equal(t, 0, taskManager.GetTaskCallCount(), "no task lookup expected when name is missing")
 	body := w.Body.String()
-	assert.Contains(t, body, "task name is required")
+	assert.Contains(t, body, "task id is required")
 }
 
 func TestProtocolHandler_HandleTaskResubscribe_CompletedTaskEmitsFinalState(t *testing.T) {
 	h, _, taskManager, _ := makeProtocolHandlerWithMocks(t)
 	completedTask := &types.Task{
 		ID:        "task-done",
-		ContextID: "ctx-1",
+		ContextID: new("ctx-1"),
 		Status: types.TaskStatus{
 			State: types.TaskStateCompleted,
 		},
@@ -103,7 +103,7 @@ func TestProtocolHandler_HandleTaskResubscribe_CompletedTaskEmitsFinalState(t *t
 		JSONRPC: "2.0",
 		ID:      &reqID,
 		Method:  "tasks/resubscribe",
-		Params:  map[string]any{"name": "task-done"},
+		Params:  map[string]any{"id": "task-done"},
 	}
 
 	streamingHandler := &mocks.FakeStreamableTaskHandler{}
@@ -127,14 +127,16 @@ func TestProtocolHandler_HandleTaskResubscribe_CompletedTaskEmitsFinalState(t *t
 	result, ok := payload["result"].(map[string]any)
 	require.True(t, ok, "result should be present")
 	assert.Equal(t, "task-done", result["taskId"])
-	assert.Equal(t, true, result["final"], "completed task should be marked final")
+	status, ok := result["status"].(map[string]any)
+	require.True(t, ok, "status should be present")
+	assert.Equal(t, string(types.TaskStateCompleted), status["state"], "completed task should re-emit its terminal state")
 }
 
 func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandler(t *testing.T) {
 	h, _, taskManager, _ := makeProtocolHandlerWithMocks(t)
 	workingTask := &types.Task{
 		ID:        "task-working",
-		ContextID: "ctx-1",
+		ContextID: new("ctx-1"),
 		Status: types.TaskStatus{
 			State: types.TaskStateWorking,
 		},
@@ -159,7 +161,7 @@ func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandle
 		JSONRPC: "2.0",
 		ID:      &reqID,
 		Method:  "tasks/resubscribe",
-		Params:  map[string]any{"name": "task-working"},
+		Params:  map[string]any{"id": "task-working"},
 	}
 
 	h.HandleTaskResubscribe(c, req, streamingHandler)
@@ -175,14 +177,13 @@ func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandle
 func TestProtocolHandler_HandleGetAuthenticatedExtendedCard(t *testing.T) {
 	makeCard := func(name string, supports *bool) *types.AgentCard {
 		return &types.AgentCard{
-			Name:                      name,
-			Description:               "test card",
-			Version:                   "1.2.3",
-			ProtocolVersion:           "1.0",
-			DefaultInputModes:         []string{"text/plain"},
-			DefaultOutputModes:        []string{"text/plain"},
-			Skills:                    []types.AgentSkill{},
-			SupportsExtendedAgentCard: supports,
+			Name:               name,
+			Description:        "test card",
+			Version:            "1.2.3",
+			DefaultInputModes:  []string{"text/plain"},
+			DefaultOutputModes: []string{"text/plain"},
+			Skills:             []types.AgentSkill{},
+			Capabilities:       types.AgentCapabilities{ExtendedAgentCard: supports},
 		}
 	}
 	truePtr := true

@@ -31,7 +31,7 @@ func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {
 			setup: func() *types.JSONRPCSuccessResponse {
 				task := types.Task{
 					ID:        "task-123",
-					ContextID: "context-456",
+					ContextID: new("context-456"),
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},
@@ -55,7 +55,7 @@ func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {
 			wantErr: false,
 			assertions: func(t *testing.T, task *types.Task) {
 				assert.Equal(t, "task-123", task.ID)
-				assert.Equal(t, "context-456", task.ContextID)
+				assert.Equal(t, "context-456", task.GetContextID())
 				assert.Len(t, task.Artifacts, 1)
 			},
 		},

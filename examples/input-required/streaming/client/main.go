@@ -96,10 +96,10 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 	fmt.Printf("📤 Sending: %s\n", initialMessage)
 	fmt.Print("📥 Streaming response: ")
 
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: message,
-		Configuration: &types.MessageSendConfiguration{
-			Blocking:            new(false),
+		Configuration: &types.SendMessageConfiguration{
+			ReturnImmediately:   new(true),
 			AcceptedOutputModes: []string{"text/plain"},
 		},
 	}
@@ -167,7 +167,7 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 				fmt.Print("\n❌ Task failed")
 				return nil
 
-			case types.TaskStateCancelled:
+			case types.TaskStateCanceled:
 				logger.Info("task canceled")
 				fmt.Print("\n🚫 Task canceled")
 				return nil
@@ -218,10 +218,10 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 		fmt.Printf("📤 Sending follow-up: %s\n", userResponse)
 		fmt.Print("📥 Continued streaming: ")
 
-		followUpParams := types.MessageSendParams{
+		followUpParams := types.SendMessageRequest{
 			Message: followUpMessage,
-			Configuration: &types.MessageSendConfiguration{
-				Blocking:            new(false),
+			Configuration: &types.SendMessageConfiguration{
+				ReturnImmediately:   new(true),
 				AcceptedOutputModes: []string{"text/plain"},
 			},
 		}

@@ -33,11 +33,16 @@ The `agent-card.json` file contains the complete agent definition:
   "name": "static-card-agent",
   "description": "A demonstration agent that loads its configuration from a static JSON file",
   "version": "0.1.0",
-  "protocol_version": "0.3.0",
+  "supportedInterfaces": [
+    {
+      "url": "http://localhost:8080",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
   "capabilities": {
     "streaming": false,
-    "push_notifications": false,
-    "state_transition_history": false
+    "pushNotifications": false
   },
   "skills": [
     {
@@ -55,7 +60,11 @@ The `agent-card.json` file contains the complete agent definition:
 a2aServer, err := server.NewA2AServerBuilder(cfg.A2A.Config, logger).
     WithBackgroundTaskHandler(taskHandler).
     WithAgentCardFromFile(cfg.A2A.AgentCardFile, map[string]any{
-        "url": fmt.Sprintf("http://localhost:%s", cfg.A2A.Config.ServerConfig.Port),
+        "supportedInterfaces": []map[string]any{{
+            "url":             fmt.Sprintf("http://localhost:%s", cfg.A2A.Config.ServerConfig.Port),
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "1.0",
+        }},
     }).
     Build()
 ```

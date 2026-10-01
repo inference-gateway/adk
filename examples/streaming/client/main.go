@@ -65,10 +65,10 @@ func main() {
 
 	// Send the streaming message
 	blocking := false
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: message,
-		Configuration: &types.MessageSendConfiguration{
-			Blocking:            &blocking,
+		Configuration: &types.SendMessageConfiguration{
+			ReturnImmediately:   new(!blocking),
 			AcceptedOutputModes: []string{"text/plain"},
 		},
 	}
@@ -135,7 +135,7 @@ func main() {
 			case types.TaskStateFailed:
 				logger.Error("task failed", zap.Int("event", eventCount))
 
-			case types.TaskStateCancelled:
+			case types.TaskStateCanceled:
 				logger.Info("task canceled", zap.Int("event", eventCount))
 			}
 			continue

@@ -714,26 +714,6 @@ func (fake *FakeAgentBuilder) WithToolBoxReturnsOnCall(i int, result1 server.Age
 func (fake *FakeAgentBuilder) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.buildMutex.RLock()
-	defer fake.buildMutex.RUnlock()
-	fake.getConfigMutex.RLock()
-	defer fake.getConfigMutex.RUnlock()
-	fake.withCallbacksMutex.RLock()
-	defer fake.withCallbacksMutex.RUnlock()
-	fake.withConfigMutex.RLock()
-	defer fake.withConfigMutex.RUnlock()
-	fake.withDefaultToolBoxMutex.RLock()
-	defer fake.withDefaultToolBoxMutex.RUnlock()
-	fake.withLLMClientMutex.RLock()
-	defer fake.withLLMClientMutex.RUnlock()
-	fake.withMaxChatCompletionMutex.RLock()
-	defer fake.withMaxChatCompletionMutex.RUnlock()
-	fake.withMaxConversationHistoryMutex.RLock()
-	defer fake.withMaxConversationHistoryMutex.RUnlock()
-	fake.withSystemPromptMutex.RLock()
-	defer fake.withSystemPromptMutex.RUnlock()
-	fake.withToolBoxMutex.RLock()
-	defer fake.withToolBoxMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

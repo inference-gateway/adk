@@ -475,18 +475,6 @@ func (fake *FakeRedisPipeliner) SetReturnsOnCall(i int, result1 *redis.StatusCmd
 func (fake *FakeRedisPipeliner) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.delMutex.RLock()
-	defer fake.delMutex.RUnlock()
-	fake.execMutex.RLock()
-	defer fake.execMutex.RUnlock()
-	fake.lPushMutex.RLock()
-	defer fake.lPushMutex.RUnlock()
-	fake.sAddMutex.RLock()
-	defer fake.sAddMutex.RUnlock()
-	fake.sRemMutex.RLock()
-	defer fake.sRemMutex.RUnlock()
-	fake.setMutex.RLock()
-	defer fake.setMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

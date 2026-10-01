@@ -28,7 +28,7 @@ type Config struct {
 
 // submitTask sends a single message/send request and returns the created task.
 func submitTask(ctx context.Context, a2a client.A2AClient, text string, logger *zap.Logger) (*types.Task, error) {
-	resp, err := a2a.SendTask(ctx, types.MessageSendParams{
+	resp, err := a2a.SendTask(ctx, types.SendMessageRequest{
 		Message: types.Message{
 			MessageID: uuid.New().String(),
 			Role:      types.RoleUser,
@@ -58,7 +58,7 @@ func submitTask(ctx context.Context, a2a client.A2AClient, text string, logger *
 // whatever authentication middleware the server has installed.
 func demonstrateAuthenticatedExtendedCard(ctx context.Context, a2a client.A2AClient, logger *zap.Logger) {
 	fmt.Println("\n=== agent/getAuthenticatedExtendedCard ===")
-	resp, err := a2a.GetAuthenticatedExtendedCard(ctx, types.GetAuthenticatedExtendedCardParams{})
+	resp, err := a2a.GetAuthenticatedExtendedCard(ctx, types.GetExtendedAgentCardRequest{})
 	if err != nil {
 		logger.Error("failed to fetch authenticated extended card", zap.Error(err))
 		return
@@ -67,20 +67,20 @@ func demonstrateAuthenticatedExtendedCard(ctx context.Context, a2a client.A2ACli
 	fmt.Println(string(cardBytes))
 }
 
-// demonstrateListTasks calls `tasks/list` twice to walk through paginated results.
+// demonstrateListTasks calls `tasks/list` repeatedly to walk through paginated results.
 //
 // The server caps the page size internally; what we control from the client is
-// `Limit` (per-page size) and `Offset` (where to start). Iterating until we
-// have collected `TotalSize` entries is the canonical pagination loop.
+// `PageSize` and the opaque `PageToken` returned as `NextPageToken` on the
+// previous page. Looping until no token comes back is the canonical pagination loop.
 func demonstrateListTasks(ctx context.Context, a2a client.A2AClient, logger *zap.Logger) {
 	fmt.Println("\n=== tasks/list (with pagination) ===")
-	const pageSize = 2
-	offset := 0
+	pageSize := 2
+	pageToken := ""
 	page := 1
 	for {
-		resp, err := a2a.ListTasks(ctx, types.TaskListParams{
-			Limit:  pageSize,
-			Offset: offset,
+		resp, err := a2a.ListTasks(ctx, types.ListTasksRequest{
+			PageSize:  &pageSize,
+			PageToken: &pageToken,
 		})
 		if err != nil {
 			logger.Error("failed to list tasks", zap.Error(err))
@@ -93,23 +93,23 @@ func demonstrateListTasks(ctx context.Context, a2a client.A2AClient, logger *zap
 			return
 		}
 
-		var taskList types.TaskList
+		var taskList types.ListTasksResponse
 		if err := json.Unmarshal(listBytes, &taskList); err != nil {
 			logger.Error("failed to decode task list", zap.Error(err))
 			return
 		}
 
-		fmt.Printf("Page %d (offset=%d, returned=%d, total=%d):\n",
-			page, offset, len(taskList.Tasks), taskList.TotalSize)
+		fmt.Printf("Page %d (returned=%d, total=%d):\n",
+			page, len(taskList.Tasks), taskList.TotalSize)
 		for _, t := range taskList.Tasks {
 			fmt.Printf("  - %s [state=%s]\n", t.ID, t.Status.State)
 		}
 
-		offset += len(taskList.Tasks)
+		pageToken = taskList.NextPageToken
 		page++
 
-		// Stop once we've seen every task or the server stopped returning rows.
-		if len(taskList.Tasks) == 0 || offset >= taskList.TotalSize {
+		// Stop once the server hands back no further page.
+		if len(taskList.Tasks) == 0 || pageToken == "" {
 			break
 		}
 	}
@@ -125,15 +125,17 @@ func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, task
 	authToken := "demo-shared-secret"
 
 	// 1. set: register a push notification webhook for each URL.
+	var firstConfigID string
 	for i, url := range webhookURLs {
 		configID := uuid.New().String()
+		if i == 0 {
+			firstConfigID = configID
+		}
 		setResp, err := a2a.SetTaskPushNotificationConfig(ctx, types.TaskPushNotificationConfig{
-			Name: taskID,
-			PushNotificationConfig: types.PushNotificationConfig{
-				ID:    &configID,
-				URL:   url,
-				Token: &authToken,
-			},
+			TaskID: &taskID,
+			ID:     &configID,
+			URL:    url,
+			Token:  &authToken,
 		})
 		if err != nil {
 			logger.Error("failed to set push notification config", zap.Error(err), zap.String("url", url))
@@ -144,8 +146,9 @@ func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, task
 	}
 
 	// 2. get: read back the first config to verify the round-trip.
-	getResp, err := a2a.GetTaskPushNotificationConfig(ctx, types.GetTaskPushNotificationConfigParams{
-		Name: &taskID,
+	getResp, err := a2a.GetTaskPushNotificationConfig(ctx, types.GetTaskPushNotificationConfigRequest{
+		TaskID: taskID,
+		ID:     firstConfigID,
 	})
 	if err != nil {
 		logger.Error("failed to get push notification config", zap.Error(err))
@@ -155,8 +158,8 @@ func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, task
 	fmt.Printf("get → \n%s\n", string(getBytes))
 
 	// 3. list: show every config attached to this task - should contain both.
-	listResp, err := a2a.ListTaskPushNotificationConfig(ctx, types.ListTaskPushNotificationConfigParams{
-		Parent: &taskID,
+	listResp, err := a2a.ListTaskPushNotificationConfig(ctx, types.ListTaskPushNotificationConfigsRequest{
+		TaskID: taskID,
 	})
 	if err != nil {
 		logger.Error("failed to list push notification configs", zap.Error(err))
@@ -183,7 +186,7 @@ func waitForTaskAndCleanupPushConfig(ctx context.Context, a2a client.A2AClient, 
 			logger.Error("context cancelled while waiting for task", zap.String("task_id", taskID))
 			return
 		case <-ticker.C:
-			resp, err := a2a.GetTask(ctx, types.TaskQueryParams{ID: taskID})
+			resp, err := a2a.GetTask(ctx, types.GetTaskRequest{ID: taskID})
 			if err != nil {
 				logger.Error("failed to get task", zap.Error(err))
 				continue
@@ -196,7 +199,7 @@ func waitForTaskAndCleanupPushConfig(ctx context.Context, a2a client.A2AClient, 
 			}
 			if task.Status.State == types.TaskStateCompleted ||
 				task.Status.State == types.TaskStateFailed ||
-				task.Status.State == types.TaskStateCancelled {
+				task.Status.State == types.TaskStateCanceled {
 				fmt.Printf("task %s reached terminal state: %s\n", taskID, task.Status.State)
 				fmt.Println("→ webhook-sink should have received a push notification")
 				deletePushNotificationConfig(ctx, a2a, taskID, logger)
@@ -208,8 +211,8 @@ func waitForTaskAndCleanupPushConfig(ctx context.Context, a2a client.A2AClient, 
 
 func deletePushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID string, logger *zap.Logger) {
 	fmt.Println("\n=== tasks/pushNotificationConfig/delete ===")
-	if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigParams{
-		Name: &taskID,
+	if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigRequest{
+		TaskID: taskID,
 	}); err != nil {
 		logger.Error("failed to delete push notification config", zap.Error(err))
 		return
@@ -224,7 +227,7 @@ func deletePushNotificationConfig(ctx context.Context, a2a client.A2AClient, tas
 // the CANCELLED state.
 func demonstrateCancel(ctx context.Context, a2a client.A2AClient, taskID string, logger *zap.Logger) {
 	fmt.Println("\n=== tasks/cancel ===")
-	resp, err := a2a.CancelTask(ctx, types.TaskIdParams{ID: taskID})
+	resp, err := a2a.CancelTask(ctx, types.CancelTaskRequest{ID: taskID})
 	if err != nil {
 		logger.Error("failed to cancel task", zap.Error(err))
 		return
@@ -244,7 +247,7 @@ func demonstrateResubscribe(ctx context.Context, a2a client.A2AClient, logger *z
 	fmt.Println("\n=== tasks/resubscribe ===")
 
 	streamCtx, cancelStream := context.WithCancel(ctx)
-	streamCh, err := a2a.SendTaskStreaming(streamCtx, types.MessageSendParams{
+	streamCh, err := a2a.SendTaskStreaming(streamCtx, types.SendMessageRequest{
 		Message: types.Message{
 			MessageID: uuid.New().String(),
 			Role:      types.RoleUser,
@@ -290,7 +293,7 @@ func demonstrateResubscribe(ctx context.Context, a2a client.A2AClient, logger *z
 
 	// Reattach with tasks/resubscribe. The server first re-emits the current
 	// task state, then forwards any further streaming events.
-	resubCh, err := a2a.ResubscribeTask(ctx, types.TaskResubscriptionParams{Name: &taskID})
+	resubCh, err := a2a.ResubscribeTask(ctx, types.SubscribeToTaskRequest{ID: taskID})
 	if err != nil {
 		logger.Error("resubscribe failed", zap.Error(err))
 		return

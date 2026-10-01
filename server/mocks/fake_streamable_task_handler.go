@@ -199,12 +199,6 @@ func (fake *FakeStreamableTaskHandler) SetAgentArgsForCall(i int) server.OpenAIC
 func (fake *FakeStreamableTaskHandler) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.getAgentMutex.RLock()
-	defer fake.getAgentMutex.RUnlock()
-	fake.handleStreamingTaskMutex.RLock()
-	defer fake.handleStreamingTaskMutex.RUnlock()
-	fake.setAgentMutex.RLock()
-	defer fake.setAgentMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

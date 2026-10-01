@@ -96,7 +96,7 @@ func TestDefaultTaskManager_CreateTask(t *testing.T) {
 
 			assert.NotNil(t, task)
 			assert.NotEmpty(t, task.ID)
-			assert.Equal(t, tt.contextID, task.ContextID)
+			assert.Equal(t, tt.contextID, task.GetContextID())
 			assert.Equal(t, tt.state, task.Status.State)
 			assert.Equal(t, tt.message, task.Status.Message)
 			assert.NotNil(t, task.Status.Timestamp)
@@ -247,7 +247,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 
 	task1 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, firstMessage)
 	assert.NotNil(t, task1)
-	assert.Equal(t, contextID, task1.ContextID)
+	assert.Equal(t, contextID, task1.GetContextID())
 	assert.Len(t, task1.History, 1)
 	assert.Equal(t, *firstMessage, task1.History[0])
 
@@ -280,7 +280,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 
 	task2 := taskManager.CreateTaskWithHistory(contextID, types.TaskStateSubmitted, secondMessage, completedHistory)
 	assert.NotNil(t, task2)
-	assert.Equal(t, contextID, task2.ContextID)
+	assert.Equal(t, contextID, task2.GetContextID())
 	assert.NotEqual(t, task1.ID, task2.ID)
 
 	assert.Len(t, task2.History, 3)
@@ -319,7 +319,7 @@ func TestDefaultTaskManager_ConversationContextPreservation(t *testing.T) {
 
 	task3 := taskManager.CreateTask(contextID, types.TaskStateSubmitted, thirdMessage)
 	assert.NotNil(t, task3)
-	assert.Equal(t, contextID, task3.ContextID)
+	assert.Equal(t, contextID, task3.GetContextID())
 
 	assert.Len(t, task3.History, 1)
 	assert.Equal(t, *thirdMessage, task3.History[0])
@@ -537,9 +537,9 @@ func TestDefaultTaskManager_TaskRetention(t *testing.T) {
 
 	assert.Equal(t, 5, removedCount)
 
-	allTasks, err := taskManager.ListTasks(types.TaskListParams{
+	allTasks, err := taskManager.ListTasks(types.ListTasksRequest{
 		ContextID: &contextID,
-		Limit:     100,
+		PageSize:  new(100),
 	})
 	assert.NoError(t, err)
 
@@ -654,9 +654,9 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 		},
 		{
 			name:          "cannot cancel already canceled task",
-			initialState:  types.TaskStateCancelled,
+			initialState:  types.TaskStateCanceled,
 			shouldSucceed: false,
-			errorMsg:      "cannot be canceled: current state is TASK_STATE_CANCELLED",
+			errorMsg:      "cannot be canceled: current state is TASK_STATE_CANCELED",
 		},
 		{
 			name:          "cannot cancel rejected task",
@@ -686,7 +686,7 @@ func TestDefaultTaskManager_CancelTask_StateValidation(t *testing.T) {
 
 				retrievedTask, exists := taskManager.GetTask(task.ID)
 				assert.True(t, exists)
-				assert.Equal(t, types.TaskStateCancelled, retrievedTask.Status.State)
+				assert.Equal(t, types.TaskStateCanceled, retrievedTask.Status.State)
 			} else {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errorMsg)

@@ -38,7 +38,7 @@ func (h *EchoTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 
 	responseMessage := types.Message{
 		MessageID: uuid.New().String(),
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		TaskID:    &task.ID,
 		Role:      types.RoleAgent,
 		Parts:     []types.Part{types.CreateTextPart(fmt.Sprintf("Echo: %s", userInput))},
@@ -103,17 +103,16 @@ func buildServer(cfg *config.Config, logger *zap.Logger) (server.A2AServer, erro
 	// discover the OIDC scheme before sending any credentials.
 	schemes, security := server.OIDCSecuritySchemes(cfg.A2A.AuthConfig)
 	publicCard := types.AgentCard{
-		Name:               cfg.A2A.AgentName,
-		Description:        cfg.A2A.AgentDescription,
-		Version:            cfg.A2A.AgentVersion,
-		URL:                new(baseURL),
-		ProtocolVersion:    "0.3.0",
-		Capabilities:       types.AgentCapabilities{Streaming: new(false)},
-		DefaultInputModes:  []string{"text/plain"},
-		DefaultOutputModes: []string{"text/plain"},
-		Skills:             []types.AgentSkill{},
-		SecuritySchemes:    schemes,
-		Security:           security,
+		Name:                 cfg.A2A.AgentName,
+		Description:          cfg.A2A.AgentDescription,
+		Version:              cfg.A2A.AgentVersion,
+		SupportedInterfaces:  []types.AgentInterface{{URL: baseURL, ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
+		Capabilities:         types.AgentCapabilities{Streaming: new(false)},
+		DefaultInputModes:    []string{"text/plain"},
+		DefaultOutputModes:   []string{"text/plain"},
+		Skills:               []types.AgentSkill{},
+		SecuritySchemes:      schemes,
+		SecurityRequirements: security,
 	}
 
 	// Extended card: richer detail returned only to authenticated callers via

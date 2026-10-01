@@ -74,7 +74,7 @@ func main() {
 		zap.String("name", agentCard.Name),
 		zap.String("description", agentCard.Description),
 		zap.String("version", agentCard.Version),
-		zap.String("protocol_version", agentCard.ProtocolVersion))
+		zap.Int("supported_interfaces", len(agentCard.SupportedInterfaces)))
 
 	if agentCard.Capabilities.Streaming != nil {
 		logger.Info("streaming capability", zap.Bool("enabled", *agentCard.Capabilities.Streaming))

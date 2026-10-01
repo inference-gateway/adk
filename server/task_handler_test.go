@@ -26,7 +26,7 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 			name: "default handler provides basic response - task with message",
 			task: &types.Task{
 				ID:        "test-task-1",
-				ContextID: "test-context",
+				ContextID: new("test-context"),
 				Status: types.TaskStatus{
 					State: types.TaskStateSubmitted,
 					Message: &types.Message{
@@ -45,7 +45,7 @@ func TestDefaultBackgroundTaskHandler_HandleTask(t *testing.T) {
 			name: "default handler provides basic response - task with nil message",
 			task: &types.Task{
 				ID:        "test-task-2",
-				ContextID: "test-context",
+				ContextID: new("test-context"),
 				Status: types.TaskStatus{
 					State:   types.TaskStateSubmitted,
 					Message: nil,
@@ -96,7 +96,7 @@ func TestDefaultBackgroundTaskHandler_InputPausing(t *testing.T) {
 			name: "successful polling task without agent",
 			task: &types.Task{
 				ID:        "test-task-1",
-				ContextID: "test-context-1",
+				ContextID: new("test-context-1"),
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
@@ -108,7 +108,7 @@ func TestDefaultBackgroundTaskHandler_InputPausing(t *testing.T) {
 			name: "polling task with agent requiring input",
 			task: &types.Task{
 				ID:        "test-task-2",
-				ContextID: "test-context-2",
+				ContextID: new("test-context-2"),
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
@@ -162,7 +162,7 @@ func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 			name: "streaming task without agent should error",
 			task: &types.Task{
 				ID:        "test-task-1",
-				ContextID: "test-context-1",
+				ContextID: new("test-context-1"),
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
@@ -173,7 +173,7 @@ func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 			name: "streaming task with agent requiring input",
 			task: &types.Task{
 				ID:        "test-task-2",
-				ContextID: "test-context-2",
+				ContextID: new("test-context-2"),
 				Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 				History:   []types.Message{},
 			},
@@ -325,7 +325,7 @@ func TestDefaultA2AProtocolHandler_ContextHistoryHandling(t *testing.T) {
 
 			expectedTask := &types.Task{
 				ID:        "test-task-id",
-				ContextID: "test-context",
+				ContextID: new("test-context"),
 				Status: types.TaskStatus{
 					State: types.TaskStateSubmitted,
 				},
@@ -445,7 +445,7 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 
 			expectedTask := &types.Task{
 				ID:        "test-task-id",
-				ContextID: "test-context",
+				ContextID: new("test-context"),
 				Status: types.TaskStatus{
 					State: types.TaskStateSubmitted,
 				},
@@ -461,7 +461,7 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 			)
 
 			contextID := "test-context"
-			params := types.MessageSendParams{
+			params := types.SendMessageRequest{
 				Message: tt.inputMessage,
 			}
 			params.Message.ContextID = &contextID

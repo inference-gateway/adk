@@ -191,7 +191,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
     }
 
     // Send initial message
-    params := types.MessageSendParams{Message: message}
+    params := types.SendMessageRequest{Message: message}
     response, err := a2aClient.SendTask(ctx, params)
 
     // Extract task ID from response
@@ -206,7 +206,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
         time.Sleep(500 * time.Millisecond)
 
         // Get task status
-        taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{ID: taskID})
+        taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{ID: taskID})
 
         var currentTask types.Task
         json.Unmarshal(taskResponse.Result.(json.RawMessage), &currentTask)

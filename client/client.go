@@ -20,22 +20,22 @@ import (
 type A2AClient interface {
 	// Agent discovery
 	GetAgentCard(ctx context.Context) (*types.AgentCard, error)
-	GetAuthenticatedExtendedCard(ctx context.Context, params types.GetAuthenticatedExtendedCardParams) (*types.JSONRPCSuccessResponse, error)
+	GetAuthenticatedExtendedCard(ctx context.Context, params types.GetExtendedAgentCardRequest) (*types.JSONRPCSuccessResponse, error)
 	GetHealth(ctx context.Context) (*HealthResponse, error)
 
 	// Task operations
-	SendTask(ctx context.Context, params types.MessageSendParams) (*types.JSONRPCSuccessResponse, error)
-	SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error)
-	GetTask(ctx context.Context, params types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error)
-	ListTasks(ctx context.Context, params types.TaskListParams) (*types.JSONRPCSuccessResponse, error)
-	CancelTask(ctx context.Context, params types.TaskIdParams) (*types.JSONRPCSuccessResponse, error)
-	ResubscribeTask(ctx context.Context, params types.TaskResubscriptionParams) (<-chan types.JSONRPCSuccessResponse, error)
+	SendTask(ctx context.Context, params types.SendMessageRequest) (*types.JSONRPCSuccessResponse, error)
+	SendTaskStreaming(ctx context.Context, params types.SendMessageRequest) (<-chan types.JSONRPCSuccessResponse, error)
+	GetTask(ctx context.Context, params types.GetTaskRequest) (*types.JSONRPCSuccessResponse, error)
+	ListTasks(ctx context.Context, params types.ListTasksRequest) (*types.JSONRPCSuccessResponse, error)
+	CancelTask(ctx context.Context, params types.CancelTaskRequest) (*types.JSONRPCSuccessResponse, error)
+	ResubscribeTask(ctx context.Context, params types.SubscribeToTaskRequest) (<-chan types.JSONRPCSuccessResponse, error)
 
 	// Push notification configuration
 	SetTaskPushNotificationConfig(ctx context.Context, params types.TaskPushNotificationConfig) (*types.JSONRPCSuccessResponse, error)
-	GetTaskPushNotificationConfig(ctx context.Context, params types.GetTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
-	ListTaskPushNotificationConfig(ctx context.Context, params types.ListTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
-	DeleteTaskPushNotificationConfig(ctx context.Context, params types.DeleteTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
+	GetTaskPushNotificationConfig(ctx context.Context, params types.GetTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error)
+	ListTaskPushNotificationConfig(ctx context.Context, params types.ListTaskPushNotificationConfigsRequest) (*types.JSONRPCSuccessResponse, error)
+	DeleteTaskPushNotificationConfig(ctx context.Context, params types.DeleteTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error)
 
 	// Configuration
 	SetTimeout(timeout time.Duration)
@@ -139,7 +139,7 @@ func (c *Client) getA2AEndpointURL() string {
 }
 
 // SendTask sends a task to the agent (primary interface following official A2A pattern)
-func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (*types.JSONRPCSuccessResponse, error) {
+func (c *Client) SendTask(ctx context.Context, params types.SendMessageRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("sending task",
 		zap.String("method", "message/send"),
 		zap.String("message_id", params.Message.MessageID),
@@ -175,7 +175,7 @@ func (c *Client) SendTask(ctx context.Context, params types.MessageSendParams) (
 }
 
 // SendTaskStreaming sends a task and returns a channel for streaming events
-func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error) {
+func (c *Client) SendTaskStreaming(ctx context.Context, params types.SendMessageRequest) (<-chan types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("starting task streaming",
 		zap.String("method", "message/stream"),
 		zap.String("message_id", params.Message.MessageID),
@@ -297,7 +297,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.MessageSend
 }
 
 // GetTaskWithContext retrieves the status of a task with context support
-func (c *Client) GetTask(ctx context.Context, params types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error) {
+func (c *Client) GetTask(ctx context.Context, params types.GetTaskRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("retrieving task", zap.String("method", "tasks/get"), zap.String("task_id", params.ID))
 
 	req := types.JSONRPCRequest{
@@ -330,7 +330,7 @@ func (c *Client) GetTask(ctx context.Context, params types.TaskQueryParams) (*ty
 }
 
 // CancelTaskWithContext cancels a task with context support
-func (c *Client) CancelTask(ctx context.Context, params types.TaskIdParams) (*types.JSONRPCSuccessResponse, error) {
+func (c *Client) CancelTask(ctx context.Context, params types.CancelTaskRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("cancelling task", zap.String("method", "tasks/cancel"), zap.String("task_id", params.ID))
 
 	req := types.JSONRPCRequest{
@@ -363,7 +363,7 @@ func (c *Client) CancelTask(ctx context.Context, params types.TaskIdParams) (*ty
 }
 
 // ListTasks retrieves a list of tasks from the agent
-func (c *Client) ListTasks(ctx context.Context, params types.TaskListParams) (*types.JSONRPCSuccessResponse, error) {
+func (c *Client) ListTasks(ctx context.Context, params types.ListTasksRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("listing tasks", zap.String("method", "tasks/list"))
 
 	req := types.JSONRPCRequest{
@@ -434,35 +434,37 @@ func (c *Client) doJSONRPCCall(ctx context.Context, method string, params any) (
 func (c *Client) SetTaskPushNotificationConfig(ctx context.Context, params types.TaskPushNotificationConfig) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("setting task push notification config",
 		zap.String("method", "tasks/pushNotificationConfig/set"),
-		zap.String("task_name", params.Name),
-		zap.String("url", params.PushNotificationConfig.URL))
+		zap.Stringp("task_id", params.TaskID),
+		zap.String("url", params.URL))
 	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/set", params)
 }
 
 // GetTaskPushNotificationConfig retrieves the push notification configuration for a task via
 // the `tasks/pushNotificationConfig/get` JSON-RPC method.
-func (c *Client) GetTaskPushNotificationConfig(ctx context.Context, params types.GetTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+func (c *Client) GetTaskPushNotificationConfig(ctx context.Context, params types.GetTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("getting task push notification config",
 		zap.String("method", "tasks/pushNotificationConfig/get"),
-		zap.Stringp("task_name", params.Name))
+		zap.String("task_id", params.TaskID),
+		zap.String("config_id", params.ID))
 	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/get", params)
 }
 
 // ListTaskPushNotificationConfig lists push notification configurations for a task via the
 // `tasks/pushNotificationConfig/list` JSON-RPC method.
-func (c *Client) ListTaskPushNotificationConfig(ctx context.Context, params types.ListTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+func (c *Client) ListTaskPushNotificationConfig(ctx context.Context, params types.ListTaskPushNotificationConfigsRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("listing task push notification configs",
 		zap.String("method", "tasks/pushNotificationConfig/list"),
-		zap.Stringp("parent", params.Parent))
+		zap.String("task_id", params.TaskID))
 	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/list", params)
 }
 
 // DeleteTaskPushNotificationConfig deletes a push notification configuration for a task via
 // the `tasks/pushNotificationConfig/delete` JSON-RPC method.
-func (c *Client) DeleteTaskPushNotificationConfig(ctx context.Context, params types.DeleteTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+func (c *Client) DeleteTaskPushNotificationConfig(ctx context.Context, params types.DeleteTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("deleting task push notification config",
 		zap.String("method", "tasks/pushNotificationConfig/delete"),
-		zap.Stringp("task_name", params.Name))
+		zap.String("task_id", params.TaskID),
+		zap.String("config_id", params.ID))
 	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/delete", params)
 }
 
@@ -470,7 +472,7 @@ func (c *Client) DeleteTaskPushNotificationConfig(ctx context.Context, params ty
 // `agent/getAuthenticatedExtendedCard` JSON-RPC method. Unlike GetAgentCard (which hits
 // the public HTTP endpoint), this call goes through the JSON-RPC route and is subject to
 // the server's authentication middleware.
-func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context, params types.GetAuthenticatedExtendedCardParams) (*types.JSONRPCSuccessResponse, error) {
+func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context, params types.GetExtendedAgentCardRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("retrieving authenticated extended agent card",
 		zap.String("method", "agent/getAuthenticatedExtendedCard"),
 		zap.Stringp("tenant", params.Tenant))
@@ -481,10 +483,10 @@ func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context, params types.
 // method, returning a channel of streaming responses. The channel is closed when the
 // stream ends (either because the server sent `[DONE]`, the response body closed, or the
 // supplied context was cancelled).
-func (c *Client) ResubscribeTask(ctx context.Context, params types.TaskResubscriptionParams) (<-chan types.JSONRPCSuccessResponse, error) {
+func (c *Client) ResubscribeTask(ctx context.Context, params types.SubscribeToTaskRequest) (<-chan types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("resubscribing to task",
 		zap.String("method", "tasks/resubscribe"),
-		zap.Stringp("task_name", params.Name))
+		zap.String("task_id", params.ID))
 
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",

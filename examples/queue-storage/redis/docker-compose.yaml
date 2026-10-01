@@ -43,7 +43,6 @@ services:
       A2A_TASK_RETENTION_CLEANUP_INTERVAL: 5m
       A2A_CAPABILITIES_STREAMING: true
       A2A_CAPABILITIES_PUSH_NOTIFICATIONS: false
-      A2A_CAPABILITIES_STATE_TRANSITION_HISTORY: true
     depends_on:
       redis:
         condition: service_healthy

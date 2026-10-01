@@ -71,7 +71,7 @@ func (h *SlowEchoTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 
 	responseMessage := types.Message{
 		MessageID: uuid.New().String(),
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		TaskID:    &task.ID,
 		Role:      types.RoleAgent,
 		Parts: []types.Part{
@@ -137,7 +137,7 @@ func (h *SlowEchoTaskHandler) HandleStreamingTask(ctx context.Context, task *typ
 			MessageID: uuid.New().String(),
 			Role:      types.RoleAgent,
 			TaskID:    &task.ID,
-			ContextID: &task.ContextID,
+			ContextID: task.ContextID,
 			Parts: []types.Part{
 				types.CreateTextPart(fullText),
 			},
@@ -182,9 +182,8 @@ func main() {
 			AgentVersion:     "0.1.0",
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
-				Streaming:              true,
-				PushNotifications:      true,
-				StateTransitionHistory: false,
+				Streaming:         true,
+				PushNotifications: true,
 			},
 			QueueConfig: serverConfig.QueueConfig{
 				CleanupInterval: 5 * time.Minute,
@@ -225,15 +224,13 @@ func main() {
 		WithBackgroundTaskHandler(taskHandler).
 		WithStreamingTaskHandler(taskHandler).
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.A2A.AgentName,
-			Description:     cfg.A2A.AgentDescription,
-			Version:         cfg.A2A.AgentVersion,
-			URL:             new(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
-			ProtocolVersion: "0.3.0",
+			Name:                cfg.A2A.AgentName,
+			Description:         cfg.A2A.AgentDescription,
+			Version:             cfg.A2A.AgentVersion,
+			SupportedInterfaces: []types.AgentInterface{{URL: fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port), ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
-				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
-				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+				Streaming:         &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications: &cfg.A2A.CapabilitiesConfig.PushNotifications,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},

@@ -108,8 +108,8 @@ func main() {
 	}
 
 	url := ""
-	if agentCard.URL != nil {
-		url = *agentCard.URL
+	if len(agentCard.SupportedInterfaces) > 0 {
+		url = agentCard.SupportedInterfaces[0].URL
 	}
 	logger.Info("✅ agent card retrieved successfully",
 		zap.String("name", agentCard.Name),
@@ -143,7 +143,7 @@ func main() {
 		// Submit task over TLS
 		taskCtx, taskCancel := context.WithTimeout(ctx, cfg.Timeout)
 
-		response, err := a2aClient.SendTask(taskCtx, types.MessageSendParams{
+		response, err := a2aClient.SendTask(taskCtx, types.SendMessageRequest{
 			Message: taskMessage,
 		})
 		if err != nil {

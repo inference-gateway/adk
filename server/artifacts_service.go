@@ -253,7 +253,7 @@ func (as *ArtifactServiceImpl) GetArtifactsByType(task *types.Task, partKind str
 					matched = true
 				}
 			case "file":
-				if part.File != nil {
+				if part.IsFile() {
 					matched = true
 				}
 			case "data":
@@ -299,12 +299,11 @@ func (as *ArtifactServiceImpl) validatePart(part types.Part) error {
 		}
 		return nil
 	}
-	if part.File != nil {
-		// File part is valid if the pointer is not nil
+	if part.IsFile() {
 		return nil
 	}
 	if part.Data != nil {
-		if part.Data.Data == nil {
+		if *part.Data == nil {
 			return fmt.Errorf("data part must have non-nil data content")
 		}
 		return nil

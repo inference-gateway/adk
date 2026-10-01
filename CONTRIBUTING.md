@@ -429,12 +429,13 @@ func createTestAgentCard() types.AgentCard {
     return types.AgentCard{
         Name:        "test-agent",
         Description: "A test agent",
-        URL:         "http://test-agent:8080",
         Version:     "0.1.0",
+        SupportedInterfaces: []types.AgentInterface{
+            {URL: "http://test-agent:8080", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"},
+        },
         Capabilities: types.AgentCapabilities{
-            Streaming:              new(true),
-            PushNotifications:      new(true),
-            StateTransitionHistory: new(true),
+            Streaming:         new(true),
+            PushNotifications: new(true),
         },
         DefaultInputModes:  []string{"text/plain"},
         DefaultOutputModes: []string{"text/plain"},

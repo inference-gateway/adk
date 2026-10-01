@@ -26,7 +26,7 @@ func TestQueueCentricOperations(t *testing.T) {
 
 				task := &types.Task{
 					ID:        "task-1",
-					ContextID: testCtx,
+					ContextID: &testCtx,
 					Status: types.TaskStatus{
 						State: types.TaskStateSubmitted,
 					},
@@ -53,7 +53,7 @@ func TestQueueCentricOperations(t *testing.T) {
 
 				task := &types.Task{
 					ID:        "task-2",
-					ContextID: testCtx,
+					ContextID: &testCtx,
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},
@@ -62,7 +62,7 @@ func TestQueueCentricOperations(t *testing.T) {
 				err := storage.StoreDeadLetterTask(task)
 				require.NoError(t, err)
 
-				tasks, err := storage.ListTasksByContext(task.ContextID, TaskFilter{})
+				tasks, err := storage.ListTasksByContext(task.GetContextID(), TaskFilter{})
 				require.NoError(t, err)
 				assert.Len(t, tasks, 1)
 				assert.Equal(t, task.ID, tasks[0].ID)
@@ -78,7 +78,7 @@ func TestQueueCentricOperations(t *testing.T) {
 
 				task := &types.Task{
 					ID:        "task-3",
-					ContextID: testContext,
+					ContextID: &testContext,
 					Status: types.TaskStatus{
 						State: types.TaskStateSubmitted,
 					},
@@ -109,7 +109,7 @@ func TestQueueCentricOperations(t *testing.T) {
 
 				task := &types.Task{
 					ID:        "task-4",
-					ContextID: "test-context-length",
+					ContextID: new("test-context-length"),
 					Status: types.TaskStatus{
 						State: types.TaskStateSubmitted,
 					},
@@ -131,14 +131,14 @@ func TestQueueCentricOperations(t *testing.T) {
 
 				task1 := &types.Task{
 					ID:        "task-5",
-					ContextID: testContext,
+					ContextID: &testContext,
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},
 				}
 				task2 := &types.Task{
 					ID:        "task-6",
-					ContextID: testContext,
+					ContextID: &testContext,
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},
@@ -168,7 +168,7 @@ func TestQueueCentricOperations(t *testing.T) {
 
 				activeTask := &types.Task{
 					ID:        "active-task",
-					ContextID: testContext,
+					ContextID: &testContext,
 					Status: types.TaskStatus{
 						State: types.TaskStateSubmitted,
 					},
@@ -180,7 +180,7 @@ func TestQueueCentricOperations(t *testing.T) {
 
 				deadTask := &types.Task{
 					ID:        "dead-task",
-					ContextID: testContext,
+					ContextID: &testContext,
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},

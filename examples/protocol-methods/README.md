@@ -97,7 +97,7 @@ list → ...
 delete → webhook for task <task-id-1> removed
 
 === tasks/cancel ===
-cancelled task <task-id-2> → state=TASK_STATE_CANCELLED
+cancelled task <task-id-2> → state=TASK_STATE_CANCELED
 
 === tasks/resubscribe ===
 dropped initial stream for task <task-id>; re-attaching...
