@@ -45,7 +45,6 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				require.NotNil(t, cfg.CapabilitiesConfig)
 				assert.True(t, cfg.CapabilitiesConfig.Streaming)
 				assert.True(t, cfg.CapabilitiesConfig.PushNotifications)
-				assert.False(t, cfg.CapabilitiesConfig.StateTransitionHistory)
 
 				require.NotNil(t, cfg.AuthConfig)
 				assert.False(t, cfg.AuthConfig.Enabled)
@@ -124,7 +123,6 @@ func TestConfig_LoadWithLookuper(t *testing.T) {
 				require.NotNil(t, cfg.CapabilitiesConfig)
 				assert.False(t, cfg.CapabilitiesConfig.Streaming)
 				assert.False(t, cfg.CapabilitiesConfig.PushNotifications)
-				assert.True(t, cfg.CapabilitiesConfig.StateTransitionHistory)
 
 				// Test TLS config overrides
 				require.NotNil(t, cfg.ServerConfig.TLSConfig)

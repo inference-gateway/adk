@@ -92,6 +92,7 @@ Via the included Inference Gateway:
 - Cloudflare Workers AI
 - Cohere
 - DeepSeek
+- Elevenlabs
 - Google (Gemini)
 - Groq
 - llama.cpp
@@ -102,6 +103,7 @@ Via the included Inference Gateway:
 - Ollama
 - Ollama Cloud
 - OpenAI (GPT models)
+- Zai
 
 <!-- providers:end -->
 

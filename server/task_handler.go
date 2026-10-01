@@ -175,7 +175,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 			MessageID: fmt.Sprintf("error-%s", task.ID),
 			Role:      types.RoleAgent,
 			TaskID:    &task.ID,
-			ContextID: &task.ContextID,
+			ContextID: task.ContextID,
 			Parts: []types.Part{
 				types.CreateTextPart(fmt.Sprintf("Failed to start agent: %s", err.Error())),
 			},
@@ -206,7 +206,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 
 				if statusData.State == types.TaskStateCompleted ||
 					statusData.State == types.TaskStateFailed ||
-					statusData.State == types.TaskStateCancelled {
+					statusData.State == types.TaskStateCanceled {
 					bth.populateTaskMetadata(task, usageTracker)
 					return task, nil
 				}
@@ -268,7 +268,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 		MessageID: fmt.Sprintf("empty-response-%s", task.ID),
 		Role:      types.RoleAgent,
 		TaskID:    &task.ID,
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		Parts: []types.Part{
 			types.CreateTextPart("Task completed"),
 		},
@@ -287,7 +287,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithoutAgentBackground(ctx conte
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		Role:      types.RoleAgent,
 		TaskID:    &task.ID,
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		Parts: []types.Part{
 			types.CreateTextPart("I received your message. I'm a default polling task handler without AI capabilities. To enable AI responses with automatic input-required pausing, configure an OpenAI-compatible agent."),
 		},
@@ -354,7 +354,7 @@ func (sth *DefaultStreamingTaskHandler) IsUsageMetadataEnabled() bool {
 func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
 	sth.logger.Info("processing streaming task",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.Bool("has_agent", sth.agent != nil))
 
 	if sth.agent == nil {
@@ -386,7 +386,7 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 				if err := event.DataAs(&statusData); err == nil {
 					if statusData.State == types.TaskStateCompleted ||
 						statusData.State == types.TaskStateFailed ||
-						statusData.State == types.TaskStateCancelled {
+						statusData.State == types.TaskStateCanceled {
 						sth.populateTaskMetadata(task, usageTracker)
 					}
 				}
@@ -422,7 +422,7 @@ func NewDefaultA2AProtocolHandler(
 }
 
 // CreateTaskFromMessage creates a task directly from message parameters
-func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, params types.MessageSendParams) (*types.Task, error) {
+func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, params types.SendMessageRequest) (*types.Task, error) {
 	if len(params.Message.Parts) == 0 {
 		return nil, fmt.Errorf("empty message parts not allowed")
 	}
@@ -452,7 +452,7 @@ func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, p
 
 		h.logger.Info("task resumed with user input",
 			zap.String("task_id", taskID),
-			zap.String("context_id", task.ContextID))
+			zap.Stringp("context_id", task.ContextID))
 
 		return task, nil
 	}
@@ -488,7 +488,7 @@ func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, p
 	if task != nil {
 		h.logger.Info("task created for processing",
 			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
+			zap.Stringp("context_id", task.ContextID))
 	} else {
 		h.logger.Error("failed to create task - task manager returned nil")
 		return nil, fmt.Errorf("failed to create task")
@@ -498,7 +498,7 @@ func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, p
 
 // HandleMessageSend processes message/send requests
 func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.MessageSendParams
+	var params types.SendMessageRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -526,7 +526,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 			MessageID: uuid.New().String(),
 			Role:      types.RoleAgent,
 			TaskID:    &task.ID,
-			ContextID: &task.ContextID,
+			ContextID: task.ContextID,
 			Parts: []types.Part{
 				types.CreateTextPart("Failed to queue task for processing. Please try again later."),
 			},
@@ -535,7 +535,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 			h.logger.Error("failed to update task to failed state due to enqueue failure",
 				zap.Error(err),
 				zap.String("task_id", task.ID),
-				zap.String("context_id", task.ContextID))
+				zap.Stringp("context_id", task.ContextID))
 		}
 		h.responseSender.SendError(c, req.ID, int(ErrInternalError), "Failed to queue task")
 		return
@@ -592,7 +592,7 @@ func (h *DefaultA2AProtocolHandler) writeStreamingErrorResponse(c *gin.Context, 
 
 // HandleMessageStream processes message/stream requests
 func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler) {
-	var params types.MessageSendParams
+	var params types.SendMessageRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -633,7 +633,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 
 	h.logger.Info("processing streaming task",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
+		zap.Stringp("context_id", task.ContextID))
 
 	err = h.taskManager.UpdateState(task.ID, types.TaskStateWorking)
 	if err != nil {
@@ -663,7 +663,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		h.logger.Error("failed to start streaming task",
 			zap.Error(err),
 			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
+			zap.Stringp("context_id", task.ContextID))
 
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
@@ -731,9 +731,8 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 
 				statusUpdate := types.TaskStatusUpdateEvent{
 					TaskID:    task.ID,
-					ContextID: task.ContextID,
+					ContextID: task.GetContextID(),
 					Status:    statusData,
-					Final:     statusData.State == types.TaskStateCompleted || statusData.State == types.TaskStateFailed || statusData.State == types.TaskStateCancelled,
 				}
 
 				statusResponse := types.JSONRPCSuccessResponse{
@@ -757,16 +756,15 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 
 				h.logger.Info("streaming task paused for user input",
 					zap.String("task_id", task.ID),
-					zap.String("context_id", task.ContextID))
+					zap.Stringp("context_id", task.ContextID))
 
 				statusUpdate := types.TaskStatusUpdateEvent{
 					TaskID:    task.ID,
-					ContextID: task.ContextID,
+					ContextID: task.GetContextID(),
 					Status: types.TaskStatus{
 						State:   types.TaskStateInputRequired,
 						Message: &inputMessage,
 					},
-					Final: false,
 				}
 
 				statusResponse := types.JSONRPCSuccessResponse{
@@ -792,11 +790,11 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			var interruptMessage types.Message
 			if err := event.DataAs(&interruptMessage); err == nil {
 				task.History = append(task.History, interruptMessage)
-				task.Status.State = types.TaskStateCancelled
+				task.Status.State = types.TaskStateCanceled
 
 				h.logger.Info("streaming task was interrupted",
 					zap.String("task_id", task.ID),
-					zap.String("context_id", task.ContextID))
+					zap.Stringp("context_id", task.ContextID))
 
 				if err := h.taskManager.UpdateTask(task); err != nil {
 					h.logger.Error("failed to save interrupted task",
@@ -858,12 +856,12 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 
 	h.logger.Info("streaming task processed successfully",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
+		zap.Stringp("context_id", task.ContextID))
 }
 
 // HandleTaskGet processes tasks/get requests
 func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.TaskQueryParams
+	var params types.GetTaskRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -888,14 +886,14 @@ func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSON
 
 	h.logger.Info("task retrieved successfully",
 		zap.String("task_id", params.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("status", string(task.Status.State)))
 	h.responseSender.SendSuccess(c, req.ID, *task)
 }
 
 // HandleTaskCancel processes tasks/cancel requests
 func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.TaskIdParams
+	var params types.CancelTaskRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -926,7 +924,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.J
 
 // HandleTaskList processes tasks/list requests
 func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.TaskListParams
+	var params types.ListTasksRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -970,8 +968,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.C
 	}
 
 	h.logger.Info("setting push notification config for task",
-		zap.String("task_name", params.Name),
-		zap.String("url", params.PushNotificationConfig.URL))
+		zap.Stringp("task_id", params.TaskID),
+		zap.String("url", params.URL))
 
 	config, err := h.taskManager.SetTaskPushNotificationConfig(params)
 	if err != nil {
@@ -980,13 +978,13 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.C
 		return
 	}
 
-	h.logger.Info("push notification config set successfully", zap.String("task_name", params.Name))
+	h.logger.Info("push notification config set successfully", zap.Stringp("task_id", params.TaskID))
 	h.responseSender.SendSuccess(c, req.ID, config)
 }
 
 // HandleTaskPushNotificationConfigGet processes tasks/pushNotificationConfig/get requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.GetTaskPushNotificationConfigParams
+	var params types.GetTaskPushNotificationConfigRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -1000,7 +998,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 		return
 	}
 
-	h.logger.Info("getting push notification config for task", zap.Stringp("task_name", params.Name))
+	h.logger.Info("getting push notification config for task", zap.String("task_id", params.TaskID))
 
 	config, err := h.taskManager.GetTaskPushNotificationConfig(params)
 	if err != nil {
@@ -1009,13 +1007,13 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 		return
 	}
 
-	h.logger.Info("push notification config retrieved successfully", zap.Stringp("task_name", params.Name))
+	h.logger.Info("push notification config retrieved successfully", zap.String("task_id", params.TaskID))
 	h.responseSender.SendSuccess(c, req.ID, config)
 }
 
 // HandleTaskPushNotificationConfigList processes tasks/pushNotificationConfig/list requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.ListTaskPushNotificationConfigParams
+	var params types.ListTaskPushNotificationConfigsRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -1029,7 +1027,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 		return
 	}
 
-	h.logger.Info("listing push notification configs for task", zap.Stringp("parent", params.Parent))
+	h.logger.Info("listing push notification configs for task", zap.String("task_id", params.TaskID))
 
 	configs, err := h.taskManager.ListTaskPushNotificationConfigs(params)
 	if err != nil {
@@ -1039,14 +1037,14 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 	}
 
 	h.logger.Info("push notification configs listed successfully",
-		zap.Stringp("parent", params.Parent),
+		zap.String("task_id", params.TaskID),
 		zap.Int("count", len(configs)))
 	h.responseSender.SendSuccess(c, req.ID, configs)
 }
 
 // HandleTaskPushNotificationConfigDelete processes tasks/pushNotificationConfig/delete requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.DeleteTaskPushNotificationConfigParams
+	var params types.DeleteTaskPushNotificationConfigRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -1061,7 +1059,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	}
 
 	h.logger.Info("deleting push notification config",
-		zap.Stringp("task_name", params.Name))
+		zap.String("task_id", params.TaskID))
 
 	err = h.taskManager.DeleteTaskPushNotificationConfig(params)
 	if err != nil {
@@ -1071,7 +1069,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	}
 
 	h.logger.Info("push notification config deleted successfully",
-		zap.Stringp("task_name", params.Name))
+		zap.String("task_id", params.TaskID))
 	h.responseSender.SendSuccess(c, req.ID, nil)
 }
 
@@ -1083,7 +1081,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 // `[DONE]` terminator. When the task is still in a working state, the streaming
 // handler is invoked to continue delivering live events for the task.
 func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler) {
-	var params types.TaskResubscriptionParams
+	var params types.SubscribeToTaskRequest
 	paramsBytes, err := json.Marshal(req.Params)
 	if err != nil {
 		h.logger.Error("failed to marshal params", zap.Error(err))
@@ -1097,9 +1095,9 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		return
 	}
 
-	if params.Name == nil || *params.Name == "" {
+	if params.ID == "" {
 		h.logger.Error("tasks/resubscribe missing task name")
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "task name is required")
+		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "task id is required")
 		return
 	}
 
@@ -1109,9 +1107,9 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("Access-Control-Allow-Headers", "Cache-Control")
 
-	task, exists := h.taskManager.GetTask(*params.Name)
+	task, exists := h.taskManager.GetTask(params.ID)
 	if !exists {
-		h.logger.Error("task not found for resubscribe", zap.String("task_id", *params.Name))
+		h.logger.Error("task not found for resubscribe", zap.String("task_id", params.ID))
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -1128,14 +1126,13 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 
 	h.logger.Info("resubscribing to task",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
 	statusUpdate := types.TaskStatusUpdateEvent{
 		TaskID:    task.ID,
-		ContextID: task.ContextID,
+		ContextID: task.GetContextID(),
 		Status:    task.Status,
-		Final:     task.Status.State == types.TaskStateCompleted || task.Status.State == types.TaskStateFailed || task.Status.State == types.TaskStateCancelled,
 	}
 
 	initialResponse := types.JSONRPCSuccessResponse{
@@ -1230,9 +1227,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 				task.Status.State = statusData.State
 				statusEvent := types.TaskStatusUpdateEvent{
 					TaskID:    task.ID,
-					ContextID: task.ContextID,
+					ContextID: task.GetContextID(),
 					Status:    statusData,
-					Final:     statusData.State == types.TaskStateCompleted || statusData.State == types.TaskStateFailed || statusData.State == types.TaskStateCancelled,
 				}
 				statusResponse := types.JSONRPCSuccessResponse{
 					JSONRPC: "2.0",
@@ -1255,7 +1251,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 
 	h.logger.Info("task resubscribe completed",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
+		zap.Stringp("context_id", task.ContextID))
 }
 
 // HandleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests.
@@ -1273,7 +1269,7 @@ func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Co
 		return
 	}
 
-	if publicCard.SupportsExtendedAgentCard == nil || !*publicCard.SupportsExtendedAgentCard {
+	if publicCard.Capabilities.ExtendedAgentCard == nil || !*publicCard.Capabilities.ExtendedAgentCard {
 		h.logger.Info("extended agent card not supported by this agent")
 		h.responseSender.SendError(c, req.ID, int(ErrUnsupportedOperation), "extended agent card is not supported")
 		return
@@ -1286,7 +1282,7 @@ func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Co
 	}
 
 	if req.Params != nil {
-		var params types.GetAuthenticatedExtendedCardParams
+		var params types.GetExtendedAgentCardRequest
 		paramsBytes, err := json.Marshal(req.Params)
 		if err != nil {
 			h.logger.Error("failed to marshal params", zap.Error(err))

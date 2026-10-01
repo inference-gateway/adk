@@ -195,7 +195,7 @@ func (s *InMemoryStorage) CreateActiveTask(task *types.Task) error {
 
 	s.logger.Debug("active task created",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
 	return nil
@@ -219,7 +219,7 @@ func (s *InMemoryStorage) UpdateActiveTask(task *types.Task) error {
 
 	s.logger.Debug("active task updated",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
 	return nil
@@ -237,7 +237,7 @@ func (s *InMemoryStorage) StoreDeadLetterTask(task *types.Task) error {
 	taskCopy := *task
 	s.deadLetterTasks[task.ID] = &taskCopy
 
-	contextTasks := s.tasksByContext[task.ContextID]
+	contextTasks := s.tasksByContext[task.GetContextID()]
 
 	found := false
 	for _, existingTaskID := range contextTasks {
@@ -248,7 +248,7 @@ func (s *InMemoryStorage) StoreDeadLetterTask(task *types.Task) error {
 	}
 
 	if !found {
-		s.tasksByContext[task.ContextID] = append(contextTasks, task.ID)
+		s.tasksByContext[task.GetContextID()] = append(contextTasks, task.ID)
 	}
 
 	s.activeTasksMu.Lock()
@@ -257,7 +257,7 @@ func (s *InMemoryStorage) StoreDeadLetterTask(task *types.Task) error {
 
 	s.logger.Debug("task stored in dead letter queue",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
 	return nil
@@ -287,7 +287,7 @@ func (s *InMemoryStorage) GetTaskByContextAndID(contextID, taskID string) (*type
 		return nil, false
 	}
 
-	if task.ContextID != contextID {
+	if task.GetContextID() != contextID {
 		return nil, false
 	}
 
@@ -305,7 +305,7 @@ func (s *InMemoryStorage) DeleteTask(taskID string) error {
 		return fmt.Errorf("task not found: %s", taskID)
 	}
 
-	contextID := task.ContextID
+	contextID := task.GetContextID()
 
 	delete(s.deadLetterTasks, taskID)
 
@@ -338,7 +338,7 @@ func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 			continue
 		}
 
-		if filter.ContextID != nil && task.ContextID != *filter.ContextID {
+		if filter.ContextID != nil && task.GetContextID() != *filter.ContextID {
 			continue
 		}
 
@@ -357,7 +357,7 @@ func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 			continue
 		}
 
-		if filter.ContextID != nil && task.ContextID != *filter.ContextID {
+		if filter.ContextID != nil && task.GetContextID() != *filter.ContextID {
 			continue
 		}
 
@@ -373,7 +373,7 @@ func (s *InMemoryStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 			continue
 		}
 
-		if filter.ContextID != nil && task.ContextID != *filter.ContextID {
+		if filter.ContextID != nil && task.GetContextID() != *filter.ContextID {
 			continue
 		}
 
@@ -474,9 +474,9 @@ func (s *InMemoryStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, o
 				}
 			case TaskSortFieldContextID:
 				if order == SortOrderAsc {
-					shouldSwap = tasks[j].ContextID > tasks[j+1].ContextID
+					shouldSwap = tasks[j].GetContextID() > tasks[j+1].GetContextID()
 				} else {
-					shouldSwap = tasks[j].ContextID < tasks[j+1].ContextID
+					shouldSwap = tasks[j].GetContextID() < tasks[j+1].GetContextID()
 				}
 			default:
 				if order == SortOrderAsc {
@@ -505,13 +505,13 @@ func (s *InMemoryStorage) GetContexts() []string {
 
 	s.queueMu.RLock()
 	for _, queuedTask := range s.taskQueue {
-		contextSet[queuedTask.Task.ContextID] = true
+		contextSet[queuedTask.Task.GetContextID()] = true
 	}
 	s.queueMu.RUnlock()
 
 	s.activeTasksMu.RLock()
 	for _, task := range s.activeTasksMetadata {
-		contextSet[task.ContextID] = true
+		contextSet[task.GetContextID()] = true
 	}
 	s.activeTasksMu.RUnlock()
 
@@ -540,9 +540,9 @@ func (s *InMemoryStorage) CleanupCompletedTasks() int {
 
 	for taskID, task := range s.deadLetterTasks {
 		switch task.Status.State {
-		case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled:
+		case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled:
 			toRemove = append(toRemove, taskID)
-			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], taskID)
+			contextUpdates[task.GetContextID()] = append(contextUpdates[task.GetContextID()], taskID)
 		}
 	}
 
@@ -604,7 +604,7 @@ func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int)
 		for i := maxCompleted; i < len(completedTasks); i++ {
 			task := completedTasks[i]
 			toRemove = append(toRemove, task.ID)
-			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], task.ID)
+			contextUpdates[task.GetContextID()] = append(contextUpdates[task.GetContextID()], task.ID)
 		}
 	}
 
@@ -612,7 +612,7 @@ func (s *InMemoryStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int)
 		for i := maxFailed; i < len(failedTasks); i++ {
 			task := failedTasks[i]
 			toRemove = append(toRemove, task.ID)
-			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], task.ID)
+			contextUpdates[task.GetContextID()] = append(contextUpdates[task.GetContextID()], task.ID)
 		}
 	}
 
@@ -704,7 +704,7 @@ func (s *InMemoryStorage) DeleteContextAndTasks(contextID string) error {
 
 	filteredQueue := make([]*QueuedTask, 0)
 	for _, queuedTask := range s.taskQueue {
-		if queuedTask.Task.ContextID != contextID {
+		if queuedTask.Task.GetContextID() != contextID {
 			filteredQueue = append(filteredQueue, queuedTask)
 		} else {
 			delete(s.activeTasksMetadata, queuedTask.Task.ID)
@@ -791,7 +791,7 @@ func (s *InMemoryStorage) EnqueueTask(ctx context.Context, task *types.Task, req
 
 	s.logger.Info("task enqueued for processing",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.Int("queue_length", queueLength))
 
 	return nil
@@ -810,7 +810,7 @@ func (s *InMemoryStorage) DequeueTask(ctx context.Context) (*QueuedTask, error) 
 
 			s.logger.Info("task dequeued for processing",
 				zap.String("task_id", task.Task.ID),
-				zap.String("context_id", task.Task.ContextID),
+				zap.Stringp("context_id", task.Task.ContextID),
 				zap.Int("remaining_queue_length", remainingQueueLength))
 
 			return task, nil

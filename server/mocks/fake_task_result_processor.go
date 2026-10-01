@@ -88,8 +88,6 @@ func (fake *FakeTaskResultProcessor) ProcessToolResultReturnsOnCall(i int, resul
 func (fake *FakeTaskResultProcessor) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.processToolResultMutex.RLock()
-	defer fake.processToolResultMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

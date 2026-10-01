@@ -558,13 +558,13 @@ func TestMessageConverter_ConvertFromSDK(t *testing.T) {
 
 				if expectedPart.Data != nil {
 					require.NotNil(t, resultPart.Data, "Expected result part to have Data")
-					assert.Equal(t, expectedPart.Data.Data, resultPart.Data.Data)
+					assert.Equal(t, expectedPart.DataMap(), resultPart.DataMap())
 				}
 
-				if expectedPart.File != nil {
-					require.NotNil(t, resultPart.File, "Expected result part to have File")
-					assert.Equal(t, expectedPart.File.Name, resultPart.File.Name)
-					assert.Equal(t, expectedPart.File.MediaType, resultPart.File.MediaType)
+				if expectedPart.IsFile() {
+					require.True(t, resultPart.IsFile(), "Expected result part to have file content")
+					assert.Equal(t, expectedPart.Filename, resultPart.Filename)
+					assert.Equal(t, expectedPart.MediaType, resultPart.MediaType)
 				}
 
 				if expectedPart.Metadata != nil {
@@ -592,7 +592,7 @@ func TestMessageConverter_ValidateMessagePart(t *testing.T) {
 		},
 		{
 			name:        "valid file part",
-			input:       types.CreateFilePart("test.txt", "text/plain", nil, nil),
+			input:       types.CreateFilePart("test.txt", "text/plain", nil, new("https://example.com/test.txt")),
 			expectError: false,
 		},
 		{
@@ -609,17 +609,15 @@ func TestMessageConverter_ValidateMessagePart(t *testing.T) {
 			errorMsg:    "text part has empty text field",
 		},
 		{
-			name:        "invalid file part (missing name)",
-			input:       types.CreateFilePart("", "text/plain", nil, nil),
+			name:        "invalid file part (missing filename)",
+			input:       types.CreateFilePart("", "text/plain", nil, new("https://example.com/f")),
 			expectError: true,
-			errorMsg:    "file part missing name",
+			errorMsg:    "file part missing filename",
 		},
 		{
 			name: "invalid data part (nil data)",
 			input: types.Part{
-				Data: &types.DataPart{
-					Data: nil,
-				},
+				Data: new(types.Value(nil)),
 			},
 			expectError: true,
 			errorMsg:    "data part missing data field",
@@ -629,7 +627,6 @@ func TestMessageConverter_ValidateMessagePart(t *testing.T) {
 			input: types.Part{
 				Text: nil,
 				Data: nil,
-				File: nil,
 			},
 			expectError: true,
 			errorMsg:    "part must have at least one field set",

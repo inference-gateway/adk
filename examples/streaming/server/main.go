@@ -33,7 +33,7 @@ func (m *MockAgent) RunWithStream(ctx context.Context, messages []types.Message)
 	var contextID string
 	if task, ok := ctx.Value(server.TaskContextKey).(*types.Task); ok && task != nil {
 		taskID = task.ID
-		contextID = task.ContextID
+		contextID = task.GetContextID()
 	}
 
 	go func() {
@@ -149,7 +149,7 @@ func (h *MockTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 		MessageID: fmt.Sprintf("mock-response-%s", task.ID),
 		Role:      types.RoleAgent,
 		TaskID:    &task.ID,
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		Parts: []types.Part{
 			types.CreateTextPart(response),
 		},
@@ -191,9 +191,8 @@ func main() {
 			AgentVersion:     server.BuildAgentVersion,
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
-				Streaming:              true,
-				PushNotifications:      false,
-				StateTransitionHistory: false,
+				Streaming:         true,
+				PushNotifications: false,
 			},
 			QueueConfig: serverConfig.QueueConfig{
 				CleanupInterval: 5 * time.Minute,
@@ -251,15 +250,13 @@ func main() {
 	// Build and start server
 	a2aServer, err := serverBuilder.
 		WithAgentCard(types.AgentCard{
-			Name:            server.BuildAgentName,
-			Description:     server.BuildAgentDescription,
-			Version:         server.BuildAgentVersion,
-			URL:             new(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
-			ProtocolVersion: "3.0.0",
+			Name:                server.BuildAgentName,
+			Description:         server.BuildAgentDescription,
+			Version:             server.BuildAgentVersion,
+			SupportedInterfaces: []types.AgentInterface{{URL: fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port), ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
-				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
-				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+				Streaming:         &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications: &cfg.A2A.CapabilitiesConfig.PushNotifications,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},

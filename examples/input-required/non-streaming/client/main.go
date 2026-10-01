@@ -96,7 +96,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 	// Send initial message
 	fmt.Printf("📤 Sending: %s\n", initialMessage)
 
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: message,
 	}
 
@@ -130,7 +130,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 		time.Sleep(500 * time.Millisecond)
 
 		// Poll for task updates
-		taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{
+		taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{
 			ID: taskID,
 		})
 		if err != nil {
@@ -190,7 +190,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 			// Send follow-up message to continue the task
 			fmt.Printf("📤 Sending follow-up: %s (context: %s)\n", userResponse, contextID)
 
-			followUpParams := types.MessageSendParams{
+			followUpParams := types.SendMessageRequest{
 				Message: followUpMessage,
 			}
 
@@ -224,7 +224,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 			}
 			return nil
 
-		case types.TaskStateCancelled:
+		case types.TaskStateCanceled:
 			// Task was canceled
 			fmt.Printf("🚫 Task Canceled\n\n")
 			return nil

@@ -103,7 +103,7 @@ func main() {
 				types.CreateTextPart(taskContent),
 			},
 		}
-		params := types.MessageSendParams{
+		params := types.SendMessageRequest{
 			Message: message,
 		}
 		resp, err := a2aClient.SendTask(taskCtx, params)
@@ -149,7 +149,7 @@ func main() {
 	for _, taskID := range submittedTasks {
 		// Create fresh context for each GetTask call
 		getTaskCtx, getTaskCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		params := types.TaskQueryParams{
+		params := types.GetTaskRequest{
 			ID: taskID,
 		}
 		resp, err := a2aClient.GetTask(getTaskCtx, params)
@@ -180,7 +180,7 @@ func main() {
 
 		logger.Info("task status from redis storage",
 			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID),
+			zap.Stringp("context_id", task.ContextID),
 			zap.String("state", string(status.State)),
 			zap.Int("history_length", len(history)))
 

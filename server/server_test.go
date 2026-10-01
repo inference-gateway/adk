@@ -25,14 +25,13 @@ import (
 // createTestAgentCard creates a test agent card for use in tests
 func createTestAgentCard() types.AgentCard {
 	return types.AgentCard{
-		Name:        "test-agent",
-		Description: "A test agent",
-		URL:         new("http://test-agent:8080"),
-		Version:     "0.1.0",
+		Name:                "test-agent",
+		Description:         "A test agent",
+		SupportedInterfaces: []types.AgentInterface{{URL: "http://test-agent:8080", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
+		Version:             "0.1.0",
 		Capabilities: types.AgentCapabilities{
-			Streaming:              new(true),
-			PushNotifications:      new(true),
-			StateTransitionHistory: new(true),
+			Streaming:         new(true),
+			PushNotifications: new(true),
 		},
 		DefaultInputModes:  []string{"text/plain"},
 		DefaultOutputModes: []string{"text/plain"},
@@ -81,7 +80,7 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 
 			assert.NotNil(t, task)
 			assert.NotEmpty(t, task.ID)
-			assert.Equal(t, tt.contextID, task.ContextID)
+			assert.Equal(t, tt.contextID, task.GetContextID())
 			assert.Equal(t, tt.state, task.Status.State)
 			assert.Equal(t, tt.message, task.Status.Message)
 			assert.NotNil(t, task.Status.Timestamp)
@@ -105,7 +104,7 @@ func TestA2AServer_TaskManager_GetTask(t *testing.T) {
 	retrievedTask, exists := taskManager.GetTask(task.ID)
 	assert.True(t, exists)
 	assert.Equal(t, task.ID, retrievedTask.ID)
-	assert.Equal(t, task.ContextID, retrievedTask.ContextID)
+	assert.Equal(t, task.GetContextID(), retrievedTask.GetContextID())
 
 	nonExistentTask, exists := taskManager.GetTask("non-existent-id")
 	assert.False(t, exists)
@@ -173,9 +172,8 @@ func TestA2AServer_TaskProcessing_Background(t *testing.T) {
 			CleanupInterval: 50 * time.Millisecond,
 		},
 		CapabilitiesConfig: serverConfig.CapabilitiesConfig{
-			Streaming:              true,
-			PushNotifications:      false,
-			StateTransitionHistory: true,
+			Streaming:         true,
+			PushNotifications: false,
 		},
 		AuthConfig: serverConfig.AuthConfig{
 			Enabled: false,
@@ -256,23 +254,21 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 		AgentVersion:     "0.1.0",
 		ServerConfig:     serverConfig.ServerConfig{Port: "8080"},
 		CapabilitiesConfig: serverConfig.CapabilitiesConfig{
-			Streaming:              false,
-			PushNotifications:      false,
-			StateTransitionHistory: true,
+			Streaming:         false,
+			PushNotifications: false,
 		},
 	}
 
 	logger := zap.NewNop()
 
 	testAgentCard := types.AgentCard{
-		Name:        "test-agent",
-		Description: "A test agent",
-		URL:         new("http://test-agent:8080"),
-		Version:     "0.1.0",
+		Name:                "test-agent",
+		Description:         "A test agent",
+		SupportedInterfaces: []types.AgentInterface{{URL: "http://test-agent:8080", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
+		Version:             "0.1.0",
 		Capabilities: types.AgentCapabilities{
-			Streaming:              &cfg.CapabilitiesConfig.Streaming,
-			PushNotifications:      &cfg.CapabilitiesConfig.PushNotifications,
-			StateTransitionHistory: &cfg.CapabilitiesConfig.StateTransitionHistory,
+			Streaming:         &cfg.CapabilitiesConfig.Streaming,
+			PushNotifications: &cfg.CapabilitiesConfig.PushNotifications,
 		},
 		DefaultInputModes:  []string{"text/plain"},
 		DefaultOutputModes: []string{"text/plain"},
@@ -293,10 +289,8 @@ func TestA2AServerBuilder_UsesProvidedCapabilitiesConfiguration(t *testing.T) {
 
 	assert.NotNil(t, agentCard.Capabilities.Streaming)
 	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
-	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
 	assert.False(t, *agentCard.Capabilities.Streaming)
 	assert.False(t, *agentCard.Capabilities.PushNotifications)
-	assert.True(t, *agentCard.Capabilities.StateTransitionHistory)
 }
 
 func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
@@ -311,14 +305,13 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 	logger := zap.NewNop()
 
 	testAgentCard := types.AgentCard{
-		Name:        "test-agent",
-		Description: "A test agent",
-		URL:         new("http://test-agent:8080"),
-		Version:     "0.1.0",
+		Name:                "test-agent",
+		Description:         "A test agent",
+		SupportedInterfaces: []types.AgentInterface{{URL: "http://test-agent:8080", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
+		Version:             "0.1.0",
 		Capabilities: types.AgentCapabilities{
-			Streaming:              &[]bool{true}[0],
-			PushNotifications:      &[]bool{true}[0],
-			StateTransitionHistory: &[]bool{false}[0],
+			Streaming:         &[]bool{true}[0],
+			PushNotifications: &[]bool{true}[0],
 		},
 		DefaultInputModes:  []string{"text/plain"},
 		DefaultOutputModes: []string{"text/plain"},
@@ -337,15 +330,14 @@ func TestA2AServerBuilder_HandlesNilConfigurationSafely(t *testing.T) {
 	assert.NotNil(t, agentCard)
 	assert.Equal(t, "test-agent", agentCard.Name)
 	assert.Equal(t, "A test agent", agentCard.Description)
-	assert.Equal(t, "http://test-agent:8080", *agentCard.URL)
+	require.Len(t, agentCard.SupportedInterfaces, 1)
+	assert.Equal(t, "http://test-agent:8080", agentCard.SupportedInterfaces[0].URL)
 	assert.Equal(t, "0.1.0", agentCard.Version)
 
 	assert.NotNil(t, agentCard.Capabilities.Streaming)
 	assert.NotNil(t, agentCard.Capabilities.PushNotifications)
-	assert.NotNil(t, agentCard.Capabilities.StateTransitionHistory)
 	assert.True(t, *agentCard.Capabilities.Streaming)
 	assert.True(t, *agentCard.Capabilities.PushNotifications)
-	assert.False(t, *agentCard.Capabilities.StateTransitionHistory)
 }
 
 func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
@@ -354,7 +346,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	mockTaskHandler.HandleTaskReturns(&types.Task{
 		ID:        "test-task",
-		ContextID: "test-context",
+		ContextID: new("test-context"),
 		Status: types.TaskStatus{
 			State: types.TaskStateCompleted,
 			Message: &types.Message{
@@ -397,7 +389,7 @@ func TestA2AServer_TaskProcessing_MessageContent(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-task",
-		ContextID: "test-context",
+		ContextID: new("test-context"),
 		Status: types.TaskStatus{
 			State:   types.TaskStateSubmitted,
 			Message: originalMessage,
@@ -430,7 +422,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 	mockTaskHandler := &mocks.FakeTaskHandler{}
 	mockTaskHandler.HandleTaskReturns(&types.Task{
 		ID:        "test-task",
-		ContextID: "test-context",
+		ContextID: new("test-context"),
 		Status: types.TaskStatus{
 			State: types.TaskStateCompleted,
 			Message: &types.Message{
@@ -473,7 +465,7 @@ func TestA2AServer_ProcessQueuedTask_MessageContent(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "task-456",
-		ContextID: "context-789",
+		ContextID: new("context-789"),
 		Status: types.TaskStatus{
 			State:   types.TaskStateSubmitted,
 			Message: originalUserMessage,
@@ -702,7 +694,7 @@ func TestBackgroundHandler_WithStreamingAgent(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-task",
-		ContextID: "test-context",
+		ContextID: new("test-context"),
 		History:   []types.Message{},
 		Status: types.TaskStatus{
 			State: types.TaskStateSubmitted,
@@ -750,7 +742,7 @@ func TestBackgroundHandler_StreamingFailure(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-task-fail",
-		ContextID: "test-context",
+		ContextID: new("test-context"),
 		History:   []types.Message{},
 		Status: types.TaskStatus{
 			State: types.TaskStateSubmitted,

@@ -174,7 +174,7 @@ func (s *RedisStorage) EnqueueTask(ctx context.Context, task *types.Task, reques
 	queueLength := s.GetQueueLength()
 	s.logger.Info("task enqueued for processing",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.Int("queue_length", queueLength))
 
 	return nil
@@ -202,7 +202,7 @@ func (s *RedisStorage) DequeueTask(ctx context.Context) (*QueuedTask, error) {
 	remainingQueueLength := s.GetQueueLength()
 	s.logger.Info("task dequeued for processing",
 		zap.String("task_id", queuedTask.Task.ID),
-		zap.String("context_id", queuedTask.Task.ContextID),
+		zap.Stringp("context_id", queuedTask.Task.ContextID),
 		zap.Int("remaining_queue_length", remainingQueueLength))
 
 	return &queuedTask, nil
@@ -281,7 +281,7 @@ func (s *RedisStorage) CreateActiveTask(task *types.Task) error {
 
 	s.logger.Debug("active task created",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
 	return nil
@@ -315,7 +315,7 @@ func (s *RedisStorage) UpdateActiveTask(task *types.Task) error {
 
 	s.logger.Debug("active task updated",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
 	return nil
@@ -329,7 +329,7 @@ func (s *RedisStorage) StoreDeadLetterTask(task *types.Task) error {
 
 	ctx := context.Background()
 	deadLetterKey := deadLetterKeyPrefix + task.ID
-	contextKey := contextTasksPrefix + task.ContextID
+	contextKey := contextTasksPrefix + task.GetContextID()
 	activeKey := activeTaskKeyPrefix + task.ID
 
 	taskData, err := json.Marshal(task)
@@ -351,7 +351,7 @@ func (s *RedisStorage) StoreDeadLetterTask(task *types.Task) error {
 
 	s.logger.Debug("task stored in dead letter queue",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID),
+		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
 	return nil
@@ -387,7 +387,7 @@ func (s *RedisStorage) GetTaskByContextAndID(contextID, taskID string) (*types.T
 		return nil, false
 	}
 
-	if task.ContextID != contextID {
+	if task.GetContextID() != contextID {
 		return nil, false
 	}
 
@@ -404,7 +404,7 @@ func (s *RedisStorage) DeleteTask(taskID string) error {
 	}
 
 	deadLetterKey := deadLetterKeyPrefix + taskID
-	contextKey := contextTasksPrefix + task.ContextID
+	contextKey := contextTasksPrefix + task.GetContextID()
 
 	pipe := s.client.Pipeline()
 
@@ -418,7 +418,7 @@ func (s *RedisStorage) DeleteTask(taskID string) error {
 
 	s.logger.Debug("task deleted",
 		zap.String("task_id", taskID),
-		zap.String("context_id", task.ContextID))
+		zap.Stringp("context_id", task.ContextID))
 
 	return nil
 }
@@ -519,7 +519,7 @@ func (s *RedisStorage) matchesFilter(task *types.Task, filter TaskFilter) bool {
 		return false
 	}
 
-	if filter.ContextID != nil && task.ContextID != *filter.ContextID {
+	if filter.ContextID != nil && task.GetContextID() != *filter.ContextID {
 		return false
 	}
 
@@ -543,7 +543,7 @@ func (s *RedisStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, orde
 		case TaskSortFieldState:
 			compareResult = strings.Compare(string(tasks[i].Status.State), string(tasks[j].Status.State))
 		case TaskSortFieldContextID:
-			compareResult = strings.Compare(tasks[i].ContextID, tasks[j].ContextID)
+			compareResult = strings.Compare(tasks[i].GetContextID(), tasks[j].GetContextID())
 		default:
 			compareResult = strings.Compare(tasks[i].ID, tasks[j].ID)
 		}
@@ -635,9 +635,9 @@ func (s *RedisStorage) CleanupCompletedTasks() int {
 		taskID := strings.TrimPrefix(key, deadLetterKeyPrefix)
 		if task, exists := s.GetTask(taskID); exists {
 			switch task.Status.State {
-			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCancelled:
+			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled:
 				toRemove = append(toRemove, taskID)
-				contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], taskID)
+				contextUpdates[task.GetContextID()] = append(contextUpdates[task.GetContextID()], taskID)
 			}
 		}
 	}
@@ -703,7 +703,7 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 		for i := maxCompleted; i < len(completedTasks); i++ {
 			task := completedTasks[i]
 			toRemove = append(toRemove, task.ID)
-			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], task.ID)
+			contextUpdates[task.GetContextID()] = append(contextUpdates[task.GetContextID()], task.ID)
 		}
 	}
 
@@ -711,7 +711,7 @@ func (s *RedisStorage) CleanupTasksWithRetention(maxCompleted, maxFailed int) in
 		for i := maxFailed; i < len(failedTasks); i++ {
 			task := failedTasks[i]
 			toRemove = append(toRemove, task.ID)
-			contextUpdates[task.ContextID] = append(contextUpdates[task.ContextID], task.ID)
+			contextUpdates[task.GetContextID()] = append(contextUpdates[task.GetContextID()], task.ID)
 		}
 	}
 

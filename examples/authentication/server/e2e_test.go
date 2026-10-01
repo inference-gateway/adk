@@ -107,8 +107,8 @@ func rpc(t *testing.T, token, method string, params any) (int, string, []byte) {
 	return resp.StatusCode, resp.Header.Get("WWW-Authenticate"), body
 }
 
-func sendMessageParams(text string) types.MessageSendParams {
-	return types.MessageSendParams{
+func sendMessageParams(text string) types.SendMessageRequest {
+	return types.SendMessageRequest{
 		Message: types.Message{
 			MessageID: "e2e-" + text,
 			Role:      types.RoleUser,

@@ -20,7 +20,7 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 
 	task := &types.Task{
 		ID:        "test-task-1",
-		ContextID: "test-context",
+		ContextID: new("test-context"),
 		Status: types.TaskStatus{
 			State: types.TaskStateSubmitted,
 		},
@@ -58,9 +58,9 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 	})
 
 	t.Run("FIFO Ordering", func(t *testing.T) {
-		task1 := &types.Task{ID: "task-1", ContextID: "ctx-1", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
-		task2 := &types.Task{ID: "task-2", ContextID: "ctx-2", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
-		task3 := &types.Task{ID: "task-3", ContextID: "ctx-3", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
+		task1 := &types.Task{ID: "task-1", ContextID: new("ctx-1"), Status: types.TaskStatus{State: types.TaskStateSubmitted}}
+		task2 := &types.Task{ID: "task-2", ContextID: new("ctx-2"), Status: types.TaskStatus{State: types.TaskStateSubmitted}}
+		task3 := &types.Task{ID: "task-3", ContextID: new("ctx-3"), Status: types.TaskStatus{State: types.TaskStateSubmitted}}
 
 		err := storage.EnqueueTask(context.Background(), task1, "req-1")
 		require.NoError(t, err)
@@ -108,8 +108,8 @@ func TestInMemoryStorage_QueueOperations(t *testing.T) {
 	})
 
 	t.Run("Clear Queue", func(t *testing.T) {
-		task1 := &types.Task{ID: "clear-task-1", ContextID: "ctx", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
-		task2 := &types.Task{ID: "clear-task-2", ContextID: "ctx", Status: types.TaskStatus{State: types.TaskStateSubmitted}}
+		task1 := &types.Task{ID: "clear-task-1", ContextID: new("ctx"), Status: types.TaskStatus{State: types.TaskStateSubmitted}}
+		task2 := &types.Task{ID: "clear-task-2", ContextID: new("ctx"), Status: types.TaskStatus{State: types.TaskStateSubmitted}}
 
 		err := storage.EnqueueTask(context.Background(), task1, "req-1")
 		require.NoError(t, err)
@@ -165,7 +165,7 @@ func TestInMemoryStorage_ConcurrentQueueOperations(t *testing.T) {
 				for j := 0; j < tasksPerWorker; j++ {
 					task := &types.Task{
 						ID:        fmt.Sprintf("task-%d-%d", i, j),
-						ContextID: "concurrent-test",
+						ContextID: new("concurrent-test"),
 						Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 					}
 					err := storage.EnqueueTask(context.Background(), task, fmt.Sprintf("req-%d-%d", i, j))

@@ -491,26 +491,6 @@ func (fake *FakeOpenTelemetry) TracerProviderReturnsOnCall(i int, result1 trace.
 func (fake *FakeOpenTelemetry) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.recordRequestCountMutex.RLock()
-	defer fake.recordRequestCountMutex.RUnlock()
-	fake.recordRequestDurationMutex.RLock()
-	defer fake.recordRequestDurationMutex.RUnlock()
-	fake.recordResponseStatusMutex.RLock()
-	defer fake.recordResponseStatusMutex.RUnlock()
-	fake.recordTaskCompletedMutex.RLock()
-	defer fake.recordTaskCompletedMutex.RUnlock()
-	fake.recordTaskFailureMutex.RLock()
-	defer fake.recordTaskFailureMutex.RUnlock()
-	fake.recordTaskQueuedMutex.RLock()
-	defer fake.recordTaskQueuedMutex.RUnlock()
-	fake.recordTokenUsageMutex.RLock()
-	defer fake.recordTokenUsageMutex.RUnlock()
-	fake.recordToolCallFailureMutex.RLock()
-	defer fake.recordToolCallFailureMutex.RUnlock()
-	fake.shutDownMutex.RLock()
-	defer fake.shutDownMutex.RUnlock()
-	fake.tracerProviderMutex.RLock()
-	defer fake.tracerProviderMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

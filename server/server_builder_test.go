@@ -458,14 +458,13 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 
 	t.Run("fails when no background task handler configured", func(t *testing.T) {
 		agentCard := types.AgentCard{
-			Name:        "test-agent",
-			Description: "A test agent",
-			URL:         new("http://test-agent:8080"),
-			Version:     "0.1.0",
+			Name:                "test-agent",
+			Description:         "A test agent",
+			SupportedInterfaces: []types.AgentInterface{{URL: "http://test-agent:8080", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
+			Version:             "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(false),
-				PushNotifications:      new(false),
-				StateTransitionHistory: new(false),
+				Streaming:         new(false),
+				PushNotifications: new(false),
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
@@ -481,14 +480,13 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 
 	t.Run("fails when streaming enabled but no streaming task handler configured", func(t *testing.T) {
 		agentCard := types.AgentCard{
-			Name:        "test-agent",
-			Description: "A test agent",
-			URL:         new("http://test-agent:8080"),
-			Version:     "0.1.0",
+			Name:                "test-agent",
+			Description:         "A test agent",
+			SupportedInterfaces: []types.AgentInterface{{URL: "http://test-agent:8080", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
+			Version:             "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(true),
-				PushNotifications:      new(false),
-				StateTransitionHistory: new(false),
+				Streaming:         new(true),
+				PushNotifications: new(false),
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
@@ -505,14 +503,13 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 
 	t.Run("succeeds when streaming disabled and only background task handler configured", func(t *testing.T) {
 		agentCard := types.AgentCard{
-			Name:        "test-agent",
-			Description: "A test agent",
-			URL:         new("http://test-agent:8080"),
-			Version:     "0.1.0",
+			Name:                "test-agent",
+			Description:         "A test agent",
+			SupportedInterfaces: []types.AgentInterface{{URL: "http://test-agent:8080", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
+			Version:             "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(false),
-				PushNotifications:      new(false),
-				StateTransitionHistory: new(false),
+				Streaming:         new(false),
+				PushNotifications: new(false),
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},
@@ -529,14 +526,13 @@ func TestA2AServerBuilder_Build_RequiresTaskHandlers(t *testing.T) {
 
 	t.Run("succeeds when both task handlers configured for streaming agent", func(t *testing.T) {
 		agentCard := types.AgentCard{
-			Name:        "test-agent",
-			Description: "A test agent",
-			URL:         new("http://test-agent:8080"),
-			Version:     "0.1.0",
+			Name:                "test-agent",
+			Description:         "A test agent",
+			SupportedInterfaces: []types.AgentInterface{{URL: "http://test-agent:8080", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
+			Version:             "0.1.0",
 			Capabilities: types.AgentCapabilities{
-				Streaming:              new(true),
-				PushNotifications:      new(false),
-				StateTransitionHistory: new(false),
+				Streaming:         new(true),
+				PushNotifications: new(false),
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},

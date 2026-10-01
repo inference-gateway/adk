@@ -463,15 +463,13 @@ Be specific about what information you need and why it's needed to provide a com
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithStreamingTaskHandler(taskHandler).
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.A2A.AgentName,
-			Description:     cfg.A2A.AgentDescription,
-			Version:         cfg.A2A.AgentVersion,
-			URL:             new(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
-			ProtocolVersion: "0.3.0",
+			Name:                cfg.A2A.AgentName,
+			Description:         cfg.A2A.AgentDescription,
+			Version:             cfg.A2A.AgentVersion,
+			SupportedInterfaces: []types.AgentInterface{{URL: fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port), ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
-				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
-				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+				Streaming:         &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications: &cfg.A2A.CapabilitiesConfig.PushNotifications,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},

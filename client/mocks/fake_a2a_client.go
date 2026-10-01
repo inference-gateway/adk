@@ -13,11 +13,11 @@ import (
 )
 
 type FakeA2AClient struct {
-	CancelTaskStub        func(context.Context, types.TaskIdParams) (*types.JSONRPCSuccessResponse, error)
+	CancelTaskStub        func(context.Context, types.CancelTaskRequest) (*types.JSONRPCSuccessResponse, error)
 	cancelTaskMutex       sync.RWMutex
 	cancelTaskArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.TaskIdParams
+		arg2 types.CancelTaskRequest
 	}
 	cancelTaskReturns struct {
 		result1 *types.JSONRPCSuccessResponse
@@ -27,11 +27,11 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
-	DeleteTaskPushNotificationConfigStub        func(context.Context, types.DeleteTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
+	DeleteTaskPushNotificationConfigStub        func(context.Context, types.DeleteTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error)
 	deleteTaskPushNotificationConfigMutex       sync.RWMutex
 	deleteTaskPushNotificationConfigArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.DeleteTaskPushNotificationConfigParams
+		arg2 types.DeleteTaskPushNotificationConfigRequest
 	}
 	deleteTaskPushNotificationConfigReturns struct {
 		result1 *types.JSONRPCSuccessResponse
@@ -64,11 +64,11 @@ type FakeA2AClient struct {
 	getArtifactHelperReturnsOnCall map[int]struct {
 		result1 *client.ArtifactHelper
 	}
-	GetAuthenticatedExtendedCardStub        func(context.Context, types.GetAuthenticatedExtendedCardParams) (*types.JSONRPCSuccessResponse, error)
+	GetAuthenticatedExtendedCardStub        func(context.Context, types.GetExtendedAgentCardRequest) (*types.JSONRPCSuccessResponse, error)
 	getAuthenticatedExtendedCardMutex       sync.RWMutex
 	getAuthenticatedExtendedCardArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.GetAuthenticatedExtendedCardParams
+		arg2 types.GetExtendedAgentCardRequest
 	}
 	getAuthenticatedExtendedCardReturns struct {
 		result1 *types.JSONRPCSuccessResponse
@@ -111,11 +111,11 @@ type FakeA2AClient struct {
 	getLoggerReturnsOnCall map[int]struct {
 		result1 *zap.Logger
 	}
-	GetTaskStub        func(context.Context, types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error)
+	GetTaskStub        func(context.Context, types.GetTaskRequest) (*types.JSONRPCSuccessResponse, error)
 	getTaskMutex       sync.RWMutex
 	getTaskArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.TaskQueryParams
+		arg2 types.GetTaskRequest
 	}
 	getTaskReturns struct {
 		result1 *types.JSONRPCSuccessResponse
@@ -125,11 +125,11 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
-	GetTaskPushNotificationConfigStub        func(context.Context, types.GetTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
+	GetTaskPushNotificationConfigStub        func(context.Context, types.GetTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error)
 	getTaskPushNotificationConfigMutex       sync.RWMutex
 	getTaskPushNotificationConfigArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.GetTaskPushNotificationConfigParams
+		arg2 types.GetTaskPushNotificationConfigRequest
 	}
 	getTaskPushNotificationConfigReturns struct {
 		result1 *types.JSONRPCSuccessResponse
@@ -139,11 +139,11 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
-	ListTaskPushNotificationConfigStub        func(context.Context, types.ListTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)
+	ListTaskPushNotificationConfigStub        func(context.Context, types.ListTaskPushNotificationConfigsRequest) (*types.JSONRPCSuccessResponse, error)
 	listTaskPushNotificationConfigMutex       sync.RWMutex
 	listTaskPushNotificationConfigArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.ListTaskPushNotificationConfigParams
+		arg2 types.ListTaskPushNotificationConfigsRequest
 	}
 	listTaskPushNotificationConfigReturns struct {
 		result1 *types.JSONRPCSuccessResponse
@@ -153,11 +153,11 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
-	ListTasksStub        func(context.Context, types.TaskListParams) (*types.JSONRPCSuccessResponse, error)
+	ListTasksStub        func(context.Context, types.ListTasksRequest) (*types.JSONRPCSuccessResponse, error)
 	listTasksMutex       sync.RWMutex
 	listTasksArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.TaskListParams
+		arg2 types.ListTasksRequest
 	}
 	listTasksReturns struct {
 		result1 *types.JSONRPCSuccessResponse
@@ -167,11 +167,11 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
-	ResubscribeTaskStub        func(context.Context, types.TaskResubscriptionParams) (<-chan types.JSONRPCSuccessResponse, error)
+	ResubscribeTaskStub        func(context.Context, types.SubscribeToTaskRequest) (<-chan types.JSONRPCSuccessResponse, error)
 	resubscribeTaskMutex       sync.RWMutex
 	resubscribeTaskArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.TaskResubscriptionParams
+		arg2 types.SubscribeToTaskRequest
 	}
 	resubscribeTaskReturns struct {
 		result1 <-chan types.JSONRPCSuccessResponse
@@ -181,11 +181,11 @@ type FakeA2AClient struct {
 		result1 <-chan types.JSONRPCSuccessResponse
 		result2 error
 	}
-	SendTaskStub        func(context.Context, types.MessageSendParams) (*types.JSONRPCSuccessResponse, error)
+	SendTaskStub        func(context.Context, types.SendMessageRequest) (*types.JSONRPCSuccessResponse, error)
 	sendTaskMutex       sync.RWMutex
 	sendTaskArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.MessageSendParams
+		arg2 types.SendMessageRequest
 	}
 	sendTaskReturns struct {
 		result1 *types.JSONRPCSuccessResponse
@@ -195,11 +195,11 @@ type FakeA2AClient struct {
 		result1 *types.JSONRPCSuccessResponse
 		result2 error
 	}
-	SendTaskStreamingStub        func(context.Context, types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error)
+	SendTaskStreamingStub        func(context.Context, types.SendMessageRequest) (<-chan types.JSONRPCSuccessResponse, error)
 	sendTaskStreamingMutex       sync.RWMutex
 	sendTaskStreamingArgsForCall []struct {
 		arg1 context.Context
-		arg2 types.MessageSendParams
+		arg2 types.SendMessageRequest
 	}
 	sendTaskStreamingReturns struct {
 		result1 <-chan types.JSONRPCSuccessResponse
@@ -242,12 +242,12 @@ type FakeA2AClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeA2AClient) CancelTask(arg1 context.Context, arg2 types.TaskIdParams) (*types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) CancelTask(arg1 context.Context, arg2 types.CancelTaskRequest) (*types.JSONRPCSuccessResponse, error) {
 	fake.cancelTaskMutex.Lock()
 	ret, specificReturn := fake.cancelTaskReturnsOnCall[len(fake.cancelTaskArgsForCall)]
 	fake.cancelTaskArgsForCall = append(fake.cancelTaskArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.TaskIdParams
+		arg2 types.CancelTaskRequest
 	}{arg1, arg2})
 	stub := fake.CancelTaskStub
 	fakeReturns := fake.cancelTaskReturns
@@ -268,13 +268,13 @@ func (fake *FakeA2AClient) CancelTaskCallCount() int {
 	return len(fake.cancelTaskArgsForCall)
 }
 
-func (fake *FakeA2AClient) CancelTaskCalls(stub func(context.Context, types.TaskIdParams) (*types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) CancelTaskCalls(stub func(context.Context, types.CancelTaskRequest) (*types.JSONRPCSuccessResponse, error)) {
 	fake.cancelTaskMutex.Lock()
 	defer fake.cancelTaskMutex.Unlock()
 	fake.CancelTaskStub = stub
 }
 
-func (fake *FakeA2AClient) CancelTaskArgsForCall(i int) (context.Context, types.TaskIdParams) {
+func (fake *FakeA2AClient) CancelTaskArgsForCall(i int) (context.Context, types.CancelTaskRequest) {
 	fake.cancelTaskMutex.RLock()
 	defer fake.cancelTaskMutex.RUnlock()
 	argsForCall := fake.cancelTaskArgsForCall[i]
@@ -307,12 +307,12 @@ func (fake *FakeA2AClient) CancelTaskReturnsOnCall(i int, result1 *types.JSONRPC
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) DeleteTaskPushNotificationConfig(arg1 context.Context, arg2 types.DeleteTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) DeleteTaskPushNotificationConfig(arg1 context.Context, arg2 types.DeleteTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error) {
 	fake.deleteTaskPushNotificationConfigMutex.Lock()
 	ret, specificReturn := fake.deleteTaskPushNotificationConfigReturnsOnCall[len(fake.deleteTaskPushNotificationConfigArgsForCall)]
 	fake.deleteTaskPushNotificationConfigArgsForCall = append(fake.deleteTaskPushNotificationConfigArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.DeleteTaskPushNotificationConfigParams
+		arg2 types.DeleteTaskPushNotificationConfigRequest
 	}{arg1, arg2})
 	stub := fake.DeleteTaskPushNotificationConfigStub
 	fakeReturns := fake.deleteTaskPushNotificationConfigReturns
@@ -333,13 +333,13 @@ func (fake *FakeA2AClient) DeleteTaskPushNotificationConfigCallCount() int {
 	return len(fake.deleteTaskPushNotificationConfigArgsForCall)
 }
 
-func (fake *FakeA2AClient) DeleteTaskPushNotificationConfigCalls(stub func(context.Context, types.DeleteTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) DeleteTaskPushNotificationConfigCalls(stub func(context.Context, types.DeleteTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error)) {
 	fake.deleteTaskPushNotificationConfigMutex.Lock()
 	defer fake.deleteTaskPushNotificationConfigMutex.Unlock()
 	fake.DeleteTaskPushNotificationConfigStub = stub
 }
 
-func (fake *FakeA2AClient) DeleteTaskPushNotificationConfigArgsForCall(i int) (context.Context, types.DeleteTaskPushNotificationConfigParams) {
+func (fake *FakeA2AClient) DeleteTaskPushNotificationConfigArgsForCall(i int) (context.Context, types.DeleteTaskPushNotificationConfigRequest) {
 	fake.deleteTaskPushNotificationConfigMutex.RLock()
 	defer fake.deleteTaskPushNotificationConfigMutex.RUnlock()
 	argsForCall := fake.deleteTaskPushNotificationConfigArgsForCall[i]
@@ -489,12 +489,12 @@ func (fake *FakeA2AClient) GetArtifactHelperReturnsOnCall(i int, result1 *client
 	}{result1}
 }
 
-func (fake *FakeA2AClient) GetAuthenticatedExtendedCard(arg1 context.Context, arg2 types.GetAuthenticatedExtendedCardParams) (*types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCard(arg1 context.Context, arg2 types.GetExtendedAgentCardRequest) (*types.JSONRPCSuccessResponse, error) {
 	fake.getAuthenticatedExtendedCardMutex.Lock()
 	ret, specificReturn := fake.getAuthenticatedExtendedCardReturnsOnCall[len(fake.getAuthenticatedExtendedCardArgsForCall)]
 	fake.getAuthenticatedExtendedCardArgsForCall = append(fake.getAuthenticatedExtendedCardArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.GetAuthenticatedExtendedCardParams
+		arg2 types.GetExtendedAgentCardRequest
 	}{arg1, arg2})
 	stub := fake.GetAuthenticatedExtendedCardStub
 	fakeReturns := fake.getAuthenticatedExtendedCardReturns
@@ -515,13 +515,13 @@ func (fake *FakeA2AClient) GetAuthenticatedExtendedCardCallCount() int {
 	return len(fake.getAuthenticatedExtendedCardArgsForCall)
 }
 
-func (fake *FakeA2AClient) GetAuthenticatedExtendedCardCalls(stub func(context.Context, types.GetAuthenticatedExtendedCardParams) (*types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCardCalls(stub func(context.Context, types.GetExtendedAgentCardRequest) (*types.JSONRPCSuccessResponse, error)) {
 	fake.getAuthenticatedExtendedCardMutex.Lock()
 	defer fake.getAuthenticatedExtendedCardMutex.Unlock()
 	fake.GetAuthenticatedExtendedCardStub = stub
 }
 
-func (fake *FakeA2AClient) GetAuthenticatedExtendedCardArgsForCall(i int) (context.Context, types.GetAuthenticatedExtendedCardParams) {
+func (fake *FakeA2AClient) GetAuthenticatedExtendedCardArgsForCall(i int) (context.Context, types.GetExtendedAgentCardRequest) {
 	fake.getAuthenticatedExtendedCardMutex.RLock()
 	defer fake.getAuthenticatedExtendedCardMutex.RUnlock()
 	argsForCall := fake.getAuthenticatedExtendedCardArgsForCall[i]
@@ -724,12 +724,12 @@ func (fake *FakeA2AClient) GetLoggerReturnsOnCall(i int, result1 *zap.Logger) {
 	}{result1}
 }
 
-func (fake *FakeA2AClient) GetTask(arg1 context.Context, arg2 types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) GetTask(arg1 context.Context, arg2 types.GetTaskRequest) (*types.JSONRPCSuccessResponse, error) {
 	fake.getTaskMutex.Lock()
 	ret, specificReturn := fake.getTaskReturnsOnCall[len(fake.getTaskArgsForCall)]
 	fake.getTaskArgsForCall = append(fake.getTaskArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.TaskQueryParams
+		arg2 types.GetTaskRequest
 	}{arg1, arg2})
 	stub := fake.GetTaskStub
 	fakeReturns := fake.getTaskReturns
@@ -750,13 +750,13 @@ func (fake *FakeA2AClient) GetTaskCallCount() int {
 	return len(fake.getTaskArgsForCall)
 }
 
-func (fake *FakeA2AClient) GetTaskCalls(stub func(context.Context, types.TaskQueryParams) (*types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) GetTaskCalls(stub func(context.Context, types.GetTaskRequest) (*types.JSONRPCSuccessResponse, error)) {
 	fake.getTaskMutex.Lock()
 	defer fake.getTaskMutex.Unlock()
 	fake.GetTaskStub = stub
 }
 
-func (fake *FakeA2AClient) GetTaskArgsForCall(i int) (context.Context, types.TaskQueryParams) {
+func (fake *FakeA2AClient) GetTaskArgsForCall(i int) (context.Context, types.GetTaskRequest) {
 	fake.getTaskMutex.RLock()
 	defer fake.getTaskMutex.RUnlock()
 	argsForCall := fake.getTaskArgsForCall[i]
@@ -789,12 +789,12 @@ func (fake *FakeA2AClient) GetTaskReturnsOnCall(i int, result1 *types.JSONRPCSuc
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) GetTaskPushNotificationConfig(arg1 context.Context, arg2 types.GetTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) GetTaskPushNotificationConfig(arg1 context.Context, arg2 types.GetTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error) {
 	fake.getTaskPushNotificationConfigMutex.Lock()
 	ret, specificReturn := fake.getTaskPushNotificationConfigReturnsOnCall[len(fake.getTaskPushNotificationConfigArgsForCall)]
 	fake.getTaskPushNotificationConfigArgsForCall = append(fake.getTaskPushNotificationConfigArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.GetTaskPushNotificationConfigParams
+		arg2 types.GetTaskPushNotificationConfigRequest
 	}{arg1, arg2})
 	stub := fake.GetTaskPushNotificationConfigStub
 	fakeReturns := fake.getTaskPushNotificationConfigReturns
@@ -815,13 +815,13 @@ func (fake *FakeA2AClient) GetTaskPushNotificationConfigCallCount() int {
 	return len(fake.getTaskPushNotificationConfigArgsForCall)
 }
 
-func (fake *FakeA2AClient) GetTaskPushNotificationConfigCalls(stub func(context.Context, types.GetTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) GetTaskPushNotificationConfigCalls(stub func(context.Context, types.GetTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error)) {
 	fake.getTaskPushNotificationConfigMutex.Lock()
 	defer fake.getTaskPushNotificationConfigMutex.Unlock()
 	fake.GetTaskPushNotificationConfigStub = stub
 }
 
-func (fake *FakeA2AClient) GetTaskPushNotificationConfigArgsForCall(i int) (context.Context, types.GetTaskPushNotificationConfigParams) {
+func (fake *FakeA2AClient) GetTaskPushNotificationConfigArgsForCall(i int) (context.Context, types.GetTaskPushNotificationConfigRequest) {
 	fake.getTaskPushNotificationConfigMutex.RLock()
 	defer fake.getTaskPushNotificationConfigMutex.RUnlock()
 	argsForCall := fake.getTaskPushNotificationConfigArgsForCall[i]
@@ -854,12 +854,12 @@ func (fake *FakeA2AClient) GetTaskPushNotificationConfigReturnsOnCall(i int, res
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) ListTaskPushNotificationConfig(arg1 context.Context, arg2 types.ListTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) ListTaskPushNotificationConfig(arg1 context.Context, arg2 types.ListTaskPushNotificationConfigsRequest) (*types.JSONRPCSuccessResponse, error) {
 	fake.listTaskPushNotificationConfigMutex.Lock()
 	ret, specificReturn := fake.listTaskPushNotificationConfigReturnsOnCall[len(fake.listTaskPushNotificationConfigArgsForCall)]
 	fake.listTaskPushNotificationConfigArgsForCall = append(fake.listTaskPushNotificationConfigArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.ListTaskPushNotificationConfigParams
+		arg2 types.ListTaskPushNotificationConfigsRequest
 	}{arg1, arg2})
 	stub := fake.ListTaskPushNotificationConfigStub
 	fakeReturns := fake.listTaskPushNotificationConfigReturns
@@ -880,13 +880,13 @@ func (fake *FakeA2AClient) ListTaskPushNotificationConfigCallCount() int {
 	return len(fake.listTaskPushNotificationConfigArgsForCall)
 }
 
-func (fake *FakeA2AClient) ListTaskPushNotificationConfigCalls(stub func(context.Context, types.ListTaskPushNotificationConfigParams) (*types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) ListTaskPushNotificationConfigCalls(stub func(context.Context, types.ListTaskPushNotificationConfigsRequest) (*types.JSONRPCSuccessResponse, error)) {
 	fake.listTaskPushNotificationConfigMutex.Lock()
 	defer fake.listTaskPushNotificationConfigMutex.Unlock()
 	fake.ListTaskPushNotificationConfigStub = stub
 }
 
-func (fake *FakeA2AClient) ListTaskPushNotificationConfigArgsForCall(i int) (context.Context, types.ListTaskPushNotificationConfigParams) {
+func (fake *FakeA2AClient) ListTaskPushNotificationConfigArgsForCall(i int) (context.Context, types.ListTaskPushNotificationConfigsRequest) {
 	fake.listTaskPushNotificationConfigMutex.RLock()
 	defer fake.listTaskPushNotificationConfigMutex.RUnlock()
 	argsForCall := fake.listTaskPushNotificationConfigArgsForCall[i]
@@ -919,12 +919,12 @@ func (fake *FakeA2AClient) ListTaskPushNotificationConfigReturnsOnCall(i int, re
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) ListTasks(arg1 context.Context, arg2 types.TaskListParams) (*types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) ListTasks(arg1 context.Context, arg2 types.ListTasksRequest) (*types.JSONRPCSuccessResponse, error) {
 	fake.listTasksMutex.Lock()
 	ret, specificReturn := fake.listTasksReturnsOnCall[len(fake.listTasksArgsForCall)]
 	fake.listTasksArgsForCall = append(fake.listTasksArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.TaskListParams
+		arg2 types.ListTasksRequest
 	}{arg1, arg2})
 	stub := fake.ListTasksStub
 	fakeReturns := fake.listTasksReturns
@@ -945,13 +945,13 @@ func (fake *FakeA2AClient) ListTasksCallCount() int {
 	return len(fake.listTasksArgsForCall)
 }
 
-func (fake *FakeA2AClient) ListTasksCalls(stub func(context.Context, types.TaskListParams) (*types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) ListTasksCalls(stub func(context.Context, types.ListTasksRequest) (*types.JSONRPCSuccessResponse, error)) {
 	fake.listTasksMutex.Lock()
 	defer fake.listTasksMutex.Unlock()
 	fake.ListTasksStub = stub
 }
 
-func (fake *FakeA2AClient) ListTasksArgsForCall(i int) (context.Context, types.TaskListParams) {
+func (fake *FakeA2AClient) ListTasksArgsForCall(i int) (context.Context, types.ListTasksRequest) {
 	fake.listTasksMutex.RLock()
 	defer fake.listTasksMutex.RUnlock()
 	argsForCall := fake.listTasksArgsForCall[i]
@@ -984,12 +984,12 @@ func (fake *FakeA2AClient) ListTasksReturnsOnCall(i int, result1 *types.JSONRPCS
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) ResubscribeTask(arg1 context.Context, arg2 types.TaskResubscriptionParams) (<-chan types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) ResubscribeTask(arg1 context.Context, arg2 types.SubscribeToTaskRequest) (<-chan types.JSONRPCSuccessResponse, error) {
 	fake.resubscribeTaskMutex.Lock()
 	ret, specificReturn := fake.resubscribeTaskReturnsOnCall[len(fake.resubscribeTaskArgsForCall)]
 	fake.resubscribeTaskArgsForCall = append(fake.resubscribeTaskArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.TaskResubscriptionParams
+		arg2 types.SubscribeToTaskRequest
 	}{arg1, arg2})
 	stub := fake.ResubscribeTaskStub
 	fakeReturns := fake.resubscribeTaskReturns
@@ -1010,13 +1010,13 @@ func (fake *FakeA2AClient) ResubscribeTaskCallCount() int {
 	return len(fake.resubscribeTaskArgsForCall)
 }
 
-func (fake *FakeA2AClient) ResubscribeTaskCalls(stub func(context.Context, types.TaskResubscriptionParams) (<-chan types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) ResubscribeTaskCalls(stub func(context.Context, types.SubscribeToTaskRequest) (<-chan types.JSONRPCSuccessResponse, error)) {
 	fake.resubscribeTaskMutex.Lock()
 	defer fake.resubscribeTaskMutex.Unlock()
 	fake.ResubscribeTaskStub = stub
 }
 
-func (fake *FakeA2AClient) ResubscribeTaskArgsForCall(i int) (context.Context, types.TaskResubscriptionParams) {
+func (fake *FakeA2AClient) ResubscribeTaskArgsForCall(i int) (context.Context, types.SubscribeToTaskRequest) {
 	fake.resubscribeTaskMutex.RLock()
 	defer fake.resubscribeTaskMutex.RUnlock()
 	argsForCall := fake.resubscribeTaskArgsForCall[i]
@@ -1049,12 +1049,12 @@ func (fake *FakeA2AClient) ResubscribeTaskReturnsOnCall(i int, result1 <-chan ty
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) SendTask(arg1 context.Context, arg2 types.MessageSendParams) (*types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) SendTask(arg1 context.Context, arg2 types.SendMessageRequest) (*types.JSONRPCSuccessResponse, error) {
 	fake.sendTaskMutex.Lock()
 	ret, specificReturn := fake.sendTaskReturnsOnCall[len(fake.sendTaskArgsForCall)]
 	fake.sendTaskArgsForCall = append(fake.sendTaskArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.MessageSendParams
+		arg2 types.SendMessageRequest
 	}{arg1, arg2})
 	stub := fake.SendTaskStub
 	fakeReturns := fake.sendTaskReturns
@@ -1075,13 +1075,13 @@ func (fake *FakeA2AClient) SendTaskCallCount() int {
 	return len(fake.sendTaskArgsForCall)
 }
 
-func (fake *FakeA2AClient) SendTaskCalls(stub func(context.Context, types.MessageSendParams) (*types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) SendTaskCalls(stub func(context.Context, types.SendMessageRequest) (*types.JSONRPCSuccessResponse, error)) {
 	fake.sendTaskMutex.Lock()
 	defer fake.sendTaskMutex.Unlock()
 	fake.SendTaskStub = stub
 }
 
-func (fake *FakeA2AClient) SendTaskArgsForCall(i int) (context.Context, types.MessageSendParams) {
+func (fake *FakeA2AClient) SendTaskArgsForCall(i int) (context.Context, types.SendMessageRequest) {
 	fake.sendTaskMutex.RLock()
 	defer fake.sendTaskMutex.RUnlock()
 	argsForCall := fake.sendTaskArgsForCall[i]
@@ -1114,12 +1114,12 @@ func (fake *FakeA2AClient) SendTaskReturnsOnCall(i int, result1 *types.JSONRPCSu
 	}{result1, result2}
 }
 
-func (fake *FakeA2AClient) SendTaskStreaming(arg1 context.Context, arg2 types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error) {
+func (fake *FakeA2AClient) SendTaskStreaming(arg1 context.Context, arg2 types.SendMessageRequest) (<-chan types.JSONRPCSuccessResponse, error) {
 	fake.sendTaskStreamingMutex.Lock()
 	ret, specificReturn := fake.sendTaskStreamingReturnsOnCall[len(fake.sendTaskStreamingArgsForCall)]
 	fake.sendTaskStreamingArgsForCall = append(fake.sendTaskStreamingArgsForCall, struct {
 		arg1 context.Context
-		arg2 types.MessageSendParams
+		arg2 types.SendMessageRequest
 	}{arg1, arg2})
 	stub := fake.SendTaskStreamingStub
 	fakeReturns := fake.sendTaskStreamingReturns
@@ -1140,13 +1140,13 @@ func (fake *FakeA2AClient) SendTaskStreamingCallCount() int {
 	return len(fake.sendTaskStreamingArgsForCall)
 }
 
-func (fake *FakeA2AClient) SendTaskStreamingCalls(stub func(context.Context, types.MessageSendParams) (<-chan types.JSONRPCSuccessResponse, error)) {
+func (fake *FakeA2AClient) SendTaskStreamingCalls(stub func(context.Context, types.SendMessageRequest) (<-chan types.JSONRPCSuccessResponse, error)) {
 	fake.sendTaskStreamingMutex.Lock()
 	defer fake.sendTaskStreamingMutex.Unlock()
 	fake.SendTaskStreamingStub = stub
 }
 
-func (fake *FakeA2AClient) SendTaskStreamingArgsForCall(i int) (context.Context, types.MessageSendParams) {
+func (fake *FakeA2AClient) SendTaskStreamingArgsForCall(i int) (context.Context, types.SendMessageRequest) {
 	fake.sendTaskStreamingMutex.RLock()
 	defer fake.sendTaskStreamingMutex.RUnlock()
 	argsForCall := fake.sendTaskStreamingArgsForCall[i]
@@ -1343,44 +1343,6 @@ func (fake *FakeA2AClient) SetTimeoutArgsForCall(i int) time.Duration {
 func (fake *FakeA2AClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.cancelTaskMutex.RLock()
-	defer fake.cancelTaskMutex.RUnlock()
-	fake.deleteTaskPushNotificationConfigMutex.RLock()
-	defer fake.deleteTaskPushNotificationConfigMutex.RUnlock()
-	fake.getAgentCardMutex.RLock()
-	defer fake.getAgentCardMutex.RUnlock()
-	fake.getArtifactHelperMutex.RLock()
-	defer fake.getArtifactHelperMutex.RUnlock()
-	fake.getAuthenticatedExtendedCardMutex.RLock()
-	defer fake.getAuthenticatedExtendedCardMutex.RUnlock()
-	fake.getBaseURLMutex.RLock()
-	defer fake.getBaseURLMutex.RUnlock()
-	fake.getHealthMutex.RLock()
-	defer fake.getHealthMutex.RUnlock()
-	fake.getLoggerMutex.RLock()
-	defer fake.getLoggerMutex.RUnlock()
-	fake.getTaskMutex.RLock()
-	defer fake.getTaskMutex.RUnlock()
-	fake.getTaskPushNotificationConfigMutex.RLock()
-	defer fake.getTaskPushNotificationConfigMutex.RUnlock()
-	fake.listTaskPushNotificationConfigMutex.RLock()
-	defer fake.listTaskPushNotificationConfigMutex.RUnlock()
-	fake.listTasksMutex.RLock()
-	defer fake.listTasksMutex.RUnlock()
-	fake.resubscribeTaskMutex.RLock()
-	defer fake.resubscribeTaskMutex.RUnlock()
-	fake.sendTaskMutex.RLock()
-	defer fake.sendTaskMutex.RUnlock()
-	fake.sendTaskStreamingMutex.RLock()
-	defer fake.sendTaskStreamingMutex.RUnlock()
-	fake.setHTTPClientMutex.RLock()
-	defer fake.setHTTPClientMutex.RUnlock()
-	fake.setLoggerMutex.RLock()
-	defer fake.setLoggerMutex.RUnlock()
-	fake.setTaskPushNotificationConfigMutex.RLock()
-	defer fake.setTaskPushNotificationConfigMutex.RUnlock()
-	fake.setTimeoutMutex.RLock()
-	defer fake.setTimeoutMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

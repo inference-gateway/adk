@@ -30,7 +30,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 	var contextID *string
 	if task, ok := ctx.Value(TaskContextKey).(*types.Task); ok && task != nil {
 		taskID = &task.ID
-		contextID = &task.ContextID
+		contextID = task.ContextID
 	}
 
 	var usageTracker *UsageTracker
@@ -188,7 +188,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 					cancelledStatusEvent := cloudevents.NewEvent()
 					cancelledStatusEvent.SetType(types.EventTaskStatusChanged)
 					if err := cancelledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-						State: types.TaskStateCancelled,
+						State: types.TaskStateCanceled,
 					}); err != nil {
 						a.logger.Error("failed to set cancelled status event data", zap.Error(err))
 						return
@@ -200,7 +200,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 					interruptMessage := types.NewStreamingStatusMessage(
 						fmt.Sprintf("task-interrupted-%d", iteration),
-						string(types.TaskStateCancelled),
+						string(types.TaskStateCanceled),
 						nil,
 					)
 					interruptMessage.TaskID = taskID
@@ -378,8 +378,8 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 							for _, toolResult := range toolResultMessages {
 								for _, part := range toolResult.Parts {
-									if part.Data != nil && part.Data.Data != nil {
-										if toolCallID, idExists := part.Data.Data["tool_call_id"].(string); idExists {
+									if data := part.DataMap(); data != nil {
+										if toolCallID, idExists := data["tool_call_id"].(string); idExists {
 											toolResults[toolCallID] = &toolResult
 											break
 										}
@@ -461,7 +461,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 		canceledStatusEvent := cloudevents.NewEvent()
 		canceledStatusEvent.SetType(types.EventTaskStatusChanged)
 		if err := canceledStatusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{
-			State: types.TaskStateCancelled,
+			State: types.TaskStateCanceled,
 		}); err != nil {
 			a.logger.Error("failed to set canceled status event data", zap.Error(err))
 			return
@@ -473,7 +473,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 		interruptMessage := types.NewStreamingStatusMessage(
 			"max-iterations-reached",
-			string(types.TaskStateCancelled),
+			string(types.TaskStateCanceled),
 			nil,
 		)
 		interruptMessage.TaskID = taskID
@@ -495,7 +495,7 @@ func (a *OpenAICompatibleAgentImpl) executeToolCallsWithEvents(ctx context.Conte
 	var contextID *string
 	if task, ok := ctx.Value(TaskContextKey).(*types.Task); ok && task != nil {
 		taskID = &task.ID
-		contextID = &task.ContextID
+		contextID = task.ContextID
 	}
 
 	executor := a.GetCallbackExecutor()

@@ -100,10 +100,6 @@ func (fake *FakeResponseSender) SendSuccessArgsForCall(i int) (*gin.Context, any
 func (fake *FakeResponseSender) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.sendErrorMutex.RLock()
-	defer fake.sendErrorMutex.RUnlock()
-	fake.sendSuccessMutex.RLock()
-	defer fake.sendSuccessMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

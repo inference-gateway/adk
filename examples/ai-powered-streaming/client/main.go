@@ -81,10 +81,10 @@ func main() {
 			},
 		}
 
-		params := types.MessageSendParams{
+		params := types.SendMessageRequest{
 			Message: message,
-			Configuration: &types.MessageSendConfiguration{
-				Blocking:            new(false),
+			Configuration: &types.SendMessageConfiguration{
+				ReturnImmediately:   new(true),
 				AcceptedOutputModes: []string{"text/plain"},
 			},
 		}
@@ -118,7 +118,7 @@ func main() {
 				zap.Int("event", eventCount),
 				zap.String("new_state", string(statusUpdate.Status.State)),
 				zap.String("task_id", statusUpdate.TaskID),
-				zap.Bool("final", statusUpdate.Final))
+				zap.Bool("final", statusUpdate.Status.State.IsTerminal()))
 
 			// If status includes a message (e.g., completion with final text), display it
 			if statusUpdate.Status.Message != nil {

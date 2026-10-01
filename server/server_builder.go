@@ -147,7 +147,7 @@ func NewA2AServerBuilder(cfg serverConfig.Config, logger *zap.Logger) A2AServerB
 
 // isCapabilitiesConfigEmpty checks if the capabilities config has all zero values
 func isCapabilitiesConfigEmpty(capabilities serverConfig.CapabilitiesConfig) bool {
-	return !capabilities.Streaming && !capabilities.PushNotifications && !capabilities.StateTransitionHistory
+	return !capabilities.Streaming && !capabilities.PushNotifications
 }
 
 // isAgentConfigEmpty checks if the agent config has all zero values (needs defaults)
@@ -369,7 +369,7 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 		server.SetExtendedAgentCard(*b.extendedAgentCard)
 		if server.customAgentCard != nil {
 			enabled := true
-			server.customAgentCard.SupportsExtendedAgentCard = &enabled
+			server.customAgentCard.Capabilities.ExtendedAgentCard = &enabled
 		}
 	}
 

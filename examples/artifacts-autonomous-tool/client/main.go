@@ -134,7 +134,7 @@ func sendTask(ctx context.Context, a2aClient client.A2AClient, prompt string) (s
 		},
 	}
 
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: message,
 	}
 
@@ -197,7 +197,7 @@ func pollForCompletion(ctx context.Context, a2aClient client.A2AClient, taskID s
 
 // getTask retrieves a task by ID
 func getTask(ctx context.Context, a2aClient client.A2AClient, taskID string) (*types.Task, error) {
-	taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{ID: taskID})
+	taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{ID: taskID})
 	if err != nil {
 		return nil, err
 	}

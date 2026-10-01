@@ -72,7 +72,7 @@ func main() {
 		}
 
 		// Send the message
-		params := types.MessageSendParams{
+		params := types.SendMessageRequest{
 			Message: message,
 		}
 
@@ -115,7 +115,7 @@ func main() {
 				logger.Warn("context cancelled while polling task", zap.String("task_id", taskID))
 				return
 			case <-ticker.C:
-				taskResp, err := a2aClient.GetTask(ctx, types.TaskQueryParams{ID: taskID})
+				taskResp, err := a2aClient.GetTask(ctx, types.GetTaskRequest{ID: taskID})
 				if err != nil {
 					logger.Error("failed to get task status", zap.Error(err))
 					completed = true
@@ -154,7 +154,7 @@ func main() {
 						fmt.Printf("Partial Response:\n%s\n", string(messageJSON))
 					}
 					completed = true
-				case types.TaskStateFailed, types.TaskStateCancelled, types.TaskStateRejected:
+				case types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
 					logger.Warn("task ended", zap.String("state", string(task.Status.State)))
 					if task.Status.Message != nil {
 						messageJSON, _ := json.MarshalIndent(task.Status.Message, "", "  ")

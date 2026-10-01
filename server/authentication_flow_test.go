@@ -32,7 +32,7 @@ func startAuthFlowServer(t *testing.T, port string, extended *types.AgentCard) f
 		IssuerURL: "https://issuer.example.com/realms/test",
 	})
 	card.SecuritySchemes = schemes
-	card.Security = security
+	card.SecurityRequirements = security
 
 	cfg := serverConfig.Config{}
 	cfg.ServerConfig.Port = port
@@ -89,8 +89,8 @@ func TestAuthenticationFlow_DiscoveryToExtendedCard(t *testing.T) {
 	assert.Equal(t, "test-agent", publicCard.Name)
 	require.Contains(t, publicCard.SecuritySchemes, server.OIDCSchemeName,
 		"public card must declare how to authenticate")
-	require.NotNil(t, publicCard.SupportsExtendedAgentCard)
-	assert.True(t, *publicCard.SupportsExtendedAgentCard)
+	require.NotNil(t, publicCard.Capabilities.ExtendedAgentCard)
+	assert.True(t, *publicCard.Capabilities.ExtendedAgentCard)
 
 	// Out-of-band credential transmitted on every request via a header.
 	authClient := client.NewClientWithConfig(&client.Config{
@@ -98,7 +98,7 @@ func TestAuthenticationFlow_DiscoveryToExtendedCard(t *testing.T) {
 		Headers: map[string]string{"Authorization": "Bearer out-of-band-token"},
 	})
 
-	resp, err := authClient.GetAuthenticatedExtendedCard(ctx, types.GetAuthenticatedExtendedCardParams{})
+	resp, err := authClient.GetAuthenticatedExtendedCard(ctx, types.GetExtendedAgentCardRequest{})
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -117,7 +117,7 @@ func TestAuthenticationFlow_ExtendedCardUnsupported(t *testing.T) {
 	defer stop()
 
 	authClient := client.NewClient("http://localhost:18086")
-	_, err := authClient.GetAuthenticatedExtendedCard(context.Background(), types.GetAuthenticatedExtendedCardParams{})
+	_, err := authClient.GetAuthenticatedExtendedCard(context.Background(), types.GetExtendedAgentCardRequest{})
 	require.Error(t, err, "unsupported extended card must surface as a JSON-RPC error")
 	assert.Contains(t, err.Error(), "-32004")
 }

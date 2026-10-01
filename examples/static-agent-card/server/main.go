@@ -54,7 +54,7 @@ func (h *StaticCardTaskHandler) HandleTask(ctx context.Context, task *types.Task
 
 	responseMessage := types.Message{
 		MessageID: uuid.New().String(),
-		ContextID: &task.ContextID,
+		ContextID: task.ContextID,
 		TaskID:    &task.ID,
 		Role:      types.RoleAgent,
 		Parts: []types.Part{
@@ -141,7 +141,11 @@ func main() {
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A.Config, logger).
 		WithBackgroundTaskHandler(taskHandler).
 		WithAgentCardFromFile(cfg.A2A.AgentCardFile, map[string]any{
-			"url": fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+			"supportedInterfaces": []map[string]any{{
+				"url":             fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port),
+				"protocolBinding": "JSONRPC",
+				"protocolVersion": "1.0",
+			}},
 		}).
 		Build()
 	if err != nil {

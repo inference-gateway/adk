@@ -13,16 +13,12 @@ func NewToolResultMessage(toolCallID string, toolName string, result any, hasErr
 		MessageID: fmt.Sprintf("tool-result-%s", toolCallID),
 		Role:      RoleAgent,
 		Parts: []Part{
-			{
-				Data: &DataPart{
-					Data: map[string]any{
-						"tool_call_id": toolCallID,
-						"tool_name":    toolName,
-						"result":       result,
-						"error":        hasError,
-					},
-				},
-			},
+			CreateDataPart(map[string]any{
+				"tool_call_id": toolCallID,
+				"tool_name":    toolName,
+				"result":       result,
+				"error":        hasError,
+			}),
 		},
 	}
 }
@@ -45,26 +41,18 @@ func NewTextPart(text string) Part {
 
 // NewToolCallPart creates a tool call part for a message
 func NewToolCallPart(toolCallID, toolName string, arguments map[string]any) Part {
-	return Part{
-		Data: &DataPart{
-			Data: map[string]any{
-				"tool_call": map[string]any{
-					"id":        toolCallID,
-					"name":      toolName,
-					"arguments": arguments,
-				},
-			},
+	return CreateDataPart(map[string]any{
+		"tool_call": map[string]any{
+			"id":        toolCallID,
+			"name":      toolName,
+			"arguments": arguments,
 		},
-	}
+	})
 }
 
 // NewDataPart creates a generic data part for a message
 func NewDataPart(data map[string]any) Part {
-	return Part{
-		Data: &DataPart{
-			Data: data,
-		},
-	}
+	return CreateDataPart(data)
 }
 
 // NewStreamingStatusMessage creates a status message for streaming

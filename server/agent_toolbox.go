@@ -302,7 +302,7 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 	data := []byte(content)
 	mimeType := artifactService.GetMimeTypeFromExtension(filename)
 	artifact, err := artifactService.CreateFileArtifact(
-		task.ContextID,
+		task.GetContextID(),
 		name,
 		fmt.Sprintf("Artifact created by create_artifact tool: %s", name),
 		filename,
@@ -315,17 +315,14 @@ func executeCreateArtifact(ctx context.Context, args map[string]any) (string, er
 
 	artifactService.AddArtifactToTask(task, artifact)
 
-	if len(artifact.Parts) > 0 && artifact.Parts[0].File != nil {
-		filePart := artifact.Parts[0].File
-		if filePart.FileWithURI != nil {
-			return JSONTool(map[string]any{
-				"success":     true,
-				"message":     fmt.Sprintf("Artifact '%s' created successfully", name),
-				"artifact_id": artifact.ArtifactID,
-				"url":         *filePart.FileWithURI,
-				"filename":    filename,
-			})
-		}
+	if len(artifact.Parts) > 0 && artifact.Parts[0].URL != nil {
+		return JSONTool(map[string]any{
+			"success":     true,
+			"message":     fmt.Sprintf("Artifact '%s' created successfully", name),
+			"artifact_id": artifact.ArtifactID,
+			"url":         *artifact.Parts[0].URL,
+			"filename":    filename,
+		})
 	}
 
 	return JSONTool(map[string]any{

@@ -26,6 +26,26 @@ const (
 	ToolInputRequired = "input_required"
 )
 
+// GetContextID returns the task's context ID, or "" when it is unset.
+// The ADK always assigns one when it creates a task; the accessor exists because
+// A2A v1.0 made the field optional on the wire.
+func (t *Task) GetContextID() string {
+	if t == nil || t.ContextID == nil {
+		return ""
+	}
+	return *t.ContextID
+}
+
+// IsTerminal reports whether a task in this state will never change state again.
+// A2A v1.0 dropped the `final` flag from status updates; terminal state is the signal.
+func (s TaskState) IsTerminal() bool {
+	switch s {
+	case TaskStateCompleted, TaskStateFailed, TaskStateCanceled, TaskStateRejected:
+		return true
+	}
+	return false
+}
+
 // A discriminated union representing all possible JSON-RPC 2.0 responses
 // for the A2A specification methods.
 type JSONRPCResponse any
@@ -71,59 +91,3 @@ type JSONRPCRequest struct {
 	Method  string         `json:"method"`
 	Params  map[string]any `json:"params,omitempty"`
 }
-
-// Defines configuration options for a `message/send` or `message/stream` request.
-type MessageSendConfiguration struct {
-	AcceptedOutputModes    []string                `json:"acceptedOutputModes,omitempty"`
-	Blocking               *bool                   `json:"blocking,omitempty"`
-	HistoryLength          *int                    `json:"historyLength,omitempty"`
-	PushNotificationConfig *PushNotificationConfig `json:"pushNotificationConfig,omitempty"`
-}
-
-// Defines the parameters for a request to send a message to an agent. This can be used
-// to create a new task, continue an existing one, or restart a task.
-type MessageSendParams struct {
-	Configuration *MessageSendConfiguration `json:"configuration,omitempty"`
-	Message       Message                   `json:"message"`
-	Metadata      map[string]any            `json:"metadata,omitempty"`
-}
-
-// Defines parameters for querying a task, with an option to limit history length.
-type TaskQueryParams struct {
-	HistoryLength *int           `json:"historyLength,omitempty"`
-	ID            string         `json:"id"`
-	Metadata      map[string]any `json:"metadata,omitempty"`
-}
-
-// Parameters for listing tasks with optional filtering and pagination.
-type TaskListParams struct {
-	ContextID *string        `json:"contextId,omitempty"`
-	Limit     int            `json:"limit,omitempty"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
-	Offset    int            `json:"offset,omitempty"`
-	State     *TaskState     `json:"state,omitempty"`
-}
-
-// Parameters for task operations that require only a task ID.
-type TaskIdParams struct {
-	ID       string         `json:"id"`
-	Metadata map[string]any `json:"metadata,omitempty"`
-}
-
-// TaskList represents a list of tasks with pagination info (alias for generated type)
-type TaskList = ListTasksResponse
-
-// GetTaskPushNotificationConfigParams is an alias for GetTaskPushNotificationConfigRequest
-type GetTaskPushNotificationConfigParams = GetTaskPushNotificationConfigRequest
-
-// ListTaskPushNotificationConfigParams is an alias for ListTaskPushNotificationConfigRequest
-type ListTaskPushNotificationConfigParams = ListTaskPushNotificationConfigRequest
-
-// DeleteTaskPushNotificationConfigParams is an alias for DeleteTaskPushNotificationConfigRequest
-type DeleteTaskPushNotificationConfigParams = DeleteTaskPushNotificationConfigRequest
-
-// TaskResubscriptionParams is an alias for SubscribeToTaskRequest
-type TaskResubscriptionParams = SubscribeToTaskRequest
-
-// GetAuthenticatedExtendedCardParams is an alias for GetExtendedAgentCardRequest
-type GetAuthenticatedExtendedCardParams = GetExtendedAgentCardRequest

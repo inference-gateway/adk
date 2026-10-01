@@ -49,7 +49,7 @@ func TestTraceContextPropagation(t *testing.T) {
 		storage := NewInMemoryStorage(zap.NewNop(), 10)
 		task := &types.Task{
 			ID:        "task-trace",
-			ContextID: "context-trace",
+			ContextID: new("context-trace"),
 			Status:    types.TaskStatus{State: types.TaskStateSubmitted},
 		}
 		require.NoError(t, storage.EnqueueTask(ctx, task, "req-trace"))

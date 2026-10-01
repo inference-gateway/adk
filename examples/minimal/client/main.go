@@ -63,7 +63,7 @@ func main() {
 	logger.Info("sending message to server")
 
 	// Send the message using SendTask
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: message,
 	}
 
@@ -95,7 +95,7 @@ func main() {
 	for range 10 {
 		time.Sleep(500 * time.Millisecond)
 
-		getParams := types.TaskQueryParams{
+		getParams := types.GetTaskRequest{
 			ID: task.ID,
 		}
 

@@ -74,7 +74,7 @@ func TestTaskCancellation(t *testing.T) {
 
 		updatedTask, exists := taskManager.GetTask(task.ID)
 		assert.True(t, exists, "Task should exist")
-		assert.Equal(t, types.TaskStateCancelled, updatedTask.Status.State, "Task state should be cancelled")
+		assert.Equal(t, types.TaskStateCanceled, updatedTask.Status.State, "Task state should be cancelled")
 
 		taskManager.runningTasksMu.RLock()
 		_, exists = taskManager.runningTasks[task.ID]
@@ -116,6 +116,6 @@ func TestTaskCancellation(t *testing.T) {
 
 		updatedTask, exists := taskManager.GetTask(task.ID)
 		assert.True(t, exists, "Task should exist")
-		assert.Equal(t, types.TaskStateCancelled, updatedTask.Status.State, "Task state should be cancelled")
+		assert.Equal(t, types.TaskStateCanceled, updatedTask.Status.State, "Task state should be cancelled")
 	})
 }

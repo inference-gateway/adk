@@ -165,7 +165,7 @@ func TestStreamingMessageAccumulation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			task := &types.Task{
 				ID:        "test-task-123",
-				ContextID: "test-context-123",
+				ContextID: new("test-context-123"),
 				Status: types.TaskStatus{
 					State: types.TaskStateWorking,
 				},
@@ -1456,7 +1456,7 @@ func TestRunWithStream_StreamFailedEventEmitted(t *testing.T) {
 			streamFailedText = *p.Text
 		}
 		if p.Data != nil {
-			if e, ok := p.Data.Data["error"].(string); ok {
+			if e, ok := p.DataMap()["error"].(string); ok {
 				streamFailedData = e
 			}
 		}

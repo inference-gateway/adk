@@ -44,9 +44,8 @@ func main() {
 			AgentVersion:     "0.1.0",
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{
-				Streaming:              true,
-				PushNotifications:      false,
-				StateTransitionHistory: false,
+				Streaming:         true,
+				PushNotifications: false,
 			},
 			QueueConfig: serverConfig.QueueConfig{
 				CleanupInterval: 5 * time.Minute,
@@ -191,7 +190,7 @@ The file upload and processing demonstrates the complete artifact lifecycle:
 
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
-				task.ContextID,
+				task.GetContextID(),
 				fmt.Sprintf("Analysis Report for %s", filename),
 				fmt.Sprintf("Detailed analysis of the uploaded file: %s", filename),
 				reportFilename,
@@ -354,7 +353,7 @@ This report demonstrates how tools can create artifacts that are automatically e
 
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
-				task.ContextID,
+				task.GetContextID(),
 				fmt.Sprintf("%s Analysis Report", strings.Title(topic)), //nolint:staticcheck // example-only, ASCII input
 				fmt.Sprintf("Comprehensive analysis report about %s in %s format", topic, format),
 				filename,
@@ -524,7 +523,7 @@ note over User,Database : %s
 
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
-				task.ContextID,
+				task.GetContextID(),
 				fmt.Sprintf("%s - %s Diagram", title, strings.Title(diagramType)), //nolint:staticcheck // example-only, ASCII input
 				fmt.Sprintf("PlantUML %s diagram: %s", diagramType, description),
 				filename,
@@ -643,7 +642,7 @@ note over User,Database : %s
 
 			// Create and add artifact - storage is handled automatically by ArtifactService
 			artifact, err := artifactService.CreateFileArtifact(
-				task.ContextID,
+				task.GetContextID(),
 				fmt.Sprintf("%s Dataset Export", strings.Title(dataset)), //nolint:staticcheck // example-only, ASCII input
 				fmt.Sprintf("Data export of %s dataset in %s format", dataset, format),
 				filename,
@@ -688,15 +687,13 @@ note over User,Database : %s
 	// Build and start server
 	a2aServer, err := serverBuilder.
 		WithAgentCard(types.AgentCard{
-			Name:            cfg.A2A.AgentName,
-			Description:     cfg.A2A.AgentDescription,
-			Version:         cfg.A2A.AgentVersion,
-			URL:             new(fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)),
-			ProtocolVersion: "0.3.0",
+			Name:                cfg.A2A.AgentName,
+			Description:         cfg.A2A.AgentDescription,
+			Version:             cfg.A2A.AgentVersion,
+			SupportedInterfaces: []types.AgentInterface{{URL: fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port), ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"}},
 			Capabilities: types.AgentCapabilities{
-				Streaming:              &cfg.A2A.CapabilitiesConfig.Streaming,
-				PushNotifications:      &cfg.A2A.CapabilitiesConfig.PushNotifications,
-				StateTransitionHistory: &cfg.A2A.CapabilitiesConfig.StateTransitionHistory,
+				Streaming:         &cfg.A2A.CapabilitiesConfig.Streaming,
+				PushNotifications: &cfg.A2A.CapabilitiesConfig.PushNotifications,
 			},
 			DefaultInputModes:  []string{"text/plain"},
 			DefaultOutputModes: []string{"text/plain"},

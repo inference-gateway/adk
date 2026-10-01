@@ -189,10 +189,6 @@ func (fake *FakeLLMClient) CreateStreamingChatCompletionReturnsOnCall(i int, res
 func (fake *FakeLLMClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.createChatCompletionMutex.RLock()
-	defer fake.createChatCompletionMutex.RUnlock()
-	fake.createStreamingChatCompletionMutex.RLock()
-	defer fake.createStreamingChatCompletionMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

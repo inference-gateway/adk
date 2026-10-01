@@ -89,7 +89,7 @@ func main() {
 		}
 
 		// Send the task
-		params := types.MessageSendParams{
+		params := types.SendMessageRequest{
 			Message: message,
 		}
 
@@ -122,7 +122,7 @@ func main() {
 			time.Sleep(500 * time.Millisecond)
 			fmt.Print(".")
 
-			taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{
+			taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{
 				ID: taskResult.ID,
 			})
 			if err != nil {
@@ -202,10 +202,10 @@ func runStreamingDemo(ctx context.Context, a2aClient client.A2AClient, logger *z
 	}
 
 	blocking := false
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: message,
-		Configuration: &types.MessageSendConfiguration{
-			Blocking:            &blocking,
+		Configuration: &types.SendMessageConfiguration{
+			ReturnImmediately:   new(!blocking),
 			AcceptedOutputModes: []string{"text/plain"},
 		},
 	}
@@ -288,7 +288,7 @@ func runStreamingDemo(ctx context.Context, a2aClient client.A2AClient, logger *z
 
 	// Re-fetch the task to get the post-completion snapshot, which is where
 	// the default streaming handler writes the usage metadata.
-	taskResponse, err := a2aClient.GetTask(ctx, types.TaskQueryParams{ID: taskID})
+	taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{ID: taskID})
 	if err != nil {
 		logger.Error("failed to fetch final task", zap.Error(err))
 		return

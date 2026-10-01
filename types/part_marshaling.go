@@ -89,12 +89,11 @@ func CreateTextPart(text string, metadata ...map[string]any) Part {
 	return part
 }
 
-// CreateDataPart creates a Part with data content
+// CreateDataPart creates a Part with structured data content
 func CreateDataPart(data map[string]any, metadata ...map[string]any) Part {
+	value := Value(data)
 	part := Part{
-		Data: &DataPart{
-			Data: data,
-		},
+		Data: &value,
 	}
 	if len(metadata) > 0 {
 		part.Metadata = &metadata[0]
@@ -102,18 +101,31 @@ func CreateDataPart(data map[string]any, metadata ...map[string]any) Part {
 	return part
 }
 
-// CreateFilePart creates a Part with file content
-func CreateFilePart(name, mediaType string, fileWithBytes *string, fileWithURI *string, metadata ...map[string]any) Part {
+// CreateFilePart creates a Part with file content, either inline (base64 in raw) or by URL
+func CreateFilePart(filename, mediaType string, raw *string, url *string, metadata ...map[string]any) Part {
 	part := Part{
-		File: &FilePart{
-			Name:          &name,
-			MediaType:     &mediaType,
-			FileWithBytes: fileWithBytes,
-			FileWithURI:   fileWithURI,
-		},
+		Filename:  &filename,
+		MediaType: &mediaType,
+		Raw:       raw,
+		URL:       url,
 	}
 	if len(metadata) > 0 {
 		part.Metadata = &metadata[0]
 	}
 	return part
+}
+
+// IsFile reports whether the part carries file content (inline bytes or a URL).
+func (p Part) IsFile() bool {
+	return p.Raw != nil || p.URL != nil
+}
+
+// DataMap returns the part's data as an object, or nil when the part has no data
+// or its data is not a JSON object.
+func (p Part) DataMap() map[string]any {
+	if p.Data == nil {
+		return nil
+	}
+	data, _ := (*p.Data).(map[string]any)
+	return data
 }

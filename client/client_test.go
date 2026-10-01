@@ -144,7 +144,7 @@ func TestNewClientWithConfig_CustomTransport(t *testing.T) {
 	c := client.NewClientWithConfig(config)
 	ctx := context.Background()
 
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: types.Message{
 			MessageID: "transport-test",
 			Role:      "user",
@@ -312,7 +312,7 @@ func TestClient_SendTask(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupServer    func() *httptest.Server
-		params         types.MessageSendParams
+		params         types.SendMessageRequest
 		expectError    bool
 		expectedResult bool
 		errorContains  string
@@ -350,7 +350,7 @@ func TestClient_SendTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.MessageSendParams{
+			params: types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "test-msg-1",
 					Role:      "user",
@@ -382,7 +382,7 @@ func TestClient_SendTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.MessageSendParams{
+			params: types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "test-msg-error",
 					Role:      "user",
@@ -402,7 +402,7 @@ func TestClient_SendTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.MessageSendParams{
+			params: types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "test-msg-500",
 					Role:      "user",
@@ -425,7 +425,7 @@ func TestClient_SendTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.MessageSendParams{
+			params: types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "test-msg-invalid",
 					Role:      "user",
@@ -468,7 +468,7 @@ func TestClient_GetTask(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupServer    func() *httptest.Server
-		params         types.TaskQueryParams
+		params         types.GetTaskRequest
 		expectError    bool
 		expectedResult bool
 		errorContains  string
@@ -516,7 +516,7 @@ func TestClient_GetTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.TaskQueryParams{
+			params: types.GetTaskRequest{
 				ID:            "task-123",
 				HistoryLength: &[]int{10}[0],
 			},
@@ -543,7 +543,7 @@ func TestClient_GetTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.TaskQueryParams{
+			params: types.GetTaskRequest{
 				ID: "nonexistent-task",
 			},
 			expectError:   true,
@@ -576,7 +576,7 @@ func TestClient_GetTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.TaskQueryParams{
+			params: types.GetTaskRequest{
 				ID: "task-minimal",
 			},
 			expectError:    false,
@@ -613,7 +613,7 @@ func TestClient_CancelTask(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupServer    func() *httptest.Server
-		params         types.TaskIdParams
+		params         types.CancelTaskRequest
 		expectError    bool
 		expectedResult bool
 		errorContains  string
@@ -650,7 +650,7 @@ func TestClient_CancelTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.TaskIdParams{
+			params: types.CancelTaskRequest{
 				ID: "task-123",
 			},
 			expectError:    false,
@@ -676,7 +676,7 @@ func TestClient_CancelTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.TaskIdParams{
+			params: types.CancelTaskRequest{
 				ID: "completed-task",
 			},
 			expectError:   true,
@@ -709,9 +709,9 @@ func TestClient_CancelTask(t *testing.T) {
 					}
 				}))
 			},
-			params: types.TaskIdParams{
+			params: types.CancelTaskRequest{
 				ID: "task-with-metadata",
-				Metadata: map[string]any{
+				Metadata: &map[string]any{
 					"reason": "user_requested",
 				},
 			},
@@ -749,7 +749,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 	tests := []struct {
 		name           string
 		setupServer    func() *httptest.Server
-		params         types.MessageSendParams
+		params         types.SendMessageRequest
 		expectError    bool
 		errorContains  string
 		expectedEvents int
@@ -820,7 +820,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					}
 				}))
 			},
-			params: types.MessageSendParams{
+			params: types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "stream-msg-1",
 					Role:      "user",
@@ -841,7 +841,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					}
 				}))
 			},
-			params: types.MessageSendParams{
+			params: types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "stream-error",
 					Role:      "user",
@@ -863,7 +863,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					}
 				}))
 			},
-			params: types.MessageSendParams{
+			params: types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "stream-invalid",
 					Role:      "user",
@@ -887,7 +887,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					}
 				}))
 			},
-			params: types.MessageSendParams{
+			params: types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "stream-empty",
 					Role:      "user",
@@ -1056,7 +1056,7 @@ func TestClient_RetryMechanism(t *testing.T) {
 			c := client.NewClientWithConfig(config)
 			ctx := context.Background()
 
-			params := types.MessageSendParams{
+			params := types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "retry-test",
 					Role:      "user",
@@ -1171,7 +1171,7 @@ func TestClient_ContextCancellation(t *testing.T) {
 			ctx, cancel := tt.setupContext()
 			defer cancel()
 
-			params := types.MessageSendParams{
+			params := types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "context-test",
 					Role:      "user",
@@ -1329,7 +1329,7 @@ func TestClient_HeadersAndAuthentication(t *testing.T) {
 			c := client.NewClientWithConfig(config)
 
 			ctx := context.Background()
-			params := types.MessageSendParams{
+			params := types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: "header-test",
 					Role:      "user",
@@ -1400,7 +1400,7 @@ func TestClient_LargeResponses(t *testing.T) {
 	c := client.NewClient(server.URL)
 	ctx := context.Background()
 
-	params := types.MessageSendParams{
+	params := types.SendMessageRequest{
 		Message: types.Message{
 			MessageID: "large-test",
 			Role:      "user",
@@ -1443,7 +1443,7 @@ func TestClient_ConcurrentRequests(t *testing.T) {
 
 	for i := 0; i < numGoroutines; i++ {
 		go func(index int) {
-			params := types.MessageSendParams{
+			params := types.SendMessageRequest{
 				Message: types.Message{
 					MessageID: fmt.Sprintf("concurrent-msg-%d", index),
 					Role:      "user",
@@ -1490,11 +1490,12 @@ func TestClient_GetAgentCard(t *testing.T) {
 						Name:        "test-agent",
 						Description: "A test agent for demonstration",
 						Version:     "0.1.0",
-						URL:         &[]string{"https://example.com"}[0],
+						SupportedInterfaces: []types.AgentInterface{
+							{URL: "https://example.com", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"},
+						},
 						Capabilities: types.AgentCapabilities{
-							Streaming:              &[]bool{true}[0],
-							PushNotifications:      &[]bool{false}[0],
-							StateTransitionHistory: &[]bool{true}[0],
+							Streaming:         &[]bool{true}[0],
+							PushNotifications: &[]bool{false}[0],
 						},
 						DefaultInputModes:  []string{"text/plain"},
 						DefaultOutputModes: []string{"text/plain"},
@@ -1513,11 +1514,12 @@ func TestClient_GetAgentCard(t *testing.T) {
 				Name:        "test-agent",
 				Description: "A test agent for demonstration",
 				Version:     "0.1.0",
-				URL:         &[]string{"https://example.com"}[0],
+				SupportedInterfaces: []types.AgentInterface{
+					{URL: "https://example.com", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"},
+				},
 				Capabilities: types.AgentCapabilities{
-					Streaming:              &[]bool{true}[0],
-					PushNotifications:      &[]bool{false}[0],
-					StateTransitionHistory: &[]bool{true}[0],
+					Streaming:         &[]bool{true}[0],
+					PushNotifications: &[]bool{false}[0],
 				},
 				DefaultInputModes:  []string{"text/plain"},
 				DefaultOutputModes: []string{"text/plain"},
@@ -1759,18 +1761,18 @@ func TestClient_ListTasks(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "tasks/list", req.Method)
 
-		mockTaskList := types.TaskList{
+		mockTaskList := types.ListTasksResponse{
 			Tasks: []types.Task{
 				{
 					ID:        "task-1",
-					ContextID: "context-1",
+					ContextID: new("context-1"),
 					Status: types.TaskStatus{
 						State: types.TaskStateCompleted,
 					},
 				},
 				{
 					ID:        "task-2",
-					ContextID: "context-1",
+					ContextID: new("context-1"),
 					Status: types.TaskStatus{
 						State: types.TaskStateWorking,
 					},
@@ -1797,8 +1799,8 @@ func TestClient_ListTasks(t *testing.T) {
 	a2aClient := client.NewClientWithLogger(server.URL, logger)
 
 	t.Run("successful_tasks_list", func(t *testing.T) {
-		params := types.TaskListParams{
-			Limit: 50,
+		params := types.ListTasksRequest{
+			PageSize: new(50),
 		}
 
 		resp, err := a2aClient.ListTasks(context.Background(), params)
@@ -1809,7 +1811,7 @@ func TestClient_ListTasks(t *testing.T) {
 		resultBytes, err := json.Marshal(resp.Result)
 		assert.NoError(t, err)
 
-		var taskList types.TaskList
+		var taskList types.ListTasksResponse
 		err = json.Unmarshal(resultBytes, &taskList)
 		assert.NoError(t, err)
 
@@ -1822,9 +1824,9 @@ func TestClient_ListTasks(t *testing.T) {
 
 	t.Run("list_tasks_with_filtering", func(t *testing.T) {
 		completedState := types.TaskStateCompleted
-		params := types.TaskListParams{
-			State: &completedState,
-			Limit: 10,
+		params := types.ListTasksRequest{
+			Status:   &completedState,
+			PageSize: new(10),
 		}
 
 		resp, err := a2aClient.ListTasks(context.Background(), params)
@@ -1834,9 +1836,9 @@ func TestClient_ListTasks(t *testing.T) {
 
 	t.Run("list_tasks_with_context_filter", func(t *testing.T) {
 		contextID := "some-context"
-		params := types.TaskListParams{
+		params := types.ListTasksRequest{
 			ContextID: &contextID,
-			Limit:     25,
+			PageSize:  new(25),
 		}
 
 		resp, err := a2aClient.ListTasks(context.Background(), params)
@@ -1872,7 +1874,7 @@ func TestClient_ListTasks_ServerError(t *testing.T) {
 	logger := zap.NewNop()
 	a2aClient := client.NewClientWithLogger(server.URL, logger)
 
-	params := types.TaskListParams{}
+	params := types.ListTasksRequest{}
 	resp, err := a2aClient.ListTasks(context.Background(), params)
 	assert.Error(t, err)
 	assert.Nil(t, resp)
@@ -2134,7 +2136,7 @@ func TestClient_SetTaskPushNotificationConfig(t *testing.T) {
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		assert.Equal(t, "2.0", req.JSONRPC)
 		assert.Equal(t, "tasks/pushNotificationConfig/set", req.Method)
-		assert.Equal(t, "task-1", req.Params["name"])
+		assert.Equal(t, "task-1", req.Params["taskId"])
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2154,10 +2156,8 @@ func TestClient_SetTaskPushNotificationConfig(t *testing.T) {
 
 	c := client.NewClient(server.URL)
 	resp, err := c.SetTaskPushNotificationConfig(context.Background(), types.TaskPushNotificationConfig{
-		Name: "task-1",
-		PushNotificationConfig: types.PushNotificationConfig{
-			URL: "https://example.com/webhook",
-		},
+		TaskID: new("task-1"),
+		URL:    "https://example.com/webhook",
 	})
 
 	assert.NoError(t, err)
@@ -2170,7 +2170,7 @@ func TestClient_GetTaskPushNotificationConfig(t *testing.T) {
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		assert.Equal(t, "tasks/pushNotificationConfig/get", req.Method)
-		assert.Equal(t, "task-1", req.Params["name"])
+		assert.Equal(t, "task-1", req.Params["taskId"])
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2190,8 +2190,8 @@ func TestClient_GetTaskPushNotificationConfig(t *testing.T) {
 
 	c := client.NewClient(server.URL)
 	taskName := "task-1"
-	resp, err := c.GetTaskPushNotificationConfig(context.Background(), types.GetTaskPushNotificationConfigParams{
-		Name: &taskName,
+	resp, err := c.GetTaskPushNotificationConfig(context.Background(), types.GetTaskPushNotificationConfigRequest{
+		TaskID: taskName,
 	})
 
 	assert.NoError(t, err)
@@ -2203,7 +2203,7 @@ func TestClient_ListTaskPushNotificationConfig(t *testing.T) {
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		assert.Equal(t, "tasks/pushNotificationConfig/list", req.Method)
-		assert.Equal(t, "tasks/task-1", req.Params["parent"])
+		assert.Equal(t, "tasks/task-1", req.Params["taskId"])
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2221,8 +2221,8 @@ func TestClient_ListTaskPushNotificationConfig(t *testing.T) {
 
 	c := client.NewClient(server.URL)
 	parent := "tasks/task-1"
-	resp, err := c.ListTaskPushNotificationConfig(context.Background(), types.ListTaskPushNotificationConfigParams{
-		Parent: &parent,
+	resp, err := c.ListTaskPushNotificationConfig(context.Background(), types.ListTaskPushNotificationConfigsRequest{
+		TaskID: parent,
 	})
 
 	assert.NoError(t, err)
@@ -2234,7 +2234,7 @@ func TestClient_DeleteTaskPushNotificationConfig(t *testing.T) {
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		assert.Equal(t, "tasks/pushNotificationConfig/delete", req.Method)
-		assert.Equal(t, "task-1", req.Params["name"])
+		assert.Equal(t, "task-1", req.Params["taskId"])
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2249,8 +2249,8 @@ func TestClient_DeleteTaskPushNotificationConfig(t *testing.T) {
 
 	c := client.NewClient(server.URL)
 	taskName := "task-1"
-	resp, err := c.DeleteTaskPushNotificationConfig(context.Background(), types.DeleteTaskPushNotificationConfigParams{
-		Name: &taskName,
+	resp, err := c.DeleteTaskPushNotificationConfig(context.Background(), types.DeleteTaskPushNotificationConfigRequest{
+		TaskID: taskName,
 	})
 
 	assert.NoError(t, err)
@@ -2287,7 +2287,7 @@ func TestClient_GetAuthenticatedExtendedCard(t *testing.T) {
 
 	c := client.NewClient(server.URL)
 	tenant := "tenant-1"
-	resp, err := c.GetAuthenticatedExtendedCard(context.Background(), types.GetAuthenticatedExtendedCardParams{
+	resp, err := c.GetAuthenticatedExtendedCard(context.Background(), types.GetExtendedAgentCardRequest{
 		Tenant: &tenant,
 	})
 
@@ -2304,7 +2304,7 @@ func TestClient_ResubscribeTask(t *testing.T) {
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		assert.Equal(t, "tasks/resubscribe", req.Method)
-		assert.Equal(t, "task-resub-1", req.Params["name"])
+		assert.Equal(t, "task-resub-1", req.Params["id"])
 
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -2357,8 +2357,8 @@ func TestClient_ResubscribeTask(t *testing.T) {
 	defer cancel()
 
 	resubTaskName := "task-resub-1"
-	eventChan, err := c.ResubscribeTask(ctx, types.TaskResubscriptionParams{
-		Name: &resubTaskName,
+	eventChan, err := c.ResubscribeTask(ctx, types.SubscribeToTaskRequest{
+		ID: resubTaskName,
 	})
 
 	require.NoError(t, err)
@@ -2390,8 +2390,8 @@ func TestClient_ResubscribeTask_ServerError(t *testing.T) {
 
 	c := client.NewClient(server.URL)
 	missingTaskName := "missing-task"
-	eventChan, err := c.ResubscribeTask(context.Background(), types.TaskResubscriptionParams{
-		Name: &missingTaskName,
+	eventChan, err := c.ResubscribeTask(context.Background(), types.SubscribeToTaskRequest{
+		ID: missingTaskName,
 	})
 
 	assert.Error(t, err)

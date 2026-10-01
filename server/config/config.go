@@ -88,9 +88,8 @@ type ClientTLSConfig struct {
 
 // CapabilitiesConfig defines agent capabilities
 type CapabilitiesConfig struct {
-	Streaming              bool `env:"STREAMING,default=true" description:"Enable streaming support"`
-	PushNotifications      bool `env:"PUSH_NOTIFICATIONS,default=true" description:"Enable push notifications"`
-	StateTransitionHistory bool `env:"STATE_TRANSITION_HISTORY,default=false" description:"Enable state transition history"`
+	Streaming         bool `env:"STREAMING,default=true" description:"Enable streaming support"`
+	PushNotifications bool `env:"PUSH_NOTIFICATIONS,default=true" description:"Enable push notifications"`
 }
 
 // TLSConfig holds TLS configuration

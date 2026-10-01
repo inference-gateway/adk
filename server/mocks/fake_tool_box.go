@@ -373,16 +373,6 @@ func (fake *FakeToolBox) HasToolReturnsOnCall(i int, result1 bool) {
 func (fake *FakeToolBox) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.executeToolMutex.RLock()
-	defer fake.executeToolMutex.RUnlock()
-	fake.getToolMutex.RLock()
-	defer fake.getToolMutex.RUnlock()
-	fake.getToolNamesMutex.RLock()
-	defer fake.getToolNamesMutex.RUnlock()
-	fake.getToolsMutex.RLock()
-	defer fake.getToolsMutex.RUnlock()
-	fake.hasToolMutex.RLock()
-	defer fake.hasToolMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

@@ -647,7 +647,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 
 	s.logger.Info("processing task",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
+		zap.Stringp("context_id", task.ContextID))
 
 	err := s.taskManager.UpdateState(task.ID, types.TaskStateWorking)
 	if err != nil {
@@ -667,7 +667,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		s.logger.Error("failed to process task",
 			zap.Error(err),
 			zap.String("task_id", task.ID),
-			zap.String("context_id", task.ContextID))
+			zap.Stringp("context_id", task.ContextID))
 		updateErr := s.taskManager.UpdateError(task.ID, &types.Message{
 			MessageID: uuid.New().String(),
 			Role:      types.RoleAgent,
@@ -679,7 +679,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 			s.logger.Error("failed to update task to failed state",
 				zap.Error(updateErr),
 				zap.String("task_id", task.ID),
-				zap.String("context_id", task.ContextID))
+				zap.Stringp("context_id", task.ContextID))
 		}
 		return
 	}
@@ -688,12 +688,12 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		s.logger.Error("failed to update task",
 			zap.Error(err),
 			zap.String("task_id", updatedTask.ID),
-			zap.String("context_id", updatedTask.ContextID))
+			zap.Stringp("context_id", updatedTask.ContextID))
 		return
 	}
 	s.logger.Info("task processed successfully",
 		zap.String("task_id", task.ID),
-		zap.String("context_id", task.ContextID))
+		zap.Stringp("context_id", task.ContextID))
 }
 
 // injectAuthContext restores the authenticated caller claims that were
