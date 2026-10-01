@@ -849,15 +849,17 @@ func (tm *DefaultTaskManager) SetRetentionConfig(retentionConfig serverConfig.Ta
 
 	// Start automatic cleanup if interval is configured
 	if retentionConfig.CleanupInterval > 0 {
-		tm.stopCleanup = make(chan struct{})
-		tm.cleanupTicker = time.NewTicker(retentionConfig.CleanupInterval)
+		stop := make(chan struct{})
+		ticker := time.NewTicker(retentionConfig.CleanupInterval)
+		tm.stopCleanup = stop
+		tm.cleanupTicker = ticker
 
 		go func() {
 			for {
 				select {
-				case <-tm.cleanupTicker.C:
+				case <-ticker.C:
 					tm.cleanupWithRetention()
-				case <-tm.stopCleanup:
+				case <-stop:
 					return
 				}
 			}

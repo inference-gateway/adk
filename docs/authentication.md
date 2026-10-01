@@ -43,12 +43,13 @@ If `AUTH_ENABLED=true` but the card declares no `securitySchemes` (or the invers
 
 The server is a resource server: it verifies each bearer token's signature, issuer, expiry and audience against the issuer's published keys and never needs a client secret.
 
-| Variable          | Description                                                                                   |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| `AUTH_ENABLED`    | Protect `/a2a`; the public card and `/health` stay open                                       |
-| `AUTH_ISSUER_URL` | OIDC issuer. Discovery runs once at startup and the server exits if the issuer is unreachable |
-| `AUTH_CLIENT_ID`  | Expected `aud` when `AUTH_AUDIENCE` is empty                                                  |
-| `AUTH_AUDIENCE`   | Comma-separated accepted `aud` values, for example an API identifier                          |
+| Variable          | Description                                                                                                                                                                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_ENABLED`    | Protect `/a2a`; the public card and `/health` stay open                                                                                                                                                                                |
+| `AUTH_ISSUER_URL` | OIDC issuer. Discovery runs once at startup and the server exits if the issuer is unreachable                                                                                                                                          |
+| `AUTH_CLIENT_ID`  | Expected `aud` when `AUTH_AUDIENCE` is empty                                                                                                                                                                                           |
+| `AUTH_AUDIENCE`   | Comma-separated accepted `aud` values, for example an API identifier                                                                                                                                                                   |
+| `AUTH_TOKEN`      | Static bearer token instead of OIDC, for servers without an issuer (for example an embedded loopback server). Compared in constant time; mutually exclusive with `AUTH_ENABLED`. Declare it with `server.BearerTokenSecuritySchemes()` |
 
 Tokens with no `aud` claim are accepted when their `client_id` claim matches one of the configured values, which is how Cognito machine tokens work. Rejections answer `401` with an [RFC 6750](https://www.rfc-editor.org/rfc/rfc6750#section-3) challenge: `Bearer` when no credential was sent, `Bearer error="invalid_request"` for a malformed header, `Bearer error="invalid_token"` when verification failed.
 
