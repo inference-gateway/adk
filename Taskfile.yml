@@ -8,9 +8,9 @@ tasks:
       - task --list
 
   a2a:download-schema:
-    desc: 'Download the latest A2A schema and convert to YAML'
+    desc: 'Download the A2A schema (pin with SCHEMAS_REF=refs/tags/vX.Y.Z, a branch ref, or a SHA)'
     cmds:
-      - curl -o schema.yaml https://raw.githubusercontent.com/inference-gateway/schemas/refs/heads/main/a2a/a2a-schema.yaml
+      - curl -fsSL -o schema.yaml "https://raw.githubusercontent.com/inference-gateway/schemas/{{.SCHEMAS_REF | default "refs/heads/main"}}/a2a/a2a-schema.yaml"
 
   a2a:generate-types:
     desc: 'Generate the Golang ADK types from the A2A schema'
@@ -26,9 +26,17 @@ tasks:
       - rm -f schema.openapi.yaml
 
   providers:download-schema:
-    desc: 'Download the canonical openapi.yaml from inference-gateway/schemas'
+    desc: 'Download the canonical openapi.yaml (pin with SCHEMAS_REF=refs/tags/vX.Y.Z, a branch ref, or a SHA)'
     cmds:
-      - curl -o providers-schema.yaml https://raw.githubusercontent.com/inference-gateway/schemas/refs/heads/main/openapi.yaml
+      - curl -fsSL -o providers-schema.yaml "https://raw.githubusercontent.com/inference-gateway/schemas/{{.SCHEMAS_REF | default "refs/heads/main"}}/openapi.yaml"
+
+  schemas-sync:
+    desc: 'Fetch both schemas (pin with SCHEMAS_REF) and regenerate the types and provider artifacts'
+    cmds:
+      - task: a2a:download-schema
+      - task: providers:download-schema
+      - task: a2a:generate-types
+      - task: generate:providers
 
   generate:providers:
     desc: 'Regenerate all provider-enumerating artifacts from providers-schema.yaml'
