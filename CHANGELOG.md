@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.30.1](https://github.com/inference-gateway/adk/compare/v0.30.0...v0.30.1) (2026-10-02)
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.283 -> 2.1.285 ([#339](https://github.com/inference-gateway/adk/issues/339)) ([81d041a](https://github.com/inference-gateway/adk/commit/81d041aa49f97dba1ba19c3ed51e0a197bd17caa))
+
 ## [0.30.0](https://github.com/inference-gateway/adk/compare/v0.29.0...v0.30.0) (2026-10-01)
 
 ### ✨ Features
