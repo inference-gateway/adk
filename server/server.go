@@ -757,6 +757,8 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		return
 	}
 
+	req.Params = normalizeParams(req.Params)
+
 	if version := c.GetHeader("A2A-Version"); !isSupportedA2AVersion(version) {
 		s.responseSender.SendError(c, req.ID, int(ErrVersionNotSupported), "a2a version "+version+" is not supported")
 		return
