@@ -452,7 +452,7 @@ func (tm *DefaultTaskManager) ListTasks(params types.ListTasksRequest) (*types.L
 		return nil, err
 	}
 
-	var resultTasks []types.Task
+	resultTasks := make([]types.Task, 0, len(allTasks))
 	for _, taskPtr := range allTasks {
 		resultTasks = append(resultTasks, *taskPtr)
 	}

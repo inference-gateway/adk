@@ -37,7 +37,8 @@ examples/
 ├── tls-example/               # TLS-enabled server with HTTPS communication
 ├── usage-metadata/            # Token usage and execution metrics tracking
 ├── authentication/            # Card-driven authentication flow (securitySchemes + extended card)
-└── protocol-methods/          # Full A2A JSON-RPC surface (CancelTask, ListTasks, push notification configs, SubscribeToTask, GetExtendedAgentCard)
+├── protocol-methods/          # Full A2A JSON-RPC surface (CancelTask, ListTasks, push notification configs, SubscribeToTask, GetExtendedAgentCard)
+└── tck-sut/                   # A2A TCK system under test (server only, run by CI)
 ```
 
 ## 🚀 Quick Start

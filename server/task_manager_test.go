@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -135,6 +136,17 @@ func TestDefaultTaskManager_GetTask(t *testing.T) {
 	emptyTask, exists := taskManager.GetTask("")
 	assert.False(t, exists)
 	assert.Nil(t, emptyTask)
+}
+
+func TestDefaultTaskManager_ListTasksEmptyMarshalsAsArray(t *testing.T) {
+	taskManager := server.NewDefaultTaskManager(zap.NewNop())
+
+	result, err := taskManager.ListTasks(types.ListTasksRequest{})
+	assert.NoError(t, err)
+
+	body, err := json.Marshal(result)
+	assert.NoError(t, err)
+	assert.Contains(t, string(body), `"tasks":[]`)
 }
 
 func TestDefaultTaskManager_CleanupCompletedTasks(t *testing.T) {

@@ -85,3 +85,40 @@ jobs:
 
       - name: Test
         run: go test -v ./...
+
+  tck:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout A2A TCK
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: a2aproject/a2a-tck
+          ref: 263b9cfaf16a554bdfb166a7ba5b67716e946349
+          path: a2a-tck
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Start TCK system under test
+        working-directory: examples/tck-sut
+        run: |
+          go build -o tck-sut .
+          ./tck-sut &
+          curl -sf --retry 30 --retry-connrefused --retry-delay 1 http://localhost:9999/health
+
+      - name: Run TCK (JSON-RPC, MUST)
+        working-directory: a2a-tck
+        run: uv run ./run_tck.py --sut-host http://localhost:9999 --transport jsonrpc --level must -- --deselect tests/compatibility/core_operations/test_artifacts.py
