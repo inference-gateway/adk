@@ -48,8 +48,6 @@ func (h *TCKHandler) HandleTask(ctx context.Context, task *types.Task, message *
 		return task, nil
 	case strings.HasPrefix(id, "tck-complete-task"):
 		return complete(task, "Hello from TCK"), nil
-	case strings.HasPrefix(id, "tck-message-response"):
-		return complete(task, "Direct message response"), nil
 	case strings.HasPrefix(id, "tck-artifact-text"):
 		addArtifact(task, types.CreateTextPart("Generated text content"))
 	case strings.HasPrefix(id, "tck-artifact-file-url"):
@@ -65,10 +63,22 @@ func (h *TCKHandler) HandleTask(ctx context.Context, task *types.Task, message *
 	return complete(task, ""), nil
 }
 
+// RespondToMessage answers the tck-message-response scenario with a direct Message, leaving every
+// other prefix to the task flow.
+func (h *TCKHandler) RespondToMessage(ctx context.Context, message *types.Message) (*types.Message, error) {
+	if !strings.HasPrefix(message.MessageID, "tck-message-response") {
+		return nil, nil
+	}
+	return &types.Message{
+		MessageID: uuid.New().String(),
+		ContextID: message.ContextID,
+		Role:      types.RoleAgent,
+		Parts:     []types.Part{types.CreateTextPart("Direct message response")},
+	}, nil
+}
+
 // HandleStreamingTask implements the streaming.feature scenarios and falls back to the
 // core scenarios for any other prefix.
-// ponytail: artifacts land on the task but are not streamed, the ADK has no artifact-update
-// event yet; stream them once it does.
 func (h *TCKHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
 	events := make(chan cloudevents.Event, 8)
 	go func() {
@@ -85,13 +95,16 @@ func (h *TCKHandler) HandleStreamingTask(ctx context.Context, task *types.Task, 
 			}
 		case strings.HasPrefix(id, "tck-stream-artifact-file"):
 			events <- statusEvent(types.TaskStateWorking)
-			addArtifact(task, fileArtifactPart())
+			events <- artifactEvent(newArtifact(fileArtifactPart()), false, true)
 		case strings.HasPrefix(id, "tck-stream-artifact-chunked"):
 			events <- statusEvent(types.TaskStateWorking)
-			addArtifact(task, types.CreateTextPart("chunk-1 "), types.CreateTextPart("chunk-2"))
+			chunk := newArtifact(types.CreateTextPart("chunk-1 "))
+			events <- artifactEvent(chunk, false, false)
+			chunk.Parts = []types.Part{types.CreateTextPart("chunk-2")}
+			events <- artifactEvent(chunk, true, true)
 		case streamedTextFor(id) != "":
 			events <- statusEvent(types.TaskStateWorking)
-			addArtifact(task, types.CreateTextPart(streamedTextFor(id)))
+			events <- artifactEvent(newArtifact(types.CreateTextPart(streamedTextFor(id))), false, true)
 		default:
 			result, err := h.HandleTask(ctx, task, message)
 			if err != nil {
@@ -126,8 +139,12 @@ func fileArtifactPart() types.Part {
 	return types.CreateFilePart("output.txt", "text/plain", &raw, nil)
 }
 
+func newArtifact(parts ...types.Part) types.Artifact {
+	return types.Artifact{ArtifactID: uuid.New().String(), Parts: parts}
+}
+
 func addArtifact(task *types.Task, parts ...types.Part) {
-	task.Artifacts = append(task.Artifacts, types.Artifact{ArtifactID: uuid.New().String(), Parts: parts})
+	task.Artifacts = append(task.Artifacts, newArtifact(parts...))
 }
 
 // complete marks the task completed, replying with text unless it is empty.
@@ -149,6 +166,17 @@ func complete(task *types.Task, text string) *types.Task {
 	return task
 }
 
+func artifactEvent(artifact types.Artifact, appendParts, lastChunk bool) cloudevents.Event {
+	event := cloudevents.NewEvent()
+	event.SetType(types.EventTaskArtifactUpdated)
+	_ = event.SetData(cloudevents.ApplicationJSON, types.TaskArtifactUpdateEvent{
+		Artifact:  artifact,
+		Append:    &appendParts,
+		LastChunk: &lastChunk,
+	})
+	return event
+}
+
 func statusEvent(state types.TaskState) cloudevents.Event {
 	event := cloudevents.NewEvent()
 	event.SetType(types.EventTaskStatusChanged)
@@ -168,8 +196,22 @@ func main() {
 	defer func() { _ = logger.Sync() }()
 
 	streaming := true
-	pushNotifications := false
+	pushNotifications := true
 	handler := &TCKHandler{}
+	card := types.AgentCard{
+		Name:        "tck-sut",
+		Description: "System under test for the A2A TCK",
+		Version:     "1.0.0",
+		SupportedInterfaces: []types.AgentInterface{
+			{URL: "http://localhost:" + port + "/a2a", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"},
+		},
+		Capabilities:       types.AgentCapabilities{Streaming: &streaming, PushNotifications: &pushNotifications},
+		DefaultInputModes:  []string{"text"},
+		DefaultOutputModes: []string{"text"},
+		Skills: []types.AgentSkill{
+			{ID: "tck", Name: "TCK Conformance", Description: "Handles TCK conformance test messages", Tags: []string{"tck"}},
+		},
+	}
 
 	a2aServer, err := server.NewA2AServerBuilder(serverConfig.Config{
 		AgentName:        "tck-sut",
@@ -179,20 +221,8 @@ func main() {
 	}, logger).
 		WithBackgroundTaskHandler(handler).
 		WithStreamingTaskHandler(handler).
-		WithAgentCard(types.AgentCard{
-			Name:        "tck-sut",
-			Description: "System under test for the A2A TCK",
-			Version:     "1.0.0",
-			SupportedInterfaces: []types.AgentInterface{
-				{URL: "http://localhost:" + port + "/a2a", ProtocolBinding: "JSONRPC", ProtocolVersion: "1.0"},
-			},
-			Capabilities:       types.AgentCapabilities{Streaming: &streaming, PushNotifications: &pushNotifications},
-			DefaultInputModes:  []string{"text"},
-			DefaultOutputModes: []string{"text"},
-			Skills: []types.AgentSkill{
-				{ID: "tck", Name: "TCK Conformance", Description: "Handles TCK conformance test messages", Tags: []string{"tck"}},
-			},
-		}).
+		WithAgentCard(card).
+		WithExtendedAgentCard(card).
 		Build()
 	if err != nil {
 		logger.Fatal("failed to create A2A server", zap.Error(err))

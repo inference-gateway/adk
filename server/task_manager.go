@@ -454,7 +454,7 @@ func (tm *DefaultTaskManager) ListTasks(params types.ListTasksRequest) (*types.L
 
 	resultTasks := make([]types.Task, 0, len(allTasks))
 	for _, taskPtr := range allTasks {
-		resultTasks = append(resultTasks, *taskPtr)
+		resultTasks = append(resultTasks, taskPtr.WithHistoryLength(params.HistoryLength))
 	}
 
 	result := &types.ListTasksResponse{
@@ -699,7 +699,8 @@ func (tm *DefaultTaskManager) ListTaskPushNotificationConfigs(params types.ListT
 	return []types.TaskPushNotificationConfig{}, nil
 }
 
-// DeleteTaskPushNotificationConfig deletes a push notification configuration
+// DeleteTaskPushNotificationConfig deletes a push notification configuration; deleting an absent
+// config succeeds, keeping delete idempotent.
 func (tm *DefaultTaskManager) DeleteTaskPushNotificationConfig(params types.DeleteTaskPushNotificationConfigRequest) error {
 	tm.pushNotificationConfigsMu.Lock()
 	defer tm.pushNotificationConfigsMu.Unlock()
@@ -718,7 +719,8 @@ func (tm *DefaultTaskManager) DeleteTaskPushNotificationConfig(params types.Dele
 		}
 	}
 
-	return fmt.Errorf("push notification config not found for task %s", taskID)
+	tm.logger.Debug("push notification config already absent", zap.String("task_id", taskID), zap.String("config_id", params.ID))
+	return nil
 }
 
 // derefString returns the pointed-to string, or "" when p is nil.

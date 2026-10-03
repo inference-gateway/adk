@@ -34,6 +34,7 @@ func submitTask(ctx context.Context, a2a client.A2AClient, text string, logger *
 			Role:      types.RoleUser,
 			Parts:     []types.Part{types.CreateTextPart(text)},
 		},
+		Configuration: &types.SendMessageConfiguration{ReturnImmediately: new(true)},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("send task: %w", err)
