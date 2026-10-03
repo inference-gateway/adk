@@ -107,10 +107,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 	}
 
 	// Extract task ID from response
-	var taskResult struct {
-		ID        string `json:"id"`
-		ContextID string `json:"contextId"`
-	}
+	var taskResult types.SendMessageResponse
 	resultBytes, ok := response.Result.(json.RawMessage)
 	if !ok {
 		return fmt.Errorf("failed to parse result as json.RawMessage")
@@ -119,12 +116,12 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 		return fmt.Errorf("failed to parse task ID: %w", err)
 	}
 
-	fmt.Printf("🆔 Task ID: %s\n", taskResult.ID)
-	fmt.Printf("🔗 Context ID: %s\n", taskResult.ContextID)
+	fmt.Printf("🆔 Task ID: %s\n", taskResult.Task.ID)
+	fmt.Printf("🔗 Context ID: %s\n", taskResult.Task.GetContextID())
 
 	// Monitor task until completion or input required
-	taskID := taskResult.ID
-	contextID := taskResult.ContextID
+	taskID := taskResult.Task.ID
+	contextID := taskResult.Task.GetContextID()
 	for {
 		// Wait a moment for task processing
 		time.Sleep(500 * time.Millisecond)
@@ -200,9 +197,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 			}
 
 			// Extract new task ID
-			var continuedTaskResult struct {
-				ID string `json:"id"`
-			}
+			var continuedTaskResult types.SendMessageResponse
 			continuedResultBytes, ok := continuedResponse.Result.(json.RawMessage)
 			if !ok {
 				return fmt.Errorf("failed to parse continued result as json.RawMessage")
@@ -211,7 +206,7 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
 				return fmt.Errorf("failed to parse continued task ID: %w", err)
 			}
 
-			taskID = continuedTaskResult.ID
+			taskID = continuedTaskResult.Task.ID
 			fmt.Printf("🔄 Continuing with Task ID: %s\n", taskID)
 
 		case types.TaskStateFailed:

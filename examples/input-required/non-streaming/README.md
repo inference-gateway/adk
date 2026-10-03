@@ -195,11 +195,9 @@ func demonstrateInputRequiredFlow(a2aClient client.A2AClient, initialMessage str
     response, err := a2aClient.SendTask(ctx, params)
 
     // Extract task ID from response
-    var taskResult struct {
-        ID string `json:"id"`
-    }
+    var taskResult types.SendMessageResponse
     json.Unmarshal(response.Result.(json.RawMessage), &taskResult)
-    taskID := taskResult.ID
+    taskID := taskResult.Task.ID
 
     // Manual polling loop
     for {

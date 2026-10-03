@@ -99,19 +99,20 @@ func main() {
 		}
 
 		// Parse the response to extract task
-		var task types.Task
+		var sent types.SendMessageResponse
 		resultBytes, ok := resp.Result.(json.RawMessage)
 		if !ok {
 			logger.Error("failed to cast response to json.RawMessage",
 				zap.String("content", taskContent))
 			continue
 		}
-		if err := json.Unmarshal(resultBytes, &task); err != nil {
+		if err := json.Unmarshal(resultBytes, &sent); err != nil {
 			logger.Error("failed to parse task response",
 				zap.Error(err),
 				zap.String("content", taskContent))
 			continue
 		}
+		task := sent.Task
 
 		submittedTasks = append(submittedTasks, task.ID)
 

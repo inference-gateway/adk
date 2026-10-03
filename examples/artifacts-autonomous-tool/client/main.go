@@ -143,9 +143,7 @@ func sendTask(ctx context.Context, a2aClient client.A2AClient, prompt string) (s
 		return "", err
 	}
 
-	var taskResult struct {
-		ID string `json:"id"`
-	}
+	var taskResult types.SendMessageResponse
 
 	resultBytes, ok := response.Result.(json.RawMessage)
 	if !ok {
@@ -156,7 +154,7 @@ func sendTask(ctx context.Context, a2aClient client.A2AClient, prompt string) (s
 		return "", fmt.Errorf("parse task ID: %w", err)
 	}
 
-	return taskResult.ID, nil
+	return taskResult.Task.ID, nil
 }
 
 // pollForCompletion polls until task completes or fails

@@ -83,10 +83,11 @@ func main() {
 		log.Fatalf("Failed to marshal task: %v", err)
 	}
 
-	var task types.Task
-	if err := json.Unmarshal(taskBytes, &task); err != nil {
+	var sent types.SendMessageResponse
+	if err := json.Unmarshal(taskBytes, &sent); err != nil {
 		log.Fatalf("Failed to unmarshal task: %v", err)
 	}
+	task := sent.Task
 
 	logger.Info("task created", zap.String("task_id", task.ID), zap.String("state", string(task.Status.State)))
 

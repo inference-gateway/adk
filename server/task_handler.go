@@ -541,7 +541,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 		return
 	}
 
-	h.responseSender.SendSuccess(c, req.ID, *task)
+	h.responseSender.SendSuccess(c, req.ID, types.SendMessageResponse{Task: task})
 }
 
 // writeStreamingResponse writes a JSON-RPC response to the streaming connection in SSE format
@@ -638,6 +638,12 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		return
 	}
 
+	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: task}}
+	if err := h.writeStreamingResponse(c, &initialResponse); err != nil {
+		h.logger.Error("failed to write initial task", zap.Error(err))
+		return
+	}
+
 	var message *types.Message
 	if task.Status.Message != nil {
 		message = task.Status.Message
@@ -695,7 +701,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				deltaResponse := types.JSONRPCSuccessResponse{
 					JSONRPC: "2.0",
 					ID:      req.ID,
-					Result:  *task,
+					Result:  types.StreamResponse{StatusUpdate: &types.TaskStatusUpdateEvent{TaskID: task.ID, ContextID: task.GetContextID(), Status: task.Status}},
 				}
 
 				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
@@ -732,7 +738,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				statusResponse := types.JSONRPCSuccessResponse{
 					JSONRPC: "2.0",
 					ID:      req.ID,
-					Result:  statusUpdate,
+					Result:  types.StreamResponse{StatusUpdate: &statusUpdate},
 				}
 
 				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
@@ -764,7 +770,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				statusResponse := types.JSONRPCSuccessResponse{
 					JSONRPC: "2.0",
 					ID:      req.ID,
-					Result:  statusUpdate,
+					Result:  types.StreamResponse{StatusUpdate: &statusUpdate},
 				}
 
 				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
@@ -836,13 +842,6 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				zap.Error(err),
 				zap.String("task_id", task.ID))
 		}
-	}
-
-	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
-		h.logger.Error("failed to write stream termination signal", zap.Error(err))
-	} else {
-		c.Writer.Flush()
-		h.logger.Debug("sent stream termination signal [DONE]")
 	}
 
 	h.logger.Info("streaming task processed successfully",
@@ -1067,10 +1066,10 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 // HandleTaskResubscribe processes SubscribeToTask requests.
 //
 // The request body is a `SubscribeToTaskRequest` carrying the task name (ID).
-// If the task does not exist, an SSE error response is returned. If it does, the
-// current task state is emitted as a JSON-RPC streaming response followed by the
-// `[DONE]` terminator. When the task is still in a working state, the streaming
-// handler is invoked to continue delivering live events for the task.
+// If the task does not exist, a TaskNotFound error is returned. If it does, the
+// current Task is the first stream event, and the stream closes once the task is
+// done. When the task is still in a working state, the streaming handler is invoked
+// to continue delivering live events for the task.
 func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler) {
 	var params types.SubscribeToTaskRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -1110,17 +1109,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
-	statusUpdate := types.TaskStatusUpdateEvent{
-		TaskID:    task.ID,
-		ContextID: task.GetContextID(),
-		Status:    task.Status,
-	}
-
-	initialResponse := types.JSONRPCSuccessResponse{
-		JSONRPC: "2.0",
-		ID:      req.ID,
-		Result:  statusUpdate,
-	}
+	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: task}}
 
 	if err := h.writeStreamingResponse(c, &initialResponse); err != nil {
 		h.logger.Error("failed to write initial resubscribe status", zap.Error(err))
@@ -1128,22 +1117,12 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 	}
 
 	if task.Status.State != types.TaskStateWorking && task.Status.State != types.TaskStateSubmitted {
-		if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
-			h.logger.Error("failed to write stream termination signal", zap.Error(err))
-		} else {
-			c.Writer.Flush()
-		}
 		return
 	}
 
 	if streamingHandler == nil {
 		h.logger.Warn("no streaming handler configured; resubscribe will end after sending current state",
 			zap.String("task_id", task.ID))
-		if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
-			h.logger.Error("failed to write stream termination signal", zap.Error(err))
-		} else {
-			c.Writer.Flush()
-		}
 		return
 	}
 
@@ -1191,7 +1170,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 				deltaResponse := types.JSONRPCSuccessResponse{
 					JSONRPC: "2.0",
 					ID:      req.ID,
-					Result:  *task,
+					Result:  types.StreamResponse{StatusUpdate: &types.TaskStatusUpdateEvent{TaskID: task.ID, ContextID: task.GetContextID(), Status: task.Status}},
 				}
 				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
 					h.logger.Error("failed to write delta", zap.Error(err))
@@ -1211,7 +1190,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 				statusResponse := types.JSONRPCSuccessResponse{
 					JSONRPC: "2.0",
 					ID:      req.ID,
-					Result:  statusEvent,
+					Result:  types.StreamResponse{StatusUpdate: &statusEvent},
 				}
 				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
 					h.logger.Error("failed to write status change", zap.Error(err))
@@ -1219,12 +1198,6 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 				}
 			}
 		}
-	}
-
-	if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
-		h.logger.Error("failed to write stream termination signal", zap.Error(err))
-	} else {
-		c.Writer.Flush()
 	}
 
 	h.logger.Info("task resubscribe completed",

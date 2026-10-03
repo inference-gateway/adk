@@ -83,9 +83,7 @@ func main() {
 		}
 
 		// Extract task ID from response
-		var taskResult struct {
-			ID string `json:"id"`
-		}
+		var taskResult types.SendMessageResponse
 		resultBytes, ok := response.Result.(json.RawMessage)
 		if !ok {
 			logger.Error("failed to parse result as json.RawMessage")
@@ -96,7 +94,7 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("Task ID: %s\n", taskResult.ID)
+		fmt.Printf("Task ID: %s\n", taskResult.Task.ID)
 		fmt.Print("Polling for result")
 
 		// Poll for task completion
@@ -105,7 +103,7 @@ func main() {
 			fmt.Print(".")
 
 			taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{
-				ID: taskResult.ID,
+				ID: taskResult.Task.ID,
 			})
 			if err != nil {
 				logger.Error("failed to get task status", zap.Error(err))

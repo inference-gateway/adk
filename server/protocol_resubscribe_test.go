@@ -117,23 +117,19 @@ func TestProtocolHandler_HandleTaskResubscribe_CompletedTaskEmitsFinalState(t *t
 		"streaming handler should not be invoked for terminal tasks")
 
 	body := w.Body.String()
-	require.Contains(t, body, "data: ")
-	require.Contains(t, body, "[DONE]")
-
+	assert.NotContains(t, body, "[DONE]")
 	chunks := strings.Split(body, "data: ")
-	require.GreaterOrEqual(t, len(chunks), 2, "expected at least one data event before [DONE]")
-	firstEvent := strings.TrimSpace(chunks[1])
+	require.Len(t, chunks, 2, "a completed task should emit exactly its current Task")
 
-	var payload map[string]any
-	require.NoError(t, json.Unmarshal([]byte(firstEvent), &payload))
-	assert.Equal(t, "2.0", payload["jsonrpc"])
-
-	result, ok := payload["result"].(map[string]any)
-	require.True(t, ok, "result should be present")
-	assert.Equal(t, "task-done", result["taskId"])
-	status, ok := result["status"].(map[string]any)
-	require.True(t, ok, "status should be present")
-	assert.Equal(t, string(types.TaskStateCompleted), status["state"], "completed task should re-emit its terminal state")
+	var event struct {
+		JSONRPC string               `json:"jsonrpc"`
+		Result  types.StreamResponse `json:"result"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(chunks[1])), &event))
+	assert.Equal(t, "2.0", event.JSONRPC)
+	require.NotNil(t, event.Result.Task, "the first event should be the Task")
+	assert.Equal(t, "task-done", event.Result.Task.ID)
+	assert.Equal(t, types.TaskStateCompleted, event.Result.Task.Status.State)
 }
 
 func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandler(t *testing.T) {
@@ -174,8 +170,9 @@ func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandle
 		"streaming handler should be invoked for working tasks")
 
 	body := w.Body.String()
-	assert.Contains(t, body, "[DONE]", "stream should terminate with [DONE]")
-	assert.GreaterOrEqual(t, strings.Count(body, "data: "), 2)
+	assert.NotContains(t, body, "[DONE]")
+	assert.Equal(t, 2, strings.Count(body, "data: "), "the Task, then the status update")
+	assert.Contains(t, body, `"statusUpdate"`)
 }
 
 func TestProtocolHandler_HandleGetAuthenticatedExtendedCard(t *testing.T) {

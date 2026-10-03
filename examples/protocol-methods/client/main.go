@@ -42,12 +42,15 @@ func submitTask(ctx context.Context, a2a client.A2AClient, text string, logger *
 	if err != nil {
 		return nil, fmt.Errorf("marshal result: %w", err)
 	}
-	var task types.Task
-	if err := json.Unmarshal(taskBytes, &task); err != nil {
+	var sent types.SendMessageResponse
+	if err := json.Unmarshal(taskBytes, &sent); err != nil {
 		return nil, fmt.Errorf("unmarshal task: %w", err)
 	}
-	logger.Info("task submitted", zap.String("task_id", task.ID), zap.String("state", string(task.Status.State)))
-	return &task, nil
+	if sent.Task == nil {
+		return nil, fmt.Errorf("SendMessage returned no task")
+	}
+	logger.Info("task submitted", zap.String("task_id", sent.Task.ID), zap.String("state", string(sent.Task.Status.State)))
+	return sent.Task, nil
 }
 
 // demonstrateAuthenticatedExtendedCard calls `GetExtendedAgentCard`.
@@ -272,18 +275,10 @@ func demonstrateResubscribe(ctx context.Context, a2a client.A2AClient, logger *z
 			logger.Warn("stream closed before first event")
 			return
 		}
-		// The first envelope carries a TaskStatusUpdateEvent (with taskId),
-		// not a full Task object (with id). Try both to be robust.
 		resultBytes, _ := json.Marshal(evt.Result)
-		var task types.Task
-		if err := json.Unmarshal(resultBytes, &task); err == nil && task.ID != "" {
-			taskID = task.ID
-		}
-		if taskID == "" {
-			var statusUpdate types.TaskStatusUpdateEvent
-			if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && statusUpdate.TaskID != "" {
-				taskID = statusUpdate.TaskID
-			}
+		var event types.StreamResponse
+		if err := json.Unmarshal(resultBytes, &event); err == nil && event.Task != nil {
+			taskID = event.Task.ID
 		}
 	}
 
