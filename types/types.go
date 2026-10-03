@@ -21,6 +21,10 @@ const (
 	EventStreamFailed       = "adk.agent.stream.failed"
 )
 
+// A2AProtocolVersion is the A2A protocol version this ADK speaks, sent and checked as the
+// A2A-Version header (spec section 3.6).
+const A2AProtocolVersion = "1.0"
+
 // Tool name constants
 const (
 	ToolInputRequired = "input_required"

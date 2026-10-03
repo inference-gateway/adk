@@ -89,17 +89,17 @@ func main() {
 			continue
 		}
 
-		var taskData map[string]any
-		if err := json.Unmarshal(taskResultBytes, &taskData); err != nil {
+		var sent types.SendMessageResponse
+		if err := json.Unmarshal(taskResultBytes, &sent); err != nil {
 			logger.Error("failed to parse task response", zap.Error(err))
 			continue
 		}
 
-		taskID, ok := taskData["id"].(string)
-		if !ok {
+		if sent.Task == nil {
 			logger.Error("task ID not found in response")
 			continue
 		}
+		taskID := sent.Task.ID
 
 		logger.Info("task created", zap.String("task_id", taskID))
 		fmt.Printf("Polling for completion...\n")

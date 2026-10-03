@@ -100,9 +100,7 @@ func main() {
 		}
 
 		// Extract task ID
-		var taskResult struct {
-			ID string `json:"id"`
-		}
+		var taskResult types.SendMessageResponse
 		resultBytes, ok := response.Result.(json.RawMessage)
 		if !ok {
 			logger.Error("failed to parse result")
@@ -113,7 +111,7 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("Task ID: %s\n", taskResult.ID)
+		fmt.Printf("Task ID: %s\n", taskResult.Task.ID)
 		fmt.Print("Waiting for completion")
 
 		// Poll for completion
@@ -123,7 +121,7 @@ func main() {
 			fmt.Print(".")
 
 			taskResponse, err := a2aClient.GetTask(ctx, types.GetTaskRequest{
-				ID: taskResult.ID,
+				ID: taskResult.Task.ID,
 			})
 			if err != nil {
 				logger.Error("failed to get task", zap.Error(err))
@@ -237,38 +235,25 @@ func runStreamingDemo(ctx context.Context, a2aClient client.A2AClient, logger *z
 			continue
 		}
 
-		// Streaming events alternate between full Task snapshots and
-		// TaskStatusUpdateEvent entries. The wire payload carries a
-		// "kind" discriminator that isn't on the generated types yet, so
-		// peek at the raw JSON to route the decode.
-		var disc struct {
-			Kind string `json:"kind"`
+		var update types.StreamResponse
+		if err := json.Unmarshal(resultBytes, &update); err != nil {
+			continue
 		}
-		_ = json.Unmarshal(resultBytes, &disc)
 
-		switch disc.Kind {
-		case "task":
-			var task types.Task
-			if err := json.Unmarshal(resultBytes, &task); err == nil {
-				if task.ID != "" {
-					taskID = task.ID
-				}
-				if task.Status.Message != nil {
-					for _, part := range task.Status.Message.Parts {
-						if part.Text != nil {
-							streamedText += *part.Text
-						}
+		switch {
+		case update.Task != nil:
+			taskID = update.Task.ID
+			finalState = update.Task.Status.State
+		case update.StatusUpdate != nil:
+			taskID = update.StatusUpdate.TaskID
+			status := update.StatusUpdate.Status
+			finalState = status.State
+			if status.State == types.TaskStateWorking && status.Message != nil {
+				for _, part := range status.Message.Parts {
+					if part.Text != nil {
+						streamedText += *part.Text
 					}
 				}
-				finalState = task.Status.State
-			}
-		case "status-update":
-			var statusUpdate types.TaskStatusUpdateEvent
-			if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil {
-				if statusUpdate.TaskID != "" {
-					taskID = statusUpdate.TaskID
-				}
-				finalState = statusUpdate.Status.State
 			}
 		}
 	}

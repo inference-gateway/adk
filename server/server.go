@@ -95,9 +95,12 @@ const (
 	ErrInternalError  JRPCErrorCode = -32603
 	ErrServerError    JRPCErrorCode = -32000
 
-	// A2A-specific error codes (spec section 3.3.2).
+	// A2A-specific error codes (spec section 5.4).
+	ErrTaskNotFound                   JRPCErrorCode = -32001
+	ErrTaskNotCancelable              JRPCErrorCode = -32002
 	ErrUnsupportedOperation           JRPCErrorCode = -32004
 	ErrExtendedAgentCardNotConfigured JRPCErrorCode = -32007
+	ErrVersionNotSupported            JRPCErrorCode = -32009
 )
 
 type A2AServerImpl struct {
@@ -737,12 +740,24 @@ func (s *A2AServerImpl) handleAgentInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, *agentCard)
 }
 
+// isSupportedA2AVersion reports whether the server speaks the requested A2A-Version.
+// ponytail: an empty header is accepted so clients that omit it keep working, although spec
+// section 3.6 reads it as 0.3; reject it once 0.3 clients are gone.
+func isSupportedA2AVersion(version string) bool {
+	return version == "" || version == types.A2AProtocolVersion
+}
+
 // handleA2ARequest processes A2A protocol requests
 func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 	var req types.JSONRPCRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		s.logger.Error("failed to parse json request", zap.Error(err))
 		s.responseSender.SendError(c, req.ID, int(ErrParseError), "parse error")
+		return
+	}
+
+	if version := c.GetHeader("A2A-Version"); !isSupportedA2AVersion(version) {
+		s.responseSender.SendError(c, req.ID, int(ErrVersionNotSupported), "a2a version "+version+" is not supported")
 		return
 	}
 

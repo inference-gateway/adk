@@ -115,10 +115,9 @@ Total Renewable Energy: 3,615 GWh`
 		return
 	}
 
-	// Parse response result as Task
-	var task types.Task
+	var sent types.SendMessageResponse
 	if resultBytes, ok := response.Result.(json.RawMessage); ok {
-		if err := json.Unmarshal(resultBytes, &task); err != nil {
+		if err := json.Unmarshal(resultBytes, &sent); err != nil {
 			logger.Error("error parsing task response", zap.Error(err))
 			return
 		}
@@ -126,6 +125,7 @@ Total Renewable Energy: 3,615 GWh`
 		logger.Error("unexpected response format", zap.String("type", fmt.Sprintf("%T", response.Result)))
 		return
 	}
+	task := sent.Task
 
 	logger.Info("task created", zap.String("task_id", task.ID))
 

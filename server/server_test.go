@@ -83,7 +83,8 @@ func TestA2AServer_TaskManager_CreateTask(t *testing.T) {
 			assert.Equal(t, tt.contextID, task.GetContextID())
 			assert.Equal(t, tt.state, task.Status.State)
 			assert.Equal(t, tt.message, task.Status.Message)
-			assert.NotNil(t, task.Status.Timestamp)
+			require.NotNil(t, task.Status.Timestamp)
+			assert.Equal(t, time.UTC, task.Status.Timestamp.Location())
 		})
 	}
 }

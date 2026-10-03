@@ -99,49 +99,36 @@ func main() {
 		}
 
 		resultBytes, _ := json.Marshal(event.Result)
-
-		var probe map[string]json.RawMessage
-		if err := json.Unmarshal(resultBytes, &probe); err != nil {
+		var update types.StreamResponse
+		if err := json.Unmarshal(resultBytes, &update); err != nil {
 			continue
 		}
 
-		_, isStatusUpdate := probe["taskId"]
-
-		if !isStatusUpdate {
-			var task types.Task
-			if err := json.Unmarshal(resultBytes, &task); err == nil {
-				if task.Status.Message != nil && len(task.Status.Message.Parts) > 0 {
-					for _, part := range task.Status.Message.Parts {
+		switch {
+		case update.Task != nil:
+			logger.Info("task started", zap.String("task_id", update.Task.ID), zap.Int("event", eventCount))
+		case update.StatusUpdate != nil:
+			status := update.StatusUpdate.Status
+			switch status.State {
+			case types.TaskStateWorking:
+				if status.Message != nil {
+					for _, part := range status.Message.Parts {
 						if part.Text != nil {
 							fmt.Print(*part.Text)
 							finalResponse += *part.Text
 						}
 					}
 				}
-				continue
-			}
-		}
-
-		var statusUpdate types.TaskStatusUpdateEvent
-		if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && isStatusUpdate {
-			// Handle different task states
-			switch statusUpdate.Status.State {
-			case types.TaskStateWorking:
-				logger.Info("task started", zap.Int("event", eventCount))
-
 			case types.TaskStateCompleted:
 				logger.Info("task completed", zap.Int("event", eventCount))
-
 			case types.TaskStateFailed:
 				logger.Error("task failed", zap.Int("event", eventCount))
-
 			case types.TaskStateCanceled:
 				logger.Info("task canceled", zap.Int("event", eventCount))
 			}
-			continue
+		default:
+			logger.Debug("unknown event type", zap.Int("event", eventCount))
 		}
-
-		logger.Debug("unknown event type", zap.Int("event", eventCount))
 	}
 
 	logger.Info("streaming completed", zap.Int("total_events", eventCount))

@@ -161,7 +161,7 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 		history = append(history, *message)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	task := &types.Task{
 		ID: uuid.New().String(),
 		Status: types.TaskStatus{
@@ -204,7 +204,7 @@ func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state type
 		taskHistory = append(taskHistory, *message)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	task := &types.Task{
 		ID: uuid.New().String(),
 		Status: types.TaskStatus{
@@ -266,7 +266,7 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 	}
 
 	task.Status.State = types.TaskState(state)
-	now := time.Now()
+	now := time.Now().UTC()
 	task.Status.Timestamp = &now
 
 	if tm.isTaskFinalState(state) {
@@ -303,7 +303,7 @@ func (tm *DefaultTaskManager) UpdateTask(task *types.Task) error {
 		return fmt.Errorf("task cannot be nil")
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	task.Status.Timestamp = &now
 
 	if tm.isTaskFinalState(types.TaskState(task.Status.State)) {
@@ -344,7 +344,7 @@ func (tm *DefaultTaskManager) UpdateError(taskID string, message *types.Message)
 
 	task.Status.State = types.TaskStateFailed
 	task.Status.Message = message
-	now := time.Now()
+	now := time.Now().UTC()
 	task.Status.Timestamp = &now
 
 	tm.UnregisterTaskCancelFunc(taskID)
@@ -497,7 +497,7 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 	}
 
 	task.Status.State = types.TaskStateCanceled
-	now := time.Now()
+	now := time.Now().UTC()
 	task.Status.Timestamp = &now
 
 	err := tm.storage.StoreDeadLetterTask(task)
@@ -618,7 +618,7 @@ func (tm *DefaultTaskManager) UpdateConversationHistory(contextID string, messag
 	historyCopy := make([]types.Message, len(messages))
 	copy(historyCopy, messages)
 
-	now := time.Now()
+	now := time.Now().UTC()
 	task := &types.Task{
 		ID: uuid.New().String(),
 		Status: types.TaskStatus{
@@ -767,7 +767,7 @@ func (tm *DefaultTaskManager) PauseTaskForInput(taskID string, message *types.Me
 
 	task.Status.State = types.TaskStateInputRequired
 	task.Status.Message = message
-	now := time.Now()
+	now := time.Now().UTC()
 	task.Status.Timestamp = &now
 
 	if message != nil {
@@ -805,7 +805,7 @@ func (tm *DefaultTaskManager) ResumeTaskWithInput(taskID string, message *types.
 
 	task.Status.State = types.TaskStateWorking
 	task.Status.Message = message
-	now := time.Now()
+	now := time.Now().UTC()
 	task.Status.Timestamp = &now
 
 	if message != nil {

@@ -127,54 +127,52 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 		}
 
 		resultBytes, _ := json.Marshal(event.Result)
-
-		// Check if this is a delta event (contains message parts to stream)
-		var task types.Task
-		if err := json.Unmarshal(resultBytes, &task); err == nil && task.Status.Message != nil {
-			// Handle delta message - display text in real-time
-			if len(task.Status.Message.Parts) > 0 {
-				text := extractMessageText(task.Status.Message)
-				if text != "" {
-					fmt.Print(text)
-					streamingText.WriteString(text)
-				}
-			}
+		var update types.StreamResponse
+		if err := json.Unmarshal(resultBytes, &update); err != nil {
+			continue
 		}
+		if update.Task != nil {
+			logger.Info("task started")
+			continue
+		}
+		if update.StatusUpdate == nil {
+			continue
+		}
+		statusUpdate := *update.StatusUpdate
 
-		// Check for status updates
-		var statusUpdate types.TaskStatusUpdateEvent
-		if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && statusUpdate.TaskID != "" {
-			// Handle different task states
-			switch statusUpdate.Status.State {
-			case types.TaskStateWorking:
-				logger.Info("task started")
-
-			case types.TaskStateCompleted:
-				logger.Info("task completed")
-				taskCompleted = true
-
-			case types.TaskStateInputRequired:
-				logger.Info("input required")
-				taskInputRequired = true
-				currentTaskID = statusUpdate.TaskID
-				currentContextID = statusUpdate.ContextID
-				if statusUpdate.Status.Message != nil {
-					inputRequiredMessage = extractMessageText(statusUpdate.Status.Message)
-				}
-
-			case types.TaskStateFailed:
-				logger.Error("task failed")
-				fmt.Print("\n❌ Task failed")
-				return nil
-
-			case types.TaskStateCanceled:
-				logger.Info("task canceled")
-				fmt.Print("\n🚫 Task canceled")
-				return nil
-
-			default:
-				logger.Debug("unknown state", zap.String("state", string(statusUpdate.Status.State)))
+		switch statusUpdate.Status.State {
+		case types.TaskStateWorking:
+			if statusUpdate.Status.Message != nil {
+				text := extractMessageText(statusUpdate.Status.Message)
+				fmt.Print(text)
+				streamingText.WriteString(text)
 			}
+
+		case types.TaskStateCompleted:
+			logger.Info("task completed")
+			taskCompleted = true
+
+		case types.TaskStateInputRequired:
+			logger.Info("input required")
+			taskInputRequired = true
+			currentTaskID = statusUpdate.TaskID
+			currentContextID = statusUpdate.ContextID
+			if statusUpdate.Status.Message != nil {
+				inputRequiredMessage = extractMessageText(statusUpdate.Status.Message)
+			}
+
+		case types.TaskStateFailed:
+			logger.Error("task failed")
+			fmt.Print("\n❌ Task failed")
+			return nil
+
+		case types.TaskStateCanceled:
+			logger.Info("task canceled")
+			fmt.Print("\n🚫 Task canceled")
+			return nil
+
+		default:
+			logger.Debug("unknown state", zap.String("state", string(statusUpdate.Status.State)))
 		}
 	}
 
@@ -241,37 +239,30 @@ func demonstrateStreamingInputRequiredFlow(a2aClient client.A2AClient, initialMe
 			}
 
 			resultBytes, _ := json.Marshal(event.Result)
-
-			// Check if this is a delta event (contains message parts to stream)
-			var task types.Task
-			if err := json.Unmarshal(resultBytes, &task); err == nil && task.Status.Message != nil {
-				// Handle delta message - display text in real-time
-				if len(task.Status.Message.Parts) > 0 {
-					text := extractMessageText(task.Status.Message)
-					if text != "" {
-						fmt.Print(text)
-						continuedText.WriteString(text)
-					}
-				}
+			var update types.StreamResponse
+			if err := json.Unmarshal(resultBytes, &update); err != nil || update.StatusUpdate == nil {
+				continue
 			}
+			status := update.StatusUpdate.Status
 
-			// Check for status updates
-			var statusUpdate types.TaskStatusUpdateEvent
-			if err := json.Unmarshal(resultBytes, &statusUpdate); err == nil && statusUpdate.TaskID != "" {
-				// Handle different task states
-				switch statusUpdate.Status.State {
-				case types.TaskStateCompleted:
-					logger.Info("continued task completed")
-					fmt.Printf("\n\n✅ Conversation complete!\n")
-					if continuedText.Len() > 0 {
-						fmt.Printf("\n📝 Final response:\n%s\n", continuedText.String())
-					}
-					return nil
-				case types.TaskStateFailed:
-					logger.Error("continued task failed")
-					fmt.Printf("\n❌ Task failed\n\n")
-					return nil
+			switch status.State {
+			case types.TaskStateWorking:
+				if status.Message != nil {
+					text := extractMessageText(status.Message)
+					fmt.Print(text)
+					continuedText.WriteString(text)
 				}
+			case types.TaskStateCompleted:
+				logger.Info("continued task completed")
+				fmt.Printf("\n\n✅ Conversation complete!\n")
+				if continuedText.Len() > 0 {
+					fmt.Printf("\n📝 Final response:\n%s\n", continuedText.String())
+				}
+				return nil
+			case types.TaskStateFailed:
+				logger.Error("continued task failed")
+				fmt.Printf("\n❌ Task failed\n\n")
+				return nil
 			}
 		}
 
