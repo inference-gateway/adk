@@ -184,46 +184,83 @@ func (m *MinIOArtifactStorage) CleanupExpiredArtifacts(ctx context.Context, maxA
 	return removedCount, nil
 }
 
-// CleanupOldestArtifacts removes old artifacts keeping only maxCount per artifact ID
+type minioArtifactGroup struct {
+	keys    []string
+	modTime time.Time
+}
+
+// CleanupOldestArtifacts removes the oldest artifacts keeping only maxCount per context
 func (m *MinIOArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCount int) (int, error) {
 	if maxCount <= 0 {
 		return 0, nil
 	}
 
-	objectCh := m.client.ListObjects(ctx, m.bucketName, minio.ListObjectsOptions{
-		Recursive: true,
-	})
-
-	artifactGroups := make(map[string][]minio.ObjectInfo)
-	for object := range objectCh {
-		if object.Err != nil {
-			continue
-		}
-
-		parts := strings.Split(object.Key, "/")
-		if len(parts) >= 2 {
-			artifactDir := strings.Join(parts[:len(parts)-1], "/")
-			artifactGroups[artifactDir] = append(artifactGroups[artifactDir], object)
-		}
-	}
-
 	removedCount := 0
-	for _, objects := range artifactGroups {
-		if len(objects) <= maxCount {
+	for _, artifacts := range m.groupObjectsByContext(ctx) {
+		if len(artifacts) <= maxCount {
 			continue
 		}
 
-		sort.Slice(objects, func(i, j int) bool {
-			return objects[i].LastModified.After(objects[j].LastModified)
+		sort.Slice(artifacts, func(i, j int) bool {
+			return artifacts[i].modTime.After(artifacts[j].modTime)
 		})
 
-		for i := maxCount; i < len(objects); i++ {
-			err := m.client.RemoveObject(ctx, m.bucketName, objects[i].Key, minio.RemoveObjectOptions{})
-			if err == nil {
+		for _, artifact := range artifacts[maxCount:] {
+			if m.removeObjects(ctx, artifact.keys) {
 				removedCount++
 			}
 		}
 	}
 
 	return removedCount, nil
+}
+
+// groupObjectsByContext groups stored objects into artifacts per context ID,
+// following the {contextID}/{artifactID}/{filename} key layout
+func (m *MinIOArtifactStorage) groupObjectsByContext(ctx context.Context) map[string][]*minioArtifactGroup {
+	objectCh := m.client.ListObjects(ctx, m.bucketName, minio.ListObjectsOptions{
+		Recursive: true,
+	})
+
+	contexts := make(map[string][]*minioArtifactGroup)
+	artifactsByID := make(map[string]*minioArtifactGroup)
+
+	for object := range objectCh {
+		if object.Err != nil {
+			continue
+		}
+
+		parts := strings.Split(object.Key, "/")
+		if len(parts) < 3 {
+			continue
+		}
+
+		contextID := parts[0]
+		artifactKey := contextID + "/" + parts[1]
+
+		artifact, ok := artifactsByID[artifactKey]
+		if !ok {
+			artifact = &minioArtifactGroup{}
+			artifactsByID[artifactKey] = artifact
+			contexts[contextID] = append(contexts[contextID], artifact)
+		}
+
+		artifact.keys = append(artifact.keys, object.Key)
+		if object.LastModified.After(artifact.modTime) {
+			artifact.modTime = object.LastModified
+		}
+	}
+
+	return contexts
+}
+
+// removeObjects deletes the given object keys, reporting whether anything was removed
+func (m *MinIOArtifactStorage) removeObjects(ctx context.Context, keys []string) bool {
+	removed := false
+	for _, key := range keys {
+		if err := m.client.RemoveObject(ctx, m.bucketName, key, minio.RemoveObjectOptions{}); err == nil {
+			removed = true
+		}
+	}
+	return removed
 }
