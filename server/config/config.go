@@ -56,7 +56,7 @@ type AgentConfig struct {
 	BaseURL                     string            `env:"BASE_URL" description:"Base URL for the LLM provider API"`
 	APIKey                      string            `env:"API_KEY" description:"API key for authentication"`
 	Timeout                     time.Duration     `env:"TIMEOUT,default=30s" description:"Client timeout for requests"`
-	MaxRetries                  int               `env:"MAX_RETRIES,default=3" description:"Maximum number of retries, applies to CreateChatCompletion only; streaming calls are not retried"`
+	MaxRetries                  int               `env:"MAX_RETRIES,default=3" description:"Maximum number of retries"`
 	MaxChatCompletionIterations int               `env:"MAX_CHAT_COMPLETION_ITERATIONS,default=50" description:"Maximum chat completion iterations"`
 	CustomHeaders               map[string]string `env:"CUSTOM_HEADERS" description:"Custom headers to include in requests"`
 	TLSConfig                   ClientTLSConfig   `env:",prefix=TLS_" description:"TLS configuration for client"`
