@@ -961,7 +961,13 @@ func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.J
 		return
 	}
 
-	task, _ := h.taskManager.GetTask(params.ID)
+	task, exists := h.taskManager.GetTask(params.ID)
+	if !exists {
+		h.logger.Error("task canceled but could not be reloaded", zap.String("task_id", params.ID))
+		h.responseSender.SendError(c, req.ID, int(ErrInternalError), "task canceled but could not be reloaded")
+		return
+	}
+
 	h.responseSender.SendSuccess(c, req.ID, *task)
 }
 

@@ -2,9 +2,11 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	assert "github.com/stretchr/testify/assert"
+	require "github.com/stretchr/testify/require"
 
 	mocks "github.com/inference-gateway/adk/server/mocks"
 
@@ -545,6 +547,64 @@ func TestDefaultA2AProtocolHandler_MessageEnrichment(t *testing.T) {
 
 			assert.Equal(t, tt.inputMessage.Role, enrichedMessage.Role)
 			assert.Equal(t, tt.inputMessage.Parts, enrichedMessage.Parts)
+		})
+	}
+}
+
+func TestDefaultA2AProtocolHandler_HandleTaskCancel(t *testing.T) {
+	canceledTask := &types.Task{
+		ID:     "task-1",
+		Status: types.TaskStatus{State: types.TaskStateCanceled},
+	}
+
+	tests := []struct {
+		name              string
+		reloadedTask      *types.Task
+		reloadExists      bool
+		expectedErrorCode int
+	}{
+		{
+			name:         "canceled task is returned when reload succeeds",
+			reloadedTask: canceledTask,
+			reloadExists: true,
+		},
+		{
+			name:              "reload miss returns an internal error instead of panicking",
+			reloadedTask:      nil,
+			reloadExists:      false,
+			expectedErrorCode: -32603,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, _, taskManager, _ := makeProtocolHandlerWithMocks(t)
+			taskManager.CancelTaskReturns(nil)
+			taskManager.GetTaskReturns(tt.reloadedTask, tt.reloadExists)
+
+			c, w := newRequestContext(t, "{}")
+			reqID := any("req-1")
+			req := types.JSONRPCRequest{
+				JSONRPC: "2.0",
+				ID:      &reqID,
+				Method:  "tasks/cancel",
+				Params:  &types.Struct{"id": "task-1"},
+			}
+
+			assert.NotPanics(t, func() { h.HandleTaskCancel(c, req) })
+
+			if tt.expectedErrorCode == 0 {
+				var resp types.JSONRPCSuccessResponse
+				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+				assert.Contains(t, w.Body.String(), string(types.TaskStateCanceled))
+				assert.NotNil(t, resp.Result)
+				return
+			}
+
+			var resp types.JSONRPCErrorResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+			assert.Equal(t, tt.expectedErrorCode, resp.Error.Code)
+			assert.Contains(t, resp.Error.Message, "could not be reloaded")
 		})
 	}
 }
