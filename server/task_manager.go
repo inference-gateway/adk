@@ -165,7 +165,7 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 	task := &types.Task{
 		ID: uuid.New().String(),
 		Status: types.TaskStatus{
-			State:     types.TaskState(state),
+			State:     state,
 			Message:   message,
 			Timestamp: &now,
 		},
@@ -173,17 +173,12 @@ func (tm *DefaultTaskManager) CreateTask(contextID string, state types.TaskState
 		History:   history,
 	}
 
-	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
-		err := tm.storage.StoreDeadLetterTask(task)
-		if err != nil {
+	if state.IsTerminal() {
+		if err := tm.storage.StoreDeadLetterTask(task); err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
 		}
-	default:
-		err := tm.storage.CreateActiveTask(task)
-		if err != nil {
-			tm.logger.Error("failed to store created task", zap.Error(err))
-		}
+	} else if err := tm.storage.CreateActiveTask(task); err != nil {
+		tm.logger.Error("failed to store created task", zap.Error(err))
 	}
 
 	tm.logger.Debug("task created and stored",
@@ -208,7 +203,7 @@ func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state type
 	task := &types.Task{
 		ID: uuid.New().String(),
 		Status: types.TaskStatus{
-			State:     types.TaskState(state),
+			State:     state,
 			Message:   message,
 			Timestamp: &now,
 		},
@@ -216,17 +211,12 @@ func (tm *DefaultTaskManager) CreateTaskWithHistory(contextID string, state type
 		History:   taskHistory,
 	}
 
-	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
-		err := tm.storage.StoreDeadLetterTask(task)
-		if err != nil {
+	if state.IsTerminal() {
+		if err := tm.storage.StoreDeadLetterTask(task); err != nil {
 			tm.logger.Error("failed to store task in dead letter queue", zap.Error(err))
 		}
-	default:
-		err := tm.storage.CreateActiveTask(task)
-		if err != nil {
-			tm.logger.Error("failed to store created task", zap.Error(err))
-		}
+	} else if err := tm.storage.CreateActiveTask(task); err != nil {
+		tm.logger.Error("failed to store created task", zap.Error(err))
 	}
 
 	tm.logger.Debug("task created with history and stored",
@@ -265,11 +255,11 @@ func (tm *DefaultTaskManager) UpdateState(taskID string, state types.TaskState) 
 		}
 	}
 
-	task.Status.State = types.TaskState(state)
+	task.Status.State = state
 	now := time.Now().UTC()
 	task.Status.Timestamp = &now
 
-	if tm.isTaskFinalState(state) {
+	if state.IsTerminal() {
 		tm.UnregisterTaskCancelFunc(taskID)
 
 		err := tm.storage.StoreDeadLetterTask(task)
@@ -306,7 +296,7 @@ func (tm *DefaultTaskManager) UpdateTask(task *types.Task) error {
 	now := time.Now().UTC()
 	task.Status.Timestamp = &now
 
-	if tm.isTaskFinalState(types.TaskState(task.Status.State)) {
+	if task.Status.State.IsTerminal() {
 		tm.UnregisterTaskCancelFunc(task.ID)
 
 		err := tm.storage.StoreDeadLetterTask(task)
@@ -482,8 +472,8 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 		return NewTaskNotFoundError(taskID)
 	}
 
-	if !tm.isTaskCancelable(string(task.Status.State)) {
-		return NewTaskNotCancelableError(taskID, types.TaskState(task.Status.State))
+	if !isTaskCancelable(task.Status.State) {
+		return NewTaskNotCancelableError(taskID, task.Status.State)
 	}
 
 	tm.runningTasksMu.RLock()
@@ -515,27 +505,17 @@ func (tm *DefaultTaskManager) CancelTask(taskID string) error {
 	return nil
 }
 
-// isTaskCancelable determines if a task can be canceled based on its current state
-func (tm *DefaultTaskManager) isTaskCancelable(state string) bool {
-	taskState := types.TaskState(state)
-	switch taskState {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
-		return false
-	case types.TaskStateSubmitted, types.TaskStateWorking, types.TaskStateInputRequired, types.TaskStateAuthRequired, types.TaskStateUnspecified:
-		return true
-	default:
+// isTaskCancelable reports whether a task in this state can still be canceled;
+// an unrecognized state is not cancelable.
+func isTaskCancelable(state types.TaskState) bool {
+	if state.IsTerminal() {
 		return false
 	}
-}
-
-// isTaskFinalState determines if a task state is final and should move to dead letter queue
-func (tm *DefaultTaskManager) isTaskFinalState(state types.TaskState) bool {
 	switch state {
-	case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
+	case types.TaskStateSubmitted, types.TaskStateWorking, types.TaskStateUnspecified:
 		return true
-	default:
-		return false
 	}
+	return state.IsInterrupted()
 }
 
 // CleanupCompletedTasks removes old completed tasks from memory
@@ -562,11 +542,7 @@ func (tm *DefaultTaskManager) PollTaskStatus(taskID string, interval time.Durati
 				return nil, NewTaskNotFoundError(taskID)
 			}
 
-			taskState := types.TaskState(task.Status.State)
-			switch taskState {
-			case types.TaskStateCompleted, types.TaskStateFailed, types.TaskStateCanceled, types.TaskStateRejected:
-				return task, nil
-			case types.TaskStateInputRequired:
+			if task.Status.State.IsTerminal() || task.Status.State == types.TaskStateInputRequired {
 				return task, nil
 			}
 
