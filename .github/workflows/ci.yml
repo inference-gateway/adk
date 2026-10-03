@@ -34,9 +34,6 @@ jobs:
           version: v2.14.0
           args: --help
 
-      - name: Install Mockgen
-        run: go install go.uber.org/mock/mockgen@v0.6.0
-
       - name: Setup Node.js
         uses: actions/setup-node@v7.0.0
         with:

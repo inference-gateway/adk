@@ -59,9 +59,9 @@ Change the source (`schema.yaml`, `providers-schema.yaml`, or the interface) and
 `CHANGELOG.md` is maintained by semantic-release. CI re-runs formatting, tidy, and generation and then fails on
 `git diff --exit-code`, so uncommitted generated or formatting changes break the build.
 
-Mocks use Counterfeiter (`go run github.com/maxbrunsfeld/counterfeiter/v6`), not mockgen, even though CI installs
-mockgen. `Taskfile.yml` has one `generate:mock:*` target per interface with `sources:` for incremental builds; add or
-rename the target when you add or rename an interface.
+Mocks use Counterfeiter (`go run github.com/maxbrunsfeld/counterfeiter/v6`). `Taskfile.yml` has one
+`generate:mock:*` target per interface with `sources:` for incremental builds; add or rename the target when you add
+or rename an interface.
 
 ## Schema Is Upstream
 
