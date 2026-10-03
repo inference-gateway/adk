@@ -11,6 +11,8 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	zap "go.uber.org/zap"
 
+	sdk "github.com/inference-gateway/sdk"
+
 	server "github.com/inference-gateway/adk/server"
 	types "github.com/inference-gateway/adk/types"
 )
@@ -222,6 +224,65 @@ func TestDefaultStreamingTaskHandler_HandleStreamingTask(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDefaultBackgroundTaskHandler_RejectedIsTerminal(t *testing.T) {
+	logger := zap.NewNop()
+	task := &types.Task{
+		ID:        "rejected-task",
+		ContextID: new("test-context"),
+		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
+	}
+
+	taskHandler := server.NewDefaultBackgroundTaskHandler(logger, createMockAgentWithRejectedStatus())
+
+	result, err := taskHandler.HandleTask(context.Background(), task, nil)
+
+	assert.NoError(t, err)
+	assert.Equal(t, types.TaskStateRejected, result.Status.State)
+	assert.NotNil(t, result.Metadata, "rejected task should receive usage metadata")
+}
+
+func TestDefaultStreamingTaskHandler_RejectedIsTerminal(t *testing.T) {
+	logger := zap.NewNop()
+	task := &types.Task{
+		ID:        "rejected-streaming-task",
+		ContextID: new("test-context"),
+		Status:    types.TaskStatus{State: types.TaskStateSubmitted},
+	}
+
+	taskHandler := server.NewDefaultStreamingTaskHandler(logger, createMockAgentWithRejectedStatus())
+
+	eventsChan, err := taskHandler.HandleStreamingTask(context.Background(), task, nil)
+	assert.NoError(t, err)
+
+	for range eventsChan {
+	}
+
+	assert.NotNil(t, task.Metadata, "rejected task should receive usage metadata")
+}
+
+// createMockAgentWithRejectedStatus creates a mock agent that reports a rejected task status
+// and records token usage on the tracker it finds in the context.
+func createMockAgentWithRejectedStatus() server.OpenAICompatibleAgent {
+	mockAgent := &mocks.FakeOpenAICompatibleAgent{}
+	mockAgent.RunWithStreamStub = func(ctx context.Context, _ []types.Message) (<-chan cloudevents.Event, error) {
+		if tracker, ok := ctx.Value(server.UsageTrackerContextKey).(*server.UsageTracker); ok {
+			tracker.AddTokenUsage(sdk.CompletionUsage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2})
+		}
+
+		statusEvent := cloudevents.NewEvent()
+		statusEvent.SetType(types.EventTaskStatusChanged)
+		if err := statusEvent.SetData(cloudevents.ApplicationJSON, types.TaskStatus{State: types.TaskStateRejected}); err != nil {
+			return nil, err
+		}
+
+		streamChan := make(chan cloudevents.Event, 1)
+		streamChan <- statusEvent
+		close(streamChan)
+		return streamChan, nil
+	}
+	return mockAgent
 }
 
 // createMockAgentWithInputRequired creates a mock agent that returns an input_required response

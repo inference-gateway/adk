@@ -202,9 +202,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 					zap.String("task_id", task.ID),
 					zap.String("state", string(statusData.State)))
 
-				if statusData.State == types.TaskStateCompleted ||
-					statusData.State == types.TaskStateFailed ||
-					statusData.State == types.TaskStateCanceled {
+				if statusData.State.IsTerminal() {
 					bth.populateTaskMetadata(task, usageTracker)
 					return task, nil
 				}
@@ -372,12 +370,8 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 		for event := range eventChan {
 			if event.Type() == types.EventTaskStatusChanged {
 				var statusData types.TaskStatus
-				if err := event.DataAs(&statusData); err == nil {
-					if statusData.State == types.TaskStateCompleted ||
-						statusData.State == types.TaskStateFailed ||
-						statusData.State == types.TaskStateCanceled {
-						sth.populateTaskMetadata(task, usageTracker)
-					}
+				if err := event.DataAs(&statusData); err == nil && statusData.State.IsTerminal() {
+					sth.populateTaskMetadata(task, usageTracker)
 				}
 			}
 			wrappedChan <- event
