@@ -687,6 +687,7 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", c.config.UserAgent)
+	req.Header.Set("A2A-Version", types.A2AProtocolVersion)
 
 	for key, value := range c.config.Headers {
 		req.Header.Set(key, value)
