@@ -977,7 +977,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.C
 
 	h.logger.Info("setting push notification config for task",
 		zap.Stringp("task_id", params.TaskID),
-		zap.String("url", params.URL))
+		zap.String("url", loggableURL(params.URL)))
 
 	config, err := h.taskManager.SetTaskPushNotificationConfig(params)
 	if err != nil {

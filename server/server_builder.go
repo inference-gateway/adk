@@ -241,9 +241,7 @@ func (b *A2AServerBuilderImpl) WithAgentCardFromFile(filePath string, overrides 
 	}
 
 	for key, value := range overrides {
-		b.logger.Debug("overriding agent card attribute",
-			zap.String("key", key),
-			zap.Any("value", value))
+		b.logger.Debug("overriding agent card attribute", zap.String("key", key))
 		rawData[key] = value
 	}
 

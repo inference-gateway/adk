@@ -380,12 +380,12 @@ func (tm *DefaultTaskManager) sendPushNotifications(taskID string, task *types.T
 		if err := tm.notificationSender.SendTaskUpdate(ctx, config, task); err != nil {
 			tm.logger.Error("failed to send push notification",
 				zap.String("task_id", taskID),
-				zap.String("webhook_url", config.URL),
+				zap.String("webhook_url", loggableURL(config.URL)),
 				zap.Error(err))
 		} else {
 			tm.logger.Debug("push notification sent successfully",
 				zap.String("task_id", taskID),
-				zap.String("webhook_url", config.URL),
+				zap.String("webhook_url", loggableURL(config.URL)),
 				zap.String("state", string(task.Status.State)))
 		}
 	}

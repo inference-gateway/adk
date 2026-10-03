@@ -849,3 +849,34 @@ func TestAgentStreaming_WithToolCalls(t *testing.T) {
 	assert.Greater(t, eventCount, 0)
 	assert.GreaterOrEqual(t, callCount, 2, "Should make at least 2 LLM calls (tool + final)")
 }
+
+func TestA2AServer_Start_RejectsCredentialsInCardURLs(t *testing.T) {
+	const password = "s3cret"
+	credentialed := createTestAgentCard()
+	credentialed.SupportedInterfaces[0].URL = "https://user:" + password + "@agent.example.com/a2a"
+
+	tests := []struct {
+		name     string
+		public   types.AgentCard
+		extended *types.AgentCard
+	}{
+		{name: "public card", public: credentialed},
+		{name: "extended card", public: createTestAgentCard(), extended: &credentialed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a2aServer := server.NewA2AServer(&serverConfig.Config{}, zap.NewNop(), nil)
+			a2aServer.SetAgentCard(tt.public)
+			if tt.extended != nil {
+				a2aServer.SetExtendedAgentCard(*tt.extended)
+			}
+
+			err := a2aServer.Start(context.Background())
+
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "must not carry credentials")
+			assert.NotContains(t, err.Error(), password)
+		})
+	}
+}

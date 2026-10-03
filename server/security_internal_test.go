@@ -88,3 +88,21 @@ func TestValidateAuthConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestLoggableURL(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "strips userinfo", raw: "https://user:s3cret@hooks.example.com/notify", want: "https://hooks.example.com/notify"},
+		{name: "strips query and fragment", raw: "https://hooks.example.com/notify?token=s3cret#f", want: "https://hooks.example.com/notify"},
+		{name: "drops unparseable", raw: "https://hooks.example.com:port/notify", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, loggableURL(tt.raw))
+		})
+	}
+}
