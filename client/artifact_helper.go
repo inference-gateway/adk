@@ -22,32 +22,55 @@ func NewArtifactHelper() *ArtifactHelper {
 	return &ArtifactHelper{}
 }
 
-// ExtractTaskFromResponse extracts a task from a JSON-RPC response
+// ExtractTaskFromResponse extracts a task from a JSON-RPC response, accepting both the
+// wrapped SendMessage/stream results and the bare task returned by GetTask.
 func (ah *ArtifactHelper) ExtractTaskFromResponse(response *types.JSONRPCSuccessResponse) (*types.Task, error) {
 	if response == nil || response.Result == nil {
 		return nil, fmt.Errorf("response or result is nil")
 	}
 
-	var taskBytes []byte
-	switch result := response.Result.(type) {
-	case []byte:
-		taskBytes = result
-	case json.RawMessage:
-		taskBytes = result
-	default:
-		var err error
-		taskBytes, err = json.Marshal(response.Result)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal result to bytes: %w", err)
+	resultBytes, err := resultToBytes(response.Result)
+	if err != nil {
+		return nil, err
+	}
+
+	var wrapper struct {
+		Task    *types.Task    `json:"task"`
+		Message *types.Message `json:"message"`
+	}
+	if err := json.Unmarshal(resultBytes, &wrapper); err == nil {
+		if wrapper.Task != nil {
+			return wrapper.Task, nil
+		}
+		if wrapper.Message != nil {
+			return nil, fmt.Errorf("response result is a message, not a task")
 		}
 	}
 
 	var task types.Task
-	if err := json.Unmarshal(taskBytes, &task); err != nil {
+	if err := json.Unmarshal(resultBytes, &task); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal task from response: %w", err)
+	}
+	if task.ID == "" {
+		return nil, fmt.Errorf("response result contains no task")
 	}
 
 	return &task, nil
+}
+
+func resultToBytes(result any) ([]byte, error) {
+	switch typed := result.(type) {
+	case []byte:
+		return typed, nil
+	case json.RawMessage:
+		return typed, nil
+	}
+
+	resultBytes, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal result to bytes: %w", err)
+	}
+	return resultBytes, nil
 }
 
 // ExtractArtifactsFromTask extracts all artifacts from a task
@@ -232,27 +255,45 @@ func (ah *ArtifactHelper) extractFileFromPart(part types.Part) (FileData, error)
 	return FileData{}, fmt.Errorf("file part contains neither bytes nor URI")
 }
 
-// ExtractArtifactUpdateFromStreamEvent extracts an artifact update event from a streaming event
+// ExtractArtifactUpdateFromStreamEvent extracts an artifact update event from a streaming
+// event, accepting an artifactUpdate stream response or the bare event in typed or decoded form.
 func (ah *ArtifactHelper) ExtractArtifactUpdateFromStreamEvent(eventData any) (*types.TaskArtifactUpdateEvent, bool) {
 	switch event := eventData.(type) {
 	case types.TaskArtifactUpdateEvent:
 		return &event, true
-	case map[string]any:
-		if kind, exists := event["kind"].(string); exists && kind == "artifact-update" {
-			eventBytes, err := json.Marshal(event)
-			if err != nil {
-				return nil, false
-			}
-
-			var artifactEvent types.TaskArtifactUpdateEvent
-			if err := json.Unmarshal(eventBytes, &artifactEvent); err != nil {
-				return nil, false
-			}
-
-			return &artifactEvent, true
+	case *types.TaskArtifactUpdateEvent:
+		return event, event != nil
+	case types.StreamResponse:
+		return event.ArtifactUpdate, event.ArtifactUpdate != nil
+	case *types.StreamResponse:
+		if event == nil {
+			return nil, false
 		}
+		return event.ArtifactUpdate, event.ArtifactUpdate != nil
+	case map[string]any:
+		if wrapped, exists := event["artifactUpdate"]; exists {
+			return ah.ExtractArtifactUpdateFromStreamEvent(wrapped)
+		}
+		return decodeArtifactUpdateEvent(event)
 	}
 	return nil, false
+}
+
+func decodeArtifactUpdateEvent(event map[string]any) (*types.TaskArtifactUpdateEvent, bool) {
+	eventBytes, err := json.Marshal(event)
+	if err != nil {
+		return nil, false
+	}
+
+	var artifactEvent types.TaskArtifactUpdateEvent
+	if err := json.Unmarshal(eventBytes, &artifactEvent); err != nil {
+		return nil, false
+	}
+	if artifactEvent.TaskID == "" || artifactEvent.Artifact.ArtifactID == "" {
+		return nil, false
+	}
+
+	return &artifactEvent, true
 }
 
 // HasArtifacts returns true if the task contains any artifacts

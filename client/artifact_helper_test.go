@@ -16,6 +16,34 @@ import (
 	types "github.com/inference-gateway/adk/types"
 )
 
+func newDecodedResponse(t *testing.T, result any) *types.JSONRPCSuccessResponse {
+	t.Helper()
+
+	responseBytes, err := json.Marshal(types.JSONRPCSuccessResponse{
+		JSONRPC: "2.0",
+		ID:      "req-1",
+		Result:  result,
+	})
+	require.NoError(t, err)
+
+	var decoded types.JSONRPCSuccessResponse
+	require.NoError(t, json.Unmarshal(responseBytes, &decoded))
+
+	return &decoded
+}
+
+func decodeToMap(t *testing.T, value any) map[string]any {
+	t.Helper()
+
+	valueBytes, err := json.Marshal(value)
+	require.NoError(t, err)
+
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(valueBytes, &decoded))
+
+	return decoded
+}
+
 func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {
 	helper := NewArtifactHelper()
 
@@ -58,6 +86,65 @@ func TestArtifactHelper_ExtractTaskFromResponse(t *testing.T) {
 				assert.Equal(t, "context-456", task.GetContextID())
 				assert.Len(t, task.Artifacts, 1)
 			},
+		},
+		{
+			name: "wrapped send message response",
+			setup: func() *types.JSONRPCSuccessResponse {
+				task := types.Task{
+					ID:     "task-123",
+					Status: types.TaskStatus{State: types.TaskStateCompleted},
+					Artifacts: []types.Artifact{
+						{
+							ArtifactID: "artifact-1",
+							Parts:      []types.Part{types.CreateTextPart("Hello, World!")},
+						},
+					},
+				}
+				return newDecodedResponse(t, types.SendMessageResponse{Task: &task})
+			},
+			wantErr: false,
+			assertions: func(t *testing.T, task *types.Task) {
+				assert.Equal(t, "task-123", task.ID)
+				assert.Equal(t, types.TaskStateCompleted, task.Status.State)
+				assert.Len(t, task.Artifacts, 1)
+			},
+		},
+		{
+			name: "wrapped stream task response",
+			setup: func() *types.JSONRPCSuccessResponse {
+				task := types.Task{
+					ID:     "task-456",
+					Status: types.TaskStatus{State: types.TaskStateWorking},
+				}
+				return newDecodedResponse(t, types.StreamResponse{Task: &task})
+			},
+			wantErr: false,
+			assertions: func(t *testing.T, task *types.Task) {
+				assert.Equal(t, "task-456", task.ID)
+			},
+		},
+		{
+			name: "message reply without a task",
+			setup: func() *types.JSONRPCSuccessResponse {
+				message := types.Message{MessageID: "msg-1", Role: "agent"}
+				return newDecodedResponse(t, types.SendMessageResponse{Message: &message})
+			},
+			wantErr: true,
+			errMsg:  "is a message, not a task",
+		},
+		{
+			name: "stream artifact update without a task",
+			setup: func() *types.JSONRPCSuccessResponse {
+				return newDecodedResponse(t, types.StreamResponse{
+					ArtifactUpdate: &types.TaskArtifactUpdateEvent{
+						TaskID:    "task-123",
+						ContextID: "context-456",
+						Artifact:  types.Artifact{ArtifactID: "artifact-1"},
+					},
+				})
+			},
+			wantErr: true,
+			errMsg:  "contains no task",
 		},
 		{
 			name:    "nil response",
@@ -561,6 +648,47 @@ func TestArtifactHelper_ExtractArtifactUpdateFromStreamEvent(t *testing.T) {
 				assert.Equal(t, "context-456", event.ContextID)
 				assert.Equal(t, "stream-artifact", event.Artifact.ArtifactID)
 			},
+		},
+		{
+			name: "decoded artifactUpdate stream response",
+			event: decodeToMap(t, types.StreamResponse{
+				ArtifactUpdate: &types.TaskArtifactUpdateEvent{
+					TaskID:    "task-123",
+					ContextID: "context-456",
+					Artifact: types.Artifact{
+						ArtifactID: "stream-artifact",
+						Parts:      []types.Part{types.CreateTextPart("Streaming content")},
+					},
+				},
+			}),
+			wantOk: true,
+			assertions: func(t *testing.T, event *types.TaskArtifactUpdateEvent) {
+				assert.Equal(t, "task-123", event.TaskID)
+				assert.Equal(t, "stream-artifact", event.Artifact.ArtifactID)
+			},
+		},
+		{
+			name: "decoded bare artifact update event",
+			event: decodeToMap(t, types.TaskArtifactUpdateEvent{
+				TaskID:    "task-123",
+				ContextID: "context-456",
+				Artifact:  types.Artifact{ArtifactID: "stream-artifact"},
+			}),
+			wantOk: true,
+			assertions: func(t *testing.T, event *types.TaskArtifactUpdateEvent) {
+				assert.Equal(t, "stream-artifact", event.Artifact.ArtifactID)
+			},
+		},
+		{
+			name: "decoded statusUpdate stream response",
+			event: decodeToMap(t, types.StreamResponse{
+				StatusUpdate: &types.TaskStatusUpdateEvent{
+					TaskID:    "task-123",
+					ContextID: "context-456",
+					Status:    types.TaskStatus{State: types.TaskStateWorking},
+				},
+			}),
+			wantOk: false,
 		},
 		{
 			name: "non-artifact event",

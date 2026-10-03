@@ -618,7 +618,7 @@ for _, result := range results {
 
 ### Handling Streaming Artifact Updates
 
-`SendTaskStreaming` returns a channel of JSON-RPC responses, each carrying the current task snapshot - including its artifacts:
+`SendTaskStreaming` returns a channel of JSON-RPC responses. Each result is a `types.StreamResponse` carrying either a task snapshot - including its artifacts - a status update, or an artifact update:
 
 ```go
 responses, err := a2aClient.SendTaskStreaming(ctx, params)
@@ -627,6 +627,11 @@ if err != nil {
 }
 
 for response := range responses {
+    if update, ok := artifactHelper.ExtractArtifactUpdateFromStreamEvent(response.Result); ok {
+        fmt.Printf("Artifact chunk: %s\n", update.Artifact.ArtifactID)
+        continue
+    }
+
     task, err := artifactHelper.ExtractTaskFromResponse(&response)
     if err != nil {
         continue
@@ -642,7 +647,7 @@ for response := range responses {
 }
 ```
 
-If your transport delivers raw `artifact-update` events (for example a custom SSE consumer), `artifactHelper.ExtractArtifactUpdateFromStreamEvent(eventData)` converts a `types.TaskArtifactUpdateEvent` or its decoded `map[string]any` form into a typed event.
+`ExtractArtifactUpdateFromStreamEvent` accepts a `types.StreamResponse`, a `types.TaskArtifactUpdateEvent`, or either in decoded `map[string]any` form, so it also works for a custom SSE consumer that decodes events itself. `ExtractTaskFromResponse` unwraps the task from `SendMessage` and streaming results and still accepts the bare task returned by `GetTask`; it returns an error when the result carries no task (a direct message reply, a status update, or an artifact update).
 
 ## Storage Layout
 
