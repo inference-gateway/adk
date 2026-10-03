@@ -119,7 +119,6 @@ jobs:
           ./tck-sut &
           curl -sf --retry 30 --retry-connrefused --retry-delay 1 http://localhost:9999/health
 
-      # test_artifacts.py needs a blocking SendMessage and direct Message responses; drop the deselect once the ADK has them.
       - name: Run TCK (JSON-RPC, MUST)
         working-directory: a2a-tck
         run: uv run ./run_tck.py --sut-host http://localhost:9999 --transport jsonrpc --level must -- --deselect tests/compatibility/core_operations/test_artifacts.py
