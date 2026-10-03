@@ -513,15 +513,8 @@ func (h *DefaultA2AProtocolHandler) registerPushConfig(params types.SendMessageR
 
 // HandleMessageSend processes SendMessage requests
 func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.SendMessageRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.SendMessageRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse SendMessage request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -678,15 +671,8 @@ func (h *DefaultA2AProtocolHandler) writeStatusUpdate(c *gin.Context, id *types.
 
 // HandleMessageStream processes SendStreamingMessage requests
 func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler) {
-	var params types.SendMessageRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.SendMessageRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse SendStreamingMessage request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -948,15 +934,8 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 
 // HandleTaskGet processes GetTask requests
 func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.GetTaskRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.GetTaskRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse GetTask request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -980,15 +959,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSON
 
 // HandleTaskCancel processes CancelTask requests
 func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.CancelTaskRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.CancelTaskRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse CancelTask request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -1011,15 +983,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.J
 
 // HandleTaskList processes ListTasks requests
 func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.ListTasksRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.ListTasksRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse ListTasks request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -1040,15 +1005,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSO
 
 // HandleTaskPushNotificationConfigSet processes CreateTaskPushNotificationConfig requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.TaskPushNotificationConfig
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.TaskPushNotificationConfig](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse CreateTaskPushNotificationConfig request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -1071,15 +1029,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.C
 
 // HandleTaskPushNotificationConfigGet processes GetTaskPushNotificationConfig requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.GetTaskPushNotificationConfigRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.GetTaskPushNotificationConfigRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse GetTaskPushNotificationConfig request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -1100,15 +1051,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 
 // HandleTaskPushNotificationConfigList processes ListTaskPushNotificationConfigs requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.ListTaskPushNotificationConfigsRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.ListTaskPushNotificationConfigsRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse ListTaskPushNotificationConfigs request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -1131,15 +1075,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 
 // HandleTaskPushNotificationConfigDelete processes DeleteTaskPushNotificationConfig requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest) {
-	var params types.DeleteTaskPushNotificationConfigRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.DeleteTaskPushNotificationConfigRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse DeleteTaskPushNotificationConfig request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -1168,15 +1105,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 // done. When the task is still in a working state, the streaming handler is invoked
 // to continue delivering live events for the task.
 func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler) {
-	var params types.SubscribeToTaskRequest
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.SubscribeToTaskRequest](req.Params)
 	if err != nil {
-		h.logger.Error("failed to marshal params", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-		return
-	}
-
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		h.logger.Error("failed to parse SubscribeToTask request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
@@ -1348,14 +1278,8 @@ func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Co
 	}
 
 	if req.Params != nil {
-		var params types.GetExtendedAgentCardRequest
-		paramsBytes, err := json.Marshal(req.Params)
+		params, err := decodeParams[types.GetExtendedAgentCardRequest](req.Params)
 		if err != nil {
-			h.logger.Error("failed to marshal params", zap.Error(err))
-			h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid params")
-			return
-		}
-		if err := json.Unmarshal(paramsBytes, &params); err != nil {
 			h.logger.Error("failed to parse GetExtendedAgentCard request", zap.Error(err))
 			h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 			return

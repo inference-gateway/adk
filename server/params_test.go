@@ -94,3 +94,35 @@ func TestNormalizeParamsDecodesProtoNamedListTasksRequest(t *testing.T) {
 	require.NotNil(t, request.IncludeArtifacts)
 	assert.True(t, *request.IncludeArtifacts)
 }
+
+func TestDecodeParams(t *testing.T) {
+	tests := []struct {
+		name        string
+		params      types.Struct
+		expectedID  string
+		expectError bool
+	}{
+		{
+			name:       "valid payload",
+			params:     types.Struct{"id": "task-1", "historyLength": float64(3)},
+			expectedID: "task-1",
+		},
+		{
+			name:        "wrong field type",
+			params:      types.Struct{"id": float64(42)},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			decoded, err := decodeParams[types.GetTaskRequest](&tt.params)
+			if tt.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedID, decoded.ID)
+		})
+	}
+}
