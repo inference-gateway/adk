@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -50,6 +51,98 @@ func TestLLMClient_PropagatesTraceContext(t *testing.T) {
 	_, err = client.CreateChatCompletion(ctx, []sdk.Message{{Role: sdk.User, Content: sdk.NewMessageContent("hi")}})
 	assert.NoError(t, err)
 	assert.Equal(t, "00-0102030405060708090a0b0c0d0e0f10-0102030405060708-01", traceparent)
+}
+
+func TestLLMClient_StreamingRetriesConnectionOnly(t *testing.T) {
+	writeStream := func(t *testing.T, w http.ResponseWriter, chunks ...string) {
+		t.Helper()
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, ok := w.(http.Flusher)
+		assert.True(t, ok)
+		for _, chunk := range chunks {
+			_, err := fmt.Fprintf(w, "data: %s\n\n", chunk)
+			assert.NoError(t, err)
+			flusher.Flush()
+		}
+	}
+
+	delta := func(content string) string {
+		return fmt.Sprintf(`{"id":"1","object":"chat.completion.chunk","created":0,"model":"m","choices":[{"delta":{"content":%q},"index":0}]}`, content)
+	}
+
+	tests := []struct {
+		name         string
+		handler      func(t *testing.T, requests int, w http.ResponseWriter)
+		wantContents []string
+		wantRequests int
+		wantErr      bool
+	}{
+		{
+			name: "connection failure is retried before any delta",
+			handler: func(t *testing.T, requests int, w http.ResponseWriter) {
+				if requests == 1 {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				writeStream(t, w, delta("ok"), "[DONE]")
+			},
+			wantContents: []string{"ok"},
+			wantRequests: 2,
+		},
+		{
+			name: "stream broken after a delta is not replayed",
+			handler: func(t *testing.T, requests int, w http.ResponseWriter) {
+				writeStream(t, w, delta("partial"))
+			},
+			wantContents: []string{"partial"},
+			wantRequests: 1,
+		},
+		{
+			name: "connection failing every attempt returns an error",
+			handler: func(t *testing.T, requests int, w http.ResponseWriter) {
+				w.WriteHeader(http.StatusBadRequest)
+			},
+			wantRequests: 2,
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			requests := 0
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				tt.handler(t, requests, w)
+			}))
+			defer srv.Close()
+
+			client, err := server.NewOpenAICompatibleLLMClient(&serverConfig.AgentConfig{
+				Provider:   "openai",
+				Model:      "gpt-4",
+				BaseURL:    srv.URL + "/v1",
+				MaxRetries: 1,
+			}, zap.NewNop())
+			assert.NoError(t, err)
+
+			responses, errs := client.CreateStreamingChatCompletion(context.Background(), []sdk.Message{{Role: sdk.User, Content: sdk.NewMessageContent("hi")}})
+
+			var contents []string
+			for response := range responses {
+				for _, choice := range response.Choices {
+					contents = append(contents, choice.Delta.Content)
+				}
+			}
+
+			streamErr := <-errs
+			if tt.wantErr {
+				assert.Error(t, streamErr)
+			} else {
+				assert.NoError(t, streamErr)
+			}
+			assert.Equal(t, tt.wantContents, contents)
+			assert.Equal(t, tt.wantRequests, requests)
+		})
+	}
 }
 
 func TestNewOpenAICompatibleLLMClient(t *testing.T) {

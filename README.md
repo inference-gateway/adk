@@ -606,7 +606,7 @@ Configure your A2A agent using environment variables. All configuration is optio
 | `AGENT_CLIENT_BASE_URL`                       | -                       | Custom LLM endpoint URL                      |
 | `AGENT_CLIENT_API_KEY`                        | -                       | API key for LLM provider                     |
 | `AGENT_CLIENT_TIMEOUT`                        | `30s`                   | Request timeout                              |
-| `AGENT_CLIENT_MAX_RETRIES`                    | `3`                     | Retry attempts, non-streaming calls only     |
+| `AGENT_CLIENT_MAX_RETRIES`                    | `3`                     | Retry attempts for failed LLM requests       |
 | `AGENT_CLIENT_MAX_CHAT_COMPLETION_ITERATIONS` | `50`                    | Max chat completion rounds                   |
 | `AGENT_CLIENT_MAX_TOKENS`                     | `4096`                  | Maximum tokens per response                  |
 | `AGENT_CLIENT_TEMPERATURE`                    | `0.7`                   | Sampling temperature (0 = leave unset)       |
@@ -620,9 +620,11 @@ Configure your A2A agent using environment variables. All configuration is optio
 the built-in prompt "You are a helpful AI assistant processing an A2A
 (Agent-to-Agent) task. Please provide helpful and accurate responses."
 
-`AGENT_CLIENT_MAX_RETRIES` only applies to `LLMClient.CreateChatCompletion`.
-Agents built with `AgentBuilder` run through `CreateStreamingChatCompletion`,
-which has no retry loop, so the setting has no effect on them.
+`AGENT_CLIENT_MAX_RETRIES` applies to both LLM paths, with a one second linear
+backoff between attempts. On `CreateChatCompletion` the whole request is retried.
+On `CreateStreamingChatCompletion` - the path agents built with `AgentBuilder`
+use - only opening the stream is retried; once the first delta has been
+forwarded to the caller a broken stream fails instead of replaying events.
 
 Each sampling parameter is only put on the completion request when it is set to a
 non-zero value, so leaving one at `0` keeps the provider's own default.
