@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -521,10 +522,34 @@ func (s *A2AServerImpl) authMiddleware(cfg *serverConfig.Config) (gin.HandlerFun
 	}
 }
 
+// validateCardURLs refuses a card whose interface URLs carry userinfo: the card
+// is served without authentication and A2A section 14.3 says it SHOULD NOT
+// include credentials. The error names the interface, never the URL.
+func validateCardURLs(card *types.AgentCard) error {
+	if card == nil {
+		return nil
+	}
+	for i, iface := range card.SupportedInterfaces {
+		parsed, err := url.Parse(iface.URL)
+		if err != nil {
+			return fmt.Errorf("agent card %q supportedInterfaces[%d].url is not a valid url", card.Name, i)
+		}
+		if parsed.User != nil {
+			return fmt.Errorf("agent card %q supportedInterfaces[%d].url must not carry credentials", card.Name, i)
+		}
+	}
+	return nil
+}
+
 // Start starts the A2A server
 func (s *A2AServerImpl) Start(ctx context.Context) error {
 	if s.customAgentCard == nil {
 		return fmt.Errorf("agent card must be configured before starting the server - use SetAgentCard() or LoadAgentCardFromFile()")
+	}
+	for _, card := range []*types.AgentCard{s.customAgentCard, s.extendedAgentCard} {
+		if err := validateCardURLs(card); err != nil {
+			return err
+		}
 	}
 
 	router, err := s.setupRouter(s.cfg)

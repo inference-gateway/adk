@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -183,7 +184,7 @@ func (c *Client) streamJSONRPC(ctx context.Context, method types.A2AMethod, para
 	c.setHeaders(httpReq)
 	httpReq.Header.Set("Accept", "text/event-stream")
 
-	c.logger.Debug("sending streaming request", zap.String("url", c.getA2AEndpointURL()), zap.String("method", string(method)))
+	c.logger.Debug("sending streaming request", zap.String("url", loggableURL(c.getA2AEndpointURL())), zap.String("method", string(method)))
 
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -328,7 +329,7 @@ func (c *Client) SetTaskPushNotificationConfig(ctx context.Context, params types
 	c.logger.Debug("setting task push notification config",
 		zap.String("method", string(types.A2AMethodCreateTaskPushNotificationConfig)),
 		zap.Stringp("task_id", params.TaskID),
-		zap.String("url", params.URL))
+		zap.String("url", loggableURL(params.URL)))
 	return c.doJSONRPCCall(ctx, types.A2AMethodCreateTaskPushNotificationConfig, params)
 }
 
@@ -493,7 +494,7 @@ func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
 
 // doRequestWithContext performs the HTTP request with context support and handles the response
 func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequest, resp *types.JSONRPCSuccessResponse) error {
-	c.logger.Debug("preparing request", zap.String("method", string(req.Method)), zap.String("base_url", c.config.BaseURL))
+	c.logger.Debug("preparing request", zap.String("method", string(req.Method)), zap.String("base_url", loggableURL(c.config.BaseURL)))
 
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -692,4 +693,16 @@ func NewClientWithLogger(baseURL string, logger *zap.Logger) A2AClient {
 	config := DefaultConfig(baseURL)
 	config.Logger = logger
 	return NewClientWithConfig(config)
+}
+
+// loggableURL drops userinfo, query and fragment from a URL before it is
+// logged, so a basic-auth password or a token in the base or webhook URL never
+// reaches the logs (A2A section 13.4).
+func loggableURL(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	parsed.User, parsed.RawQuery, parsed.Fragment = nil, "", ""
+	return parsed.String()
 }

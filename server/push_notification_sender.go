@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -79,9 +80,21 @@ func (s *HTTPPushNotificationSender) SendTaskUpdate(ctx context.Context, config 
 
 	s.logger.Info("push notification sent successfully",
 		zap.String("task_id", task.ID),
-		zap.String("webhook_url", config.URL),
+		zap.String("webhook_url", loggableURL(config.URL)),
 		zap.String("state", string(task.Status.State)),
 		zap.Int("status_code", resp.StatusCode))
 
 	return nil
+}
+
+// loggableURL drops userinfo, query and fragment from a client-supplied URL
+// before it is logged: webhook URLs often carry tokens there, and A2A section
+// 13.4 forbids credentials in logs.
+func loggableURL(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	parsed.User, parsed.RawQuery, parsed.Fragment = nil, "", ""
+	return parsed.String()
 }
