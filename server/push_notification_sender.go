@@ -35,31 +35,9 @@ func NewHTTPPushNotificationSender(logger *zap.Logger) *HTTPPushNotificationSend
 	}
 }
 
-// TaskUpdateNotification represents the payload sent to webhook URLs
-type TaskUpdateNotification struct {
-	Type      string      `json:"type"`
-	TaskID    string      `json:"taskId"`
-	State     string      `json:"state"`
-	Timestamp string      `json:"timestamp"`
-	Task      *types.Task `json:"task,omitempty"`
-}
-
-// SendTaskUpdate sends a push notification about a task update
+// SendTaskUpdate posts the task to the webhook as an A2A StreamResponse (spec section 4.3.3).
 func (s *HTTPPushNotificationSender) SendTaskUpdate(ctx context.Context, config types.TaskPushNotificationConfig, task *types.Task) error {
-	timestamp := ""
-	if task.Status.Timestamp != nil {
-		timestamp = time.Now().Format(time.RFC3339)
-	}
-
-	notification := TaskUpdateNotification{
-		Type:      "task_update",
-		TaskID:    task.ID,
-		State:     string(task.Status.State),
-		Timestamp: timestamp,
-		Task:      task,
-	}
-
-	payload, err := json.Marshal(notification)
+	payload, err := json.Marshal(types.StreamResponse{Task: task})
 	if err != nil {
 		return fmt.Errorf("failed to marshal notification payload: %w", err)
 	}
@@ -69,7 +47,7 @@ func (s *HTTPPushNotificationSender) SendTaskUpdate(ctx context.Context, config 
 		return fmt.Errorf("failed to create HTTP request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/a2a+json")
 	req.Header.Set("User-Agent", "A2A-Server/1.0")
 
 	if config.Token != nil && *config.Token != "" {
