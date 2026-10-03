@@ -302,11 +302,12 @@ func (h *MyTaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 
 ### Streaming Artifacts
 
-`StreamableTaskHandler.HandleStreamingTask` returns a channel of CloudEvents (`<-chan cloudevents.Event`). Attach the artifact to the task as you produce it - the task snapshot streamed to the client carries its `artifacts` - and emit CloudEvents for progress and state changes:
+`StreamableTaskHandler.HandleStreamingTask` returns a channel of CloudEvents (`<-chan cloudevents.Event`). To stream an artifact, emit a CloudEvent of type `types.EventTaskArtifactUpdated` carrying a `types.TaskArtifactUpdateEvent`; the server applies it to the task and forwards it to the client as an `artifactUpdate` response. The only task snapshot on the stream is the one sent before `HandleStreamingTask` runs, so artifacts attached later with `AddArtifactToTask` are persisted with the final task (visible through `GetTask`) but never streamed.
 
 ```go
 import (
     cloudevents "github.com/cloudevents/sdk-go/v2"
+    uuid "github.com/google/uuid"
     "github.com/inference-gateway/adk/types"
 )
 
@@ -316,20 +317,32 @@ func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *type
     go func() {
         defer close(eventsChan)
 
-        // Create artifact during processing and attach it to the task
+        // Create artifact during processing and stream it to the client
         artifact := h.artifactService.CreateTextArtifact(
             "Streaming Result",
             "Partial result from streaming",
             "Current progress: 50%",
         )
-        h.artifactService.AddArtifactToTask(task, artifact)
+        lastChunk := true
+        artifactEvent := cloudevents.NewEvent()
+        artifactEvent.SetType(types.EventTaskArtifactUpdated)
+        if err := artifactEvent.SetData(cloudevents.ApplicationJSON, h.artifactService.CreateTaskArtifactUpdateEvent(
+            task.ID,
+            task.GetContextID(),
+            artifact,
+            nil,
+            &lastChunk,
+        )); err != nil {
+            return
+        }
+        eventsChan <- artifactEvent
 
-        // Emit a delta so the client sees progress along with the task artifacts
+        // Emit a delta so the client sees progress alongside the artifact
         deltaEvent := cloudevents.NewEvent()
         deltaEvent.SetType(types.EventDelta)
         if err := deltaEvent.SetData(cloudevents.ApplicationJSON, types.Message{
             MessageID: uuid.New().String(),
-            ContextID: &task.ContextID,
+            ContextID: task.ContextID,
             TaskID:    &task.ID,
             Role:      types.RoleAgent,
             Parts:     []types.Part{types.CreateTextPart("artifact ready for download")},
@@ -353,7 +366,7 @@ func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *type
 }
 ```
 
-If you drive your own transport and need a protocol `TaskArtifactUpdateEvent`, build one with `artifactService.CreateTaskArtifactUpdateEvent(task.ID, task.ContextID, artifact, appendFlag, lastChunkFlag)`.
+`artifactService.CreateTaskArtifactUpdateEvent(taskID, contextID, artifact, appendFlag, lastChunkFlag)` builds the protocol `TaskArtifactUpdateEvent`. With the built-in transport this is how artifacts reach streaming clients; the same event also works if you drive your own transport.
 
 ## Client-Side Usage
 
@@ -618,7 +631,7 @@ for _, result := range results {
 
 ### Handling Streaming Artifact Updates
 
-`SendTaskStreaming` returns a channel of JSON-RPC responses, each carrying the current task snapshot - including its artifacts:
+`SendTaskStreaming` returns a channel of JSON-RPC responses whose `Result` is a `types.StreamResponse`: one `task` snapshot first, then `statusUpdate` and `artifactUpdate` responses. Decode each `Result` and read `ArtifactUpdate.Artifact`:
 
 ```go
 responses, err := a2aClient.SendTaskStreaming(ctx, params)
@@ -627,22 +640,28 @@ if err != nil {
 }
 
 for response := range responses {
-    task, err := artifactHelper.ExtractTaskFromResponse(&response)
+    resultBytes, err := json.Marshal(response.Result)
     if err != nil {
         continue
     }
 
-    for _, artifact := range artifactHelper.ExtractArtifactsFromTask(task) {
-        name := artifact.ArtifactID
-        if artifact.Name != nil {
-            name = *artifact.Name
-        }
-        fmt.Printf("Artifact available: %s\n", name)
+    var event types.StreamResponse
+    if err := json.Unmarshal(resultBytes, &event); err != nil || event.ArtifactUpdate == nil {
+        continue
     }
+
+    artifact := event.ArtifactUpdate.Artifact
+    name := artifact.ArtifactID
+    if artifact.Name != nil {
+        name = *artifact.Name
+    }
+    fmt.Printf("Artifact available: %s\n", name)
 }
 ```
 
-If your transport delivers raw `artifact-update` events (for example a custom SSE consumer), `artifactHelper.ExtractArtifactUpdateFromStreamEvent(eventData)` converts a `types.TaskArtifactUpdateEvent` or its decoded `map[string]any` form into a typed event.
+Artifacts attached to the task without an `artifactUpdate` event do not appear on the stream - fetch them with `GetTask` after the task completes.
+
+`artifactHelper.ExtractArtifactUpdateFromStreamEvent(eventData)` only accepts an already-typed `types.TaskArtifactUpdateEvent` or a legacy A2A v0.3 map carrying `"kind": "artifact-update"`, which v1.0 stream events never contain - see [#375](https://github.com/inference-gateway/adk/issues/375). Decode `types.StreamResponse` as above instead.
 
 ## Storage Layout
 
