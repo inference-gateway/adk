@@ -30,7 +30,7 @@ type Config struct {
 //  1. Fetch the public agent card (unauthenticated) and read its securitySchemes
 //     to discover how to authenticate.
 //  2. Attach the out-of-band credential as an Authorization header.
-//  3. Call agent/getAuthenticatedExtendedCard to receive the richer card.
+//  3. Call GetExtendedAgentCard to receive the richer card.
 //
 // To run: go run .
 func main() {

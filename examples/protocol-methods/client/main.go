@@ -26,7 +26,7 @@ type Config struct {
 	WebhookURL2 string `env:"WEBHOOK_URL_2,default=http://localhost:9001/webhook"`
 }
 
-// submitTask sends a single message/send request and returns the created task.
+// submitTask sends a single SendMessage request and returns the created task.
 func submitTask(ctx context.Context, a2a client.A2AClient, text string, logger *zap.Logger) (*types.Task, error) {
 	resp, err := a2a.SendTask(ctx, types.SendMessageRequest{
 		Message: types.Message{
@@ -50,14 +50,14 @@ func submitTask(ctx context.Context, a2a client.A2AClient, text string, logger *
 	return &task, nil
 }
 
-// demonstrateAuthenticatedExtendedCard calls `agent/getAuthenticatedExtendedCard`.
+// demonstrateAuthenticatedExtendedCard calls `GetExtendedAgentCard`.
 //
 // This is the JSON-RPC counterpart of the public `/.well-known/agent-card.json`
 // endpoint. It returns the same agent card the server is configured with, but
 // the call travels through the JSON-RPC route - which means it is subject to
 // whatever authentication middleware the server has installed.
 func demonstrateAuthenticatedExtendedCard(ctx context.Context, a2a client.A2AClient, logger *zap.Logger) {
-	fmt.Println("\n=== agent/getAuthenticatedExtendedCard ===")
+	fmt.Println("\n=== GetExtendedAgentCard ===")
 	resp, err := a2a.GetAuthenticatedExtendedCard(ctx, types.GetExtendedAgentCardRequest{})
 	if err != nil {
 		logger.Error("failed to fetch authenticated extended card", zap.Error(err))
@@ -67,13 +67,13 @@ func demonstrateAuthenticatedExtendedCard(ctx context.Context, a2a client.A2ACli
 	fmt.Println(string(cardBytes))
 }
 
-// demonstrateListTasks calls `tasks/list` repeatedly to walk through paginated results.
+// demonstrateListTasks calls `ListTasks` repeatedly to walk through paginated results.
 //
 // The server caps the page size internally; what we control from the client is
 // `PageSize` and the opaque `PageToken` returned as `NextPageToken` on the
 // previous page. Looping until no token comes back is the canonical pagination loop.
 func demonstrateListTasks(ctx context.Context, a2a client.A2AClient, logger *zap.Logger) {
-	fmt.Println("\n=== tasks/list (with pagination) ===")
+	fmt.Println("\n=== ListTasks (with pagination) ===")
 	pageSize := 2
 	pageToken := ""
 	page := 1
@@ -120,7 +120,7 @@ func demonstrateListTasks(ctx context.Context, a2a client.A2AClient, logger *zap
 // that both webhooks are still active when the task completes and real push
 // notifications are delivered to both webhook sinks.
 func setupPushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID string, webhookURLs []string, logger *zap.Logger) {
-	fmt.Println("\n=== tasks/pushNotificationConfig/{set,get,list} ===")
+	fmt.Println("\n=== Create/Get/ListTaskPushNotificationConfig(s) ===")
 
 	authToken := "demo-shared-secret"
 
@@ -210,7 +210,7 @@ func waitForTaskAndCleanupPushConfig(ctx context.Context, a2a client.A2AClient, 
 }
 
 func deletePushNotificationConfig(ctx context.Context, a2a client.A2AClient, taskID string, logger *zap.Logger) {
-	fmt.Println("\n=== tasks/pushNotificationConfig/delete ===")
+	fmt.Println("\n=== DeleteTaskPushNotificationConfig ===")
 	if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotificationConfigRequest{
 		TaskID: taskID,
 	}); err != nil {
@@ -220,13 +220,13 @@ func deletePushNotificationConfig(ctx context.Context, a2a client.A2AClient, tas
 	fmt.Printf("delete → webhook config for task %s removed\n", taskID)
 }
 
-// demonstrateCancel cancels an in-flight task via `tasks/cancel`.
+// demonstrateCancel cancels an in-flight task via `CancelTask`.
 //
 // The bundled server delays task completion for several seconds, so calling
-// cancel immediately after `message/send` is enough to flip the task into
+// cancel immediately after `SendMessage` is enough to flip the task into
 // the CANCELLED state.
 func demonstrateCancel(ctx context.Context, a2a client.A2AClient, taskID string, logger *zap.Logger) {
-	fmt.Println("\n=== tasks/cancel ===")
+	fmt.Println("\n=== CancelTask ===")
 	resp, err := a2a.CancelTask(ctx, types.CancelTaskRequest{ID: taskID})
 	if err != nil {
 		logger.Error("failed to cancel task", zap.Error(err))
@@ -242,9 +242,9 @@ func demonstrateCancel(ctx context.Context, a2a client.A2AClient, taskID string,
 }
 
 // demonstrateResubscribe opens a streaming task, drops the connection, and
-// then reattaches with `tasks/resubscribe`.
+// then reattaches with `SubscribeToTask`.
 func demonstrateResubscribe(ctx context.Context, a2a client.A2AClient, logger *zap.Logger) {
-	fmt.Println("\n=== tasks/resubscribe ===")
+	fmt.Println("\n=== SubscribeToTask ===")
 
 	streamCtx, cancelStream := context.WithCancel(ctx)
 	streamCh, err := a2a.SendTaskStreaming(streamCtx, types.SendMessageRequest{
@@ -291,7 +291,7 @@ func demonstrateResubscribe(ctx context.Context, a2a client.A2AClient, logger *z
 	cancelStream()
 	fmt.Printf("dropped initial stream for task %s; re-attaching...\n", taskID)
 
-	// Reattach with tasks/resubscribe. The server first re-emits the current
+	// Reattach with SubscribeToTask. The server first re-emits the current
 	// task state, then forwards any further streaming events.
 	resubCh, err := a2a.ResubscribeTask(ctx, types.SubscribeToTaskRequest{ID: taskID})
 	if err != nil {
@@ -321,7 +321,7 @@ func demonstrateResubscribe(ctx context.Context, a2a client.A2AClient, logger *z
 // Protocol Methods A2A Client Example
 //
 // Walks through every JSON-RPC method that is supported by the ADK beyond
-// `message/send`, `message/stream`, and `tasks/get`. See the example README
+// `SendMessage`, `SendStreamingMessage`, and `GetTask`. See the example README
 // for an end-to-end description.
 func main() {
 	ctx := context.Background()
@@ -352,7 +352,7 @@ func main() {
 	// 1. Pull the authenticated/extended agent card.
 	demonstrateAuthenticatedExtendedCard(ctx, a2a, logger)
 
-	// 2. Submit a handful of tasks so tasks/list has something to page through.
+	// 2. Submit a handful of tasks so ListTasks has something to page through.
 	prompts := []string{
 		"first protocol-methods task",
 		"second protocol-methods task",

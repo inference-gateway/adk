@@ -728,8 +728,8 @@ if err != nil {
 
 Artifacts are fully integrated with the A2A protocol:
 
-- **`tasks/get`**: Returns tasks with their associated artifacts
-- **`message/stream`**: Can receive `TaskArtifactUpdateEvent` for real-time updates
+- **`GetTask`**: Returns tasks with their associated artifacts
+- **`SendStreamingMessage`**: Can receive `TaskArtifactUpdateEvent` for real-time updates
 - **Task Lifecycle**: Artifacts persist with tasks throughout their lifecycle
 - **Protocol Compliance**: All artifact structures conform to the A2A specification
 

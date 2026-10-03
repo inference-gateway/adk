@@ -10,7 +10,7 @@ The ADK follows the [A2A specification, section 7](https://a2a-protocol.org/late
 2. **Credential acquisition is out-of-band** - the client obtains a token/key however the chosen scheme dictates.
 3. **Transmission** - the client sends the credential (e.g. `Authorization: Bearer <token>`) on every request.
 4. **Server enforcement** - with `AUTH_ENABLED=true` the `/a2a` endpoint is protected; unauthenticated requests get `401` with a `WWW-Authenticate` challenge.
-5. **Extended card** - if the card sets `capabilities.extendedAgentCard: true`, an authenticated client MAY call `agent/getAuthenticatedExtendedCard` to receive a richer card and SHOULD replace its cached public card with the response.
+5. **Extended card** - if the card sets `capabilities.extendedAgentCard: true`, an authenticated client MAY call `GetExtendedAgentCard` to receive a richer card and SHOULD replace its cached public card with the response.
 
 ## Declaring security schemes on the card
 
@@ -68,7 +68,7 @@ Nothing in the ADK is Keycloak-specific: any provider that serves an OpenID Conn
 
 ## Configuring the extended card
 
-The extended card is served only to authenticated callers via `agent/getAuthenticatedExtendedCard`. Configure it with the builder; this also forces `capabilities.extendedAgentCard: true` on the public card:
+The extended card is served only to authenticated callers via `GetExtendedAgentCard`. Configure it with the builder; this also forces `capabilities.extendedAgentCard: true` on the public card:
 
 ```go
 srv, _ := server.NewA2AServerBuilder(cfg, logger).

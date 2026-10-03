@@ -24,11 +24,11 @@ import (
 //	  Build()
 type A2AServerBuilder interface {
 	// WithBackgroundTaskHandler sets a custom task handler for polling/queue-based scenarios.
-	// This handler will be used for message/send requests and background queue processing.
+	// This handler will be used for SendMessage requests and background queue processing.
 	WithBackgroundTaskHandler(handler TaskHandler) A2AServerBuilder
 
 	// WithStreamingTaskHandler sets a custom task handler for streaming scenarios.
-	// This handler will be used for message/stream requests.
+	// This handler will be used for SendStreamingMessage requests.
 	WithStreamingTaskHandler(handler StreamableTaskHandler) A2AServerBuilder
 
 	// WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios.
@@ -60,7 +60,7 @@ type A2AServerBuilder interface {
 	WithAgentCardFromFile(filePath string, overrides map[string]any) A2AServerBuilder
 
 	// WithExtendedAgentCard sets the extended agent card returned to authenticated
-	// callers via agent/getAuthenticatedExtendedCard. Setting it forces the served
+	// callers via GetExtendedAgentCard. Setting it forces the served
 	// public card to advertise supportsExtendedAgentCard: true.
 	WithExtendedAgentCard(agentCard types.AgentCard) A2AServerBuilder
 

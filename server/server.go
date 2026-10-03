@@ -120,7 +120,7 @@ type A2AServerImpl struct {
 	customAgentCard *types.AgentCard
 
 	// Optional extended agent card returned to authenticated callers via
-	// agent/getAuthenticatedExtendedCard. When nil but the public card declares
+	// GetExtendedAgentCard. When nil but the public card declares
 	// supportsExtendedAgentCard, the RPC returns ErrExtendedAgentCardNotConfigured.
 	extendedAgentCard *types.AgentCard
 
@@ -342,7 +342,7 @@ func (s *A2AServerImpl) SetAgentCard(agentCard types.AgentCard) {
 }
 
 // SetExtendedAgentCard sets the extended agent card returned to authenticated
-// callers via agent/getAuthenticatedExtendedCard.
+// callers via GetExtendedAgentCard.
 func (s *A2AServerImpl) SetExtendedAgentCard(agentCard types.AgentCard) {
 	s.extendedAgentCard = &agentCard
 }
@@ -755,34 +755,34 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 	}
 
 	s.logger.Info("received a2a request",
-		zap.String("method", req.Method),
+		zap.String("method", string(req.Method)),
 		zap.Any("id", req.ID))
 
 	switch req.Method {
-	case "message/send":
+	case types.A2AMethodSendMessage:
 		s.protocolHandler.HandleMessageSend(c, req)
-	case "message/stream":
+	case types.A2AMethodSendStreamingMessage:
 		s.protocolHandler.HandleMessageStream(c, req, s.streamingTaskHandler)
-	case "tasks/get":
+	case types.A2AMethodGetTask:
 		s.protocolHandler.HandleTaskGet(c, req)
-	case "tasks/list":
+	case types.A2AMethodListTasks:
 		s.protocolHandler.HandleTaskList(c, req)
-	case "tasks/cancel":
+	case types.A2AMethodCancelTask:
 		s.protocolHandler.HandleTaskCancel(c, req)
-	case "tasks/pushNotificationConfig/set":
+	case types.A2AMethodCreateTaskPushNotificationConfig:
 		s.protocolHandler.HandleTaskPushNotificationConfigSet(c, req)
-	case "tasks/pushNotificationConfig/get":
+	case types.A2AMethodGetTaskPushNotificationConfig:
 		s.protocolHandler.HandleTaskPushNotificationConfigGet(c, req)
-	case "tasks/pushNotificationConfig/list":
+	case types.A2AMethodListTaskPushNotificationConfigs:
 		s.protocolHandler.HandleTaskPushNotificationConfigList(c, req)
-	case "tasks/pushNotificationConfig/delete":
+	case types.A2AMethodDeleteTaskPushNotificationConfig:
 		s.protocolHandler.HandleTaskPushNotificationConfigDelete(c, req)
-	case "tasks/resubscribe":
+	case types.A2AMethodSubscribeToTask:
 		s.protocolHandler.HandleTaskResubscribe(c, req, s.streamingTaskHandler)
-	case "agent/getAuthenticatedExtendedCard":
+	case types.A2AMethodGetExtendedAgentCard:
 		s.protocolHandler.HandleGetAuthenticatedExtendedCard(c, req, s.customAgentCard, s.extendedAgentCard)
 	default:
-		s.logger.Warn("unknown method requested", zap.String("method", req.Method))
+		s.logger.Warn("unknown method requested", zap.String("method", string(req.Method)))
 		s.responseSender.SendError(c, req.ID, int(ErrMethodNotFound), "method not found")
 	}
 }

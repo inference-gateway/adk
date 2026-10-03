@@ -88,10 +88,9 @@ func run(input, output string) error {
 // instead of its default `TYPEVALUE` shouting form. `root` is the schemas map
 // the hoisted entries are added to; `node` is the subtree being walked.
 //
-// Assumes each enum value is SCREAMING_SNAKE prefixed by the screaming type
-// name (ROLE_AGENT under "Role") and that titles are unique - two different
-// enums sharing a title would collapse into one $ref. Both hold for today's
-// A2A schema (only Role/TaskState, plain two-word titles).
+// Assumes titles are unique - two different enums sharing a title would
+// collapse into one $ref. This holds for today's A2A schema (Role, TaskState
+// and A2AMethod, all plain titles).
 func hoistTitledEnums(root map[string]any, node any) {
 	switch v := node.(type) {
 	case map[string]any:
@@ -134,15 +133,20 @@ func pascal(s string) string {
 	return b.String()
 }
 
-// enumVarnames maps each SCREAMING_SNAKE enum value to `<Type><CamelSuffix>`,
-// stripping the type-derived prefix (ROLE_ from ROLE_AGENT, TASK_STATE_ from
-// TASK_STATE_WORKING) to match the previous generator's constant names.
+// enumVarnames maps each enum value to `<Type><Suffix>`. A value carrying the
+// screaming type prefix loses it and is camel-cased (TASK_STATE_WORKING ->
+// TaskStateWorking) to match the previous generator's constant names; any other
+// value is kept verbatim (SendMessage -> A2AMethodSendMessage).
 func enumVarnames(typeName string, enum []any) []any {
 	prefix := screaming(typeName) + "_"
 	names := make([]any, 0, len(enum))
 	for _, e := range enum {
 		val, _ := e.(string)
-		suffix := strings.TrimPrefix(val, prefix)
+		suffix, hasTypePrefix := strings.CutPrefix(val, prefix)
+		if !hasTypePrefix {
+			names = append(names, typeName+val)
+			continue
+		}
 		names = append(names, typeName+camel(suffix))
 	}
 	return names

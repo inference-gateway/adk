@@ -46,28 +46,24 @@ func buildTokenAuthServer(t *testing.T, cfg serverConfig.Config) server.A2AServe
 	return srv
 }
 
-func postA2A(t *testing.T, baseURL, authorization string) *http.Response {
+func postA2A(t *testing.T, baseURL, authorization, method string) *http.Response {
 	t.Helper()
-	body := `{"jsonrpc":"2.0","id":"1","method":"tasks/get","params":{"id":"missing"}}`
+	body := fmt.Sprintf(`{"jsonrpc":"2.0","id":"1","method":%q,"params":{"id":"missing"}}`, method)
 	req, err := http.NewRequest(http.MethodPost, baseURL+"/a2a", strings.NewReader(body))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	if authorization != "" {
 		req.Header.Set("Authorization", authorization)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = resp.Body.Close() })
 	return resp
 }
 
-func TestServer_BindAddressAndStaticBearerToken(t *testing.T) {
-	cfg := serverConfig.Config{}
-	cfg.ServerConfig.Host = "127.0.0.1"
-	cfg.ServerConfig.Port = freePort(t)
-	cfg.AuthConfig.Token = testBearerToken
-	srv := buildTokenAuthServer(t, cfg)
-
+// startServer runs srv on the loopback port and returns its base URL once /health answers.
+func startServer(t *testing.T, srv server.A2AServer, port string) string {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { _ = srv.Start(ctx) }()
 	t.Cleanup(func() {
@@ -77,7 +73,7 @@ func TestServer_BindAddressAndStaticBearerToken(t *testing.T) {
 		_ = srv.Stop(stopCtx)
 	})
 
-	baseURL := fmt.Sprintf("http://127.0.0.1:%s", cfg.ServerConfig.Port)
+	baseURL := fmt.Sprintf("http://127.0.0.1:%s", port)
 	require.Eventually(t, func() bool {
 		resp, err := http.Get(baseURL + "/health")
 		if err != nil {
@@ -86,6 +82,15 @@ func TestServer_BindAddressAndStaticBearerToken(t *testing.T) {
 		_ = resp.Body.Close()
 		return resp.StatusCode == http.StatusOK
 	}, 5*time.Second, 20*time.Millisecond, "server did not come up on the loopback bind address")
+	return baseURL
+}
+
+func TestServer_BindAddressAndStaticBearerToken(t *testing.T) {
+	cfg := serverConfig.Config{}
+	cfg.ServerConfig.Host = "127.0.0.1"
+	cfg.ServerConfig.Port = freePort(t)
+	cfg.AuthConfig.Token = testBearerToken
+	baseURL := startServer(t, buildTokenAuthServer(t, cfg), cfg.ServerConfig.Port)
 
 	t.Run("public card declares the bearer scheme", func(t *testing.T) {
 		resp, err := http.Get(baseURL + "/.well-known/agent-card.json")
@@ -100,19 +105,19 @@ func TestServer_BindAddressAndStaticBearerToken(t *testing.T) {
 	})
 
 	t.Run("missing token is rejected", func(t *testing.T) {
-		resp := postA2A(t, baseURL, "")
+		resp := postA2A(t, baseURL, "", "GetTask")
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		assert.Equal(t, "Bearer", resp.Header.Get("WWW-Authenticate"))
 	})
 
 	t.Run("wrong token is rejected", func(t *testing.T) {
-		resp := postA2A(t, baseURL, "Bearer not-the-token")
+		resp := postA2A(t, baseURL, "Bearer not-the-token", "GetTask")
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		assert.Contains(t, resp.Header.Get("WWW-Authenticate"), "invalid_token")
 	})
 
 	t.Run("right token is served", func(t *testing.T) {
-		resp := postA2A(t, baseURL, "Bearer "+testBearerToken)
+		resp := postA2A(t, baseURL, "Bearer "+testBearerToken, "GetTask")
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 }

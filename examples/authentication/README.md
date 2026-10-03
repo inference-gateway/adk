@@ -11,7 +11,7 @@ The flow has three steps:
    via `server.OIDCSecuritySchemes(cfg.AuthConfig)`.
 2. **Credentials** - the client obtains a credential out of band (from the discovered OIDC
    provider) and attaches it as an `Authorization` header on every request.
-3. **Extended card** - the authenticated client calls `agent/getAuthenticatedExtendedCard` to
+3. **Extended card** - the authenticated client calls `GetExtendedAgentCard` to
    receive a richer card. The server exposes it via `WithExtendedAgentCard()`, which also
    advertises `capabilities.extendedAgentCard: true` on the public card.
 
@@ -63,7 +63,7 @@ startup. Nothing here is Keycloak-specific: any OpenID Connect issuer works with
 `server/e2e_test.go` (build tag `e2e`) drives the full contract against the running Keycloak:
 requests with no / bad token are rejected with **HTTP 401 + a `WWW-Authenticate` challenge and no
 task submitted**, while requests carrying a valid Keycloak JWT submit the task and return the
-authenticated extended card. Both `message/send` and `agent/getAuthenticatedExtendedCard` are
+authenticated extended card. Both `SendMessage` and `GetExtendedAgentCard` are
 covered.
 
 ```bash
@@ -75,7 +75,7 @@ The test skips itself if Keycloak is not reachable.
 
 ## Error contract (spec 3.3.4)
 
-`agent/getAuthenticatedExtendedCard` returns:
+`GetExtendedAgentCard` returns:
 
 - `-32004` (unsupported operation) when the card does not advertise `capabilities.extendedAgentCard`.
 - `-32007` (extended card not configured) when the flag is set but no extended card is configured.

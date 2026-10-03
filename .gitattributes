@@ -1,4 +1,7 @@
 scripts/* linguist-vendored=true
 
 types/generated_types.go linguist-generated=true
+client/mocks/*.go linguist-generated=true
+server/mocks/*.go linguist-generated=true
+schema.yaml linguist-generated=true
 CHANGELOG.md linguist-generated=true

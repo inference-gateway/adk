@@ -22,8 +22,8 @@ import (
 
 // SlowEchoTaskHandler is a background task handler that intentionally takes a
 // few seconds to complete each task. The artificial delay gives the client
-// enough time to demonstrate `tasks/cancel`, `tasks/list`, and the
-// `tasks/pushNotificationConfig/*` family before the task settles into a
+// enough time to demonstrate `CancelTask`, `ListTasks`, and the
+// `*TaskPushNotificationConfig(s)` methods before the task settles into a
 // terminal state.
 type SlowEchoTaskHandler struct {
 	logger *zap.Logger
@@ -39,7 +39,7 @@ func NewSlowEchoTaskHandler(logger *zap.Logger, delay time.Duration) *SlowEchoTa
 
 // HandleTask processes background tasks. It sets the task to WORKING, sleeps for
 // the configured delay (respecting cancellation), and then echoes the user
-// message back. Honoring `ctx.Done()` is what makes `tasks/cancel` observable
+// message back. Honoring `ctx.Done()` is what makes `CancelTask` observable
 // to the client - the moment the task manager cancels the context, this
 // handler returns and the task transitions to CANCELLED.
 func (h *SlowEchoTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
@@ -88,7 +88,7 @@ func (h *SlowEchoTaskHandler) HandleTask(ctx context.Context, task *types.Task, 
 }
 
 // HandleStreamingTask satisfies the StreamableTaskHandler interface so the
-// server can demonstrate `tasks/resubscribe`. It emits a sequence of delta
+// server can demonstrate `SubscribeToTask`. It emits a sequence of delta
 // events with a small delay between them so a client can resubscribe in the
 // middle of the stream.
 func (h *SlowEchoTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
@@ -157,17 +157,17 @@ func (h *SlowEchoTaskHandler) GetAgent() server.OpenAICompatibleAgent { return h
 // Protocol Methods A2A Server Example
 //
 // This example runs an A2A server that intentionally exercises every JSON-RPC
-// method beyond the common `message/send`, `message/stream`, and `tasks/get`
+// method beyond the common `SendMessage`, `SendStreamingMessage`, and `GetTask`
 // trio. The bundled client (../client) walks through each of:
 //
-//   - `tasks/cancel`
-//   - `tasks/list` (with pagination)
-//   - `tasks/pushNotificationConfig/set`
-//   - `tasks/pushNotificationConfig/get`
-//   - `tasks/pushNotificationConfig/list`
-//   - `tasks/pushNotificationConfig/delete`
-//   - `tasks/resubscribe`
-//   - `agent/getAuthenticatedExtendedCard`
+//   - `CancelTask`
+//   - `ListTasks` (with pagination)
+//   - `CreateTaskPushNotificationConfig`
+//   - `GetTaskPushNotificationConfig`
+//   - `ListTaskPushNotificationConfigs`
+//   - `DeleteTaskPushNotificationConfig`
+//   - `SubscribeToTask`
+//   - `GetExtendedAgentCard`
 //
 // The slow task handler is deliberately sluggish so the client has time to
 // list and cancel tasks before they reach a terminal state.
@@ -178,7 +178,7 @@ func main() {
 		Environment: "development",
 		A2A: serverConfig.Config{
 			AgentName:        "protocol-methods-agent",
-			AgentDescription: "Demonstrates the full A2A JSON-RPC surface beyond message/send and tasks/get",
+			AgentDescription: "Demonstrates the full A2A JSON-RPC surface beyond SendMessage and GetTask",
 			AgentVersion:     "0.1.0",
 			Debug:            false,
 			CapabilitiesConfig: serverConfig.CapabilitiesConfig{

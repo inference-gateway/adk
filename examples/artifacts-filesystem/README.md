@@ -144,7 +144,7 @@ curl -X POST http://localhost:8080/a2a \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "method": "message/send",
+    "method": "SendMessage",
     "id": "test-1",
     "params": {
       "message": {

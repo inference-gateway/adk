@@ -904,7 +904,7 @@ func (tm *DefaultTaskManager) cleanupWithRetention() {
 	}
 }
 
-// parsePageToken decodes the offset carried by a tasks/list page token; an empty token is the first page.
+// parsePageToken decodes the offset carried by a ListTasks page token; an empty token is the first page.
 func parsePageToken(token *string) (int, error) {
 	if token == nil || *token == "" {
 		return 0, nil

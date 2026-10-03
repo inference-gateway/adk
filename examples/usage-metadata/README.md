@@ -22,8 +22,8 @@ This example demonstrates how to track and retrieve **token usage** and **execut
 - Metadata population in completed task responses
 - How `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA` toggles tracking on the
   default task handlers (both background and streaming)
-- How to access usage data from both `message/send` (background) and
-  `message/stream` (streaming) flows
+- How to access usage data from both `SendMessage` (background) and
+  `SendStreamingMessage` (streaming) flows
 
 ## Features
 
@@ -130,7 +130,7 @@ Both default task handlers honour the `EnableUsageMetadata` flag on
 wires the configured value through - so flipping the env var off truly disables
 metadata collection.
 
-**For Background Tasks (`message/send` + `tasks/get`):**
+**For Background Tasks (`SendMessage` + `GetTask`):**
 
 ```go
 handler := server.NewDefaultBackgroundTaskHandler(logger, agent)
@@ -139,13 +139,13 @@ handler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
 // a terminal state (completed/failed/cancelled).
 ```
 
-**For Streaming Tasks (`message/stream`):**
+**For Streaming Tasks (`SendStreamingMessage`):**
 
 ```go
 handler := server.NewDefaultStreamingTaskHandler(logger, agent)
 handler.SetEnableUsageMetadata(cfg.AgentConfig.EnableUsageMetadata)
 // Usage metadata is available on the final task snapshot once the
-// stream completes - fetch it via tasks/get after the stream ends.
+// stream completes - fetch it via GetTask after the stream ends.
 ```
 
 **In Your Code:**

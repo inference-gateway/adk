@@ -49,7 +49,7 @@ Send a task and watch the agent discover and call MCP tools:
 curl -s http://localhost:8080/a2a -H 'Content-Type: application/json' -d '{
   "jsonrpc": "2.0",
   "id": "1",
-  "method": "message/send",
+  "method": "SendMessage",
   "params": {
     "message": {
       "role": "user",

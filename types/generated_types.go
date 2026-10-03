@@ -7,6 +7,51 @@ import (
 	"time"
 )
 
+// Defines values for A2AMethod.
+const (
+	A2AMethodCancelTask                       A2AMethod = "CancelTask"
+	A2AMethodCreateTaskPushNotificationConfig A2AMethod = "CreateTaskPushNotificationConfig"
+	A2AMethodDeleteTaskPushNotificationConfig A2AMethod = "DeleteTaskPushNotificationConfig"
+	A2AMethodGetExtendedAgentCard             A2AMethod = "GetExtendedAgentCard"
+	A2AMethodGetTask                          A2AMethod = "GetTask"
+	A2AMethodGetTaskPushNotificationConfig    A2AMethod = "GetTaskPushNotificationConfig"
+	A2AMethodListTaskPushNotificationConfigs  A2AMethod = "ListTaskPushNotificationConfigs"
+	A2AMethodListTasks                        A2AMethod = "ListTasks"
+	A2AMethodSendMessage                      A2AMethod = "SendMessage"
+	A2AMethodSendStreamingMessage             A2AMethod = "SendStreamingMessage"
+	A2AMethodSubscribeToTask                  A2AMethod = "SubscribeToTask"
+)
+
+// Valid indicates whether the value is a known member of the A2AMethod enum.
+func (e A2AMethod) Valid() bool {
+	switch e {
+	case A2AMethodCancelTask:
+		return true
+	case A2AMethodCreateTaskPushNotificationConfig:
+		return true
+	case A2AMethodDeleteTaskPushNotificationConfig:
+		return true
+	case A2AMethodGetExtendedAgentCard:
+		return true
+	case A2AMethodGetTask:
+		return true
+	case A2AMethodGetTaskPushNotificationConfig:
+		return true
+	case A2AMethodListTaskPushNotificationConfigs:
+		return true
+	case A2AMethodListTasks:
+		return true
+	case A2AMethodSendMessage:
+		return true
+	case A2AMethodSendStreamingMessage:
+		return true
+	case A2AMethodSubscribeToTask:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Role.
 const (
 	RoleAgent       Role = "ROLE_AGENT"
@@ -66,6 +111,9 @@ func (e TaskState) Valid() bool {
 		return false
 	}
 }
+
+// A2AMethod The A2A method to invoke.
+type A2AMethod string
 
 // APIKeySecurityScheme Defines a security scheme using an API key.
 type APIKeySecurityScheme struct {
@@ -419,6 +467,69 @@ type ImplicitOAuthFlow struct {
 	// Scopes The available scopes for the OAuth2 security scheme. A map between the
 	//  scope name and a short description for it. The map MAY be empty.
 	Scopes map[string]string `json:"scopes,omitempty"`
+}
+
+// JSONRPCError A JSON-RPC 2.0 error object; A2A error codes are mapped in spec section 5.4.
+//
+//	Hand-written by inference-gateway, not part of the official a2a.proto, which does not model
+//	the JSON-RPC binding.
+type JSONRPCError struct {
+	// Code The error code, e.g. -32601 for an unknown method.
+	Code int `json:"code"`
+
+	// Data Additional information about the error.
+	Data *Value `json:"data,omitempty"`
+
+	// Message A short description of the error.
+	Message string `json:"message"`
+}
+
+// JSONRPCErrorResponse A JSON-RPC 2.0 response reporting a failed A2A method call (A2A spec section 9.5).
+//
+//	Hand-written by inference-gateway, not part of the official a2a.proto, which does not model
+//	the JSON-RPC binding.
+type JSONRPCErrorResponse struct {
+	// Error The error that occurred.
+	Error JSONRPCError `json:"error"`
+
+	// ID The id of the request this response answers, or null when it could not be read.
+	ID Value `json:"id"`
+
+	// JSONRPC The JSON-RPC version, always "2.0".
+	JSONRPC string `json:"jsonrpc"`
+}
+
+// JSONRPCRequest A JSON-RPC 2.0 request to an A2A agent (A2A spec section 9.3).
+//
+//	Hand-written by inference-gateway, not part of the official a2a.proto, which does not model
+//	the JSON-RPC binding.
+type JSONRPCRequest struct {
+	// ID The request id: a string, a number or null. Omitted for notifications.
+	ID *Value `json:"id,omitempty"`
+
+	// JSONRPC The JSON-RPC version, always "2.0".
+	JSONRPC string `json:"jsonrpc"`
+
+	// Method The A2A method to invoke.
+	Method A2AMethod `json:"method"`
+
+	// Params The method's request message, e.g. a SendMessageRequest for SendMessage.
+	Params *Struct `json:"params,omitempty"`
+}
+
+// JSONRPCSuccessResponse A JSON-RPC 2.0 response carrying the result of an A2A method (A2A spec section 9).
+//
+//	Hand-written by inference-gateway, not part of the official a2a.proto, which does not model
+//	the JSON-RPC binding.
+type JSONRPCSuccessResponse struct {
+	// ID The id of the request this response answers.
+	ID Value `json:"id"`
+
+	// JSONRPC The JSON-RPC version, always "2.0".
+	JSONRPC string `json:"jsonrpc"`
+
+	// Result The method's response message, e.g. a Task for GetTask.
+	Result Value `json:"result"`
 }
 
 // ListTaskPushNotificationConfigsRequest Represents a request for the `ListTaskPushNotificationConfigs` method.
