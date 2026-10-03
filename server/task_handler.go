@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
@@ -114,12 +115,10 @@ func NewDefaultBackgroundTaskHandler(logger *zap.Logger, agent OpenAICompatibleA
 }
 
 // NewDefaultBackgroundTaskHandlerWithAgent creates a new default background task handler with an agent
+//
+// Deprecated: Use NewDefaultBackgroundTaskHandler.
 func NewDefaultBackgroundTaskHandlerWithAgent(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultBackgroundTaskHandler {
-	return &DefaultBackgroundTaskHandler{
-		logger:              logger,
-		agent:               agent,
-		enableUsageMetadata: true,
-	}
+	return NewDefaultBackgroundTaskHandler(logger, agent)
 }
 
 // SetAgent sets the agent for the task handler
@@ -163,11 +162,7 @@ func (bth *DefaultBackgroundTaskHandler) processWithAgentBackground(ctx context.
 
 	usageTracker := NewUsageTracker()
 
-	toolCtx := context.WithValue(ctx, TaskContextKey, task)
-	toolCtx = context.WithValue(toolCtx, UsageTrackerContextKey, usageTracker)
-	if bth.artifactService != nil {
-		toolCtx = context.WithValue(toolCtx, ArtifactServiceContextKey, bth.artifactService)
-	}
+	toolCtx := newToolContext(ctx, task, usageTracker, bth.artifactService)
 
 	eventChan, err := bth.agent.RunWithStream(toolCtx, messages)
 	if err != nil {
@@ -317,14 +312,9 @@ type DefaultStreamingTaskHandler struct {
 
 // NewDefaultStreamingTaskHandler creates a new default streaming task handler
 func NewDefaultStreamingTaskHandler(logger *zap.Logger, agent OpenAICompatibleAgent) *DefaultStreamingTaskHandler {
-	var agentInstance OpenAICompatibleAgent
-	if agent != nil {
-		agentInstance = agent
-	}
-
 	return &DefaultStreamingTaskHandler{
 		logger:              logger,
-		agent:               agentInstance,
+		agent:               agent,
 		enableUsageMetadata: true,
 	}
 }
@@ -369,11 +359,7 @@ func (sth *DefaultStreamingTaskHandler) HandleStreamingTask(ctx context.Context,
 
 	usageTracker := NewUsageTracker()
 
-	toolCtx := context.WithValue(ctx, TaskContextKey, task)
-	toolCtx = context.WithValue(toolCtx, UsageTrackerContextKey, usageTracker)
-	if sth.artifactService != nil {
-		toolCtx = context.WithValue(toolCtx, ArtifactServiceContextKey, sth.artifactService)
-	}
+	toolCtx := newToolContext(ctx, task, usageTracker, sth.artifactService)
 
 	eventChan, err := sth.agent.RunWithStream(toolCtx, messages)
 	if err != nil {
@@ -1368,13 +1354,9 @@ func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Co
 	h.responseSender.SendSuccess(c, req.ID, *extendedCard)
 }
 
-// populateTaskMetadata populates task metadata with usage statistics if enabled
-func (bth *DefaultBackgroundTaskHandler) populateTaskMetadata(task *types.Task, usageTracker *UsageTracker) {
-	if !bth.enableUsageMetadata || usageTracker == nil {
-		return
-	}
-
-	if !usageTracker.HasUsage() {
+// populateTaskMetadata merges the tracked usage statistics into the task metadata
+func populateTaskMetadata(logger *zap.Logger, task *types.Task, usageTracker *UsageTracker) {
+	if usageTracker == nil || !usageTracker.HasUsage() {
 		return
 	}
 
@@ -1384,36 +1366,33 @@ func (bth *DefaultBackgroundTaskHandler) populateTaskMetadata(task *types.Task, 
 	}
 
 	metadata := usageTracker.GetMetadata()
-	for key, value := range metadata {
-		(*task.Metadata)[key] = value
-	}
+	maps.Copy(*task.Metadata, metadata)
 
-	bth.logger.Debug("populated task metadata with usage statistics",
+	logger.Debug("populated task metadata with usage statistics",
 		zap.String("task_id", task.ID),
 		zap.Any("metadata", metadata))
 }
 
-// populateTaskMetadata populates task metadata with usage statistics if enabled (streaming handler)
+func (bth *DefaultBackgroundTaskHandler) populateTaskMetadata(task *types.Task, usageTracker *UsageTracker) {
+	if !bth.enableUsageMetadata {
+		return
+	}
+	populateTaskMetadata(bth.logger, task, usageTracker)
+}
+
 func (sth *DefaultStreamingTaskHandler) populateTaskMetadata(task *types.Task, usageTracker *UsageTracker) {
-	if !sth.enableUsageMetadata || usageTracker == nil {
+	if !sth.enableUsageMetadata {
 		return
 	}
+	populateTaskMetadata(sth.logger, task, usageTracker)
+}
 
-	if !usageTracker.HasUsage() {
-		return
+// newToolContext injects the task, usage tracker and artifact service for tool execution
+func newToolContext(ctx context.Context, task *types.Task, usageTracker *UsageTracker, artifactService ArtifactService) context.Context {
+	toolCtx := context.WithValue(ctx, TaskContextKey, task)
+	toolCtx = context.WithValue(toolCtx, UsageTrackerContextKey, usageTracker)
+	if artifactService != nil {
+		toolCtx = context.WithValue(toolCtx, ArtifactServiceContextKey, artifactService)
 	}
-
-	if task.Metadata == nil {
-		m := make(map[string]any)
-		task.Metadata = &m
-	}
-
-	metadata := usageTracker.GetMetadata()
-	for key, value := range metadata {
-		(*task.Metadata)[key] = value
-	}
-
-	sth.logger.Debug("populated task metadata with usage statistics",
-		zap.String("task_id", task.ID),
-		zap.Any("metadata", metadata))
+	return toolCtx
 }
