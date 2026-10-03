@@ -585,8 +585,17 @@ func isTerminalOrInterrupted(state types.TaskState) bool {
 	return state.IsTerminal() || state.IsInterrupted()
 }
 
-// writeStreamingResponse writes a JSON-RPC response to the streaming connection in SSE format
-func (h *DefaultA2AProtocolHandler) writeStreamingResponse(c *gin.Context, response *types.JSONRPCSuccessResponse) error {
+// setSSEHeaders sets the response headers for an SSE stream.
+func setSSEHeaders(c *gin.Context) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Headers", "Cache-Control")
+}
+
+// writeSSEEvent writes a JSON-RPC response to the streaming connection in SSE format.
+func writeSSEEvent(c *gin.Context, response any) error {
 	responseBytes, err := json.Marshal(response)
 	if err != nil {
 		return fmt.Errorf("failed to marshal response: %w", err)
@@ -608,27 +617,16 @@ func (h *DefaultA2AProtocolHandler) writeStreamingResponse(c *gin.Context, respo
 	return nil
 }
 
-// writeStreamingErrorResponse writes a JSON-RPC error response to the streaming connection in SSE format
-func (h *DefaultA2AProtocolHandler) writeStreamingErrorResponse(c *gin.Context, response *types.JSONRPCErrorResponse) error {
-	responseBytes, err := json.Marshal(response)
-	if err != nil {
-		return fmt.Errorf("failed to marshal error response: %w", err)
+// writeSSEInternalError streams an internal-error JSON-RPC response and logs a write failure.
+func (h *DefaultA2AProtocolHandler) writeSSEInternalError(c *gin.Context, id *types.Value, message string) {
+	errorResponse := types.JSONRPCErrorResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error:   newJSONRPCError(int(ErrInternalError), message),
 	}
-
-	if _, err := c.Writer.Write([]byte("data: ")); err != nil {
-		return fmt.Errorf("failed to write data prefix: %w", err)
+	if err := writeSSEEvent(c, &errorResponse); err != nil {
+		h.logger.Error("failed to write streaming error response", zap.Error(err))
 	}
-
-	if _, err := c.Writer.Write(responseBytes); err != nil {
-		return fmt.Errorf("failed to write error response: %w", err)
-	}
-
-	if _, err := c.Writer.Write([]byte("\n\n")); err != nil {
-		return fmt.Errorf("failed to write SSE terminator: %w", err)
-	}
-
-	c.Writer.Flush()
-	return nil
 }
 
 // writeArtifactUpdate records an EventTaskArtifactUpdated (a TaskArtifactUpdateEvent payload) on
@@ -642,7 +640,7 @@ func (h *DefaultA2AProtocolHandler) writeArtifactUpdate(c *gin.Context, id *type
 	update.TaskID = task.ID
 	update.ContextID = task.GetContextID()
 	task.ApplyArtifactUpdate(update)
-	return h.writeStreamingResponse(c, &types.JSONRPCSuccessResponse{
+	return writeSSEEvent(c, &types.JSONRPCSuccessResponse{
 		JSONRPC: "2.0",
 		ID:      id,
 		Result:  types.StreamResponse{ArtifactUpdate: &update},
@@ -651,7 +649,7 @@ func (h *DefaultA2AProtocolHandler) writeArtifactUpdate(c *gin.Context, id *type
 
 // writeStatusUpdate streams the task's current status as a statusUpdate response.
 func (h *DefaultA2AProtocolHandler) writeStatusUpdate(c *gin.Context, id *types.Value, task *types.Task) error {
-	return h.writeStreamingResponse(c, &types.JSONRPCSuccessResponse{
+	return writeSSEEvent(c, &types.JSONRPCSuccessResponse{
 		JSONRPC: "2.0",
 		ID:      id,
 		Result: types.StreamResponse{StatusUpdate: &types.TaskStatusUpdateEvent{
@@ -671,25 +669,14 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		return
 	}
 
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("Access-Control-Allow-Headers", "Cache-Control")
+	setSSEHeaders(c)
 
 	ctx := c.Request.Context()
 
 	task, err := h.CreateTaskFromMessage(ctx, params)
 	if err != nil {
 		h.logger.Error("failed to create streaming task", zap.Error(err))
-		errorResponse := types.JSONRPCErrorResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error:   newJSONRPCError(int(ErrInternalError), err.Error()),
-		}
-		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
-			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
-		}
+		h.writeSSEInternalError(c, req.ID, err.Error())
 		return
 	}
 
@@ -709,7 +696,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 	}
 	initialTask := task.WithHistoryLength(historyLength)
 	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: &initialTask}}
-	if err := h.writeStreamingResponse(c, &initialResponse); err != nil {
+	if err := writeSSEEvent(c, &initialResponse); err != nil {
 		h.logger.Error("failed to write initial task", zap.Error(err))
 		return
 	}
@@ -729,14 +716,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 			zap.String("task_id", task.ID),
 			zap.Stringp("context_id", task.ContextID))
 
-		errorResponse := types.JSONRPCErrorResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error:   newJSONRPCError(int(ErrInternalError), err.Error()),
-		}
-		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
-			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
-		}
+		h.writeSSEInternalError(c, req.ID, err.Error())
 		return
 	}
 
@@ -765,7 +745,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 					Result:  types.StreamResponse{StatusUpdate: &types.TaskStatusUpdateEvent{TaskID: task.ID, ContextID: task.GetContextID(), Status: task.Status}},
 				}
 
-				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
+				if err := writeSSEEvent(c, &deltaResponse); err != nil {
 					h.logger.Error("failed to write delta", zap.Error(err))
 					return
 				}
@@ -808,7 +788,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 					Result:  types.StreamResponse{StatusUpdate: &statusUpdate},
 				}
 
-				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
+				if err := writeSSEEvent(c, &statusResponse); err != nil {
 					h.logger.Error("failed to write status change", zap.Error(err))
 					return
 				}
@@ -840,7 +820,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 					Result:  types.StreamResponse{StatusUpdate: &statusUpdate},
 				}
 
-				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
+				if err := writeSSEEvent(c, &statusResponse); err != nil {
 					h.logger.Error("failed to write input-required status", zap.Error(err))
 					return
 				}
@@ -887,14 +867,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 						zap.Error(err))
 				}
 
-				errorResponse := types.JSONRPCErrorResponse{
-					JSONRPC: "2.0",
-					ID:      req.ID,
-					Error:   newJSONRPCError(int(ErrInternalError), "streaming failed"),
-				}
-				if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
-					h.logger.Error("failed to write error response", zap.Error(writeErr))
-				}
+				h.writeSSEInternalError(c, req.ID, "streaming failed")
 				return
 			}
 		}
@@ -1114,11 +1087,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		return
 	}
 
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("Access-Control-Allow-Headers", "Cache-Control")
+	setSSEHeaders(c)
 
 	h.logger.Info("resubscribing to task",
 		zap.String("task_id", task.ID),
@@ -1127,7 +1096,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 
 	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: task}}
 
-	if err := h.writeStreamingResponse(c, &initialResponse); err != nil {
+	if err := writeSSEEvent(c, &initialResponse); err != nil {
 		h.logger.Error("failed to write initial resubscribe status", zap.Error(err))
 		return
 	}
@@ -1163,14 +1132,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		h.logger.Error("failed to resume streaming task",
 			zap.Error(err),
 			zap.String("task_id", task.ID))
-		errorResponse := types.JSONRPCErrorResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error:   newJSONRPCError(int(ErrInternalError), err.Error()),
-		}
-		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
-			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
-		}
+		h.writeSSEInternalError(c, req.ID, err.Error())
 		return
 	}
 
@@ -1186,7 +1148,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 					ID:      req.ID,
 					Result:  types.StreamResponse{StatusUpdate: &types.TaskStatusUpdateEvent{TaskID: task.ID, ContextID: task.GetContextID(), Status: task.Status}},
 				}
-				if err := h.writeStreamingResponse(c, &deltaResponse); err != nil {
+				if err := writeSSEEvent(c, &deltaResponse); err != nil {
 					h.logger.Error("failed to write delta", zap.Error(err))
 					return
 				}
@@ -1212,7 +1174,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 					ID:      req.ID,
 					Result:  types.StreamResponse{StatusUpdate: &statusEvent},
 				}
-				if err := h.writeStreamingResponse(c, &statusResponse); err != nil {
+				if err := writeSSEEvent(c, &statusResponse); err != nil {
 					h.logger.Error("failed to write status change", zap.Error(err))
 					return
 				}
