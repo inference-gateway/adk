@@ -768,7 +768,7 @@ func TestRunWithStream_ContextCancellation(t *testing.T) {
 
 	var receivedInterrupted bool
 	for event := range eventChan {
-		if event.Type() == "adk.agent.task.interrupted" {
+		if event.Type() == types.EventTaskInterrupted {
 			receivedInterrupted = true
 		}
 	}
@@ -833,7 +833,7 @@ func TestRunWithStream_WithInputRequiredTool(t *testing.T) {
 
 	var hasInputRequired bool
 	for event := range eventChan {
-		if event.Type() == "adk.agent.input.required" {
+		if event.Type() == types.EventInputRequired {
 			hasInputRequired = true
 		}
 	}
@@ -914,7 +914,7 @@ func TestRunWithStream_MaxIterationsReached(t *testing.T) {
 
 	iterationCount := 0
 	for event := range eventChan {
-		if event.Type() == "adk.agent.iteration.completed" {
+		if event.Type() == types.EventIterationCompleted {
 			iterationCount++
 		}
 	}
@@ -994,7 +994,7 @@ func TestRunWithStream_ToolExecutionError(t *testing.T) {
 
 	var hasToolFailed bool
 	for event := range eventChan {
-		if event.Type() == "adk.agent.tool.failed" {
+		if event.Type() == types.EventToolFailed {
 			hasToolFailed = true
 		}
 	}
@@ -1074,7 +1074,7 @@ func TestRunWithStream_InvalidToolArguments(t *testing.T) {
 
 	var hasToolFailed bool
 	for event := range eventChan {
-		if event.Type() == "adk.agent.tool.failed" {
+		if event.Type() == types.EventToolFailed {
 			hasToolFailed = true
 		}
 	}
@@ -1221,7 +1221,7 @@ func TestRunWithStream_MultipleIterations(t *testing.T) {
 
 	iterationCount := 0
 	for event := range eventChan {
-		if event.Type() == "adk.agent.iteration.completed" {
+		if event.Type() == types.EventIterationCompleted {
 			iterationCount++
 		}
 	}
@@ -1309,7 +1309,7 @@ func TestRunWithStream_AllEventTypesEmitted(t *testing.T) {
 	assert.Greater(t, eventTypes[types.EventToolStarted], 0, "Should emit tool.started event")
 	assert.Greater(t, eventTypes[types.EventToolCompleted], 0, "Should emit tool.completed event")
 	assert.Greater(t, eventTypes[types.EventToolResult], 0, "Should emit tool.result event")
-	assert.Greater(t, eventTypes["adk.agent.iteration.completed"], 0, "Should emit iteration.completed event")
+	assert.Greater(t, eventTypes[types.EventIterationCompleted], 0, "Should emit iteration.completed event")
 }
 
 func TestRunWithStream_ToolFailedEventEmitted(t *testing.T) {
