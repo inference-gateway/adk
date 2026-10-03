@@ -56,17 +56,17 @@ type AgentConfig struct {
 	BaseURL                     string            `env:"BASE_URL" description:"Base URL for the LLM provider API"`
 	APIKey                      string            `env:"API_KEY" description:"API key for authentication"`
 	Timeout                     time.Duration     `env:"TIMEOUT,default=30s" description:"Client timeout for requests"`
-	MaxRetries                  int               `env:"MAX_RETRIES,default=3" description:"Maximum number of retries"`
+	MaxRetries                  int               `env:"MAX_RETRIES,default=3" description:"Maximum number of retries, applies to CreateChatCompletion only; streaming calls are not retried"`
 	MaxChatCompletionIterations int               `env:"MAX_CHAT_COMPLETION_ITERATIONS,default=50" description:"Maximum chat completion iterations"`
 	CustomHeaders               map[string]string `env:"CUSTOM_HEADERS" description:"Custom headers to include in requests"`
 	TLSConfig                   ClientTLSConfig   `env:",prefix=TLS_" description:"TLS configuration for client"`
 	ProxyURL                    string            `env:"PROXY_URL" description:"Proxy URL for requests"`
 	UserAgent                   string            `env:"USER_AGENT,default=a2a-agent/1.0" description:"User agent string"`
 	MaxTokens                   int               `env:"MAX_TOKENS,default=4096" description:"Maximum tokens for completion"`
-	Temperature                 float64           `env:"TEMPERATURE,default=0.7" description:"Temperature for completion"`
-	TopP                        float64           `env:"TOP_P,default=1.0" description:"Top-p for completion"`
-	FrequencyPenalty            float64           `env:"FREQUENCY_PENALTY,default=0.0" description:"Frequency penalty for completion"`
-	PresencePenalty             float64           `env:"PRESENCE_PENALTY,default=0.0" description:"Presence penalty for completion"`
+	Temperature                 float64           `env:"TEMPERATURE,default=0.7" description:"Unused, parsed but never sent to the provider"`
+	TopP                        float64           `env:"TOP_P,default=1.0" description:"Unused, parsed but never sent to the provider"`
+	FrequencyPenalty            float64           `env:"FREQUENCY_PENALTY,default=0.0" description:"Unused, parsed but never sent to the provider"`
+	PresencePenalty             float64           `env:"PRESENCE_PENALTY,default=0.0" description:"Unused, parsed but never sent to the provider"`
 	SystemPrompt                string            `env:"SYSTEM_PROMPT,default=You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses." description:"System prompt for LLM interactions"`
 	MaxConversationHistory      int               `env:"MAX_CONVERSATION_HISTORY,default=20" description:"Maximum number of messages to keep in conversation history per context"`
 	ToolBoxConfig               ToolBoxConfig     `env:",prefix=TOOLS_" description:"Tool configuration for agents"`
@@ -317,7 +317,7 @@ type ArtifactsStorageConfig struct {
 
 // ArtifactRetentionConfig defines artifact cleanup policies
 type ArtifactRetentionConfig struct {
-	MaxArtifacts    int           `env:"MAX_ARTIFACTS,default=5" description:"Maximum artifacts to retain per task (0 = unlimited)"`
+	MaxArtifacts    int           `env:"MAX_ARTIFACTS,default=5" description:"Maximum files to retain per artifact ID, not per task (0 = unlimited); artifacts store one file each, so this removes nothing in practice"`
 	MaxAge          time.Duration `env:"MAX_AGE,default=168h" description:"Maximum age for artifacts (0 = no age limit)"`
 	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL,default=24h" description:"How often to run cleanup (0 = manual cleanup only)"`
 }
