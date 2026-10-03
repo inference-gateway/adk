@@ -36,10 +36,6 @@
         "pkg-path": "markdownlint-cli",
         "version": "0.49.1"
       },
-      "mockgen": {
-        "pkg-path": "mockgen",
-        "version": "0.6.0"
-      },
       "prettier": {
         "pkg-path": "prettier",
         "version": "^3.8.3"
@@ -658,93 +654,6 @@
       ],
       "outputs": {
         "out": "/nix/store/8kbzxdvf63zlryfaprrr8qv5vp42hj5q-markdownlint-cli-0.49.1"
-      },
-      "system": "x86_64-linux",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "mockgen",
-      "broken": false,
-      "derivation": "/nix/store/xgnzjd42a6djjngxmpc2scqm40ypxsva-mockgen-0.6.0.drv",
-      "description": "Mocking framework for the Go programming language",
-      "install_id": "mockgen",
-      "license": "Apache-2.0",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f",
-      "name": "mockgen-0.6.0",
-      "pname": "mockgen",
-      "rev": "7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f",
-      "rev_count": 1080855,
-      "rev_date": "2026-09-28T06:58:16Z",
-      "scrape_date": "2026-09-29T04:58:51.050937Z",
-      "stabilities": [
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "0.6.0",
-      "outputs_to_install": [
-        "out"
-      ],
-      "outputs": {
-        "out": "/nix/store/r0zjrs50vxnrdi3dhqfb6k4qfx0vv4pl-mockgen-0.6.0"
-      },
-      "system": "aarch64-darwin",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "mockgen",
-      "broken": false,
-      "derivation": "/nix/store/04q18wl2q168q4c5il2p0br4qbrx96cw-mockgen-0.6.0.drv",
-      "description": "Mocking framework for the Go programming language",
-      "install_id": "mockgen",
-      "license": "Apache-2.0",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f",
-      "name": "mockgen-0.6.0",
-      "pname": "mockgen",
-      "rev": "7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f",
-      "rev_count": 1080855,
-      "rev_date": "2026-09-28T06:58:16Z",
-      "scrape_date": "2026-09-29T05:30:36.521504Z",
-      "stabilities": [
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "0.6.0",
-      "outputs_to_install": [
-        "out"
-      ],
-      "outputs": {
-        "out": "/nix/store/i4py6i015p9jilrarq2qhrs74h8n701y-mockgen-0.6.0"
-      },
-      "system": "aarch64-linux",
-      "group": "toplevel",
-      "priority": 5
-    },
-    {
-      "attr_path": "mockgen",
-      "broken": false,
-      "derivation": "/nix/store/7lcgxvip20fwqh3vd8s06nbd2w4y1l8y-mockgen-0.6.0.drv",
-      "description": "Mocking framework for the Go programming language",
-      "install_id": "mockgen",
-      "license": "Apache-2.0",
-      "locked_url": "https://github.com/flox/nixpkgs?rev=7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f",
-      "name": "mockgen-0.6.0",
-      "pname": "mockgen",
-      "rev": "7a0f122f5090cf4c2ade2a13a0e229d4e19ba71f",
-      "rev_count": 1080855,
-      "rev_date": "2026-09-28T06:58:16Z",
-      "scrape_date": "2026-09-29T06:06:39.373634Z",
-      "stabilities": [
-        "unstable"
-      ],
-      "unfree": false,
-      "version": "0.6.0",
-      "outputs_to_install": [
-        "out"
-      ],
-      "outputs": {
-        "out": "/nix/store/gvsmdsb7qdlgmvwjwk5xgsbivxzzm8fh-mockgen-0.6.0"
       },
       "system": "x86_64-linux",
       "group": "toplevel",
