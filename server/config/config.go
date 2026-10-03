@@ -63,10 +63,10 @@ type AgentConfig struct {
 	ProxyURL                    string            `env:"PROXY_URL" description:"Proxy URL for requests"`
 	UserAgent                   string            `env:"USER_AGENT,default=a2a-agent/1.0" description:"User agent string"`
 	MaxTokens                   int               `env:"MAX_TOKENS,default=4096" description:"Maximum tokens for completion"`
-	Temperature                 float64           `env:"TEMPERATURE,default=0.7" description:"Unused, parsed but never sent to the provider"`
-	TopP                        float64           `env:"TOP_P,default=1.0" description:"Unused, parsed but never sent to the provider"`
-	FrequencyPenalty            float64           `env:"FREQUENCY_PENALTY,default=0.0" description:"Unused, parsed but never sent to the provider"`
-	PresencePenalty             float64           `env:"PRESENCE_PENALTY,default=0.0" description:"Unused, parsed but never sent to the provider"`
+	Temperature                 float64           `env:"TEMPERATURE,default=0.7" description:"Sampling temperature for completion (0 = leave unset)"`
+	TopP                        float64           `env:"TOP_P,default=1.0" description:"Top-p nucleus sampling for completion (0 = leave unset)"`
+	FrequencyPenalty            float64           `env:"FREQUENCY_PENALTY,default=0.0" description:"Frequency penalty for completion (0 = leave unset)"`
+	PresencePenalty             float64           `env:"PRESENCE_PENALTY,default=0.0" description:"Presence penalty for completion (0 = leave unset)"`
 	SystemPrompt                string            `env:"SYSTEM_PROMPT,default=You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses." description:"System prompt for LLM interactions"`
 	MaxConversationHistory      int               `env:"MAX_CONVERSATION_HISTORY,default=20" description:"Maximum number of messages to keep in conversation history per context"`
 	ToolBoxConfig               ToolBoxConfig     `env:",prefix=TOOLS_" description:"Tool configuration for agents"`
