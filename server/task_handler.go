@@ -515,7 +515,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 	task, err := h.CreateTaskFromMessage(c.Request.Context(), params)
 	if err != nil {
 		h.logger.Error("failed to create task", zap.Error(err))
-		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+		h.responseSender.SendError(c, req.ID, int(a2aErrorCode(err, ErrInternalError)), err.Error())
 		return
 	}
 
@@ -620,10 +620,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error: types.JSONRPCError{
-				Code:    int(ErrInternalError),
-				Message: err.Error(),
-			},
+			Error:   newJSONRPCError(int(ErrInternalError), err.Error()),
 		}
 		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
 			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
@@ -668,10 +665,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error: types.JSONRPCError{
-				Code:    int(ErrInternalError),
-				Message: err.Error(),
-			},
+			Error:   newJSONRPCError(int(ErrInternalError), err.Error()),
 		}
 		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
 			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
@@ -823,10 +817,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				errorResponse := types.JSONRPCErrorResponse{
 					JSONRPC: "2.0",
 					ID:      req.ID,
-					Error: types.JSONRPCError{
-						Code:    int(ErrInternalError),
-						Message: "streaming failed",
-					},
+					Error:   newJSONRPCError(int(ErrInternalError), "streaming failed"),
 				}
 				if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
 					h.logger.Error("failed to write error response", zap.Error(writeErr))
@@ -880,7 +871,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSON
 	task, exists := h.taskManager.GetTask(params.ID)
 	if !exists {
 		h.logger.Error("task not found", zap.String("task_id", params.ID))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "task not found")
+		h.responseSender.SendError(c, req.ID, int(ErrTaskNotFound), "task not found")
 		return
 	}
 
@@ -914,7 +905,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.J
 		h.logger.Error("failed to cancel task",
 			zap.Error(err),
 			zap.String("task_id", params.ID))
-		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), err.Error())
+		h.responseSender.SendError(c, req.ID, int(a2aErrorCode(err, ErrInvalidParams)), err.Error())
 		return
 	}
 
@@ -1101,28 +1092,18 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		return
 	}
 
+	task, exists := h.taskManager.GetTask(params.ID)
+	if !exists {
+		h.logger.Error("task not found for resubscribe", zap.String("task_id", params.ID))
+		h.responseSender.SendError(c, req.ID, int(ErrTaskNotFound), "task not found")
+		return
+	}
+
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("Access-Control-Allow-Headers", "Cache-Control")
-
-	task, exists := h.taskManager.GetTask(params.ID)
-	if !exists {
-		h.logger.Error("task not found for resubscribe", zap.String("task_id", params.ID))
-		errorResponse := types.JSONRPCErrorResponse{
-			JSONRPC: "2.0",
-			ID:      req.ID,
-			Error: types.JSONRPCError{
-				Code:    int(ErrInvalidParams),
-				Message: "task not found",
-			},
-		}
-		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
-			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))
-		}
-		return
-	}
 
 	h.logger.Info("resubscribing to task",
 		zap.String("task_id", task.ID),
@@ -1192,10 +1173,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error: types.JSONRPCError{
-				Code:    int(ErrInternalError),
-				Message: err.Error(),
-			},
+			Error:   newJSONRPCError(int(ErrInternalError), err.Error()),
 		}
 		if writeErr := h.writeStreamingErrorResponse(c, &errorResponse); writeErr != nil {
 			h.logger.Error("failed to write streaming error response", zap.Error(writeErr))

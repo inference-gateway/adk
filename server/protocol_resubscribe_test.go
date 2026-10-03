@@ -62,9 +62,13 @@ func TestProtocolHandler_HandleTaskResubscribe_TaskNotFound(t *testing.T) {
 	require.Equal(t, 1, taskManager.GetTaskCallCount())
 	assert.Equal(t, "missing-task", taskManager.GetTaskArgsForCall(0))
 
-	body := w.Body.String()
-	assert.Contains(t, body, "task not found", "error message should be surfaced via SSE")
-	assert.Contains(t, body, "data: ")
+	var resp types.JSONRPCErrorResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, -32001, resp.Error.Code)
+	require.NotNil(t, resp.Error.Data)
+	errorDetails, err := json.Marshal(*resp.Error.Data)
+	require.NoError(t, err)
+	assert.Contains(t, string(errorDetails), `"reason":"TASK_NOT_FOUND"`)
 }
 
 func TestProtocolHandler_HandleTaskResubscribe_MissingName(t *testing.T) {

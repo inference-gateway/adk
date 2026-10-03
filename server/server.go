@@ -95,9 +95,12 @@ const (
 	ErrInternalError  JRPCErrorCode = -32603
 	ErrServerError    JRPCErrorCode = -32000
 
-	// A2A-specific error codes (spec section 3.3.2).
+	// A2A-specific error codes (spec section 5.4).
+	ErrTaskNotFound                   JRPCErrorCode = -32001
+	ErrTaskNotCancelable              JRPCErrorCode = -32002
 	ErrUnsupportedOperation           JRPCErrorCode = -32004
 	ErrExtendedAgentCardNotConfigured JRPCErrorCode = -32007
+	ErrVersionNotSupported            JRPCErrorCode = -32009
 )
 
 type A2AServerImpl struct {
