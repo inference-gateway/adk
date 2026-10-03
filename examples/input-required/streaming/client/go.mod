@@ -1,6 +1,6 @@
 module input-required-streaming-client
 
-go 1.26.7
+go 1.26.8
 
 replace github.com/inference-gateway/adk => ../../../../
 
