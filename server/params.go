@@ -1,11 +1,23 @@
 package server
 
 import (
+	"encoding/json"
 	"strings"
 	"unicode/utf8"
 
 	types "github.com/inference-gateway/adk/types"
 )
+
+// decodeParams converts JSON-RPC request params into the concrete request type a handler expects.
+func decodeParams[T any](params *types.Struct) (T, error) {
+	var decoded T
+	raw, err := json.Marshal(params)
+	if err != nil {
+		return decoded, err
+	}
+	err = json.Unmarshal(raw, &decoded)
+	return decoded, err
+}
 
 var opaqueParamFields = map[string]bool{
 	"metadata": true,

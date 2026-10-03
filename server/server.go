@@ -836,12 +836,8 @@ func (s *A2AServerImpl) replyWithMessage(c *gin.Context, req types.JSONRPCReques
 	if !ok {
 		return false
 	}
-	paramsBytes, err := json.Marshal(req.Params)
+	params, err := decodeParams[types.SendMessageRequest](req.Params)
 	if err != nil {
-		return false
-	}
-	var params types.SendMessageRequest
-	if err := json.Unmarshal(paramsBytes, &params); err != nil {
 		return false
 	}
 	reply, err := responder.RespondToMessage(c.Request.Context(), &params.Message)
