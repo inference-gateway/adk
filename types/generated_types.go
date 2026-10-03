@@ -632,8 +632,8 @@ type Message struct {
 	// Parts Parts is the container of the message content.
 	Parts []Part `json:"parts"`
 
-	// ReferenceTaskIds A list of task IDs that this message references for additional context.
-	ReferenceTaskIds []string `json:"referenceTaskIds,omitempty"`
+	// ReferenceTaskIDs A list of task IDs that this message references for additional context.
+	ReferenceTaskIDs []string `json:"referenceTaskIds,omitempty"`
 
 	// Role Identifies the sender of the message.
 	Role Role `json:"role"`
