@@ -116,7 +116,7 @@ curl -X POST http://localhost:8081/a2a \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "method": "message/send",
+    "method": "SendMessage",
     "params": {
       "message": {
         "kind": "message",
@@ -132,7 +132,7 @@ curl -X POST http://localhost:8081/a2a \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "method": "message/stream",
+    "method": "SendStreamingMessage",
     "params": {
       "message": {
         "kind": "message",

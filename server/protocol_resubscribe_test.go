@@ -53,8 +53,8 @@ func TestProtocolHandler_HandleTaskResubscribe_TaskNotFound(t *testing.T) {
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      &reqID,
-		Method:  "tasks/resubscribe",
-		Params:  map[string]any{"id": "missing-task"},
+		Method:  "SubscribeToTask",
+		Params:  &types.Struct{"id": "missing-task"},
 	}
 
 	h.HandleTaskResubscribe(c, req, &mocks.FakeStreamableTaskHandler{})
@@ -75,8 +75,8 @@ func TestProtocolHandler_HandleTaskResubscribe_MissingName(t *testing.T) {
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      &reqID,
-		Method:  "tasks/resubscribe",
-		Params:  map[string]any{},
+		Method:  "SubscribeToTask",
+		Params:  &types.Struct{},
 	}
 
 	h.HandleTaskResubscribe(c, req, &mocks.FakeStreamableTaskHandler{})
@@ -102,8 +102,8 @@ func TestProtocolHandler_HandleTaskResubscribe_CompletedTaskEmitsFinalState(t *t
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      &reqID,
-		Method:  "tasks/resubscribe",
-		Params:  map[string]any{"id": "task-done"},
+		Method:  "SubscribeToTask",
+		Params:  &types.Struct{"id": "task-done"},
 	}
 
 	streamingHandler := &mocks.FakeStreamableTaskHandler{}
@@ -160,8 +160,8 @@ func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandle
 	req := types.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      &reqID,
-		Method:  "tasks/resubscribe",
-		Params:  map[string]any{"id": "task-working"},
+		Method:  "SubscribeToTask",
+		Params:  &types.Struct{"id": "task-working"},
 	}
 
 	h.HandleTaskResubscribe(c, req, streamingHandler)
@@ -234,8 +234,8 @@ func TestProtocolHandler_HandleGetAuthenticatedExtendedCard(t *testing.T) {
 			req := types.JSONRPCRequest{
 				JSONRPC: "2.0",
 				ID:      &reqID,
-				Method:  "agent/getAuthenticatedExtendedCard",
-				Params:  map[string]any{"tenant": "tenant-1"},
+				Method:  "GetExtendedAgentCard",
+				Params:  &types.Struct{"tenant": "tenant-1"},
 			}
 
 			h.HandleGetAuthenticatedExtendedCard(c, req, tt.publicCard, tt.extendedCard)

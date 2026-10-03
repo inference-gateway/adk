@@ -173,10 +173,10 @@ func TestE2E_AuthenticationFlow(t *testing.T) {
 		method string
 		params any
 	}{
-		{"send/no-token", "", "message/send", sendMessageParams("hello")},
-		{"send/bad-token", "not-a-jwt", "message/send", sendMessageParams("hello")},
-		{"extendedCard/no-token", "", "agent/getAuthenticatedExtendedCard", map[string]any{}},
-		{"extendedCard/bad-token", "not-a-jwt", "agent/getAuthenticatedExtendedCard", map[string]any{}},
+		{"send/no-token", "", "SendMessage", sendMessageParams("hello")},
+		{"send/bad-token", "not-a-jwt", "SendMessage", sendMessageParams("hello")},
+		{"extendedCard/no-token", "", "GetExtendedAgentCard", map[string]any{}},
+		{"extendedCard/bad-token", "not-a-jwt", "GetExtendedAgentCard", map[string]any{}},
 	}
 	for _, tc := range rejections {
 		t.Run("reject/"+tc.name, func(t *testing.T) {
@@ -195,7 +195,7 @@ func TestE2E_AuthenticationFlow(t *testing.T) {
 
 	// --- happy path: task is submitted with a valid Keycloak JWT ---
 	t.Run("accept/send", func(t *testing.T) {
-		status, _, body := rpc(t, token, "message/send", sendMessageParams("ping"))
+		status, _, body := rpc(t, token, "SendMessage", sendMessageParams("ping"))
 		if status != http.StatusOK {
 			t.Fatalf("want 200, got %d: %s", status, body)
 		}
@@ -214,7 +214,7 @@ func TestE2E_AuthenticationFlow(t *testing.T) {
 		if out.Result == nil || out.Result.ID == "" {
 			t.Fatalf("task was not submitted: %s", body)
 		}
-		// message/send enqueues the task and returns it in the submitted state;
+		// SendMessage enqueues the task and returns it in the submitted state;
 		// processing then continues on the background queue.
 		if out.Result.Status.State != types.TaskStateSubmitted {
 			t.Fatalf("task not submitted, state=%s", out.Result.Status.State)
@@ -224,7 +224,7 @@ func TestE2E_AuthenticationFlow(t *testing.T) {
 
 	// --- happy path: extended card returned to an authenticated caller ---
 	t.Run("accept/extendedCard", func(t *testing.T) {
-		status, _, body := rpc(t, token, "agent/getAuthenticatedExtendedCard", map[string]any{})
+		status, _, body := rpc(t, token, "GetExtendedAgentCard", map[string]any{})
 		if status != http.StatusOK {
 			t.Fatalf("want 200, got %d: %s", status, body)
 		}

@@ -34,8 +34,8 @@ Run from the repo root; `task --list` lists all targets.
 - **Server** is assembled with `A2AServerBuilder`: gin HTTP/JSON-RPC layer (`/.well-known/agent-card.json` discovery,
   `/a2a` JSON-RPC entrypoint), task storage, task handlers, an optional LLM agent, and optional artifact storage.
 - **Two task-handler interfaces, deliberately distinct:** `TaskHandler.HandleTask` (sync/queued path for
-  `message/send` and the background processor) and `StreamableTaskHandler.HandleStreamingTask` (returns a channel of
-  CloudEvents for `message/stream` and `tasks/resubscribe`; event types are the `EventXxx` constants in
+  `SendMessage` and the background processor) and `StreamableTaskHandler.HandleStreamingTask` (returns a channel of
+  CloudEvents for `SendStreamingMessage` and `SubscribeToTask`; event types are the `EventXxx` constants in
   `types/types.go`). `WithDefaultTaskHandlers()` installs implementations that handle input-required pausing; use
   `WithBackgroundTaskHandler` / `WithStreamingTaskHandler` for custom orchestration.
 - **The agent is stateless.** It does not own conversation history; the task's `History` is passed to every
@@ -66,9 +66,12 @@ rename the target when you add or rename an interface.
 ## Schema Is Upstream
 
 `schema.yaml` is vendored from `a2a/a2a-schema.yaml` and `providers-schema.yaml` from `openapi.yaml` in
-`inference-gateway/schemas`. Propose protocol changes upstream, not here. To add an LLM provider: add it to the
-`Provider` enum upstream, run `task providers:download-schema` and `task generate`, and commit the schema bump with the
-generated changes; no hand-editing of example or doc files is needed.
+`inference-gateway/schemas`. Propose protocol changes upstream, not here. Every protocol type, including the
+JSON-RPC envelope (`JSONRPCRequest`, `JSONRPCSuccessResponse`, `JSONRPCErrorResponse`, `JSONRPCError`) and the
+`A2AMethod` method names, is generated into `types/generated_types.go`. Types missing from the official A2A proto are
+added to the hand-written `a2a/a2a-jsonrpc.proto` in schemas, never hand-written here. To add an LLM provider: add it
+to the `Provider` enum upstream, run `task providers:download-schema` and `task generate`, and commit the schema bump
+with the generated changes; no hand-editing of example or doc files is needed.
 
 ## Code Style
 

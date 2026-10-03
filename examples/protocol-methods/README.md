@@ -1,33 +1,33 @@
 # Protocol Methods A2A Example
 
 This example exercises every JSON-RPC method the ADK supports beyond the
-common `message/send`, `message/stream`, and `tasks/get` trio. It serves as a
+common `SendMessage`, `SendStreamingMessage`, and `GetTask` trio. It serves as a
 runnable companion to the snippets in the root [`README.md`](../../README.md).
 
 ## Methods demonstrated
 
-| Method                                | Where in the client                    |
-| ------------------------------------- | -------------------------------------- |
-| `agent/getAuthenticatedExtendedCard`  | `demonstrateAuthenticatedExtendedCard` |
-| `tasks/list` (with pagination)        | `demonstrateListTasks`                 |
-| `tasks/pushNotificationConfig/set`    | `demonstratePushNotificationConfig`    |
-| `tasks/pushNotificationConfig/get`    | `demonstratePushNotificationConfig`    |
-| `tasks/pushNotificationConfig/list`   | `demonstratePushNotificationConfig`    |
-| `tasks/pushNotificationConfig/delete` | `demonstratePushNotificationConfig`    |
-| `tasks/cancel`                        | `demonstrateCancel`                    |
-| `tasks/resubscribe`                   | `demonstrateResubscribe`               |
+| Method                             | Where in the client                    |
+| ---------------------------------- | -------------------------------------- |
+| `GetExtendedAgentCard`             | `demonstrateAuthenticatedExtendedCard` |
+| `ListTasks` (with pagination)      | `demonstrateListTasks`                 |
+| `CreateTaskPushNotificationConfig` | `demonstratePushNotificationConfig`    |
+| `GetTaskPushNotificationConfig`    | `demonstratePushNotificationConfig`    |
+| `ListTaskPushNotificationConfigs`  | `demonstratePushNotificationConfig`    |
+| `DeleteTaskPushNotificationConfig` | `demonstratePushNotificationConfig`    |
+| `CancelTask`                       | `demonstrateCancel`                    |
+| `SubscribeToTask`                  | `demonstrateResubscribe`               |
 
 ## How it works
 
 The server in `server/main.go` registers a `SlowEchoTaskHandler` that:
 
 - Sleeps for a few seconds inside `HandleTask` so the client has time to call
-  `tasks/cancel` while the task is still `WORKING`.
+  `CancelTask` while the task is still `WORKING`.
 - Emits a small sequence of streaming delta events from `HandleStreamingTask`
   so the client can drop the original SSE connection and reattach with
-  `tasks/resubscribe`.
+  `SubscribeToTask`.
 
-The client in `client/main.go` submits four tasks (to give `tasks/list`
+The client in `client/main.go` submits four tasks (to give `ListTasks`
 something to page through), runs the push notification config round-trip
 against the first task, cancels the second, then opens and resubscribes to a
 streaming task.
@@ -71,7 +71,7 @@ go run main.go
 | Variable      | Purpose                                                                                  | Default                         |
 | ------------- | ---------------------------------------------------------------------------------------- | ------------------------------- |
 | `SERVER_URL`  | A2A server base URL                                                                      | `http://localhost:8080`         |
-| `WEBHOOK_URL` | URL passed to `tasks/pushNotificationConfig/set` (the URL does not need to be reachable) | `http://localhost:9000/webhook` |
+| `WEBHOOK_URL` | URL passed to `CreateTaskPushNotificationConfig` (the URL does not need to be reachable) | `http://localhost:9000/webhook` |
 | `ENVIRONMENT` | Controls log verbosity                                                                   | `development`                   |
 
 ## Expected Output
@@ -79,10 +79,10 @@ go run main.go
 A successful client run prints something like:
 
 ```text
-=== agent/getAuthenticatedExtendedCard ===
+=== GetExtendedAgentCard ===
 { ...agent card json... }
 
-=== tasks/list (with pagination) ===
+=== ListTasks (with pagination) ===
 Page 1 (offset=0, returned=2, total=4):
   - <task-id-1> [state=TASK_STATE_WORKING]
   - <task-id-2> [state=TASK_STATE_WORKING]
@@ -90,16 +90,18 @@ Page 2 (offset=2, returned=2, total=4):
   - <task-id-3> [state=TASK_STATE_WORKING]
   - <task-id-4> [state=TASK_STATE_WORKING]
 
-=== tasks/pushNotificationConfig/{set,get,list,delete} ===
+=== Create/Get/ListTaskPushNotificationConfig(s) ===
 set → registered webhook for task <task-id-1>
 get → ...
 list → ...
+
+=== DeleteTaskPushNotificationConfig ===
 delete → webhook for task <task-id-1> removed
 
-=== tasks/cancel ===
+=== CancelTask ===
 cancelled task <task-id-2> → state=TASK_STATE_CANCELED
 
-=== tasks/resubscribe ===
+=== SubscribeToTask ===
 dropped initial stream for task <task-id>; re-attaching...
   event 1: ...
   event 2: ...

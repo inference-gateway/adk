@@ -12,7 +12,7 @@ type messageUnmarshalHelper struct {
 	MessageID        string            `json:"messageId"`
 	Metadata         *Struct           `json:"metadata,omitempty"`
 	Parts            []json.RawMessage `json:"parts"`
-	ReferenceTaskIds []string          `json:"referenceTaskIds,omitempty"`
+	ReferenceTaskIDs []string          `json:"referenceTaskIds,omitempty"`
 	Role             string            `json:"role"`
 	TaskID           *string           `json:"taskId,omitempty"`
 }
@@ -38,7 +38,7 @@ func (m *Message) UnmarshalJSON(data []byte) error {
 	m.MessageID = helper.MessageID
 	m.Metadata = helper.Metadata
 	m.Parts = parts
-	m.ReferenceTaskIds = helper.ReferenceTaskIds
+	m.ReferenceTaskIDs = helper.ReferenceTaskIDs
 	m.Role = Role(helper.Role)
 	m.TaskID = helper.TaskID
 

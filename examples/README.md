@@ -37,7 +37,7 @@ examples/
 ├── tls-example/               # TLS-enabled server with HTTPS communication
 ├── usage-metadata/            # Token usage and execution metrics tracking
 ├── authentication/            # Card-driven authentication flow (securitySchemes + extended card)
-└── protocol-methods/          # Full A2A JSON-RPC surface (cancel, list, pushNotificationConfig, resubscribe, authenticated card)
+└── protocol-methods/          # Full A2A JSON-RPC surface (CancelTask, ListTasks, push notification configs, SubscribeToTask, GetExtendedAgentCard)
 ```
 
 ## 🚀 Quick Start
@@ -204,15 +204,16 @@ Demonstrates the A2A card-driven authentication flow (spec section 7 and 3.3.4).
 
 #### `protocol-methods/`
 
-End-to-end walk-through of every A2A JSON-RPC method beyond `message/send`,
-`message/stream`, and `tasks/get`. Useful as a reference when you need to
+End-to-end walk-through of every A2A JSON-RPC method beyond `SendMessage`,
+`SendStreamingMessage`, and `GetTask`. Useful as a reference when you need to
 call one of these methods directly from your own client.
 
-- `tasks/cancel` against an in-flight task
-- `tasks/list` with paginated iteration
-- `tasks/pushNotificationConfig/{set,get,list,delete}` round-trip
-- `tasks/resubscribe` after a dropped streaming connection
-- `agent/getAuthenticatedExtendedCard` via JSON-RPC
+- `CancelTask` against an in-flight task
+- `ListTasks` with paginated iteration
+- `CreateTaskPushNotificationConfig`, `GetTaskPushNotificationConfig`,
+  `ListTaskPushNotificationConfigs` and `DeleteTaskPushNotificationConfig` round-trip
+- `SubscribeToTask` after a dropped streaming connection
+- `GetExtendedAgentCard` via JSON-RPC
 
 ## 🔧 Configuration
 
@@ -254,7 +255,7 @@ See each example's README for specific configuration details.
 12. **`queue-storage/`** - Learn different queue storage backends for scaling
 13. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 14. **`usage-metadata/`** - Track token usage and execution metrics for cost monitoring
-15. **`protocol-methods/`** - Exercise the rest of the A2A JSON-RPC surface (cancel, list, pushNotificationConfig, resubscribe, authenticated card)
+15. **`protocol-methods/`** - Exercise the rest of the A2A JSON-RPC surface (CancelTask, ListTasks, push notification configs, SubscribeToTask, GetExtendedAgentCard)
 
 ---
 

@@ -64,7 +64,7 @@ func (h *EchoTaskHandler) GetAgent() server.OpenAICompatibleAgent      { return 
 //   - An extended agent card is configured via WithExtendedAgentCard(), which
 //     also advertises supportsExtendedAgentCard on the public card.
 //   - Authenticated callers fetch the richer card via
-//     agent/getAuthenticatedExtendedCard.
+//     GetExtendedAgentCard.
 //
 // Authentication is left disabled by default (AUTH_ENABLED=false) so the example
 // runs without a live OIDC provider - the discovery half of the flow and the
@@ -116,7 +116,7 @@ func buildServer(cfg *config.Config, logger *zap.Logger) (server.A2AServer, erro
 	}
 
 	// Extended card: richer detail returned only to authenticated callers via
-	// agent/getAuthenticatedExtendedCard. Configuring it also flips
+	// GetExtendedAgentCard. Configuring it also flips
 	// supportsExtendedAgentCard=true on the public card.
 	extendedCard := publicCard
 	extendedCard.Description = "extended card with richer detail for authenticated callers"

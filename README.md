@@ -94,7 +94,7 @@ For complete working examples, see the [examples](./examples/) directory:
 - **[TLS Server](./examples/tls-server/)** - Secure HTTPS with TLS configuration
 - **[Usage Metadata](./examples/usage-metadata/)** - Token usage and execution metrics tracking
 - **[MCP](./examples/mcp/)** - Connect the agent to MCP servers and invoke their tools via a selector
-- **[Protocol Methods](./examples/protocol-methods/)** - End-to-end walk-through of `tasks/cancel`, `tasks/list`, `tasks/pushNotificationConfig/{set,get,list,delete}`, `tasks/resubscribe`, and `agent/getAuthenticatedExtendedCard`
+- **[Protocol Methods](./examples/protocol-methods/)** - End-to-end walk-through of `CancelTask`, `ListTasks`, the `*TaskPushNotificationConfig(s)` methods, `SubscribeToTask`, and `GetExtendedAgentCard`
 
 #### Getting Started
 
@@ -318,7 +318,7 @@ Build A2A servers with custom configurations using a fluent interface. The build
 - `WithBackgroundTaskHandler()` - Custom background task handling
 - `WithStreamingTaskHandler()` - Custom streaming task handling
 - `WithAgentCardFromFile()` - Load agent metadata from JSON
-- `WithExtendedAgentCard()` - Serve a richer card to authenticated callers via `agent/getAuthenticatedExtendedCard`
+- `WithExtendedAgentCard()` - Serve a richer card to authenticated callers via `GetExtendedAgentCard`
 
 See [examples](./examples/) for complete usage patterns.
 
@@ -326,8 +326,8 @@ See [examples](./examples/) for complete usage patterns.
 
 The ADK provides two distinct interfaces for handling tasks:
 
-- **`TaskHandler`** - For background/polling scenarios (message/send)
-- **`StreamableTaskHandler`** - For real-time streaming scenarios (message/stream)
+- **`TaskHandler`** - For background/polling scenarios (SendMessage)
+- **`StreamableTaskHandler`** - For real-time streaming scenarios (SendStreamingMessage)
 
 Streaming handlers require an agent to be configured. See [task handler examples](./examples/) for implementation details.
 
@@ -356,12 +356,12 @@ See [`examples/protocol-methods/`](./examples/protocol-methods/) for usage patte
 
 #### A2A JSON-RPC Methods
 
-Beyond `message/send`, `message/stream`, and `tasks/get`, the client exposes
+Beyond `SendMessage`, `SendStreamingMessage`, and `GetTask`, the client exposes
 every method in the A2A JSON-RPC surface. Each snippet below is runnable
 against any ADK-built server; see [`examples/protocol-methods/`](./examples/protocol-methods/)
 for an end-to-end demo that ties them all together.
 
-##### `tasks/cancel`
+##### `CancelTask`
 
 Cancel an in-flight task. Works for tasks in any non-terminal state
 (`SUBMITTED`, `WORKING`, `INPUT_REQUIRED`, `AUTH_REQUIRED`, `UNSPECIFIED`).
@@ -378,7 +378,7 @@ _ = json.Unmarshal(taskBytes, &task)
 log.Printf("cancelled task %s → state=%s", task.ID, task.Status.State)
 ```
 
-##### `tasks/list`
+##### `ListTasks`
 
 List tasks the server knows about. `PageSize` controls the page size (server caps
 it at 100; default is 50) and `PageToken` selects the page: pass the
@@ -416,7 +416,7 @@ You can also filter by `ContextID` or by `State` (e.g. only
 `TASK_STATE_COMPLETED`); both fields are optional pointers on
 `TaskListParams`.
 
-##### `tasks/pushNotificationConfig/{set,get,list,delete}`
+##### `CreateTaskPushNotificationConfig`, `GetTaskPushNotificationConfig`, `ListTaskPushNotificationConfigs`, `DeleteTaskPushNotificationConfig`
 
 Register, inspect, and remove webhook callbacks the server will POST to as a
 task changes state. The four methods share a common identifier (`task.ID`)
@@ -466,7 +466,7 @@ webhook sender when the card passed to `WithAgentCard()` /
 `WithAgentCardFromFile()` declares it. `CAPABILITIES_PUSH_NOTIFICATIONS` has no
 effect on its own.
 
-##### `tasks/resubscribe`
+##### `SubscribeToTask`
 
 Re-attach to a streaming task after the original SSE connection has dropped.
 The server first re-emits the current task state, then forwards any further
@@ -485,7 +485,7 @@ for evt := range events {
 }
 ```
 
-##### `agent/getAuthenticatedExtendedCard`
+##### `GetExtendedAgentCard`
 
 The JSON-RPC counterpart to the public `.well-known/agent-card.json`
 endpoint. It returns a _separate_, richer card - the one registered with

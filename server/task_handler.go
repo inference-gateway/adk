@@ -24,38 +24,38 @@ const (
 
 // A2AProtocolHandler defines the interface for handling A2A protocol requests
 type A2AProtocolHandler interface {
-	// HandleMessageSend processes message/send requests
+	// HandleMessageSend processes SendMessage requests
 	HandleMessageSend(c *gin.Context, req types.JSONRPCRequest)
 
-	// HandleMessageStream processes message/stream requests
+	// HandleMessageStream processes SendStreamingMessage requests
 	HandleMessageStream(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler)
 
-	// HandleTaskGet processes tasks/get requests
+	// HandleTaskGet processes GetTask requests
 	HandleTaskGet(c *gin.Context, req types.JSONRPCRequest)
 
-	// HandleTaskList processes tasks/list requests
+	// HandleTaskList processes ListTasks requests
 	HandleTaskList(c *gin.Context, req types.JSONRPCRequest)
 
-	// HandleTaskCancel processes tasks/cancel requests
+	// HandleTaskCancel processes CancelTask requests
 	HandleTaskCancel(c *gin.Context, req types.JSONRPCRequest)
 
-	// HandleTaskPushNotificationConfigSet processes tasks/pushNotificationConfig/set requests
+	// HandleTaskPushNotificationConfigSet processes CreateTaskPushNotificationConfig requests
 	HandleTaskPushNotificationConfigSet(c *gin.Context, req types.JSONRPCRequest)
 
-	// HandleTaskPushNotificationConfigGet processes tasks/pushNotificationConfig/get requests
+	// HandleTaskPushNotificationConfigGet processes GetTaskPushNotificationConfig requests
 	HandleTaskPushNotificationConfigGet(c *gin.Context, req types.JSONRPCRequest)
 
-	// HandleTaskPushNotificationConfigList processes tasks/pushNotificationConfig/list requests
+	// HandleTaskPushNotificationConfigList processes ListTaskPushNotificationConfigs requests
 	HandleTaskPushNotificationConfigList(c *gin.Context, req types.JSONRPCRequest)
 
-	// HandleTaskPushNotificationConfigDelete processes tasks/pushNotificationConfig/delete requests
+	// HandleTaskPushNotificationConfigDelete processes DeleteTaskPushNotificationConfig requests
 	HandleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest)
 
-	// HandleTaskResubscribe processes tasks/resubscribe requests, re-attaching a streaming
+	// HandleTaskResubscribe processes SubscribeToTask requests, re-attaching a streaming
 	// subscription for an existing task and emitting its current state via SSE.
 	HandleTaskResubscribe(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler)
 
-	// HandleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests.
+	// HandleGetAuthenticatedExtendedCard processes GetExtendedAgentCard requests.
 	// It enforces the spec section 3.3.4 error contract using the served public card and the
 	// optional extended card: ErrUnsupportedOperation (-32004) when the public card does not
 	// declare supportsExtendedAgentCard, ErrExtendedAgentCardNotConfigured (-32007) when it
@@ -496,7 +496,7 @@ func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, p
 	return task, nil
 }
 
-// HandleMessageSend processes message/send requests
+// HandleMessageSend processes SendMessage requests
 func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.SendMessageRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -507,7 +507,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse message/send request", zap.Error(err))
+		h.logger.Error("failed to parse SendMessage request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -590,7 +590,7 @@ func (h *DefaultA2AProtocolHandler) writeStreamingErrorResponse(c *gin.Context, 
 	return nil
 }
 
-// HandleMessageStream processes message/stream requests
+// HandleMessageStream processes SendStreamingMessage requests
 func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req types.JSONRPCRequest, streamingHandler StreamableTaskHandler) {
 	var params types.SendMessageRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -601,7 +601,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse message/stream request", zap.Error(err))
+		h.logger.Error("failed to parse SendStreamingMessage request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -620,7 +620,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error: &types.JSONRPCError{
+			Error: types.JSONRPCError{
 				Code:    int(ErrInternalError),
 				Message: err.Error(),
 			},
@@ -668,7 +668,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error: &types.JSONRPCError{
+			Error: types.JSONRPCError{
 				Code:    int(ErrInternalError),
 				Message: err.Error(),
 			},
@@ -823,7 +823,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 				errorResponse := types.JSONRPCErrorResponse{
 					JSONRPC: "2.0",
 					ID:      req.ID,
-					Error: &types.JSONRPCError{
+					Error: types.JSONRPCError{
 						Code:    int(ErrInternalError),
 						Message: "streaming failed",
 					},
@@ -859,7 +859,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		zap.Stringp("context_id", task.ContextID))
 }
 
-// HandleTaskGet processes tasks/get requests
+// HandleTaskGet processes GetTask requests
 func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.GetTaskRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -870,7 +870,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSON
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse tasks/get request", zap.Error(err))
+		h.logger.Error("failed to parse GetTask request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -891,7 +891,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSON
 	h.responseSender.SendSuccess(c, req.ID, *task)
 }
 
-// HandleTaskCancel processes tasks/cancel requests
+// HandleTaskCancel processes CancelTask requests
 func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.CancelTaskRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -902,7 +902,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.J
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse tasks/cancel request", zap.Error(err))
+		h.logger.Error("failed to parse CancelTask request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -922,7 +922,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.J
 	h.responseSender.SendSuccess(c, req.ID, *task)
 }
 
-// HandleTaskList processes tasks/list requests
+// HandleTaskList processes ListTasks requests
 func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.ListTasksRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -933,7 +933,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSO
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse tasks/list request", zap.Error(err))
+		h.logger.Error("failed to parse ListTasks request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -951,7 +951,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSO
 	h.responseSender.SendSuccess(c, req.ID, taskList)
 }
 
-// HandleTaskPushNotificationConfigSet processes tasks/pushNotificationConfig/set requests
+// HandleTaskPushNotificationConfigSet processes CreateTaskPushNotificationConfig requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.TaskPushNotificationConfig
 	paramsBytes, err := json.Marshal(req.Params)
@@ -962,7 +962,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.C
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse tasks/pushNotificationConfig/set request", zap.Error(err))
+		h.logger.Error("failed to parse CreateTaskPushNotificationConfig request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -982,7 +982,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigSet(c *gin.C
 	h.responseSender.SendSuccess(c, req.ID, config)
 }
 
-// HandleTaskPushNotificationConfigGet processes tasks/pushNotificationConfig/get requests
+// HandleTaskPushNotificationConfigGet processes GetTaskPushNotificationConfig requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.GetTaskPushNotificationConfigRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -993,7 +993,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse tasks/pushNotificationConfig/get request", zap.Error(err))
+		h.logger.Error("failed to parse GetTaskPushNotificationConfig request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -1011,7 +1011,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigGet(c *gin.C
 	h.responseSender.SendSuccess(c, req.ID, config)
 }
 
-// HandleTaskPushNotificationConfigList processes tasks/pushNotificationConfig/list requests
+// HandleTaskPushNotificationConfigList processes ListTaskPushNotificationConfigs requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.ListTaskPushNotificationConfigsRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -1022,7 +1022,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse tasks/pushNotificationConfig/list request", zap.Error(err))
+		h.logger.Error("failed to parse ListTaskPushNotificationConfigs request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -1042,7 +1042,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigList(c *gin.
 	h.responseSender.SendSuccess(c, req.ID, configs)
 }
 
-// HandleTaskPushNotificationConfigDelete processes tasks/pushNotificationConfig/delete requests
+// HandleTaskPushNotificationConfigDelete processes DeleteTaskPushNotificationConfig requests
 func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gin.Context, req types.JSONRPCRequest) {
 	var params types.DeleteTaskPushNotificationConfigRequest
 	paramsBytes, err := json.Marshal(req.Params)
@@ -1053,7 +1053,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse tasks/pushNotificationConfig/delete request", zap.Error(err))
+		h.logger.Error("failed to parse DeleteTaskPushNotificationConfig request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
@@ -1073,7 +1073,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskPushNotificationConfigDelete(c *gi
 	h.responseSender.SendSuccess(c, req.ID, nil)
 }
 
-// HandleTaskResubscribe processes tasks/resubscribe requests.
+// HandleTaskResubscribe processes SubscribeToTask requests.
 //
 // The request body is a `SubscribeToTaskRequest` carrying the task name (ID).
 // If the task does not exist, an SSE error response is returned. If it does, the
@@ -1090,13 +1090,13 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 	}
 
 	if err := json.Unmarshal(paramsBytes, &params); err != nil {
-		h.logger.Error("failed to parse tasks/resubscribe request", zap.Error(err))
+		h.logger.Error("failed to parse SubscribeToTask request", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 		return
 	}
 
 	if params.ID == "" {
-		h.logger.Error("tasks/resubscribe missing task name")
+		h.logger.Error("SubscribeToTask missing task name")
 		h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "task id is required")
 		return
 	}
@@ -1113,7 +1113,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error: &types.JSONRPCError{
+			Error: types.JSONRPCError{
 				Code:    int(ErrInvalidParams),
 				Message: "task not found",
 			},
@@ -1192,7 +1192,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		errorResponse := types.JSONRPCErrorResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
-			Error: &types.JSONRPCError{
+			Error: types.JSONRPCError{
 				Code:    int(ErrInternalError),
 				Message: err.Error(),
 			},
@@ -1254,7 +1254,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		zap.Stringp("context_id", task.ContextID))
 }
 
-// HandleGetAuthenticatedExtendedCard processes agent/getAuthenticatedExtendedCard requests.
+// HandleGetAuthenticatedExtendedCard processes GetExtendedAgentCard requests.
 //
 // Access to this endpoint is gated by the JSON-RPC route (protected by the configured
 // authentication middleware when enabled), so reaching this method implies the caller has
@@ -1264,7 +1264,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 //   - otherwise the extended card is returned.
 func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Context, req types.JSONRPCRequest, publicCard *types.AgentCard, extendedCard *types.AgentCard) {
 	if publicCard == nil {
-		h.logger.Error("no agent card configured for agent/getAuthenticatedExtendedCard")
+		h.logger.Error("no agent card configured for GetExtendedAgentCard")
 		h.responseSender.SendError(c, req.ID, int(ErrInternalError), "agent card not configured")
 		return
 	}
@@ -1290,7 +1290,7 @@ func (h *DefaultA2AProtocolHandler) HandleGetAuthenticatedExtendedCard(c *gin.Co
 			return
 		}
 		if err := json.Unmarshal(paramsBytes, &params); err != nil {
-			h.logger.Error("failed to parse agent/getAuthenticatedExtendedCard request", zap.Error(err))
+			h.logger.Error("failed to parse GetExtendedAgentCard request", zap.Error(err))
 			h.responseSender.SendError(c, req.ID, int(ErrInvalidParams), "invalid request")
 			return
 		}

@@ -44,7 +44,7 @@ func (rs *DefaultResponseSender) SendError(c *gin.Context, id any, code int, mes
 	resp := types.JSONRPCErrorResponse{
 		JSONRPC: "2.0",
 		ID:      id,
-		Error: &types.JSONRPCError{
+		Error: types.JSONRPCError{
 			Code:    code,
 			Message: message,
 		},

@@ -183,7 +183,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 					func(ctx context.Context, callbackContext *CallbackContext, agentOutput *types.Message) *types.Message {
 						counter.Increment()
 						return &types.Message{
-							ReferenceTaskIds: agentOutput.ReferenceTaskIds,
+							ReferenceTaskIDs: agentOutput.ReferenceTaskIDs,
 							MessageID:        "test-modified",
 							Role:             types.RoleAgent,
 							Parts: []types.Part{
@@ -194,7 +194,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				}
 			},
 			agentOutput: &types.Message{
-				ReferenceTaskIds: []string{"1"},
+				ReferenceTaskIDs: []string{"1"},
 				MessageID:        "original",
 				Role:             types.RoleAgent,
 				Parts: []types.Part{
@@ -202,7 +202,7 @@ func TestCallbackExecutor_ExecuteAfterAgent(t *testing.T) {
 				},
 			},
 			expected: &types.Message{
-				ReferenceTaskIds: []string{"1"},
+				ReferenceTaskIDs: []string{"1"},
 				MessageID:        "test-modified",
 				Role:             types.RoleAgent,
 				Parts: []types.Part{
@@ -559,7 +559,7 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 					counter.Increment()
 					return &LLMResponse{
 						Content: &types.Message{
-							ReferenceTaskIds: llmResponse.Content.ReferenceTaskIds,
+							ReferenceTaskIDs: llmResponse.Content.ReferenceTaskIDs,
 							MessageID:        "test-modified",
 							Role:             types.RoleAgent,
 							Parts: []types.Part{
@@ -571,7 +571,7 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 			},
 			response: &LLMResponse{
 				Content: &types.Message{
-					ReferenceTaskIds: []string{"1"},
+					ReferenceTaskIDs: []string{"1"},
 					MessageID:        "original",
 					Role:             types.RoleAgent,
 					Parts: []types.Part{
@@ -581,7 +581,7 @@ func TestCallbackExecutor_ExecuteAfterModel(t *testing.T) {
 			},
 			expected: &LLMResponse{
 				Content: &types.Message{
-					ReferenceTaskIds: []string{"1"},
+					ReferenceTaskIDs: []string{"1"},
 					MessageID:        "test-modified",
 					Role:             types.RoleAgent,
 					Parts: []types.Part{

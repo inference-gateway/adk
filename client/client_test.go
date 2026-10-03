@@ -329,7 +329,7 @@ func TestClient_SendTask(t *testing.T) {
 					err := json.NewDecoder(r.Body).Decode(&req)
 					assert.NoError(t, err)
 					assert.Equal(t, "2.0", req.JSONRPC)
-					assert.Equal(t, "message/send", req.Method)
+					assert.EqualValues(t, "SendMessage", req.Method)
 
 					response := types.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
@@ -484,7 +484,7 @@ func TestClient_GetTask(t *testing.T) {
 					err := json.NewDecoder(r.Body).Decode(&req)
 					assert.NoError(t, err)
 					assert.Equal(t, "2.0", req.JSONRPC)
-					assert.Equal(t, "tasks/get", req.Method)
+					assert.EqualValues(t, "GetTask", req.Method)
 
 					response := types.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
@@ -629,7 +629,7 @@ func TestClient_CancelTask(t *testing.T) {
 					err := json.NewDecoder(r.Body).Decode(&req)
 					assert.NoError(t, err)
 					assert.Equal(t, "2.0", req.JSONRPC)
-					assert.Equal(t, "tasks/cancel", req.Method)
+					assert.EqualValues(t, "CancelTask", req.Method)
 
 					response := types.JSONRPCSuccessResponse{
 						JSONRPC: "2.0",
@@ -766,7 +766,7 @@ func TestClient_SendTaskStreaming(t *testing.T) {
 					err := json.NewDecoder(r.Body).Decode(&req)
 					assert.NoError(t, err)
 					assert.Equal(t, "2.0", req.JSONRPC)
-					assert.Equal(t, "message/stream", req.Method)
+					assert.EqualValues(t, "SendStreamingMessage", req.Method)
 
 					w.Header().Set("Content-Type", "text/event-stream")
 					w.WriteHeader(http.StatusOK)
@@ -1759,7 +1759,7 @@ func TestClient_ListTasks(t *testing.T) {
 		var req types.JSONRPCRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		assert.NoError(t, err)
-		assert.Equal(t, "tasks/list", req.Method)
+		assert.EqualValues(t, "ListTasks", req.Method)
 
 		mockTaskList := types.ListTasksResponse{
 			Tasks: []types.Task{
@@ -2135,8 +2135,8 @@ func TestClient_SetTaskPushNotificationConfig(t *testing.T) {
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		assert.Equal(t, "2.0", req.JSONRPC)
-		assert.Equal(t, "tasks/pushNotificationConfig/set", req.Method)
-		assert.Equal(t, "task-1", req.Params["taskId"])
+		assert.EqualValues(t, "CreateTaskPushNotificationConfig", req.Method)
+		assert.Equal(t, "task-1", (*req.Params)["taskId"])
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2169,8 +2169,8 @@ func TestClient_GetTaskPushNotificationConfig(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-		assert.Equal(t, "tasks/pushNotificationConfig/get", req.Method)
-		assert.Equal(t, "task-1", req.Params["taskId"])
+		assert.EqualValues(t, "GetTaskPushNotificationConfig", req.Method)
+		assert.Equal(t, "task-1", (*req.Params)["taskId"])
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2202,8 +2202,8 @@ func TestClient_ListTaskPushNotificationConfig(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-		assert.Equal(t, "tasks/pushNotificationConfig/list", req.Method)
-		assert.Equal(t, "tasks/task-1", req.Params["taskId"])
+		assert.EqualValues(t, "ListTaskPushNotificationConfigs", req.Method)
+		assert.Equal(t, "task-1", (*req.Params)["taskId"])
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2220,7 +2220,7 @@ func TestClient_ListTaskPushNotificationConfig(t *testing.T) {
 	defer server.Close()
 
 	c := client.NewClient(server.URL)
-	parent := "tasks/task-1"
+	parent := "task-1"
 	resp, err := c.ListTaskPushNotificationConfig(context.Background(), types.ListTaskPushNotificationConfigsRequest{
 		TaskID: parent,
 	})
@@ -2233,8 +2233,8 @@ func TestClient_DeleteTaskPushNotificationConfig(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-		assert.Equal(t, "tasks/pushNotificationConfig/delete", req.Method)
-		assert.Equal(t, "task-1", req.Params["taskId"])
+		assert.EqualValues(t, "DeleteTaskPushNotificationConfig", req.Method)
+		assert.Equal(t, "task-1", (*req.Params)["taskId"])
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2263,7 +2263,7 @@ func TestClient_GetAuthenticatedExtendedCard(t *testing.T) {
 
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-		assert.Equal(t, "agent/getAuthenticatedExtendedCard", req.Method)
+		assert.EqualValues(t, "GetExtendedAgentCard", req.Method)
 
 		response := types.JSONRPCSuccessResponse{
 			JSONRPC: "2.0",
@@ -2303,8 +2303,8 @@ func TestClient_ResubscribeTask(t *testing.T) {
 
 		var req types.JSONRPCRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-		assert.Equal(t, "tasks/resubscribe", req.Method)
-		assert.Equal(t, "task-resub-1", req.Params["id"])
+		assert.EqualValues(t, "SubscribeToTask", req.Method)
+		assert.Equal(t, "task-resub-1", (*req.Params)["id"])
 
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)

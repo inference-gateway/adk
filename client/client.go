@@ -138,67 +138,27 @@ func (c *Client) getA2AEndpointURL() string {
 	return baseURL + "/a2a"
 }
 
-// SendTask sends a task to the agent (primary interface following official A2A pattern)
+// SendTask sends a message to the agent via the `SendMessage` JSON-RPC method.
 func (c *Client) SendTask(ctx context.Context, params types.SendMessageRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("sending task",
-		zap.String("method", "message/send"),
+		zap.String("method", string(types.A2AMethodSendMessage)),
 		zap.String("message_id", params.Message.MessageID),
 		zap.String("role", string(params.Message.Role)))
-
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  "message/send",
-		Params:  make(map[string]any),
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		c.logger.Error("failed to marshal params", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
-	}
-
-	var paramsMap map[string]any
-	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
-	}
-	req.Params = paramsMap
-
-	var resp types.JSONRPCSuccessResponse
-	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to send task", zap.Error(err), zap.String("message_id", params.Message.MessageID))
-		return nil, err
-	}
-
-	c.logger.Debug("task sent successfully", zap.String("message_id", params.Message.MessageID))
-	return &resp, nil
+	return c.doJSONRPCCall(ctx, types.A2AMethodSendMessage, params)
 }
 
 // SendTaskStreaming sends a task and returns a channel for streaming events
 func (c *Client) SendTaskStreaming(ctx context.Context, params types.SendMessageRequest) (<-chan types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("starting task streaming",
-		zap.String("method", "message/stream"),
+		zap.String("method", string(types.A2AMethodSendStreamingMessage)),
 		zap.String("message_id", params.Message.MessageID),
 		zap.String("role", string(params.Message.Role)))
 
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  "message/stream",
-		Params:  make(map[string]any),
-	}
-
-	paramsBytes, err := json.Marshal(params)
+	req, err := newJSONRPCRequest(types.A2AMethodSendStreamingMessage, params)
 	if err != nil {
-		c.logger.Error("failed to marshal params", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
+		c.logger.Error("failed to build json-rpc request", zap.Error(err))
+		return nil, err
 	}
-
-	var paramsMap map[string]any
-	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
-	}
-	req.Params = paramsMap
 
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -296,216 +256,126 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.SendMessage
 	return eventChan, nil
 }
 
-// GetTaskWithContext retrieves the status of a task with context support
+// GetTask retrieves a task via the `GetTask` JSON-RPC method.
 func (c *Client) GetTask(ctx context.Context, params types.GetTaskRequest) (*types.JSONRPCSuccessResponse, error) {
-	c.logger.Debug("retrieving task", zap.String("method", "tasks/get"), zap.String("task_id", params.ID))
-
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  "tasks/get",
-		Params:  make(map[string]any),
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		c.logger.Error("failed to marshal params", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
-	}
-
-	var paramsMap map[string]any
-	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
-	}
-	req.Params = paramsMap
-
-	var resp types.JSONRPCSuccessResponse
-	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to retrieve task", zap.Error(err), zap.String("task_id", params.ID))
-		return nil, err
-	}
-
-	c.logger.Debug("task retrieved successfully", zap.String("task_id", params.ID))
-	return &resp, nil
+	c.logger.Debug("retrieving task", zap.String("method", string(types.A2AMethodGetTask)), zap.String("task_id", params.ID))
+	return c.doJSONRPCCall(ctx, types.A2AMethodGetTask, params)
 }
 
-// CancelTaskWithContext cancels a task with context support
+// CancelTask cancels a task via the `CancelTask` JSON-RPC method.
 func (c *Client) CancelTask(ctx context.Context, params types.CancelTaskRequest) (*types.JSONRPCSuccessResponse, error) {
-	c.logger.Debug("cancelling task", zap.String("method", "tasks/cancel"), zap.String("task_id", params.ID))
-
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  "tasks/cancel",
-		Params:  make(map[string]any),
-	}
-
-	paramsBytes, err := json.Marshal(params)
-	if err != nil {
-		c.logger.Error("failed to marshal params", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
-	}
-
-	var paramsMap map[string]any
-	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
-	}
-	req.Params = paramsMap
-
-	var resp types.JSONRPCSuccessResponse
-	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to cancel task", zap.Error(err), zap.String("task_id", params.ID))
-		return nil, err
-	}
-
-	c.logger.Debug("task cancelled successfully", zap.String("task_id", params.ID))
-	return &resp, nil
+	c.logger.Debug("cancelling task", zap.String("method", string(types.A2AMethodCancelTask)), zap.String("task_id", params.ID))
+	return c.doJSONRPCCall(ctx, types.A2AMethodCancelTask, params)
 }
 
-// ListTasks retrieves a list of tasks from the agent
+// ListTasks lists the agent's tasks via the `ListTasks` JSON-RPC method.
 func (c *Client) ListTasks(ctx context.Context, params types.ListTasksRequest) (*types.JSONRPCSuccessResponse, error) {
-	c.logger.Debug("listing tasks", zap.String("method", "tasks/list"))
+	c.logger.Debug("listing tasks", zap.String("method", string(types.A2AMethodListTasks)))
+	return c.doJSONRPCCall(ctx, types.A2AMethodListTasks, params)
+}
 
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  "tasks/list",
-		Params:  make(map[string]any),
+// doJSONRPCCall issues a JSON-RPC call for method with params and returns the decoded
+// JSONRPCSuccessResponse.
+func (c *Client) doJSONRPCCall(ctx context.Context, method types.A2AMethod, params any) (*types.JSONRPCSuccessResponse, error) {
+	req, err := newJSONRPCRequest(method, params)
+	if err != nil {
+		c.logger.Error("failed to build json-rpc request", zap.Error(err), zap.String("method", string(method)))
+		return nil, err
+	}
+
+	var resp types.JSONRPCSuccessResponse
+	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
+		c.logger.Error("json-rpc call failed", zap.Error(err), zap.String("method", string(method)))
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+// newJSONRPCRequest builds a JSON-RPC request for method, carrying params as a JSON object.
+func newJSONRPCRequest(method types.A2AMethod, params any) (types.JSONRPCRequest, error) {
+	req := types.JSONRPCRequest{JSONRPC: "2.0", Method: method}
+	if params == nil {
+		return req, nil
 	}
 
 	paramsBytes, err := json.Marshal(params)
 	if err != nil {
-		c.logger.Error("failed to marshal params", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
+		return req, fmt.Errorf("failed to marshal params: %w", err)
 	}
 
-	var paramsMap map[string]any
+	var paramsMap types.Struct
 	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
+		return req, fmt.Errorf("failed to unmarshal params to map: %w", err)
 	}
-	req.Params = paramsMap
-
-	var resp types.JSONRPCSuccessResponse
-	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("failed to list tasks", zap.Error(err))
-		return nil, err
-	}
-
-	c.logger.Debug("tasks listed successfully")
-	return &resp, nil
-}
-
-// doJSONRPCCall is a helper that marshals a params struct, issues a JSON-RPC call, and
-// returns the decoded JSONRPCSuccessResponse. It centralizes the boilerplate used by
-// every JSON-RPC method on the client (struct marshal → map[string]any → request).
-func (c *Client) doJSONRPCCall(ctx context.Context, method string, params any) (*types.JSONRPCSuccessResponse, error) {
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  method,
-		Params:  make(map[string]any),
-	}
-
-	if params != nil {
-		paramsBytes, err := json.Marshal(params)
-		if err != nil {
-			c.logger.Error("failed to marshal params", zap.Error(err), zap.String("method", method))
-			return nil, fmt.Errorf("failed to marshal params: %w", err)
-		}
-
-		var paramsMap map[string]any
-		if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-			c.logger.Error("failed to unmarshal params to map", zap.Error(err), zap.String("method", method))
-			return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
-		}
-		req.Params = paramsMap
-	}
-
-	var resp types.JSONRPCSuccessResponse
-	if err := c.doRequestWithContext(ctx, req, &resp); err != nil {
-		c.logger.Error("json-rpc call failed", zap.Error(err), zap.String("method", method))
-		return nil, err
-	}
-
-	return &resp, nil
+	req.Params = &paramsMap
+	return req, nil
 }
 
 // SetTaskPushNotificationConfig registers (or replaces) the push notification configuration
-// attached to a task via the `tasks/pushNotificationConfig/set` JSON-RPC method.
+// attached to a task via the `CreateTaskPushNotificationConfig` JSON-RPC method.
 func (c *Client) SetTaskPushNotificationConfig(ctx context.Context, params types.TaskPushNotificationConfig) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("setting task push notification config",
-		zap.String("method", "tasks/pushNotificationConfig/set"),
+		zap.String("method", string(types.A2AMethodCreateTaskPushNotificationConfig)),
 		zap.Stringp("task_id", params.TaskID),
 		zap.String("url", params.URL))
-	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/set", params)
+	return c.doJSONRPCCall(ctx, types.A2AMethodCreateTaskPushNotificationConfig, params)
 }
 
 // GetTaskPushNotificationConfig retrieves the push notification configuration for a task via
-// the `tasks/pushNotificationConfig/get` JSON-RPC method.
+// the `GetTaskPushNotificationConfig` JSON-RPC method.
 func (c *Client) GetTaskPushNotificationConfig(ctx context.Context, params types.GetTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("getting task push notification config",
-		zap.String("method", "tasks/pushNotificationConfig/get"),
+		zap.String("method", string(types.A2AMethodGetTaskPushNotificationConfig)),
 		zap.String("task_id", params.TaskID),
 		zap.String("config_id", params.ID))
-	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/get", params)
+	return c.doJSONRPCCall(ctx, types.A2AMethodGetTaskPushNotificationConfig, params)
 }
 
 // ListTaskPushNotificationConfig lists push notification configurations for a task via the
-// `tasks/pushNotificationConfig/list` JSON-RPC method.
+// `ListTaskPushNotificationConfigs` JSON-RPC method.
 func (c *Client) ListTaskPushNotificationConfig(ctx context.Context, params types.ListTaskPushNotificationConfigsRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("listing task push notification configs",
-		zap.String("method", "tasks/pushNotificationConfig/list"),
+		zap.String("method", string(types.A2AMethodListTaskPushNotificationConfigs)),
 		zap.String("task_id", params.TaskID))
-	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/list", params)
+	return c.doJSONRPCCall(ctx, types.A2AMethodListTaskPushNotificationConfigs, params)
 }
 
 // DeleteTaskPushNotificationConfig deletes a push notification configuration for a task via
-// the `tasks/pushNotificationConfig/delete` JSON-RPC method.
+// the `DeleteTaskPushNotificationConfig` JSON-RPC method.
 func (c *Client) DeleteTaskPushNotificationConfig(ctx context.Context, params types.DeleteTaskPushNotificationConfigRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("deleting task push notification config",
-		zap.String("method", "tasks/pushNotificationConfig/delete"),
+		zap.String("method", string(types.A2AMethodDeleteTaskPushNotificationConfig)),
 		zap.String("task_id", params.TaskID),
 		zap.String("config_id", params.ID))
-	return c.doJSONRPCCall(ctx, "tasks/pushNotificationConfig/delete", params)
+	return c.doJSONRPCCall(ctx, types.A2AMethodDeleteTaskPushNotificationConfig, params)
 }
 
 // GetAuthenticatedExtendedCard fetches the authenticated/extended agent card via the
-// `agent/getAuthenticatedExtendedCard` JSON-RPC method. Unlike GetAgentCard (which hits
+// `GetExtendedAgentCard` JSON-RPC method. Unlike GetAgentCard (which hits
 // the public HTTP endpoint), this call goes through the JSON-RPC route and is subject to
 // the server's authentication middleware.
 func (c *Client) GetAuthenticatedExtendedCard(ctx context.Context, params types.GetExtendedAgentCardRequest) (*types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("retrieving authenticated extended agent card",
-		zap.String("method", "agent/getAuthenticatedExtendedCard"),
+		zap.String("method", string(types.A2AMethodGetExtendedAgentCard)),
 		zap.Stringp("tenant", params.Tenant))
-	return c.doJSONRPCCall(ctx, "agent/getAuthenticatedExtendedCard", params)
+	return c.doJSONRPCCall(ctx, types.A2AMethodGetExtendedAgentCard, params)
 }
 
-// ResubscribeTask re-subscribes to a streaming task via the `tasks/resubscribe` JSON-RPC
+// ResubscribeTask re-subscribes to a streaming task via the `SubscribeToTask` JSON-RPC
 // method, returning a channel of streaming responses. The channel is closed when the
 // stream ends (either because the server sent `[DONE]`, the response body closed, or the
 // supplied context was cancelled).
 func (c *Client) ResubscribeTask(ctx context.Context, params types.SubscribeToTaskRequest) (<-chan types.JSONRPCSuccessResponse, error) {
 	c.logger.Debug("resubscribing to task",
-		zap.String("method", "tasks/resubscribe"),
+		zap.String("method", string(types.A2AMethodSubscribeToTask)),
 		zap.String("task_id", params.ID))
 
-	req := types.JSONRPCRequest{
-		JSONRPC: "2.0",
-		Method:  "tasks/resubscribe",
-		Params:  make(map[string]any),
-	}
-
-	paramsBytes, err := json.Marshal(params)
+	req, err := newJSONRPCRequest(types.A2AMethodSubscribeToTask, params)
 	if err != nil {
-		c.logger.Error("failed to marshal params", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal params: %w", err)
+		c.logger.Error("failed to build json-rpc request", zap.Error(err))
+		return nil, err
 	}
-
-	var paramsMap map[string]any
-	if err := json.Unmarshal(paramsBytes, &paramsMap); err != nil {
-		c.logger.Error("failed to unmarshal params to map", zap.Error(err))
-		return nil, fmt.Errorf("failed to unmarshal params to map: %w", err)
-	}
-	req.Params = paramsMap
 
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -705,7 +575,7 @@ func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
 
 // doRequestWithContext performs the HTTP request with context support and handles the response
 func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequest, resp *types.JSONRPCSuccessResponse) error {
-	c.logger.Debug("preparing request", zap.String("method", req.Method), zap.String("base_url", c.config.BaseURL))
+	c.logger.Debug("preparing request", zap.String("method", string(req.Method)), zap.String("base_url", c.config.BaseURL))
 
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -727,7 +597,7 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 	for attempt := 0; attempt <= c.config.MaxRetries; attempt++ {
 		if attempt > 0 {
 			c.logger.Debug("retrying request",
-				zap.String("method", req.Method),
+				zap.String("method", string(req.Method)),
 				zap.Int("attempt", attempt+1),
 				zap.Int("max_retries", c.config.MaxRetries+1))
 		}
@@ -735,14 +605,14 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 		httpResp, err = c.httpClient.Do(httpReq)
 		if err == nil {
 			c.logger.Debug("request successful",
-				zap.String("method", req.Method),
+				zap.String("method", string(req.Method)),
 				zap.Int("attempt", attempt+1),
 				zap.Int("status_code", httpResp.StatusCode))
 			break
 		}
 		lastErr = err
 		c.logger.Warn("request failed",
-			zap.String("method", req.Method),
+			zap.String("method", string(req.Method)),
 			zap.Int("attempt", attempt+1),
 			zap.Error(err))
 
@@ -763,7 +633,7 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 
 	if httpResp == nil {
 		c.logger.Error("all retry attempts exhausted",
-			zap.String("method", req.Method),
+			zap.String("method", string(req.Method)),
 			zap.Int("attempts", c.config.MaxRetries+1),
 			zap.Error(lastErr))
 		return fmt.Errorf("failed to send request after %d attempts: %w", c.config.MaxRetries+1, lastErr)
@@ -777,7 +647,7 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 	if httpResp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(httpResp.Body)
 		c.logger.Error("unexpected status code",
-			zap.String("method", req.Method),
+			zap.String("method", string(req.Method)),
 			zap.Int("status_code", httpResp.StatusCode),
 			zap.String("response_body", string(bodyBytes)))
 		return fmt.Errorf("unexpected status code: %d, body: %s", httpResp.StatusCode, string(bodyBytes))
@@ -809,7 +679,7 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 		resp.Result = rawResp.Result
 	}
 
-	c.logger.Debug("request completed successfully", zap.String("method", req.Method))
+	c.logger.Debug("request completed successfully", zap.String("method", string(req.Method)))
 	return nil
 }
 
