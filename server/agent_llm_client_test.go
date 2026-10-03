@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -162,6 +163,69 @@ func TestLLMClient_ConfigValidation(t *testing.T) {
 	client, err = server.NewOpenAICompatibleLLMClient(emptyConfig, logger)
 	assert.Error(t, err)
 	assert.Nil(t, client)
+}
+
+func TestLLMClient_SendsSamplingParameters(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   serverConfig.AgentConfig
+		expected map[string]any
+	}{
+		{
+			name: "non-zero values are sent",
+			config: serverConfig.AgentConfig{
+				MaxTokens:        2048,
+				Temperature:      0.5,
+				TopP:             0.9,
+				FrequencyPenalty: 0.1,
+				PresencePenalty:  0.2,
+			},
+			expected: map[string]any{
+				"max_tokens":        float64(2048),
+				"temperature":       0.5,
+				"top_p":             0.9,
+				"frequency_penalty": 0.1,
+				"presence_penalty":  0.2,
+			},
+		},
+		{
+			name:     "zero values are omitted",
+			config:   serverConfig.AgentConfig{},
+			expected: map[string]any{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var body map[string]any
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"id":"1","object":"chat.completion","created":0,"model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}`))
+			}))
+			defer srv.Close()
+
+			cfg := tt.config
+			cfg.Provider = "openai"
+			cfg.Model = "gpt-4"
+			cfg.BaseURL = srv.URL + "/v1"
+
+			client, err := server.NewOpenAICompatibleLLMClient(&cfg, zap.NewNop())
+			assert.NoError(t, err)
+
+			_, err = client.CreateChatCompletion(context.Background(), []sdk.Message{{Role: sdk.User, Content: sdk.NewMessageContent("hi")}})
+			assert.NoError(t, err)
+
+			for _, key := range []string{"max_tokens", "temperature", "top_p", "frequency_penalty", "presence_penalty"} {
+				want, ok := tt.expected[key]
+				if !ok {
+					assert.NotContains(t, body, key)
+					continue
+				}
+				assert.InDelta(t, want, body[key], 0.0001, key)
+			}
+		})
+	}
 }
 
 func TestLLMClient_WithMockSDK(t *testing.T) {

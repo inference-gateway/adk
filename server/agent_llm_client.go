@@ -89,13 +89,42 @@ func NewOpenAICompatibleLLMClient(cfg *serverConfig.AgentConfig, logger *zap.Log
 	}, nil
 }
 
-// CreateChatCompletion implements LLMClient.CreateChatCompletion using SDK messages
-func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
+// requestOptions maps the configured sampling settings onto an SDK request.
+// Zero values are left unset so the provider's own defaults apply.
+func (c *OpenAICompatibleLLMClient) requestOptions() *sdk.CreateChatCompletionRequest {
 	options := &sdk.CreateChatCompletionRequest{}
 
 	if c.config.MaxTokens > 0 {
 		options.MaxTokens = &c.config.MaxTokens
 	}
+
+	if c.config.Temperature > 0 {
+		options.Temperature = float32Pointer(c.config.Temperature)
+	}
+
+	if c.config.TopP > 0 {
+		options.TopP = float32Pointer(c.config.TopP)
+	}
+
+	if c.config.FrequencyPenalty != 0 {
+		options.FrequencyPenalty = float32Pointer(c.config.FrequencyPenalty)
+	}
+
+	if c.config.PresencePenalty != 0 {
+		options.PresencePenalty = float32Pointer(c.config.PresencePenalty)
+	}
+
+	return options
+}
+
+func float32Pointer(value float64) *float32 {
+	converted := float32(value)
+	return &converted
+}
+
+// CreateChatCompletion implements LLMClient.CreateChatCompletion using SDK messages
+func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, messages []sdk.Message, tools ...sdk.ChatCompletionTool) (*sdk.CreateChatCompletionResponse, error) {
+	options := c.requestOptions()
 
 	var response *sdk.CreateChatCompletionResponse
 	var lastErr error
@@ -170,11 +199,7 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 		defer close(responseChan)
 		defer close(errorChan)
 
-		options := &sdk.CreateChatCompletionRequest{}
-
-		if c.config.MaxTokens > 0 {
-			options.MaxTokens = &c.config.MaxTokens
-		}
+		options := c.requestOptions()
 
 		var events <-chan sdk.SSEvent
 		var err error

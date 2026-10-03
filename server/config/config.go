@@ -63,10 +63,10 @@ type AgentConfig struct {
 	ProxyURL                    string            `env:"PROXY_URL" description:"Proxy URL for requests"`
 	UserAgent                   string            `env:"USER_AGENT,default=a2a-agent/1.0" description:"User agent string"`
 	MaxTokens                   int               `env:"MAX_TOKENS,default=4096" description:"Maximum tokens for completion"`
-	Temperature                 float64           `env:"TEMPERATURE,default=0.7" description:"Temperature for completion"`
-	TopP                        float64           `env:"TOP_P,default=1.0" description:"Top-p for completion"`
-	FrequencyPenalty            float64           `env:"FREQUENCY_PENALTY,default=0.0" description:"Frequency penalty for completion"`
-	PresencePenalty             float64           `env:"PRESENCE_PENALTY,default=0.0" description:"Presence penalty for completion"`
+	Temperature                 float64           `env:"TEMPERATURE,default=0.7" description:"Sampling temperature for completion (0 = leave unset)"`
+	TopP                        float64           `env:"TOP_P,default=1.0" description:"Top-p nucleus sampling for completion (0 = leave unset)"`
+	FrequencyPenalty            float64           `env:"FREQUENCY_PENALTY,default=0.0" description:"Frequency penalty for completion (0 = leave unset)"`
+	PresencePenalty             float64           `env:"PRESENCE_PENALTY,default=0.0" description:"Presence penalty for completion (0 = leave unset)"`
 	SystemPrompt                string            `env:"SYSTEM_PROMPT,default=You are a helpful AI assistant processing an A2A (Agent-to-Agent) task. Please provide helpful and accurate responses." description:"System prompt for LLM interactions"`
 	MaxConversationHistory      int               `env:"MAX_CONVERSATION_HISTORY,default=20" description:"Maximum number of messages to keep in conversation history per context"`
 	ToolBoxConfig               ToolBoxConfig     `env:",prefix=TOOLS_" description:"Tool configuration for agents"`
@@ -317,7 +317,7 @@ type ArtifactsStorageConfig struct {
 
 // ArtifactRetentionConfig defines artifact cleanup policies
 type ArtifactRetentionConfig struct {
-	MaxArtifacts    int           `env:"MAX_ARTIFACTS,default=5" description:"Maximum artifacts to retain per task (0 = unlimited)"`
+	MaxArtifacts    int           `env:"MAX_ARTIFACTS,default=5" description:"Maximum files to retain per artifact ID, not per task (0 = unlimited); artifacts store one file each, so this removes nothing in practice"`
 	MaxAge          time.Duration `env:"MAX_AGE,default=168h" description:"Maximum age for artifacts (0 = no age limit)"`
 	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL,default=24h" description:"How often to run cleanup (0 = manual cleanup only)"`
 }
