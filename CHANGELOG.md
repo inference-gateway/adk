@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.0](https://github.com/inference-gateway/adk/compare/v0.30.2...v0.31.0) (2026-10-03)
+
+### ✨ Features
+
+* rename a2a json-rpc methods to the v1.0.1 names ([#342](https://github.com/inference-gateway/adk/issues/342)) ([4d352e4](https://github.com/inference-gateway/adk/commit/4d352e4d75d0c13a83cc66dae8fc2fcb3e49719a)), closes [#341](https://github.com/inference-gateway/adk/issues/341)
+
+### 🐛 Bug Fixes
+
+* close the a2a v1.0.1 json-rpc protocol gaps found by the tck ([#347](https://github.com/inference-gateway/adk/issues/347)) ([675e993](https://github.com/inference-gateway/adk/commit/675e993bfcb1448b9237aac92e62fb18b8091131)), references [#344](https://github.com/inference-gateway/adk/issues/344)
+* **server:** send push notifications as a2a+json StreamResponse ([#345](https://github.com/inference-gateway/adk/issues/345)) ([9285f07](https://github.com/inference-gateway/adk/commit/9285f07c8175c60b281611a0e644905aa9bd0f16)), closes [#343](https://github.com/inference-gateway/adk/issues/343)
+
 ## [0.30.2](https://github.com/inference-gateway/adk/compare/v0.30.1...v0.30.2) (2026-10-02)
 
 ### 🔧 Miscellaneous
