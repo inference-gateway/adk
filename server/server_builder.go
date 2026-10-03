@@ -179,9 +179,7 @@ func (b *A2AServerBuilderImpl) WithStreamingTaskHandler(handler StreamableTaskHa
 // WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios
 func (b *A2AServerBuilderImpl) WithDefaultBackgroundTaskHandler() A2AServerBuilder {
 	handler := NewDefaultBackgroundTaskHandler(b.logger, b.agent)
-	if b.artifactService != nil {
-		handler.artifactService = b.artifactService
-	}
+	handler.artifactService = b.artifactService
 	handler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
 	b.pollingTaskHandler = handler
 	return b
@@ -190,9 +188,7 @@ func (b *A2AServerBuilderImpl) WithDefaultBackgroundTaskHandler() A2AServerBuild
 // WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios
 func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilder {
 	handler := NewDefaultStreamingTaskHandler(b.logger, b.agent)
-	if b.artifactService != nil {
-		handler.artifactService = b.artifactService
-	}
+	handler.artifactService = b.artifactService
 	handler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
 	b.streamingTaskHandler = handler
 	return b
@@ -200,15 +196,8 @@ func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilde
 
 // WithDefaultTaskHandlers sets both default background and streaming task handlers
 func (b *A2AServerBuilderImpl) WithDefaultTaskHandlers() A2AServerBuilder {
-	bgHandler := NewDefaultBackgroundTaskHandler(b.logger, b.agent)
-	bgHandler.artifactService = b.artifactService
-	bgHandler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
-	b.pollingTaskHandler = bgHandler
-
-	streamHandler := NewDefaultStreamingTaskHandler(b.logger, b.agent)
-	streamHandler.artifactService = b.artifactService
-	streamHandler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
-	b.streamingTaskHandler = streamHandler
+	b.WithDefaultBackgroundTaskHandler()
+	b.WithDefaultStreamingTaskHandler()
 	return b
 }
 
