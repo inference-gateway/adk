@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.32.0](https://github.com/inference-gateway/adk/compare/v0.31.2...v0.32.0) (2026-10-03)
+
+### ✨ Features
+
+* **server:** pass the a2a v1.0.1 json-rpc tck ([#354](https://github.com/inference-gateway/adk/issues/354)) ([e4ba557](https://github.com/inference-gateway/adk/commit/e4ba5573c677b0e043b4e07ad92c0c5698b64b89))
+
+### 🐛 Bug Fixes
+
+* **server:** accept proto field names in json-rpc params ([#352](https://github.com/inference-gateway/adk/issues/352)) ([9d50ee0](https://github.com/inference-gateway/adk/commit/9d50ee0c2c3b63e6b2786290a9dab95f0031416e))
+
+### 📚 Documentation
+
+* **examples:** explain the tck compatibility ceiling ([#355](https://github.com/inference-gateway/adk/issues/355)) ([0d2ffd1](https://github.com/inference-gateway/adk/commit/0d2ffd1f4ccbf0b0b25c81829a57fabb91503676))
+
+### ✅ Miscellaneous
+
+* run the a2a tck in ci against a go system under test ([#353](https://github.com/inference-gateway/adk/issues/353)) ([5546e81](https://github.com/inference-gateway/adk/commit/5546e81edd258ac171011c36c687f49a602b2834)), closes [#346](https://github.com/inference-gateway/adk/issues/346)
+
 ## [0.31.2](https://github.com/inference-gateway/adk/compare/v0.31.1...v0.31.2) (2026-10-03)
 
 ### 🐛 Bug Fixes
