@@ -181,90 +181,75 @@ func (fs *FilesystemArtifactStorage) CleanupExpiredArtifacts(ctx context.Context
 	return removedCount, nil
 }
 
-// CleanupOldestArtifacts removes old artifacts keeping only maxCount per artifact ID
+// CleanupOldestArtifacts removes the oldest artifacts keeping only maxCount per context
 func (fs *FilesystemArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCount int) (int, error) {
 	if maxCount <= 0 {
 		return 0, nil
 	}
 
-	removedCount := 0
-
-	// Layout is {contextID}/{artifactID}/{files}, so recurse one level: keep
-	// only maxCount files per artifact directory.
 	contexts, err := os.ReadDir(fs.basePath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to read artifacts directory: %w", err)
 	}
 
+	removedCount := 0
 	for _, contextEntry := range contexts {
 		if !contextEntry.IsDir() {
 			continue
 		}
 
-		contextDir := filepath.Join(fs.basePath, contextEntry.Name())
-		artifacts, err := os.ReadDir(contextDir)
+		cleaned, err := fs.cleanupContextDirectory(filepath.Join(fs.basePath, contextEntry.Name()), maxCount)
 		if err != nil {
 			continue
 		}
-
-		for _, artifactEntry := range artifacts {
-			if !artifactEntry.IsDir() {
-				continue
-			}
-
-			cleaned, err := fs.cleanupArtifactDirectory(filepath.Join(contextDir, artifactEntry.Name()), maxCount)
-			if err != nil {
-				continue
-			}
-			removedCount += cleaned
-		}
+		removedCount += cleaned
 	}
 
 	fs.cleanupEmptyDirectories()
 	return removedCount, nil
 }
 
-// cleanupArtifactDirectory removes oldest files in a directory, keeping only maxCount files
-func (fs *FilesystemArtifactStorage) cleanupArtifactDirectory(artifactDir string, maxCount int) (int, error) {
-	files, err := os.ReadDir(artifactDir)
+// cleanupContextDirectory removes the oldest artifact directories in a context,
+// keeping only the newest maxCount of them
+func (fs *FilesystemArtifactStorage) cleanupContextDirectory(contextDir string, maxCount int) (int, error) {
+	entries, err := os.ReadDir(contextDir)
 	if err != nil {
 		return 0, err
 	}
 
-	if len(files) <= maxCount {
-		return 0, nil
-	}
-
-	type fileInfo struct {
-		name    string
+	type artifactInfo struct {
+		path    string
 		modTime time.Time
 	}
 
-	var fileInfos []fileInfo
-	for _, file := range files {
-		if file.IsDir() {
+	var artifacts []artifactInfo
+	for _, entry := range entries {
+		if !entry.IsDir() {
 			continue
 		}
 
-		info, err := file.Info()
+		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
 
-		fileInfos = append(fileInfos, fileInfo{
-			name:    file.Name(),
+		artifacts = append(artifacts, artifactInfo{
+			path:    filepath.Join(contextDir, entry.Name()),
 			modTime: info.ModTime(),
 		})
 	}
 
-	sort.Slice(fileInfos, func(i, j int) bool {
-		return fileInfos[i].modTime.After(fileInfos[j].modTime)
+	if len(artifacts) <= maxCount {
+		return 0, nil
+	}
+
+	sort.Slice(artifacts, func(i, j int) bool {
+		return artifacts[i].modTime.After(artifacts[j].modTime)
 	})
 
 	removedCount := 0
-	for i := maxCount; i < len(fileInfos); i++ {
-		filePath := filepath.Join(artifactDir, fileInfos[i].name)
-		if err := os.Remove(filePath); err == nil {
+	for _, artifact := range artifacts[maxCount:] {
+		if err := os.RemoveAll(artifact.path); err == nil {
 			removedCount++
 		}
 	}

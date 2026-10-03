@@ -317,7 +317,7 @@ type ArtifactsStorageConfig struct {
 
 // ArtifactRetentionConfig defines artifact cleanup policies
 type ArtifactRetentionConfig struct {
-	MaxArtifacts    int           `env:"MAX_ARTIFACTS,default=5" description:"Maximum files to retain per artifact ID, not per task (0 = unlimited); artifacts store one file each, so this removes nothing in practice"`
+	MaxArtifacts    int           `env:"MAX_ARTIFACTS,default=5" description:"Maximum artifacts to retain per context, oldest removed first (0 = unlimited)"`
 	MaxAge          time.Duration `env:"MAX_AGE,default=168h" description:"Maximum age for artifacts (0 = no age limit)"`
 	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL,default=24h" description:"How often to run cleanup (0 = manual cleanup only)"`
 }
