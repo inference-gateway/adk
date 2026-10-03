@@ -136,11 +136,8 @@ func (c *OpenAICompatibleLLMClient) CreateChatCompletion(ctx context.Context, me
 				zap.Int("max_retries", c.config.MaxRetries),
 				zap.Error(lastErr))
 
-			backoff := time.Duration(attempt) * time.Second
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(backoff):
+			if err := c.waitBeforeRetry(ctx, attempt); err != nil {
+				return nil, err
 			}
 		}
 
@@ -199,34 +196,9 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 		defer close(responseChan)
 		defer close(errorChan)
 
-		options := c.requestOptions()
-
-		var events <-chan sdk.SSEvent
-		var err error
-
-		if len(tools) > 0 {
-			events, err = c.client.WithMiddlewareOptions(&sdk.MiddlewareOptions{
-				DirectProvider: true,
-				SkipMCP:        true,
-			}).WithOptions(options).WithTools(&tools).GenerateContentStream(
-				ctx,
-				c.provider,
-				c.model,
-				messages,
-			)
-		} else {
-			events, err = c.client.WithMiddlewareOptions(&sdk.MiddlewareOptions{
-				DirectProvider: true,
-				SkipMCP:        true,
-			}).WithOptions(options).GenerateContentStream(
-				ctx,
-				c.provider,
-				c.model,
-				messages,
-			)
-		}
+		events, err := c.openStream(ctx, messages, tools)
 		if err != nil {
-			errorChan <- fmt.Errorf("failed to create stream: %w", err)
+			errorChan <- err
 			return
 		}
 
@@ -269,6 +241,58 @@ func (c *OpenAICompatibleLLMClient) CreateStreamingChatCompletion(ctx context.Co
 	}()
 
 	return responseChan, errorChan
+}
+
+// waitBeforeRetry sleeps for a linear backoff, returning early if the context
+// is cancelled while waiting.
+func (c *OpenAICompatibleLLMClient) waitBeforeRetry(ctx context.Context, attempt int) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(time.Duration(attempt) * time.Second):
+		return nil
+	}
+}
+
+// openStream establishes the upstream SSE connection, retrying up to
+// MaxRetries. Only the connection attempt is retried - it happens before any
+// delta reaches the caller, so no event is ever replayed.
+func (c *OpenAICompatibleLLMClient) openStream(ctx context.Context, messages []sdk.Message, tools []sdk.ChatCompletionTool) (<-chan sdk.SSEvent, error) {
+	options := c.requestOptions()
+
+	var lastErr error
+	for attempt := 0; attempt <= c.config.MaxRetries; attempt++ {
+		if attempt > 0 {
+			c.logger.Debug("retrying llm stream request",
+				zap.Int("attempt", attempt),
+				zap.Int("max_retries", c.config.MaxRetries),
+				zap.Error(lastErr))
+
+			if err := c.waitBeforeRetry(ctx, attempt); err != nil {
+				return nil, err
+			}
+		}
+
+		client := c.client.WithMiddlewareOptions(&sdk.MiddlewareOptions{
+			DirectProvider: true,
+			SkipMCP:        true,
+		}).WithOptions(options)
+		if len(tools) > 0 {
+			client = client.WithTools(&tools)
+		}
+
+		events, err := client.GenerateContentStream(ctx, c.provider, c.model, messages)
+		if err == nil {
+			return events, nil
+		}
+
+		lastErr = err
+		c.logger.Debug("llm stream request failed",
+			zap.Error(err),
+			zap.Int("attempt", attempt+1))
+	}
+
+	return nil, fmt.Errorf("failed to create stream after %d retries: %w", c.config.MaxRetries, lastErr)
 }
 
 // parseProvider converts a provider string to SDK Provider type
