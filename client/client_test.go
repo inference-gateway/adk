@@ -2450,3 +2450,27 @@ func TestClient_GetHealth_WithConstants(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_SendsUniqueJSONRPCRequestIDs(t *testing.T) {
+	var ids []types.Value
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req types.JSONRPCRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		require.NotNil(t, req.ID, "a request without an id is a JSON-RPC notification")
+		ids = append(ids, *req.ID)
+
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: *req.ID, Result: map[string]any{}}))
+	}))
+	defer server.Close()
+
+	c := client.NewClient(server.URL)
+	for range 2 {
+		_, err := c.GetTask(context.Background(), types.GetTaskRequest{ID: "task-1"})
+		require.NoError(t, err)
+	}
+
+	require.Len(t, ids, 2)
+	assert.NotEmpty(t, ids[0])
+	assert.NotEqual(t, ids[0], ids[1])
+}
