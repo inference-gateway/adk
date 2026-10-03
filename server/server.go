@@ -98,6 +98,7 @@ const (
 	// A2A-specific error codes (spec section 5.4).
 	ErrTaskNotFound                   JRPCErrorCode = -32001
 	ErrTaskNotCancelable              JRPCErrorCode = -32002
+	ErrPushNotificationNotSupported   JRPCErrorCode = -32003
 	ErrUnsupportedOperation           JRPCErrorCode = -32004
 	ErrExtendedAgentCardNotConfigured JRPCErrorCode = -32007
 	ErrVersionNotSupported            JRPCErrorCode = -32009
@@ -784,14 +785,11 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		s.protocolHandler.HandleTaskList(c, req)
 	case types.A2AMethodCancelTask:
 		s.protocolHandler.HandleTaskCancel(c, req)
-	case types.A2AMethodCreateTaskPushNotificationConfig:
-		s.protocolHandler.HandleTaskPushNotificationConfigSet(c, req)
-	case types.A2AMethodGetTaskPushNotificationConfig:
-		s.protocolHandler.HandleTaskPushNotificationConfigGet(c, req)
-	case types.A2AMethodListTaskPushNotificationConfigs:
-		s.protocolHandler.HandleTaskPushNotificationConfigList(c, req)
-	case types.A2AMethodDeleteTaskPushNotificationConfig:
-		s.protocolHandler.HandleTaskPushNotificationConfigDelete(c, req)
+	case types.A2AMethodCreateTaskPushNotificationConfig,
+		types.A2AMethodGetTaskPushNotificationConfig,
+		types.A2AMethodListTaskPushNotificationConfigs,
+		types.A2AMethodDeleteTaskPushNotificationConfig:
+		s.handlePushNotificationConfigRequest(c, req)
 	case types.A2AMethodSubscribeToTask:
 		s.protocolHandler.HandleTaskResubscribe(c, req, s.streamingTaskHandler)
 	case types.A2AMethodGetExtendedAgentCard:
@@ -800,4 +798,33 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		s.logger.Warn("unknown method requested", zap.String("method", string(req.Method)))
 		s.responseSender.SendError(c, req.ID, int(ErrMethodNotFound), "method not found")
 	}
+}
+
+// handlePushNotificationConfigRequest routes the push notification config methods, rejecting
+// them when the agent card does not advertise the capability (spec section 5.4).
+func (s *A2AServerImpl) handlePushNotificationConfigRequest(c *gin.Context, req types.JSONRPCRequest) {
+	if !s.pushNotificationsEnabled() {
+		s.logger.Warn("push notification config method requested but capability is disabled",
+			zap.String("method", string(req.Method)))
+		s.responseSender.SendError(c, req.ID, int(ErrPushNotificationNotSupported), "push notification is not supported")
+		return
+	}
+
+	switch req.Method {
+	case types.A2AMethodCreateTaskPushNotificationConfig:
+		s.protocolHandler.HandleTaskPushNotificationConfigSet(c, req)
+	case types.A2AMethodGetTaskPushNotificationConfig:
+		s.protocolHandler.HandleTaskPushNotificationConfigGet(c, req)
+	case types.A2AMethodListTaskPushNotificationConfigs:
+		s.protocolHandler.HandleTaskPushNotificationConfigList(c, req)
+	case types.A2AMethodDeleteTaskPushNotificationConfig:
+		s.protocolHandler.HandleTaskPushNotificationConfigDelete(c, req)
+	}
+}
+
+// pushNotificationsEnabled reports whether the agent card advertises push notifications.
+func (s *A2AServerImpl) pushNotificationsEnabled() bool {
+	return s.customAgentCard != nil &&
+		s.customAgentCard.Capabilities.PushNotifications != nil &&
+		*s.customAgentCard.Capabilities.PushNotifications
 }
