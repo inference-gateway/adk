@@ -302,11 +302,12 @@ func (h *MyTaskHandler) HandleTask(ctx context.Context, task *types.Task, messag
 
 ### Streaming Artifacts
 
-`StreamableTaskHandler.HandleStreamingTask` returns a channel of CloudEvents (`<-chan cloudevents.Event`). Attach the artifact to the task as you produce it - the task snapshot streamed to the client carries its `artifacts` - and emit CloudEvents for progress and state changes:
+`StreamableTaskHandler.HandleStreamingTask` returns a channel of CloudEvents (`<-chan cloudevents.Event`). To stream an artifact, emit a CloudEvent of type `types.EventTaskArtifactUpdated` carrying a `types.TaskArtifactUpdateEvent`; the server applies it to the task and forwards it to the client as an `artifactUpdate` response. The only task snapshot on the stream is the one sent before `HandleStreamingTask` runs, so artifacts attached later with `AddArtifactToTask` are persisted with the final task (visible through `GetTask`) but never streamed.
 
 ```go
 import (
     cloudevents "github.com/cloudevents/sdk-go/v2"
+    uuid "github.com/google/uuid"
     "github.com/inference-gateway/adk/types"
 )
 
@@ -316,20 +317,32 @@ func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *type
     go func() {
         defer close(eventsChan)
 
-        // Create artifact during processing and attach it to the task
+        // Create artifact during processing and stream it to the client
         artifact := h.artifactService.CreateTextArtifact(
             "Streaming Result",
             "Partial result from streaming",
             "Current progress: 50%",
         )
-        h.artifactService.AddArtifactToTask(task, artifact)
+        lastChunk := true
+        artifactEvent := cloudevents.NewEvent()
+        artifactEvent.SetType(types.EventTaskArtifactUpdated)
+        if err := artifactEvent.SetData(cloudevents.ApplicationJSON, h.artifactService.CreateTaskArtifactUpdateEvent(
+            task.ID,
+            task.GetContextID(),
+            artifact,
+            nil,
+            &lastChunk,
+        )); err != nil {
+            return
+        }
+        eventsChan <- artifactEvent
 
-        // Emit a delta so the client sees progress along with the task artifacts
+        // Emit a delta so the client sees progress alongside the artifact
         deltaEvent := cloudevents.NewEvent()
         deltaEvent.SetType(types.EventDelta)
         if err := deltaEvent.SetData(cloudevents.ApplicationJSON, types.Message{
             MessageID: uuid.New().String(),
-            ContextID: &task.ContextID,
+            ContextID: task.ContextID,
             TaskID:    &task.ID,
             Role:      types.RoleAgent,
             Parts:     []types.Part{types.CreateTextPart("artifact ready for download")},
@@ -353,7 +366,7 @@ func (h *MyStreamingHandler) HandleStreamingTask(ctx context.Context, task *type
 }
 ```
 
-If you drive your own transport and need a protocol `TaskArtifactUpdateEvent`, build one with `artifactService.CreateTaskArtifactUpdateEvent(task.ID, task.ContextID, artifact, appendFlag, lastChunkFlag)`.
+`artifactService.CreateTaskArtifactUpdateEvent(taskID, contextID, artifact, appendFlag, lastChunkFlag)` builds the protocol `TaskArtifactUpdateEvent`. With the built-in transport this is how artifacts reach streaming clients; the same event also works if you drive your own transport.
 
 ## Client-Side Usage
 
@@ -648,6 +661,8 @@ for response := range responses {
 ```
 
 `ExtractArtifactUpdateFromStreamEvent` accepts a `types.StreamResponse`, a `types.TaskArtifactUpdateEvent`, or either in decoded `map[string]any` form, so it also works for a custom SSE consumer that decodes events itself. `ExtractTaskFromResponse` unwraps the task from `SendMessage` and streaming results and still accepts the bare task returned by `GetTask`; it returns an error when the result carries no task (a direct message reply, a status update, or an artifact update).
+
+Artifacts attached to the task without an `artifactUpdate` event do not appear as stream artifact updates - they show up on the task snapshot, or can be fetched with `GetTask` after the task completes.
 
 ## Storage Layout
 
