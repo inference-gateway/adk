@@ -90,16 +90,13 @@ func TestProtocolHandler_HandleTaskResubscribe_MissingName(t *testing.T) {
 	assert.Contains(t, body, "task id is required")
 }
 
-func TestProtocolHandler_HandleTaskResubscribe_CompletedTaskEmitsFinalState(t *testing.T) {
+func TestProtocolHandler_HandleTaskResubscribe_TerminalTaskIsUnsupported(t *testing.T) {
 	h, _, taskManager, _ := makeProtocolHandlerWithMocks(t)
-	completedTask := &types.Task{
+	taskManager.GetTaskReturns(&types.Task{
 		ID:        "task-done",
 		ContextID: new("ctx-1"),
-		Status: types.TaskStatus{
-			State: types.TaskStateCompleted,
-		},
-	}
-	taskManager.GetTaskReturns(completedTask, true)
+		Status:    types.TaskStatus{State: types.TaskStateCompleted},
+	}, true)
 
 	c, w := newRequestContext(t, "{}")
 	reqID := any("req-1")
@@ -113,23 +110,10 @@ func TestProtocolHandler_HandleTaskResubscribe_CompletedTaskEmitsFinalState(t *t
 	streamingHandler := &mocks.FakeStreamableTaskHandler{}
 	h.HandleTaskResubscribe(c, req, streamingHandler)
 
-	assert.Equal(t, 0, streamingHandler.HandleStreamingTaskCallCount(),
-		"streaming handler should not be invoked for terminal tasks")
-
-	body := w.Body.String()
-	assert.NotContains(t, body, "[DONE]")
-	chunks := strings.Split(body, "data: ")
-	require.Len(t, chunks, 2, "a completed task should emit exactly its current Task")
-
-	var event struct {
-		JSONRPC string               `json:"jsonrpc"`
-		Result  types.StreamResponse `json:"result"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(strings.TrimSpace(chunks[1])), &event))
-	assert.Equal(t, "2.0", event.JSONRPC)
-	require.NotNil(t, event.Result.Task, "the first event should be the Task")
-	assert.Equal(t, "task-done", event.Result.Task.ID)
-	assert.Equal(t, types.TaskStateCompleted, event.Result.Task.Status.State)
+	assert.Equal(t, 0, streamingHandler.HandleStreamingTaskCallCount())
+	var resp types.JSONRPCErrorResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, -32004, resp.Error.Code)
 }
 
 func TestProtocolHandler_HandleTaskResubscribe_WorkingTaskInvokesStreamingHandler(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	gin "github.com/gin-gonic/gin"
@@ -21,6 +22,8 @@ const (
 	ArtifactServiceContextKey ContextKey = "artifactService"
 	UsageTrackerContextKey    ContextKey = "usageTracker"
 )
+
+const taskPollInterval = 50 * time.Millisecond
 
 // A2AProtocolHandler defines the interface for handling A2A protocol requests
 type A2AProtocolHandler interface {
@@ -454,7 +457,7 @@ func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, p
 			zap.String("task_id", taskID),
 			zap.Stringp("context_id", task.ContextID))
 
-		return task, nil
+		return task, h.registerPushConfig(params, task.ID)
 	}
 
 	originalContextID := params.Message.ContextID
@@ -493,7 +496,19 @@ func (h *DefaultA2AProtocolHandler) CreateTaskFromMessage(ctx context.Context, p
 		h.logger.Error("failed to create task - task manager returned nil")
 		return nil, fmt.Errorf("failed to create task")
 	}
-	return task, nil
+	return task, h.registerPushConfig(params, task.ID)
+}
+
+// registerPushConfig stores the push notification config sent inline in the message
+// configuration, if any, for the task (spec section 3.2.2).
+func (h *DefaultA2AProtocolHandler) registerPushConfig(params types.SendMessageRequest, taskID string) error {
+	if params.Configuration == nil || params.Configuration.TaskPushNotificationConfig == nil {
+		return nil
+	}
+	config := *params.Configuration.TaskPushNotificationConfig
+	config.TaskID = &taskID
+	_, err := h.taskManager.SetTaskPushNotificationConfig(config)
+	return err
 }
 
 // HandleMessageSend processes SendMessage requests
@@ -519,7 +534,8 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 		return
 	}
 
-	err = h.storage.EnqueueTask(c.Request.Context(), task, req.ID)
+	workerCopy := *task
+	err = h.storage.EnqueueTask(c.Request.Context(), &workerCopy, req.ID)
 	if err != nil {
 		h.logger.Error("failed to enqueue task", zap.Error(err))
 		err := h.taskManager.UpdateError(task.ID, &types.Message{
@@ -541,7 +557,46 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 		return
 	}
 
-	h.responseSender.SendSuccess(c, req.ID, types.SendMessageResponse{Task: task})
+	config := params.Configuration
+	if config == nil {
+		config = &types.SendMessageConfiguration{}
+	}
+	if config.ReturnImmediately == nil || !*config.ReturnImmediately {
+		task = h.pollTask(c.Request.Context(), task, isTerminalOrInterrupted, nil)
+	}
+
+	response := task.WithHistoryLength(config.HistoryLength)
+	h.responseSender.SendSuccess(c, req.ID, types.SendMessageResponse{Task: &response})
+}
+
+// pollTask re-reads the task from the task store until done holds for its state or ctx ends,
+// calling onChange (when non-nil) on every state change, and returns the latest snapshot.
+// ponytail: polling works with every storage backend and remote workers; replace with storage
+// change notifications if the polling load ever shows up.
+func (h *DefaultA2AProtocolHandler) pollTask(ctx context.Context, task *types.Task, done func(types.TaskState) bool, onChange func(*types.Task) error) *types.Task {
+	ticker := time.NewTicker(taskPollInterval)
+	defer ticker.Stop()
+	for !done(task.Status.State) {
+		select {
+		case <-ctx.Done():
+			return task
+		case <-ticker.C:
+		}
+		latest, ok := h.taskManager.GetTask(task.ID)
+		if !ok || latest.Status.State == task.Status.State {
+			continue
+		}
+		task = latest
+		if onChange != nil && onChange(task) != nil {
+			return task
+		}
+	}
+	return task
+}
+
+// isTerminalOrInterrupted reports whether a blocking SendMessage may return (spec section 3.2.2).
+func isTerminalOrInterrupted(state types.TaskState) bool {
+	return state.IsTerminal() || state.IsInterrupted()
 }
 
 // writeStreamingResponse writes a JSON-RPC response to the streaming connection in SSE format
@@ -588,6 +643,37 @@ func (h *DefaultA2AProtocolHandler) writeStreamingErrorResponse(c *gin.Context, 
 
 	c.Writer.Flush()
 	return nil
+}
+
+// writeArtifactUpdate records an EventTaskArtifactUpdated (a TaskArtifactUpdateEvent payload) on
+// the task and streams it as an artifactUpdate response. Undecodable events are skipped.
+func (h *DefaultA2AProtocolHandler) writeArtifactUpdate(c *gin.Context, id *types.Value, task *types.Task, event cloudevents.Event) error {
+	var update types.TaskArtifactUpdateEvent
+	if err := event.DataAs(&update); err != nil {
+		h.logger.Warn("skipping undecodable artifact update", zap.String("task_id", task.ID), zap.Error(err))
+		return nil
+	}
+	update.TaskID = task.ID
+	update.ContextID = task.GetContextID()
+	task.ApplyArtifactUpdate(update)
+	return h.writeStreamingResponse(c, &types.JSONRPCSuccessResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Result:  types.StreamResponse{ArtifactUpdate: &update},
+	})
+}
+
+// writeStatusUpdate streams the task's current status as a statusUpdate response.
+func (h *DefaultA2AProtocolHandler) writeStatusUpdate(c *gin.Context, id *types.Value, task *types.Task) error {
+	return h.writeStreamingResponse(c, &types.JSONRPCSuccessResponse{
+		JSONRPC: "2.0",
+		ID:      id,
+		Result: types.StreamResponse{StatusUpdate: &types.TaskStatusUpdateEvent{
+			TaskID:    task.ID,
+			ContextID: task.GetContextID(),
+			Status:    task.Status,
+		}},
+	})
 }
 
 // HandleMessageStream processes SendStreamingMessage requests
@@ -638,7 +724,12 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		return
 	}
 
-	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: task}}
+	var historyLength *int
+	if params.Configuration != nil {
+		historyLength = params.Configuration.HistoryLength
+	}
+	initialTask := task.WithHistoryLength(historyLength)
+	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: &initialTask}}
 	if err := h.writeStreamingResponse(c, &initialResponse); err != nil {
 		h.logger.Error("failed to write initial task", zap.Error(err))
 		return
@@ -708,6 +799,12 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 					h.logger.Error("failed to write delta", zap.Error(err))
 					return
 				}
+			}
+
+		case types.EventTaskArtifactUpdated:
+			if err := h.writeArtifactUpdate(c, req.ID, task, event); err != nil {
+				h.logger.Error("failed to write artifact update", zap.Error(err))
+				return
 			}
 
 		case types.EventIterationCompleted:
@@ -878,7 +975,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSON
 		zap.String("task_id", params.ID),
 		zap.Stringp("context_id", task.ContextID),
 		zap.String("status", string(task.Status.State)))
-	h.responseSender.SendSuccess(c, req.ID, *task)
+	h.responseSender.SendSuccess(c, req.ID, task.WithHistoryLength(params.HistoryLength))
 }
 
 // HandleTaskCancel processes CancelTask requests
@@ -1098,6 +1195,11 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		return
 	}
 
+	if task.Status.State.IsTerminal() {
+		h.responseSender.SendError(c, req.ID, int(ErrUnsupportedOperation), "cannot subscribe to a task in a terminal state")
+		return
+	}
+
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -1113,6 +1215,13 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 
 	if err := h.writeStreamingResponse(c, &initialResponse); err != nil {
 		h.logger.Error("failed to write initial resubscribe status", zap.Error(err))
+		return
+	}
+
+	if task.Status.State.IsInterrupted() {
+		h.pollTask(c.Request.Context(), task, types.TaskState.IsTerminal, func(latest *types.Task) error {
+			return h.writeStatusUpdate(c, req.ID, latest)
+		})
 		return
 	}
 
@@ -1176,6 +1285,12 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 					h.logger.Error("failed to write delta", zap.Error(err))
 					return
 				}
+			}
+
+		case types.EventTaskArtifactUpdated:
+			if err := h.writeArtifactUpdate(c, req.ID, task, event); err != nil {
+				h.logger.Error("failed to write artifact update", zap.Error(err))
+				return
 			}
 
 		case types.EventTaskStatusChanged:

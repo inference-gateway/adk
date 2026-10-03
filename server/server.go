@@ -1,13 +1,16 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	gin "github.com/gin-gonic/gin"
 	uuid "github.com/google/uuid"
@@ -84,6 +87,13 @@ type TaskResultProcessor interface {
 	ProcessToolResult(toolCallResult string) *types.Message
 }
 
+// MessageResponder is an optional extension of the background TaskHandler. When RespondToMessage
+// returns a message, SendMessage answers with it directly and creates no task; returning nil
+// continues with the regular task flow.
+type MessageResponder interface {
+	RespondToMessage(ctx context.Context, message *types.Message) (*types.Message, error)
+}
+
 // JRPCErrorCode represents JSON-RPC error codes
 type JRPCErrorCode int
 
@@ -115,6 +125,7 @@ type A2AServerImpl struct {
 	// Server state
 	httpServer    *http.Server
 	metricsServer *http.Server
+	startedAt     time.Time
 
 	// Optional processors
 	taskResultProcessor TaskResultProcessor
@@ -521,6 +532,7 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 		return err
 	}
 
+	s.startedAt = time.Now()
 	s.httpServer = &http.Server{
 		Addr:         net.JoinHostPort(s.cfg.ServerConfig.Host, s.cfg.ServerConfig.Port),
 		Handler:      router,
@@ -726,7 +738,10 @@ func injectAuthContext(ctx context.Context, qt *QueuedTask) context.Context {
 	return context.WithValue(ctx, middlewares.ClaimsContextKey, qt.Claims)
 }
 
-// handleAgentInfo returns agent capabilities and metadata
+// handleAgentInfo returns agent capabilities and metadata with the HTTP caching headers of spec
+// section 8.6, answering conditional requests with 304 Not Modified.
+// ponytail: max-age is fixed at 5 minutes, the ETag makes revalidation cheap; add a config knob
+// if an agent needs a different freshness.
 func (s *A2AServerImpl) handleAgentInfo(c *gin.Context) {
 	s.logger.Info("agent info requested")
 	agentCard := s.GetAgentCard()
@@ -738,7 +753,17 @@ func (s *A2AServerImpl) handleAgentInfo(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, *agentCard)
+	body, err := json.Marshal(agentCard)
+	if err != nil {
+		s.logger.Error("failed to marshal agent card", zap.Error(err))
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+	sum := sha256.Sum256(body)
+	c.Header("Cache-Control", "public, max-age=300")
+	c.Header("ETag", fmt.Sprintf(`"%x"`, sum[:16]))
+	c.Header("Content-Type", "application/json; charset=utf-8")
+	http.ServeContent(c.Writer, c.Request, "agent-card.json", s.startedAt, bytes.NewReader(body))
 }
 
 // isSupportedA2AVersion reports whether the server speaks the requested A2A-Version.
@@ -778,7 +803,9 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 
 	switch req.Method {
 	case types.A2AMethodSendMessage:
-		s.protocolHandler.HandleMessageSend(c, req)
+		if !s.replyWithMessage(c, req) {
+			s.protocolHandler.HandleMessageSend(c, req)
+		}
 	case types.A2AMethodSendStreamingMessage:
 		s.protocolHandler.HandleMessageStream(c, req, s.streamingTaskHandler)
 	case types.A2AMethodGetTask:
@@ -800,6 +827,33 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 		s.logger.Warn("unknown method requested", zap.String("method", string(req.Method)))
 		s.responseSender.SendError(c, req.ID, int(ErrMethodNotFound), "method not found")
 	}
+}
+
+// replyWithMessage answers SendMessage with a direct Message when the background task handler
+// implements MessageResponder and returns one, reporting whether it sent a response.
+func (s *A2AServerImpl) replyWithMessage(c *gin.Context, req types.JSONRPCRequest) bool {
+	responder, ok := s.backgroundTaskHandler.(MessageResponder)
+	if !ok {
+		return false
+	}
+	paramsBytes, err := json.Marshal(req.Params)
+	if err != nil {
+		return false
+	}
+	var params types.SendMessageRequest
+	if err := json.Unmarshal(paramsBytes, &params); err != nil {
+		return false
+	}
+	reply, err := responder.RespondToMessage(c.Request.Context(), &params.Message)
+	switch {
+	case err != nil:
+		s.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
+	case reply == nil:
+		return false
+	default:
+		s.responseSender.SendSuccess(c, req.ID, types.SendMessageResponse{Message: reply})
+	}
+	return true
 }
 
 // handlePushNotificationConfigRequest routes the push notification config methods, rejecting

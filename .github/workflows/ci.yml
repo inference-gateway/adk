@@ -119,6 +119,6 @@ jobs:
           ./tck-sut &
           curl -sf --retry 30 --retry-connrefused --retry-delay 1 http://localhost:9999/health
 
-      - name: Run TCK (JSON-RPC, MUST)
+      - name: Run TCK (JSON-RPC)
         working-directory: a2a-tck
-        run: uv run ./run_tck.py --sut-host http://localhost:9999 --transport jsonrpc --level must -- --deselect tests/compatibility/core_operations/test_artifacts.py
+        run: uv run ./run_tck.py --sut-host http://localhost:9999 --transport jsonrpc
