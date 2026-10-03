@@ -631,7 +631,7 @@ for _, result := range results {
 
 ### Handling Streaming Artifact Updates
 
-`SendTaskStreaming` returns a channel of JSON-RPC responses whose `Result` is a `types.StreamResponse`: one `task` snapshot first, then `statusUpdate` and `artifactUpdate` responses. Decode each `Result` and read `ArtifactUpdate.Artifact`:
+`SendTaskStreaming` returns a channel of JSON-RPC responses. Each result is a `types.StreamResponse` carrying either a task snapshot - including its artifacts - a status update, or an artifact update:
 
 ```go
 responses, err := a2aClient.SendTaskStreaming(ctx, params)
@@ -640,28 +640,29 @@ if err != nil {
 }
 
 for response := range responses {
-    resultBytes, err := json.Marshal(response.Result)
+    if update, ok := artifactHelper.ExtractArtifactUpdateFromStreamEvent(response.Result); ok {
+        fmt.Printf("Artifact chunk: %s\n", update.Artifact.ArtifactID)
+        continue
+    }
+
+    task, err := artifactHelper.ExtractTaskFromResponse(&response)
     if err != nil {
         continue
     }
 
-    var event types.StreamResponse
-    if err := json.Unmarshal(resultBytes, &event); err != nil || event.ArtifactUpdate == nil {
-        continue
+    for _, artifact := range artifactHelper.ExtractArtifactsFromTask(task) {
+        name := artifact.ArtifactID
+        if artifact.Name != nil {
+            name = *artifact.Name
+        }
+        fmt.Printf("Artifact available: %s\n", name)
     }
-
-    artifact := event.ArtifactUpdate.Artifact
-    name := artifact.ArtifactID
-    if artifact.Name != nil {
-        name = *artifact.Name
-    }
-    fmt.Printf("Artifact available: %s\n", name)
 }
 ```
 
-Artifacts attached to the task without an `artifactUpdate` event do not appear on the stream - fetch them with `GetTask` after the task completes.
+`ExtractArtifactUpdateFromStreamEvent` accepts a `types.StreamResponse`, a `types.TaskArtifactUpdateEvent`, or either in decoded `map[string]any` form, so it also works for a custom SSE consumer that decodes events itself. `ExtractTaskFromResponse` unwraps the task from `SendMessage` and streaming results and still accepts the bare task returned by `GetTask`; it returns an error when the result carries no task (a direct message reply, a status update, or an artifact update).
 
-`artifactHelper.ExtractArtifactUpdateFromStreamEvent(eventData)` only accepts an already-typed `types.TaskArtifactUpdateEvent` or a legacy A2A v0.3 map carrying `"kind": "artifact-update"`, which v1.0 stream events never contain - see [#375](https://github.com/inference-gateway/adk/issues/375). Decode `types.StreamResponse` as above instead.
+Artifacts attached to the task without an `artifactUpdate` event do not appear as stream artifact updates - they show up on the task snapshot, or can be fetched with `GetTask` after the task completes.
 
 ## Storage Layout
 
