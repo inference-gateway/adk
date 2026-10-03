@@ -155,9 +155,16 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.SendMessage
 		zap.String("message_id", params.Message.MessageID),
 		zap.String("role", string(params.Message.Role)))
 
-	req, err := newJSONRPCRequest(types.A2AMethodSendStreamingMessage, params)
+	return c.streamJSONRPC(ctx, types.A2AMethodSendStreamingMessage, params)
+}
+
+// streamJSONRPC issues a JSON-RPC call for method with params over SSE and returns a channel
+// of the decoded events. The channel is buffered and closed once the stream ends (server sent
+// `[DONE]`, the body closed, a scan or decode error, or the context was cancelled).
+func (c *Client) streamJSONRPC(ctx context.Context, method types.A2AMethod, params any) (<-chan types.JSONRPCSuccessResponse, error) {
+	req, err := newJSONRPCRequest(method, params)
 	if err != nil {
-		c.logger.Error("failed to build json-rpc request", zap.Error(err))
+		c.logger.Error("failed to build json-rpc request", zap.Error(err), zap.String("method", string(method)))
 		return nil, err
 	}
 
@@ -176,7 +183,7 @@ func (c *Client) SendTaskStreaming(ctx context.Context, params types.SendMessage
 	c.setHeaders(httpReq)
 	httpReq.Header.Set("Accept", "text/event-stream")
 
-	c.logger.Debug("sending streaming request", zap.String("url", c.getA2AEndpointURL()))
+	c.logger.Debug("sending streaming request", zap.String("url", c.getA2AEndpointURL()), zap.String("method", string(method)))
 
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -374,99 +381,7 @@ func (c *Client) ResubscribeTask(ctx context.Context, params types.SubscribeToTa
 		zap.String("method", string(types.A2AMethodSubscribeToTask)),
 		zap.String("task_id", params.ID))
 
-	req, err := newJSONRPCRequest(types.A2AMethodSubscribeToTask, params)
-	if err != nil {
-		c.logger.Error("failed to build json-rpc request", zap.Error(err))
-		return nil, err
-	}
-
-	body, err := json.Marshal(req)
-	if err != nil {
-		c.logger.Error("failed to marshal request", zap.Error(err))
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.getA2AEndpointURL(), bytes.NewBuffer(body))
-	if err != nil {
-		c.logger.Error("failed to create request", zap.Error(err))
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	c.setHeaders(httpReq)
-	httpReq.Header.Set("Accept", "text/event-stream")
-
-	httpResp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		c.logger.Error("failed to send resubscribe request", zap.Error(err))
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-
-	if httpResp.StatusCode != http.StatusOK {
-		if closeErr := httpResp.Body.Close(); closeErr != nil {
-			c.logger.Warn("failed to close response body", zap.Error(closeErr))
-		}
-		c.logger.Error("unexpected status code", zap.Int("status_code", httpResp.StatusCode))
-		return nil, fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)
-	}
-
-	eventChan := make(chan types.JSONRPCSuccessResponse, 100)
-
-	go func() {
-		defer func() {
-			if closeErr := httpResp.Body.Close(); closeErr != nil {
-				c.logger.Warn("failed to close response body", zap.Error(closeErr))
-			}
-			close(eventChan)
-		}()
-
-		scanner := bufio.NewScanner(httpResp.Body)
-		eventCount := 0
-		for {
-			select {
-			case <-ctx.Done():
-				c.logger.Debug("resubscribe context cancelled", zap.Int("events_received", eventCount))
-				return
-			default:
-				if !scanner.Scan() {
-					if err := scanner.Err(); err != nil {
-						c.logger.Error("failed to scan response", zap.Error(err), zap.Int("events_received", eventCount))
-						return
-					}
-					c.logger.Debug("resubscribe stream completed", zap.Int("events_received", eventCount))
-					return
-				}
-
-				line := scanner.Text()
-				if line == "" || !strings.HasPrefix(line, "data: ") {
-					continue
-				}
-
-				if strings.TrimSpace(line) == "data: [DONE]" {
-					c.logger.Debug("received resubscribe termination signal", zap.Int("events_received", eventCount))
-					return
-				}
-
-				jsonData := strings.TrimPrefix(line, "data: ")
-
-				var event types.JSONRPCSuccessResponse
-				if err := json.Unmarshal([]byte(jsonData), &event); err != nil {
-					c.logger.Error("failed to decode event", zap.Error(err), zap.String("json_data", jsonData))
-					return
-				}
-
-				eventCount++
-
-				select {
-				case eventChan <- event:
-				case <-ctx.Done():
-					c.logger.Debug("resubscribe context cancelled while sending event", zap.Int("events_received", eventCount))
-					return
-				}
-			}
-		}
-	}()
-
-	return eventChan, nil
+	return c.streamJSONRPC(ctx, types.A2AMethodSubscribeToTask, params)
 }
 
 // GetAgentCard retrieves the agent card information via HTTP GET to .well-known/agent-card.json
