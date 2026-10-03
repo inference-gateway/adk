@@ -26,6 +26,19 @@ const (
 
 const taskPollInterval = 50 * time.Millisecond
 
+// taskInputMessage returns the task's status message, or an empty user
+// placeholder when the task has none, so handlers always get a message.
+func taskInputMessage(task *types.Task) *types.Message {
+	if task.Status.Message != nil {
+		return task.Status.Message
+	}
+	return &types.Message{
+		MessageID: uuid.New().String(),
+		Role:      types.RoleUser,
+		Parts:     []types.Part{},
+	}
+}
+
 // A2AProtocolHandler defines the interface for handling A2A protocol requests
 type A2AProtocolHandler interface {
 	// HandleMessageSend processes SendMessage requests
@@ -701,16 +714,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 		return
 	}
 
-	var message *types.Message
-	if task.Status.Message != nil {
-		message = task.Status.Message
-	} else {
-		message = &types.Message{
-			MessageID: uuid.New().String(),
-			Role:      "user",
-			Parts:     []types.Part{},
-		}
-	}
+	message := taskInputMessage(task)
 
 	taskCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -1145,16 +1149,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		return
 	}
 
-	var message *types.Message
-	if task.Status.Message != nil {
-		message = task.Status.Message
-	} else {
-		message = &types.Message{
-			MessageID: uuid.New().String(),
-			Role:      "user",
-			Parts:     []types.Part{},
-		}
-	}
+	message := taskInputMessage(task)
 
 	ctx := c.Request.Context()
 	taskCtx, cancel := context.WithCancel(ctx)

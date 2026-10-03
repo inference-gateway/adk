@@ -668,16 +668,7 @@ func (s *A2AServerImpl) processQueuedTask(ctx context.Context, queuedTask *Queue
 		trace.WithAttributes(attribute.String("a2a.task.id", task.ID)))
 	defer span.End()
 
-	var message *types.Message
-	if task.Status.Message != nil {
-		message = task.Status.Message
-	} else {
-		message = &types.Message{
-			MessageID: uuid.New().String(),
-			Role:      "user",
-			Parts:     []types.Part{},
-		}
-	}
+	message := taskInputMessage(task)
 
 	s.logger.Info("processing task",
 		zap.String("task_id", task.ID),
