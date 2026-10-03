@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.2](https://github.com/inference-gateway/adk/compare/v0.31.1...v0.31.2) (2026-10-03)
+
+### 🐛 Bug Fixes
+
+* **server:** reject push config methods when disabled ([#350](https://github.com/inference-gateway/adk/issues/350)) ([d5d4411](https://github.com/inference-gateway/adk/commit/d5d4411e2e9bec81ff0a5a31730e18ce2eb61fef))
+
 ## [0.31.1](https://github.com/inference-gateway/adk/compare/v0.31.0...v0.31.1) (2026-10-03)
 
 ### 🐛 Bug Fixes
