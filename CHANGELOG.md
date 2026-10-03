@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.32.1](https://github.com/inference-gateway/adk/compare/v0.32.0...v0.32.1) (2026-10-03)
+
+### ♻️ Improvements
+
+* check GetTask found in HandleTaskCancel ([#371](https://github.com/inference-gateway/adk/issues/371)) ([42ce65c](https://github.com/inference-gateway/adk/commit/42ce65c7c10cb7fe7773e0532976942f1d52667c))
+* **client:** share sse streaming helper ([#373](https://github.com/inference-gateway/adk/issues/373)) ([b2be4a2](https://github.com/inference-gateway/adk/commit/b2be4a24a83accda332b98077ec6c5a0fb163442))
+* drop unused mockgen from ci and flox ([#365](https://github.com/inference-gateway/adk/issues/365)) ([9a65c38](https://github.com/inference-gateway/adk/commit/9a65c3896fe6cb27b64a88b32e39f607d9446c3c))
+* **server:** decode jsonrpc params via generic helper ([#361](https://github.com/inference-gateway/adk/issues/361)) ([9c7d33a](https://github.com/inference-gateway/adk/commit/9c7d33a5cca54ba547f5863fe5996c8e8987fe48))
+* **server:** dedupe default task handler wiring ([#362](https://github.com/inference-gateway/adk/issues/362)) ([16447d1](https://github.com/inference-gateway/adk/commit/16447d1c52b535ea1ebeae293b57fb9fab048775))
+* **server:** extract taskInputMessage helper ([#364](https://github.com/inference-gateway/adk/issues/364)) ([708e8ed](https://github.com/inference-gateway/adk/commit/708e8edc5e1f8ebf8ade9b8e5bbff383460d5b49))
+* **server:** merge duplicated sse writers and headers ([#370](https://github.com/inference-gateway/adk/issues/370)) ([22d2e16](https://github.com/inference-gateway/adk/commit/22d2e169d342d700f58c6e949317c1e641d28832))
+* **server:** use TaskState.IsTerminal for terminal checks ([#363](https://github.com/inference-gateway/adk/issues/363)) ([7b2876f](https://github.com/inference-gateway/adk/commit/7b2876fa8745cb605c34178422a3aab7fd55f9d3))
+* **types:** share one cloudevent helper, use EventXxx ([#372](https://github.com/inference-gateway/adk/issues/372)) ([c9fbbf3](https://github.com/inference-gateway/adk/commit/c9fbbf38e49590f02efdc6c720c72006788afd3e))
+
 ## [0.32.0](https://github.com/inference-gateway/adk/compare/v0.31.2...v0.32.0) (2026-10-03)
 
 ### ✨ Features
