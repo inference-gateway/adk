@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.32.2](https://github.com/inference-gateway/adk/compare/v0.32.1...v0.32.2) (2026-10-03)
+
+### ♻️ Improvements
+
+* **agent:** retry stream connection with max-retries ([#386](https://github.com/inference-gateway/adk/issues/386)) ([fa0f953](https://github.com/inference-gateway/adk/commit/fa0f95363d23cdf1a2d6cf3395aac7dda957a166))
+
+### 🐛 Bug Fixes
+
+* **artifacts:** make max-artifacts cap per context ([#384](https://github.com/inference-gateway/adk/issues/384)) ([f4e35b3](https://github.com/inference-gateway/adk/commit/f4e35b338cb8c95ae4ac780e07c6fb6b2e086b60))
+* **client:** unwrap v1.0 task and artifact stream results ([#382](https://github.com/inference-gateway/adk/issues/382)) ([669c537](https://github.com/inference-gateway/adk/commit/669c53766ee0ffa03e70b87668fd091cd2a894ab))
+* keep url credentials out of agent cards and logs ([#388](https://github.com/inference-gateway/adk/issues/388)) ([aee3867](https://github.com/inference-gateway/adk/commit/aee38673adb933c8456b2e4bbc68f139945c7cce))
+
+### 📚 Documentation
+
+* align readme api reference with v1.0 code ([#381](https://github.com/inference-gateway/adk/issues/381)) ([abc9a0b](https://github.com/inference-gateway/adk/commit/abc9a0bafde8503c4aee1957a5c28238d58e73ce))
+* correct llm and artifact config descriptions ([#380](https://github.com/inference-gateway/adk/issues/380)) ([80604fd](https://github.com/inference-gateway/adk/commit/80604fd071975c0c140dafae949a3dcc0129da5e))
+* fix artifacts streaming sections ([#379](https://github.com/inference-gateway/adk/issues/379)) ([29e129f](https://github.com/inference-gateway/adk/commit/29e129f160d35196a0b74810cf6f0e6c19f65bba))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump go to 1.26.8 ([#374](https://github.com/inference-gateway/adk/issues/374)) ([b905270](https://github.com/inference-gateway/adk/commit/b9052707557b752917da212ce5ab856c1fd42d4d))
+
 ## [0.32.1](https://github.com/inference-gateway/adk/compare/v0.32.0...v0.32.1) (2026-10-03)
 
 ### ♻️ Improvements
