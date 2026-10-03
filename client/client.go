@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	uuid "github.com/google/uuid"
 	zap "go.uber.org/zap"
 
 	types "github.com/inference-gateway/adk/types"
@@ -293,8 +294,10 @@ func (c *Client) doJSONRPCCall(ctx context.Context, method types.A2AMethod, para
 }
 
 // newJSONRPCRequest builds a JSON-RPC request for method, carrying params as a JSON object.
+// Each request gets a unique id; without one JSON-RPC treats it as a notification.
 func newJSONRPCRequest(method types.A2AMethod, params any) (types.JSONRPCRequest, error) {
-	req := types.JSONRPCRequest{JSONRPC: "2.0", Method: method}
+	var id types.Value = uuid.NewString()
+	req := types.JSONRPCRequest{ID: &id, JSONRPC: "2.0", Method: method}
 	if params == nil {
 		return req, nil
 	}
