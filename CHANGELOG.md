@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.1](https://github.com/inference-gateway/adk/compare/v0.31.0...v0.31.1) (2026-10-03)
+
+### 🐛 Bug Fixes
+
+* **client:** send a json-rpc request id with every call ([#348](https://github.com/inference-gateway/adk/issues/348)) ([3017bd4](https://github.com/inference-gateway/adk/commit/3017bd4c1fe9cbc52a50583a10d4dc16e467bb12))
+
 ## [0.31.0](https://github.com/inference-gateway/adk/compare/v0.30.2...v0.31.0) (2026-10-03)
 
 ### ✨ Features
