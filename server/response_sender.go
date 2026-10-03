@@ -56,6 +56,7 @@ func (rs *DefaultResponseSender) SendError(c *gin.Context, id any, code int, mes
 var a2aErrorReasons = map[JRPCErrorCode]string{
 	ErrTaskNotFound:                   "TASK_NOT_FOUND",
 	ErrTaskNotCancelable:              "TASK_NOT_CANCELABLE",
+	ErrPushNotificationNotSupported:   "PUSH_NOTIFICATION_NOT_SUPPORTED",
 	ErrUnsupportedOperation:           "UNSUPPORTED_OPERATION",
 	ErrExtendedAgentCardNotConfigured: "EXTENDED_AGENT_CARD_NOT_CONFIGURED",
 	ErrVersionNotSupported:            "VERSION_NOT_SUPPORTED",

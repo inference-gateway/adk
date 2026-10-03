@@ -63,6 +63,41 @@ func TestServer_DispatchesOnlyA2AV1MethodNames(t *testing.T) {
 	}
 }
 
+func TestServer_RejectsPushNotificationConfigWhenCapabilityDisabled(t *testing.T) {
+	cfg := serverConfig.Config{}
+	cfg.ServerConfig.Host = "127.0.0.1"
+	cfg.ServerConfig.Port = freePort(t)
+	card := createTestAgentCard()
+	card.Capabilities.Streaming = new(false)
+	card.Capabilities.PushNotifications = new(false)
+	srv, err := server.NewA2AServerBuilder(cfg, zaptest.NewLogger(t)).
+		WithAgentCard(card).
+		WithDefaultBackgroundTaskHandler().
+		Build()
+	require.NoError(t, err)
+	baseURL := startServer(t, srv, cfg.ServerConfig.Port)
+
+	methods := []string{
+		"CreateTaskPushNotificationConfig", "GetTaskPushNotificationConfig",
+		"ListTaskPushNotificationConfigs", "DeleteTaskPushNotificationConfig",
+	}
+	for _, method := range methods {
+		t.Run(method, func(t *testing.T) {
+			var payload struct {
+				Error struct {
+					Code int              `json:"code"`
+					Data []map[string]any `json:"data"`
+				} `json:"error"`
+			}
+			require.NoError(t, json.NewDecoder(postA2A(t, baseURL, "", method).Body).Decode(&payload))
+			assert.Equal(t, -32003, payload.Error.Code)
+			require.Len(t, payload.Error.Data, 1)
+			assert.Equal(t, "PUSH_NOTIFICATION_NOT_SUPPORTED", payload.Error.Data[0]["reason"])
+			assert.Equal(t, "a2a-protocol.org", payload.Error.Data[0]["domain"])
+		})
+	}
+}
+
 func TestServer_RejectsUnsupportedA2AVersion(t *testing.T) {
 	cfg := serverConfig.Config{}
 	cfg.ServerConfig.Host = "127.0.0.1"
