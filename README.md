@@ -181,6 +181,15 @@ The following build-time metadata variables can be set via LD flags:
 - **`BuildAgentDescription`** - A description of the agent's capabilities
 - **`BuildAgentVersion`** - The agent's version number
 
+Your code has to read them. The agent card is the source of truth: `Build()`
+copies the card's `Name`, `Description` and `Version` into the config, and
+`NewA2AServer` only falls back to the `Build*` variables when those card fields
+are empty. The card is what clients fetch from
+`/.well-known/agent-card.json` and what telemetry is labelled with, so populate
+it from the `Build*` variables - as the example below and
+[`examples/default-handlers/`](./examples/default-handlers/) do through their
+config.
+
 #### Usage Examples
 
 **Simple A2A Server Example:**
@@ -189,6 +198,7 @@ The following build-time metadata variables can be set via LD flags:
 package main
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log"
@@ -220,15 +230,13 @@ func main() {
 		port = "8080"
 	}
 
-	// Configuration
+	// Configuration - the Build* variables carry the ldflags values,
+	// empty when the binary is built without them
 	cfg := config.Config{
-		AgentName:        "simple-agent",
-		AgentDescription: "A simple A2A server with default handlers",
-		AgentVersion:     "0.1.0",
+		AgentName:        cmp.Or(server.BuildAgentName, "simple-agent"),
+		AgentDescription: cmp.Or(server.BuildAgentDescription, "A simple A2A server with default handlers"),
+		AgentVersion:     cmp.Or(server.BuildAgentVersion, "0.1.0"),
 		Debug:            true,
-		QueueConfig: config.QueueConfig{
-			CleanupInterval: 5 * time.Minute,
-		},
 		ServerConfig: config.ServerConfig{
 			Port: port,
 		},
@@ -357,8 +365,10 @@ See [`examples/protocol-methods/`](./examples/protocol-methods/) for usage patte
 #### A2A JSON-RPC Methods
 
 Beyond `SendMessage`, `SendStreamingMessage`, and `GetTask`, the client exposes
-every method in the A2A JSON-RPC surface. Each snippet below is runnable
-against any ADK-built server; see [`examples/protocol-methods/`](./examples/protocol-methods/)
+every method in the A2A JSON-RPC surface. Most snippets below are runnable
+against any ADK-built server - the push notification config and
+`GetExtendedAgentCard` methods need the matching capability on the served agent
+card, as noted with each. See [`examples/protocol-methods/`](./examples/protocol-methods/)
 for an end-to-end demo that ties them all together.
 
 ##### `CancelTask`
@@ -412,9 +422,9 @@ for {
 }
 ```
 
-You can also filter by `ContextID` or by `State` (e.g. only
-`TASK_STATE_COMPLETED`); both fields are optional pointers on
-`TaskListParams`.
+You can also filter by `ContextID` or by `Status` (a `*types.TaskState`, e.g.
+only `TASK_STATE_COMPLETED`); both are optional pointer fields on
+`types.ListTasksRequest`.
 
 ##### `CreateTaskPushNotificationConfig`, `GetTaskPushNotificationConfig`, `ListTaskPushNotificationConfigs`, `DeleteTaskPushNotificationConfig`
 
@@ -460,17 +470,25 @@ if _, err := a2a.DeleteTaskPushNotificationConfig(ctx, types.DeleteTaskPushNotif
 }
 ```
 
-Server-side push notifications require the agent card's
-`capabilities.pushNotifications` to be `true`: the builder only installs the
-webhook sender when the card passed to `WithAgentCard()` /
-`WithAgentCardFromFile()` declares it. `CAPABILITIES_PUSH_NOTIFICATIONS` has no
-effect on its own.
+Unlike the other snippets in this section, these four do not work against a
+default ADK server. The server answers `-32003` (push notification not
+supported) unless the served agent card sets
+`capabilities.pushNotifications: true` - the simple server example above sets it
+to `false`. The same flag gates the webhook sender: the builder only installs it
+when the card passed to `WithAgentCard()` / `WithAgentCardFromFile()` declares
+the capability. `CAPABILITIES_PUSH_NOTIFICATIONS` has no effect on its own.
 
 ##### `SubscribeToTask`
 
 Re-attach to a streaming task after the original SSE connection has dropped.
-The server first re-emits the current task state, then forwards any further
-streaming events as they happen.
+The server rejects tasks in a terminal state with `-32004` (unsupported
+operation); otherwise it first re-emits the current task state, then:
+
+- for `INPUT_REQUIRED` / `AUTH_REQUIRED` tasks it polls the task and streams a
+  status update on every change until the task reaches a terminal state;
+- for `SUBMITTED` / `WORKING` tasks it calls the streaming handler's
+  `HandleStreamingTask` again for that task - it does not forward events from
+  the original stream, so the work is re-run rather than tapped into.
 
 ```go
 events, err := a2a.ResubscribeTask(ctx, types.SubscribeToTaskRequest{
@@ -553,8 +571,8 @@ resp, err := a2a.SendTask(ctx, types.SendMessageRequest{
 
 Notes:
 
-- `fileWithBytes` is inlined as a `data:` URL; `fileWithUri` is passed through
-  unchanged, so the provider itself must be able to fetch that URL.
+- A part's `raw` bytes are inlined as a `data:` URL; a part's `url` is passed
+  through unchanged, so the provider itself must be able to fetch that URL.
 - The operator picks the model: configure a vision-capable one via
   `AGENT_CLIENT_MODEL`. A model without vision support rejects the request and
   the task ends as `failed` with the provider's error.
