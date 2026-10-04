@@ -33,9 +33,12 @@ type A2AServerBuilder interface {
 
 	// WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios.
 	// This handler automatically handles input-required pausing without requiring custom implementation.
-	WithDefaultBackgroundTaskHandler() A2AServerBuilder // WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios.
+	// It is created during Build(), so the agent and artifact service are picked up in any call order.
+	WithDefaultBackgroundTaskHandler() A2AServerBuilder
 
+	// WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios.
 	// This handler automatically handles input-required pausing with streaming-aware behavior.
+	// It is created during Build(), so the agent and artifact service are picked up in any call order.
 	WithDefaultStreamingTaskHandler() A2AServerBuilder
 
 	// WithDefaultTaskHandlers sets both default polling and streaming task handlers.
@@ -99,6 +102,9 @@ type A2AServerBuilderImpl struct {
 	extendedAgentCard    *types.AgentCard      // Optional extended agent card for authenticated callers
 	artifactService      ArtifactService       // Optional artifact service for storage operations
 	telemetry            otel.OpenTelemetry    // Optional pre-configured telemetry instance
+
+	useDefaultPollingHandler   bool // Build the default background task handler during Build()
+	useDefaultStreamingHandler bool // Build the default streaming task handler during Build()
 }
 
 // NewA2AServerBuilder creates a new server builder with required dependencies.
@@ -167,31 +173,45 @@ func isAgentConfigEmpty(agentConfig serverConfig.AgentConfig) bool {
 // WithBackgroundTaskHandler sets a custom task handler for polling/queue-based scenarios
 func (b *A2AServerBuilderImpl) WithBackgroundTaskHandler(handler TaskHandler) A2AServerBuilder {
 	b.pollingTaskHandler = handler
+	b.useDefaultPollingHandler = false
 	return b
 }
 
 // WithStreamingTaskHandler sets a custom task handler for streaming scenarios
 func (b *A2AServerBuilderImpl) WithStreamingTaskHandler(handler StreamableTaskHandler) A2AServerBuilder {
 	b.streamingTaskHandler = handler
+	b.useDefaultStreamingHandler = false
 	return b
 }
 
 // WithDefaultBackgroundTaskHandler sets a default background task handler optimized for background scenarios
 func (b *A2AServerBuilderImpl) WithDefaultBackgroundTaskHandler() A2AServerBuilder {
-	handler := NewDefaultBackgroundTaskHandler(b.logger, b.agent)
-	handler.artifactService = b.artifactService
-	handler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
-	b.pollingTaskHandler = handler
+	b.useDefaultPollingHandler = true
 	return b
 }
 
 // WithDefaultStreamingTaskHandler sets a default streaming task handler optimized for streaming scenarios
 func (b *A2AServerBuilderImpl) WithDefaultStreamingTaskHandler() A2AServerBuilder {
-	handler := NewDefaultStreamingTaskHandler(b.logger, b.agent)
-	handler.artifactService = b.artifactService
-	handler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
-	b.streamingTaskHandler = handler
+	b.useDefaultStreamingHandler = true
 	return b
+}
+
+// buildDefaultTaskHandlers creates the requested default handlers at Build() time
+// so the agent and artifact service are picked up regardless of builder call order.
+func (b *A2AServerBuilderImpl) buildDefaultTaskHandlers() {
+	if b.useDefaultPollingHandler {
+		handler := NewDefaultBackgroundTaskHandler(b.logger, b.agent)
+		handler.artifactService = b.artifactService
+		handler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
+		b.pollingTaskHandler = handler
+	}
+
+	if b.useDefaultStreamingHandler {
+		handler := NewDefaultStreamingTaskHandler(b.logger, b.agent)
+		handler.artifactService = b.artifactService
+		handler.SetEnableUsageMetadata(b.cfg.AgentConfig.EnableUsageMetadata)
+		b.streamingTaskHandler = handler
+	}
 }
 
 // WithDefaultTaskHandlers sets both default background and streaming task handlers
@@ -295,6 +315,8 @@ func (b *A2AServerBuilderImpl) Build() (A2AServer, error) {
 	if b.agentCard == nil {
 		return nil, fmt.Errorf("agent card must be configured before building the server - use WithAgentCard() or WithAgentCardFromFile()")
 	}
+
+	b.buildDefaultTaskHandlers()
 
 	if err := b.validateTaskHandlerConfiguration(); err != nil {
 		return nil, err

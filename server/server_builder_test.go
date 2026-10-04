@@ -375,6 +375,72 @@ func TestA2AServerBuilder_WithDefaultStreamingTaskHandler(t *testing.T) {
 	assert.Equal(t, builder, builderWithHandler)
 }
 
+func TestA2AServerBuilder_DefaultHandlersReceiveAgentInAnyOrder(t *testing.T) {
+	tests := []struct {
+		name     string
+		agentCfg func(builder server.A2AServerBuilder, agent server.OpenAICompatibleAgent) server.A2AServerBuilder
+	}{
+		{
+			name: "agent before default handlers",
+			agentCfg: func(builder server.A2AServerBuilder, agent server.OpenAICompatibleAgent) server.A2AServerBuilder {
+				return builder.WithAgent(agent).WithDefaultTaskHandlers()
+			},
+		},
+		{
+			name: "agent after default handlers",
+			agentCfg: func(builder server.A2AServerBuilder, agent server.OpenAICompatibleAgent) server.A2AServerBuilder {
+				return builder.WithDefaultTaskHandlers().WithAgent(agent)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := serverConfig.Config{
+				AgentName:          "test-agent",
+				ServerConfig:       serverConfig.ServerConfig{Port: "8080"},
+				CapabilitiesConfig: serverConfig.CapabilitiesConfig{Streaming: true},
+			}
+			logger := zap.NewNop()
+
+			agent, err := server.NewAgentBuilder(logger).Build()
+			require.NoError(t, err)
+
+			a2aServer, err := tt.agentCfg(server.NewA2AServerBuilder(cfg, logger), agent).
+				WithAgentCard(createTestAgentCard()).
+				Build()
+			require.NoError(t, err)
+
+			assert.Same(t, agent, a2aServer.GetAgent())
+			assert.Same(t, agent, a2aServer.GetBackgroundTaskHandler().GetAgent())
+			assert.Same(t, agent, a2aServer.GetStreamingTaskHandler().GetAgent())
+		})
+	}
+}
+
+func TestA2AServerBuilder_CustomHandlersOverrideDefaults(t *testing.T) {
+	cfg := serverConfig.Config{
+		AgentName:          "test-agent",
+		ServerConfig:       serverConfig.ServerConfig{Port: "8080"},
+		CapabilitiesConfig: serverConfig.CapabilitiesConfig{Streaming: true},
+	}
+	logger := zap.NewNop()
+
+	backgroundHandler := &mocks.FakeTaskHandler{}
+	streamingHandler := &mocks.FakeStreamableTaskHandler{}
+
+	a2aServer, err := server.NewA2AServerBuilder(cfg, logger).
+		WithDefaultTaskHandlers().
+		WithBackgroundTaskHandler(backgroundHandler).
+		WithStreamingTaskHandler(streamingHandler).
+		WithAgentCard(createTestAgentCard()).
+		Build()
+	require.NoError(t, err)
+
+	assert.Same(t, backgroundHandler, a2aServer.GetBackgroundTaskHandler())
+	assert.Same(t, streamingHandler, a2aServer.GetStreamingTaskHandler())
+}
+
 func TestServerBuilderAppliesAgentConfigDefaults(t *testing.T) {
 	logger := zap.NewNop()
 

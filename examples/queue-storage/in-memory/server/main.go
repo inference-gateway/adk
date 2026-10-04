@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
@@ -40,8 +41,8 @@ func (h *DemoTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 	return h.agent
 }
 
-// HandleTask processes tasks by simply adding a response message
-func (h *DemoTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+// buildResponse produces the agent reply for a task
+func (h *DemoTaskHandler) buildResponse(task *types.Task, message *types.Message) types.Message {
 	var inputContent string
 	// Extract input from the current message being processed
 	if message != nil {
@@ -66,10 +67,13 @@ func (h *DemoTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 	// - Batch operations
 	// - AI agent for natural language processing
 
-	// Add a response message
 	response := fmt.Sprintf("Task processed successfully using in-memory queue storage. Original input: %s", inputContent)
 
-	responseMessage := types.Message{
+	h.logger.Info("Task processing completed",
+		zap.String("task_id", task.ID),
+		zap.String("response", response))
+
+	return types.Message{
 		MessageID: fmt.Sprintf("response-%s", task.ID),
 		ContextID: task.ContextID,
 		TaskID:    &task.ID,
@@ -78,14 +82,32 @@ func (h *DemoTaskHandler) HandleTask(ctx context.Context, task *types.Task, mess
 			types.CreateTextPart(response),
 		},
 	}
+}
 
-	task.History = append(task.History, responseMessage)
-
-	h.logger.Info("Task processing completed",
-		zap.String("task_id", task.ID),
-		zap.String("response", response))
-
+// HandleTask processes tasks by simply adding a response message
+func (h *DemoTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	task.History = append(task.History, h.buildResponse(task, message))
 	return task, nil
+}
+
+// HandleStreamingTask streams the same response HandleTask produces, so the
+// streaming capability advertised in the agent card is actually served without
+// requiring an LLM agent.
+func (h *DemoTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
+	responseMessage := h.buildResponse(task, message)
+
+	eventChan := make(chan cloudevents.Event, 2)
+	deltaEvent := cloudevents.NewEvent()
+	deltaEvent.SetType(types.EventDelta)
+	_ = deltaEvent.SetData(cloudevents.ApplicationJSON, types.Message{
+		Role:  types.RoleAgent,
+		Parts: responseMessage.Parts,
+	})
+	eventChan <- deltaEvent
+	eventChan <- types.NewIterationCompletedEvent(1, task.ID, &responseMessage)
+	close(eventChan)
+
+	return eventChan, nil
 }
 
 func main() {
@@ -122,7 +144,7 @@ func main() {
 	// Build A2A server with in-memory storage
 	a2aServer, err := server.NewA2AServerBuilder(serverConfig.Config(cfg.A2A), logger).
 		WithBackgroundTaskHandler(taskHandler).
-		WithDefaultStreamingTaskHandler().
+		WithStreamingTaskHandler(taskHandler).
 		WithAgentCard(types.AgentCard{
 			Name:                cfg.A2A.AgentName,
 			Description:         cfg.A2A.AgentDescription,
