@@ -551,7 +551,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageSend(c *gin.Context, req types.
 		task = h.pollTask(c.Request.Context(), task, isTerminalOrInterrupted, nil)
 	}
 
-	response := task.WithHistoryLength(config.HistoryLength)
+	response := visibleTask(c, task.WithHistoryLength(config.HistoryLength))
 	h.responseSender.SendSuccess(c, req.ID, types.SendMessageResponse{Task: &response})
 }
 
@@ -592,6 +592,18 @@ func setSSEHeaders(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("Access-Control-Allow-Headers", "Cache-Control")
+}
+
+// usageExtensionActiveKey marks a request that activated the usage extension.
+const usageExtensionActiveKey = "a2a.extensions.usage"
+
+// visibleTask drops the usage extension's metadata from task unless the request activated
+// the extension, since extensions are inactive by default.
+func visibleTask(c *gin.Context, task types.Task) types.Task {
+	if c.GetBool(usageExtensionActiveKey) {
+		return task
+	}
+	return task.WithoutExtension(types.UsageExtensionURI)
 }
 
 // writeSSEEvent writes a JSON-RPC response to the streaming connection in SSE format.
@@ -694,7 +706,7 @@ func (h *DefaultA2AProtocolHandler) HandleMessageStream(c *gin.Context, req type
 	if params.Configuration != nil {
 		historyLength = params.Configuration.HistoryLength
 	}
-	initialTask := task.WithHistoryLength(historyLength)
+	initialTask := visibleTask(c, task.WithHistoryLength(historyLength))
 	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: &initialTask}}
 	if err := writeSSEEvent(c, &initialResponse); err != nil {
 		h.logger.Error("failed to write initial task", zap.Error(err))
@@ -911,7 +923,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskGet(c *gin.Context, req types.JSON
 		zap.String("task_id", params.ID),
 		zap.Stringp("context_id", task.ContextID),
 		zap.String("status", string(task.Status.State)))
-	h.responseSender.SendSuccess(c, req.ID, task.WithHistoryLength(params.HistoryLength))
+	h.responseSender.SendSuccess(c, req.ID, visibleTask(c, task.WithHistoryLength(params.HistoryLength)))
 }
 
 // HandleTaskCancel processes CancelTask requests
@@ -941,7 +953,7 @@ func (h *DefaultA2AProtocolHandler) HandleTaskCancel(c *gin.Context, req types.J
 		return
 	}
 
-	h.responseSender.SendSuccess(c, req.ID, *task)
+	h.responseSender.SendSuccess(c, req.ID, visibleTask(c, *task))
 }
 
 // HandleTaskList processes ListTasks requests
@@ -960,6 +972,10 @@ func (h *DefaultA2AProtocolHandler) HandleTaskList(c *gin.Context, req types.JSO
 		h.logger.Error("failed to list tasks", zap.Error(err))
 		h.responseSender.SendError(c, req.ID, int(ErrInternalError), err.Error())
 		return
+	}
+
+	for i := range taskList.Tasks {
+		taskList.Tasks[i] = visibleTask(c, taskList.Tasks[i])
 	}
 
 	h.logger.Info("tasks listed successfully", zap.Int("count", len(taskList.Tasks)), zap.Int("total", taskList.TotalSize))
@@ -1100,7 +1116,8 @@ func (h *DefaultA2AProtocolHandler) HandleTaskResubscribe(c *gin.Context, req ty
 		zap.Stringp("context_id", task.ContextID),
 		zap.String("state", string(task.Status.State)))
 
-	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: task}}
+	initialTask := visibleTask(c, *task)
+	initialResponse := types.JSONRPCSuccessResponse{JSONRPC: "2.0", ID: req.ID, Result: types.StreamResponse{Task: &initialTask}}
 
 	if err := writeSSEEvent(c, &initialResponse); err != nil {
 		h.logger.Error("failed to write initial resubscribe status", zap.Error(err))

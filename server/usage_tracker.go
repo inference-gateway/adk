@@ -4,6 +4,8 @@ import (
 	"sync"
 
 	sdk "github.com/inference-gateway/sdk"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 // UsageTracker tracks token usage and execution statistics during agent execution
@@ -75,14 +77,14 @@ func (ut *UsageTracker) GetMetadata() map[string]any {
 	metadata := make(map[string]any)
 
 	if ut.llmCalls > 0 {
-		metadata["usage"] = map[string]any{
+		metadata[types.UsageMetadataKey] = map[string]any{
 			"prompt_tokens":     ut.promptTokens,
 			"completion_tokens": ut.completionTokens,
 			"total_tokens":      ut.totalTokens,
 		}
 	}
 
-	metadata["execution_stats"] = map[string]any{
+	metadata[types.ExecutionStatsMetadataKey] = map[string]any{
 		"iterations":   ut.iterations,
 		"messages":     ut.messages,
 		"tool_calls":   ut.toolCalls,

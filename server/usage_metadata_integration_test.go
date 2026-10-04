@@ -79,15 +79,15 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 
 	require.NotNil(t, resultTask.Metadata, "Task metadata should not be nil")
 
-	assert.Contains(t, *resultTask.Metadata, "usage", "Metadata should contain 'usage' field")
-	usageMap, ok := (*resultTask.Metadata)["usage"].(map[string]any)
+	assert.Contains(t, *resultTask.Metadata, types.UsageMetadataKey, "Metadata should contain 'usage' field")
+	usageMap, ok := (*resultTask.Metadata)[types.UsageMetadataKey].(map[string]any)
 	require.True(t, ok, "Usage should be a map")
 	assert.Equal(t, int64(100), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(50), usageMap["completion_tokens"])
 	assert.Equal(t, int64(150), usageMap["total_tokens"])
 
-	assert.Contains(t, *resultTask.Metadata, "execution_stats", "Metadata should contain 'execution_stats' field")
-	execStats, ok := (*resultTask.Metadata)["execution_stats"].(map[string]any)
+	assert.Contains(t, *resultTask.Metadata, types.ExecutionStatsMetadataKey, "Metadata should contain 'execution_stats' field")
+	execStats, ok := (*resultTask.Metadata)[types.ExecutionStatsMetadataKey].(map[string]any)
 	require.True(t, ok, "Execution stats should be a map")
 	assert.Greater(t, execStats["iterations"], 0, "Should have at least one iteration")
 	assert.GreaterOrEqual(t, execStats["messages"], 0, "Should have message count")
@@ -171,15 +171,15 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 
 	require.NotNil(t, task.Metadata, "Task metadata should not be nil")
 
-	assert.Contains(t, *task.Metadata, "usage", "Metadata should contain 'usage' field")
-	usageMap, ok := (*task.Metadata)["usage"].(map[string]any)
+	assert.Contains(t, *task.Metadata, types.UsageMetadataKey, "Metadata should contain 'usage' field")
+	usageMap, ok := (*task.Metadata)[types.UsageMetadataKey].(map[string]any)
 	require.True(t, ok, "Usage should be a map")
 	assert.Equal(t, int64(200), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(75), usageMap["completion_tokens"])
 	assert.Equal(t, int64(275), usageMap["total_tokens"])
 
-	assert.Contains(t, *task.Metadata, "execution_stats", "Metadata should contain 'execution_stats' field")
-	execStats, ok := (*task.Metadata)["execution_stats"].(map[string]any)
+	assert.Contains(t, *task.Metadata, types.ExecutionStatsMetadataKey, "Metadata should contain 'execution_stats' field")
+	execStats, ok := (*task.Metadata)[types.ExecutionStatsMetadataKey].(map[string]any)
 	require.True(t, ok, "Execution stats should be a map")
 	assert.Greater(t, execStats["iterations"], 0, "Should have at least one iteration")
 }
@@ -245,8 +245,8 @@ func TestUsageMetadata_BackgroundTaskHandler_Disabled(t *testing.T) {
 	require.NotNil(t, resultTask)
 
 	if resultTask.Metadata != nil {
-		assert.NotContains(t, *resultTask.Metadata, "usage", "usage metadata should not be attached when disabled")
-		assert.NotContains(t, *resultTask.Metadata, "execution_stats", "execution_stats should not be attached when disabled")
+		assert.NotContains(t, *resultTask.Metadata, types.UsageMetadataKey, "usage metadata should not be attached when disabled")
+		assert.NotContains(t, *resultTask.Metadata, types.ExecutionStatsMetadataKey, "execution_stats should not be attached when disabled")
 	}
 }
 
@@ -312,9 +312,50 @@ func TestUsageMetadata_StreamingTaskHandler_Disabled(t *testing.T) {
 	}
 
 	if task.Metadata != nil {
-		assert.NotContains(t, *task.Metadata, "usage", "usage metadata should not be attached when disabled")
-		assert.NotContains(t, *task.Metadata, "execution_stats", "execution_stats should not be attached when disabled")
+		assert.NotContains(t, *task.Metadata, types.UsageMetadataKey, "usage metadata should not be attached when disabled")
+		assert.NotContains(t, *task.Metadata, types.ExecutionStatsMetadataKey, "execution_stats should not be attached when disabled")
 	}
+}
+
+// TestRunWithStream_CountsTrailingUsageChunk streams the include_usage shape:
+// the finish_reason chunk, a repeated one, then a chunk with no choices that
+// carries the usage. The usage must be counted once and the turn finish once.
+func TestRunWithStream_CountsTrailingUsageChunk(t *testing.T) {
+	finish := &sdk.CreateChatCompletionStreamResponse{
+		Choices: []sdk.ChatCompletionStreamChoice{{FinishReason: "stop"}},
+	}
+	mockLLMClient := &MockLLMClient{
+		streamResponses: []*sdk.CreateChatCompletionStreamResponse{
+			{Choices: []sdk.ChatCompletionStreamChoice{{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Hi"}}}},
+			finish,
+			finish,
+			{
+				Choices: []sdk.ChatCompletionStreamChoice{},
+				Usage:   &sdk.CompletionUsage{PromptTokens: 120, CompletionTokens: 30, TotalTokens: 150},
+			},
+		},
+	}
+	agent := NewOpenAICompatibleAgentWithConfig(zap.NewNop(), &serverConfig.AgentConfig{MaxChatCompletionIterations: 10})
+	agent.SetLLMClient(mockLLMClient)
+
+	tracker := NewUsageTracker()
+	ctx := context.WithValue(context.Background(), UsageTrackerContextKey, tracker)
+	eventChan, err := agent.RunWithStream(ctx, []types.Message{
+		{Role: "user", Parts: []types.Part{types.NewTextPart("hello")}},
+	})
+	require.NoError(t, err)
+
+	iterations := 0
+	for event := range eventChan {
+		if event.Type() == types.EventIterationCompleted {
+			iterations++
+		}
+	}
+
+	assert.Equal(t, 1, iterations, "a repeated finish_reason must not finish the turn twice")
+	assert.Equal(t, 1, tracker.llmCalls)
+	assert.Equal(t, int64(120), tracker.promptTokens)
+	assert.Equal(t, int64(30), tracker.completionTokens)
 }
 
 // MockLLMClient is a simple mock for testing

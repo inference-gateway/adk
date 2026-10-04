@@ -614,7 +614,7 @@ Configure your A2A agent using environment variables. All configuration is optio
 | `AGENT_CLIENT_FREQUENCY_PENALTY`              | `0.0`                   | Frequency penalty (0 = leave unset)          |
 | `AGENT_CLIENT_PRESENCE_PENALTY`               | `0.0`                   | Presence penalty (0 = leave unset)           |
 | `AGENT_CLIENT_SYSTEM_PROMPT`                  | _(built-in, see below)_ | System prompt for the agent                  |
-| `AGENT_CLIENT_ENABLE_USAGE_METADATA`          | `true`                  | Track token usage and execution metrics      |
+| `AGENT_CLIENT_ENABLE_USAGE_METADATA`          | `true`                  | Serve the usage extension (token usage)      |
 
 `AGENT_CLIENT_SYSTEM_PROMPT` is not empty by default - when unset the agent uses
 the built-in prompt "You are a helpful AI assistant processing an A2A

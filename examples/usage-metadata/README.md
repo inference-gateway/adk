@@ -162,16 +162,27 @@ collected during the stream.
 
 ## Metadata Structure
 
-The metadata is returned in the `Task.Metadata` field with the following structure:
+The metadata is published as the [usage extension](https://github.com/inference-gateway/schemas/tree/main/a2a/extensions/usage/v1).
+The server declares it in the agent card and returns it only to a client that activates it with the
+`A2A-Extensions` header. The bundled client does that:
+
+```go
+clientConfig := client.DefaultConfig(serverURL)
+clientConfig.Headers["A2A-Extensions"] = types.UsageExtensionURI
+a2aClient := client.NewClientWithConfig(clientConfig)
+```
+
+The metadata is returned in the `Task.Metadata` field under keys namespaced by the extension URI
+(`types.UsageMetadataKey` and `types.ExecutionStatsMetadataKey`):
 
 ```json
 {
-  "usage": {
+  "https://github.com/inference-gateway/schemas/tree/main/a2a/extensions/usage/v1/usage": {
     "prompt_tokens": 156,
     "completion_tokens": 89,
     "total_tokens": 245
   },
-  "execution_stats": {
+  "https://github.com/inference-gateway/schemas/tree/main/a2a/extensions/usage/v1/execution_stats": {
     "iterations": 2,
     "messages": 4,
     "tool_calls": 1,
@@ -182,13 +193,13 @@ The metadata is returned in the `Task.Metadata` field with the following structu
 
 ### Field Descriptions
 
-**usage** (only present when LLM calls were made):
+**usage** (`types.UsageMetadataKey`, only present when LLM calls were made):
 
 - `prompt_tokens` (int64): Total tokens used in prompts across all LLM calls
 - `completion_tokens` (int64): Total tokens generated in responses
 - `total_tokens` (int64): Sum of prompt and completion tokens
 
-**execution_stats** (always present):
+**execution_stats** (`types.ExecutionStatsMetadataKey`, always present):
 
 - `iterations` (int): Number of agent execution loops
 - `messages` (int): Total messages processed during execution
@@ -218,7 +229,7 @@ A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA=false
 ```
 
 When disabled, neither the background nor the streaming default handler will
-attach `usage` / `execution_stats` to `Task.Metadata`. To see the difference,
+attach the usage extension keys to `Task.Metadata` and the agent card does not declare the extension. To see the difference,
 start the server with the env var set to `false` and re-run the client - the
 "Usage Metadata" block printed by `displayUsageMetadata` will be empty (or
 absent) for every test case, both background and streaming.
@@ -230,7 +241,7 @@ absent) for every test case, both background and streaming.
 Track token usage to calculate LLM API costs:
 
 ```go
-usage := task.Metadata["usage"].(map[string]any)
+usage := (*task.Metadata)[types.UsageMetadataKey].(map[string]any)
 totalTokens := usage["total_tokens"].(int64)
 cost := calculateCost(totalTokens, model)
 ```
@@ -240,7 +251,7 @@ cost := calculateCost(totalTokens, model)
 Monitor agent efficiency:
 
 ```go
-stats := task.Metadata["execution_stats"].(map[string]any)
+stats := (*task.Metadata)[types.ExecutionStatsMetadataKey].(map[string]any)
 iterations := stats["iterations"].(int)
 if iterations > threshold {
     log.Println("Task required many iterations, consider optimization")
@@ -252,7 +263,7 @@ if iterations > threshold {
 Set limits based on usage:
 
 ```go
-usage := task.Metadata["usage"].(map[string]any)
+usage := (*task.Metadata)[types.UsageMetadataKey].(map[string]any)
 if usage["total_tokens"].(int64) > maxTokens {
     return errors.New("token limit exceeded")
 }
@@ -263,7 +274,7 @@ if usage["total_tokens"].(int64) > maxTokens {
 Analyze agent behavior:
 
 ```go
-stats := task.Metadata["execution_stats"].(map[string]any)
+stats := (*task.Metadata)[types.ExecutionStatsMetadataKey].(map[string]any)
 log.Printf("Task completed in %d iterations with %d tool calls",
     stats["iterations"], stats["tool_calls"])
 ```
@@ -274,6 +285,11 @@ log.Printf("Task completed in %d iterations with %d tool calls",
 
 - **Cause**: Usage metadata may be disabled or no metrics were collected
 - **Solution**: Ensure `A2A_AGENT_CLIENT_ENABLE_USAGE_METADATA=true` and the task completed successfully
+
+### Usage Extension Keys Are Missing
+
+- **Cause**: The client did not activate the usage extension
+- **Solution**: Send the `A2A-Extensions: <types.UsageExtensionURI>` header on every request, including `GetTask`
 
 ### Usage Field is Missing
 

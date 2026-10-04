@@ -1,5 +1,10 @@
 package types
 
+import (
+	"maps"
+	"strings"
+)
+
 // Health status constants
 const (
 	HealthStatusHealthy   = "healthy"
@@ -25,6 +30,17 @@ const (
 // A2AProtocolVersion is the A2A protocol version this ADK speaks, sent and checked as the
 // A2A-Version header (spec section 3.6).
 const A2AProtocolVersion = "1.0"
+
+// UsageExtensionURI identifies the A2A extension that reports a task's token usage and
+// execution stats in its metadata. It is inactive unless the client lists it in the
+// A2A-Extensions header.
+const UsageExtensionURI = "https://github.com/inference-gateway/schemas/tree/main/a2a/extensions/usage/v1"
+
+// Task metadata keys written by the usage extension.
+const (
+	UsageMetadataKey          = UsageExtensionURI + "/usage"
+	ExecutionStatsMetadataKey = UsageExtensionURI + "/execution_stats"
+)
 
 // Tool name constants
 const (
@@ -63,6 +79,22 @@ func (t Task) WithHistoryLength(historyLength *int) Task {
 		return t
 	}
 	t.History = t.History[len(t.History)-max(*historyLength, 0):]
+	return t
+}
+
+// WithoutExtension returns a copy of the task without the metadata keys of the extension
+// identified by uri, and without metadata once none is left. The metadata map is cloned,
+// so the original task keeps them.
+func (t Task) WithoutExtension(uri string) Task {
+	if t.Metadata == nil {
+		return t
+	}
+	metadata := maps.Clone(*t.Metadata)
+	maps.DeleteFunc(metadata, func(key string, _ any) bool { return strings.HasPrefix(key, uri+"/") })
+	t.Metadata = nil
+	if len(metadata) > 0 {
+		t.Metadata = &metadata
+	}
 	return t
 }
 

@@ -38,7 +38,8 @@ func NewHTTPPushNotificationSender(logger *zap.Logger) *HTTPPushNotificationSend
 
 // SendTaskUpdate posts the task to the webhook as an A2A StreamResponse (spec section 4.3.3).
 func (s *HTTPPushNotificationSender) SendTaskUpdate(ctx context.Context, config types.TaskPushNotificationConfig, task *types.Task) error {
-	payload, err := json.Marshal(types.StreamResponse{Task: task})
+	visible := task.WithoutExtension(types.UsageExtensionURI)
+	payload, err := json.Marshal(types.StreamResponse{Task: &visible})
 	if err != nil {
 		return fmt.Errorf("failed to marshal notification payload: %w", err)
 	}

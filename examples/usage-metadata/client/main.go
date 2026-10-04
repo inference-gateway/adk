@@ -45,8 +45,11 @@ func main() {
 
 	logger.Info("usage metadata client starting", zap.String("server_url", cfg.ServerURL))
 
-	// Create A2A client
-	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
+	// Create A2A client that activates the usage extension
+	clientConfig := client.DefaultConfig(cfg.ServerURL)
+	clientConfig.Logger = logger
+	clientConfig.Headers["A2A-Extensions"] = types.UsageExtensionURI
+	a2aClient := client.NewClientWithConfig(clientConfig)
 
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -308,7 +311,7 @@ func displayUsageMetadata(metadata map[string]any) {
 	fmt.Println("\n┌── Usage Metadata ──────────────────────────────────┐")
 
 	// Display token usage
-	if usage, ok := metadata["usage"].(map[string]any); ok {
+	if usage, ok := metadata[types.UsageMetadataKey].(map[string]any); ok {
 		fmt.Println("│ Token Usage:")
 		if promptTokens, ok := usage["prompt_tokens"].(float64); ok {
 			fmt.Printf("│   • Prompt Tokens:     %8.0f\n", promptTokens)
@@ -326,7 +329,7 @@ func displayUsageMetadata(metadata map[string]any) {
 	}
 
 	// Display execution statistics
-	if stats, ok := metadata["execution_stats"].(map[string]any); ok {
+	if stats, ok := metadata[types.ExecutionStatsMetadataKey].(map[string]any); ok {
 		fmt.Println("│ Execution Statistics:")
 		if iterations, ok := stats["iterations"].(float64); ok {
 			fmt.Printf("│   • Iterations:        %8.0f\n", iterations)
