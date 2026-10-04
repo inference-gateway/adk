@@ -78,7 +78,7 @@ Build parts with the helpers in `types/part_marshaling.go`: `types.CreateTextPar
 
 ## Server-Side Usage
 
-Server-side artifact operations live on the `server.ArtifactService` interface. It is created from the artifacts configuration and owns its storage provider:
+Server-side artifact operations live on the `server.ArtifactService` interface. It is created from the artifacts configuration and owns its storage provider. `NewArtifactService` returns the error `artifacts are not enabled in configuration` unless `ArtifactsConfig.Enable` is true (`ARTIFACTS_ENABLED=true`), so the default configuration will not produce a service:
 
 ```go
 import (
@@ -118,7 +118,7 @@ data := []byte("Hello, World!")
 mimeType := artifactService.GetMimeTypeFromExtension("hello.txt")
 
 fileArtifact, err := artifactService.CreateFileArtifact(
-    task.ContextID,
+    task.GetContextID(),
     "Generated File",
     "A simple text file",
     "hello.txt",
@@ -268,7 +268,7 @@ The URL path is grouped by the A2A context (session) ID - see [Storage Layout](#
 
 For the CreateArtifact tool to work properly, you need:
 
-1. **Artifact Storage**: Configure artifact storage (filesystem, MinIO, S3, etc.)
+1. **Artifact Storage**: Configure artifact storage with `ARTIFACTS_STORAGE_PROVIDER` set to `filesystem` or `minio` (MinIO covers S3-compatible stores). Any other value fails with `unsupported storage provider`.
 2. **Context Setup**: The tool reads the current task from `server.TaskContextKey` and an `server.ArtifactService` from `server.ArtifactServiceContextKey` in the execution context
 
 This is automatically handled when using the standard ADK server setup with artifact storage enabled.
