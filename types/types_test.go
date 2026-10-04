@@ -76,4 +76,7 @@ func TestTaskWithoutExtension(t *testing.T) {
 	assert.Equal(t, Struct{uri + "-other/key": 2, "plain": 3}, *got.Metadata)
 	assert.Len(t, *task.Metadata, 3, "the original task must keep the extension keys")
 	assert.Nil(t, Task{ID: "t2"}.WithoutExtension(uri).Metadata)
+
+	onlyExtension := Struct{uri + "/usage": 1}
+	assert.Nil(t, Task{ID: "t3", Metadata: &onlyExtension}.WithoutExtension(uri).Metadata)
 }

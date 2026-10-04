@@ -83,14 +83,18 @@ func (t Task) WithHistoryLength(historyLength *int) Task {
 }
 
 // WithoutExtension returns a copy of the task without the metadata keys of the extension
-// identified by uri. The metadata map is cloned, so the original task keeps them.
+// identified by uri, and without metadata once none is left. The metadata map is cloned,
+// so the original task keeps them.
 func (t Task) WithoutExtension(uri string) Task {
 	if t.Metadata == nil {
 		return t
 	}
 	metadata := maps.Clone(*t.Metadata)
 	maps.DeleteFunc(metadata, func(key string, _ any) bool { return strings.HasPrefix(key, uri+"/") })
-	t.Metadata = &metadata
+	t.Metadata = nil
+	if len(metadata) > 0 {
+		t.Metadata = &metadata
+	}
 	return t
 }
 
