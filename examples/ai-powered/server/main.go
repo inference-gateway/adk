@@ -222,6 +222,7 @@ func main() {
 	// Build and start server
 	agentURL := fmt.Sprintf("http://localhost:%s", cfg.A2A.ServerConfig.Port)
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
+		WithAgent(agent).
 		WithBackgroundTaskHandler(taskHandler).
 		WithDefaultStreamingTaskHandler().
 		WithAgentCard(types.AgentCard{

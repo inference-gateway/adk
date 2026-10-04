@@ -5,6 +5,7 @@ go 1.26.8
 replace github.com/inference-gateway/adk => ../../../../
 
 require (
+	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/inference-gateway/adk v0.26.4
 	github.com/sethvargo/go-envconfig v1.4.3
 	go.uber.org/zap v1.28.0
@@ -20,7 +21,6 @@ require (
 	github.com/bytedance/sonic/loader v0.5.2 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cloudevents/sdk-go/v2 v2.16.2 // indirect
 	github.com/cloudwego/base64x v0.1.7 // indirect
 	github.com/coreos/go-oidc/v3 v3.21.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

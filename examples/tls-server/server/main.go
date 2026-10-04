@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
@@ -29,8 +30,8 @@ func NewSimpleTaskHandler(logger *zap.Logger) *SimpleTaskHandler {
 	return &SimpleTaskHandler{logger: logger}
 }
 
-// HandleTask processes tasks with a simple echo response
-func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+// buildResponse produces the echo reply for a task
+func (h *SimpleTaskHandler) buildResponse(task *types.Task, message *types.Message) types.Message {
 	userInput := ""
 	if message != nil {
 		for _, part := range message.Parts {
@@ -45,30 +46,51 @@ func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, me
 		userInput = "Hello from TLS server!"
 	}
 
-	responseText := fmt.Sprintf("🔒 Secure TLS Response: %s (via HTTPS)", userInput)
-
-	// Create response message
-	responseMessage := types.Message{
-		MessageID: fmt.Sprintf("msg-%s", task.ID),
-		ContextID: task.ContextID,
-		TaskID:    &task.ID,
-		Role:      types.RoleAgent,
-		Parts: []types.Part{
-			types.CreateTextPart(responseText),
-		},
-	}
-
-	// Update task with response
-	task.History = append(task.History, responseMessage)
-	task.Status.State = types.TaskStateCompleted
-	task.Status.Message = &responseMessage
-
 	h.logger.Info("processed task over TLS",
 		zap.String("input", userInput),
 		zap.String("task_id", task.ID),
 	)
 
+	return types.Message{
+		MessageID: fmt.Sprintf("msg-%s", task.ID),
+		ContextID: task.ContextID,
+		TaskID:    &task.ID,
+		Role:      types.RoleAgent,
+		Parts: []types.Part{
+			types.CreateTextPart(fmt.Sprintf("🔒 Secure TLS Response: %s (via HTTPS)", userInput)),
+		},
+	}
+}
+
+// HandleTask processes tasks with a simple echo response
+func (h *SimpleTaskHandler) HandleTask(ctx context.Context, task *types.Task, message *types.Message) (*types.Task, error) {
+	responseMessage := h.buildResponse(task, message)
+
+	task.History = append(task.History, responseMessage)
+	task.Status.State = types.TaskStateCompleted
+	task.Status.Message = &responseMessage
+
 	return task, nil
+}
+
+// HandleStreamingTask streams the same response HandleTask produces, so the
+// streaming capability advertised in the agent card is actually served without
+// requiring an LLM agent.
+func (h *SimpleTaskHandler) HandleStreamingTask(ctx context.Context, task *types.Task, message *types.Message) (<-chan cloudevents.Event, error) {
+	responseMessage := h.buildResponse(task, message)
+
+	eventChan := make(chan cloudevents.Event, 2)
+	deltaEvent := cloudevents.NewEvent()
+	deltaEvent.SetType(types.EventDelta)
+	_ = deltaEvent.SetData(cloudevents.ApplicationJSON, types.Message{
+		Role:  types.RoleAgent,
+		Parts: responseMessage.Parts,
+	})
+	eventChan <- deltaEvent
+	eventChan <- types.NewIterationCompletedEvent(1, task.ID, &responseMessage)
+	close(eventChan)
+
+	return eventChan, nil
 }
 
 // SetAgent sets the OpenAI-compatible agent
@@ -177,7 +199,7 @@ func main() {
 	// Build and start server
 	a2aServer, err := server.NewA2AServerBuilder(cfg.A2A, logger).
 		WithBackgroundTaskHandler(taskHandler).
-		WithDefaultStreamingTaskHandler().
+		WithStreamingTaskHandler(taskHandler).
 		WithAgentCard(types.AgentCard{
 			Name:                cfg.A2A.AgentName,
 			Description:         cfg.A2A.AgentDescription,
