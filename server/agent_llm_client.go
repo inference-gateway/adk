@@ -259,6 +259,7 @@ func (c *OpenAICompatibleLLMClient) waitBeforeRetry(ctx context.Context, attempt
 // delta reaches the caller, so no event is ever replayed.
 func (c *OpenAICompatibleLLMClient) openStream(ctx context.Context, messages []sdk.Message, tools []sdk.ChatCompletionTool) (<-chan sdk.SSEvent, error) {
 	options := c.requestOptions()
+	options.StreamOptions = &sdk.ChatCompletionStreamOptions{IncludeUsage: true}
 
 	var lastErr error
 	for attempt := 0; attempt <= c.config.MaxRetries; attempt++ {

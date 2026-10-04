@@ -317,6 +317,47 @@ func TestUsageMetadata_StreamingTaskHandler_Disabled(t *testing.T) {
 	}
 }
 
+// TestRunWithStream_CountsTrailingUsageChunk streams the include_usage shape:
+// the finish_reason chunk, a repeated one, then a chunk with no choices that
+// carries the usage. The usage must be counted once and the turn finish once.
+func TestRunWithStream_CountsTrailingUsageChunk(t *testing.T) {
+	finish := &sdk.CreateChatCompletionStreamResponse{
+		Choices: []sdk.ChatCompletionStreamChoice{{FinishReason: "stop"}},
+	}
+	mockLLMClient := &MockLLMClient{
+		streamResponses: []*sdk.CreateChatCompletionStreamResponse{
+			{Choices: []sdk.ChatCompletionStreamChoice{{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Hi"}}}},
+			finish,
+			finish,
+			{
+				Choices: []sdk.ChatCompletionStreamChoice{},
+				Usage:   &sdk.CompletionUsage{PromptTokens: 120, CompletionTokens: 30, TotalTokens: 150},
+			},
+		},
+	}
+	agent := NewOpenAICompatibleAgentWithConfig(zap.NewNop(), &serverConfig.AgentConfig{MaxChatCompletionIterations: 10})
+	agent.SetLLMClient(mockLLMClient)
+
+	tracker := NewUsageTracker()
+	ctx := context.WithValue(context.Background(), UsageTrackerContextKey, tracker)
+	eventChan, err := agent.RunWithStream(ctx, []types.Message{
+		{Role: "user", Parts: []types.Part{types.NewTextPart("hello")}},
+	})
+	require.NoError(t, err)
+
+	iterations := 0
+	for event := range eventChan {
+		if event.Type() == types.EventIterationCompleted {
+			iterations++
+		}
+	}
+
+	assert.Equal(t, 1, iterations, "a repeated finish_reason must not finish the turn twice")
+	assert.Equal(t, 1, tracker.llmCalls)
+	assert.Equal(t, int64(120), tracker.promptTokens)
+	assert.Equal(t, int64(30), tracker.completionTokens)
+}
+
 // MockLLMClient is a simple mock for testing
 type MockLLMClient struct {
 	streamResponses []*sdk.CreateChatCompletionStreamResponse

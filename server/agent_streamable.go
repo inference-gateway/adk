@@ -254,15 +254,15 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						break
 					}
 
-					if streamResp == nil || len(streamResp.Choices) == 0 {
+					if streamResp != nil && streamResp.Usage != nil {
+						usageTracker.AddTokenUsage(*streamResp.Usage)
+					}
+
+					if streamResp == nil || len(streamResp.Choices) == 0 || assistantMessage != nil {
 						continue
 					}
 
 					choice := streamResp.Choices[0]
-
-					if streamResp.Usage != nil {
-						usageTracker.AddTokenUsage(*streamResp.Usage)
-					}
 
 					if choice.Delta.Content != "" {
 						fullContent += choice.Delta.Content
@@ -395,7 +395,6 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 								return
 							}
 						}
-						streaming = false
 					}
 				}
 			}
