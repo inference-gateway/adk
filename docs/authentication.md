@@ -5,8 +5,8 @@ The ADK follows the [A2A specification, section 7](https://a2a-protocol.org/late
 ## The flow
 
 1. **Discovery** - the client fetches the public card from `/.well-known/agent-card.json` (always unauthenticated). The card declares:
-   - `securitySchemes` - named schemes the agent accepts (`apiKey`, `http`, `oauth2`, `openIdConnect`, `mutualTLS`).
-   - `security` - a requirement list with OR-of-ANDs semantics; satisfying any one entry is sufficient.
+   - `securitySchemes` - named schemes the agent accepts (`apiKeySecurityScheme`, `httpAuthSecurityScheme`, `oauth2SecurityScheme`, `openIdConnectSecurityScheme`, `mtlsSecurityScheme`).
+   - `securityRequirements` - a requirement list with OR-of-ANDs semantics; satisfying any one entry is sufficient.
 2. **Credential acquisition is out-of-band** - the client obtains a token/key however the chosen scheme dictates.
 3. **Transmission** - the client sends the credential (e.g. `Authorization: Bearer <token>`) on every request.
 4. **Server enforcement** - with `AUTH_ENABLED=true` the `/a2a` endpoint is protected; unauthenticated requests get `401` with a `WWW-Authenticate` challenge.
@@ -19,7 +19,7 @@ With `AUTH_ENABLED=true` the served card must declare `securitySchemes` so clien
 ```go
 schemes, security := server.OIDCSecuritySchemes(cfg.AuthConfig)
 card.SecuritySchemes = schemes
-card.Security = security
+card.SecurityRequirements = security
 ```
 
 Or declare it directly in a card JSON:
@@ -33,7 +33,7 @@ Or declare it directly in a card JSON:
       }
     }
   },
-  "security": [{ "schemes": { "openId": { "list": [] } } }]
+  "securityRequirements": [{ "schemes": { "openId": { "list": [] } } }]
 }
 ```
 
@@ -126,6 +126,6 @@ agent, _ := server.NewAgentBuilder(logger).
 
 ## Out of scope
 
-- **mTLS** - transport-layer; terminate at the proxy/load balancer. A card may declare the `mutualTLS` scheme, but there is nothing for ADK app code to implement.
+- **mTLS** - transport-layer; terminate at the proxy/load balancer. A card may declare the `mtlsSecurityScheme` scheme, but there is nothing for ADK app code to implement.
 - **OAuth2 flow engines** - credential acquisition is out-of-band (spec 7.3); the client only transmits credentials.
 - **API key middleware** - the flow is spec-compliant with OIDC alone. Open an issue if a consumer needs API key enforcement.
