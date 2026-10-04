@@ -65,3 +65,15 @@ func TestTaskApplyArtifactUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestTaskWithoutExtension(t *testing.T) {
+	uri := "https://example.com/ext/usage/v1"
+	metadata := Struct{uri + "/usage": 1, uri + "-other/key": 2, "plain": 3}
+	task := Task{ID: "t1", Metadata: &metadata}
+
+	got := task.WithoutExtension(uri)
+
+	assert.Equal(t, Struct{uri + "-other/key": 2, "plain": 3}, *got.Metadata)
+	assert.Len(t, *task.Metadata, 3, "the original task must keep the extension keys")
+	assert.Nil(t, Task{ID: "t2"}.WithoutExtension(uri).Metadata)
+}

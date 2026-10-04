@@ -6,6 +6,8 @@ import (
 	assert "github.com/stretchr/testify/assert"
 
 	sdk "github.com/inference-gateway/sdk"
+
+	types "github.com/inference-gateway/adk/types"
 )
 
 func TestNewUsageTracker(t *testing.T) {
@@ -27,9 +29,9 @@ func TestUsageTracker_AddTokenUsage(t *testing.T) {
 
 	metadata := tracker.GetMetadata()
 	assert.NotNil(t, metadata)
-	assert.Contains(t, metadata, "usage")
+	assert.Contains(t, metadata, types.UsageMetadataKey)
 
-	usageMap := metadata["usage"].(map[string]any)
+	usageMap := metadata[types.UsageMetadataKey].(map[string]any)
 	assert.Equal(t, int64(100), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(50), usageMap["completion_tokens"])
 	assert.Equal(t, int64(150), usageMap["total_tokens"])
@@ -51,7 +53,7 @@ func TestUsageTracker_AddTokenUsage_Multiple(t *testing.T) {
 	})
 
 	metadata := tracker.GetMetadata()
-	usageMap := metadata["usage"].(map[string]any)
+	usageMap := metadata[types.UsageMetadataKey].(map[string]any)
 
 	assert.Equal(t, int64(300), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(125), usageMap["completion_tokens"])
@@ -66,7 +68,7 @@ func TestUsageTracker_IncrementIteration(t *testing.T) {
 	tracker.IncrementIteration()
 
 	metadata := tracker.GetMetadata()
-	execStats := metadata["execution_stats"].(map[string]any)
+	execStats := metadata[types.ExecutionStatsMetadataKey].(map[string]any)
 	assert.Equal(t, 3, execStats["iterations"])
 }
 
@@ -77,7 +79,7 @@ func TestUsageTracker_AddMessages(t *testing.T) {
 	tracker.AddMessages(3)
 
 	metadata := tracker.GetMetadata()
-	execStats := metadata["execution_stats"].(map[string]any)
+	execStats := metadata[types.ExecutionStatsMetadataKey].(map[string]any)
 	assert.Equal(t, 8, execStats["messages"])
 }
 
@@ -88,7 +90,7 @@ func TestUsageTracker_IncrementToolCalls(t *testing.T) {
 	tracker.IncrementToolCalls()
 
 	metadata := tracker.GetMetadata()
-	execStats := metadata["execution_stats"].(map[string]any)
+	execStats := metadata[types.ExecutionStatsMetadataKey].(map[string]any)
 	assert.Equal(t, 2, execStats["tool_calls"])
 }
 
@@ -98,7 +100,7 @@ func TestUsageTracker_IncrementFailedTools(t *testing.T) {
 	tracker.IncrementFailedTools()
 
 	metadata := tracker.GetMetadata()
-	execStats := metadata["execution_stats"].(map[string]any)
+	execStats := metadata[types.ExecutionStatsMetadataKey].(map[string]any)
 	assert.Equal(t, 1, execStats["failed_tools"])
 }
 
@@ -118,14 +120,14 @@ func TestUsageTracker_GetMetadata_Complete(t *testing.T) {
 
 	metadata := tracker.GetMetadata()
 
-	assert.Contains(t, metadata, "usage")
-	usageMap := metadata["usage"].(map[string]any)
+	assert.Contains(t, metadata, types.UsageMetadataKey)
+	usageMap := metadata[types.UsageMetadataKey].(map[string]any)
 	assert.Equal(t, int64(156), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(89), usageMap["completion_tokens"])
 	assert.Equal(t, int64(245), usageMap["total_tokens"])
 
-	assert.Contains(t, metadata, "execution_stats")
-	execStats := metadata["execution_stats"].(map[string]any)
+	assert.Contains(t, metadata, types.ExecutionStatsMetadataKey)
+	execStats := metadata[types.ExecutionStatsMetadataKey].(map[string]any)
 	assert.Equal(t, 2, execStats["iterations"])
 	assert.Equal(t, 4, execStats["messages"])
 	assert.Equal(t, 1, execStats["tool_calls"])
@@ -140,10 +142,10 @@ func TestUsageTracker_GetMetadata_NoLLMCalls(t *testing.T) {
 
 	metadata := tracker.GetMetadata()
 
-	assert.NotContains(t, metadata, "usage")
+	assert.NotContains(t, metadata, types.UsageMetadataKey)
 
-	assert.Contains(t, metadata, "execution_stats")
-	execStats := metadata["execution_stats"].(map[string]any)
+	assert.Contains(t, metadata, types.ExecutionStatsMetadataKey)
+	execStats := metadata[types.ExecutionStatsMetadataKey].(map[string]any)
 	assert.Equal(t, 1, execStats["iterations"])
 	assert.Equal(t, 2, execStats["messages"])
 }
@@ -221,8 +223,8 @@ func TestUsageTracker_ThreadSafety(t *testing.T) {
 	}
 
 	metadata := tracker.GetMetadata()
-	usageMap := metadata["usage"].(map[string]any)
-	execStats := metadata["execution_stats"].(map[string]any)
+	usageMap := metadata[types.UsageMetadataKey].(map[string]any)
+	execStats := metadata[types.ExecutionStatsMetadataKey].(map[string]any)
 
 	assert.Equal(t, int64(100), usageMap["prompt_tokens"])
 	assert.Equal(t, int64(50), usageMap["completion_tokens"])

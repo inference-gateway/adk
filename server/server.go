@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
+	"strings"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
@@ -541,6 +543,40 @@ func validateCardURLs(card *types.AgentCard) error {
 	return nil
 }
 
+// usageExtensionEnabled reports whether the task handler attaches usage metadata, which is
+// the data the usage extension serves.
+func (s *A2AServerImpl) usageExtensionEnabled() bool {
+	handler, ok := s.backgroundTaskHandler.(interface{ IsUsageMetadataEnabled() bool })
+	return ok && handler.IsUsageMetadataEnabled()
+}
+
+// declareUsageExtension lists the usage extension in the card's capabilities unless the
+// card already does. The extension only adds data, so it is never required.
+func declareUsageExtension(card *types.AgentCard) {
+	if card == nil || slices.ContainsFunc(card.Capabilities.Extensions, func(ext types.AgentExtension) bool {
+		return ext.URI != nil && *ext.URI == types.UsageExtensionURI
+	}) {
+		return
+	}
+	card.Capabilities.Extensions = append(slices.Clone(card.Capabilities.Extensions), types.AgentExtension{
+		URI:         new(types.UsageExtensionURI),
+		Description: new("Reports the task's token usage and execution stats in its metadata."),
+		Required:    new(false),
+	})
+}
+
+// extensionRequested reports whether the A2A-Extensions request headers list uri.
+func extensionRequested(header http.Header, uri string) bool {
+	for _, value := range header.Values("A2A-Extensions") {
+		for requested := range strings.SplitSeq(value, ",") {
+			if strings.TrimSpace(requested) == uri {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Start starts the A2A server
 func (s *A2AServerImpl) Start(ctx context.Context) error {
 	if s.customAgentCard == nil {
@@ -549,6 +585,9 @@ func (s *A2AServerImpl) Start(ctx context.Context) error {
 	for _, card := range []*types.AgentCard{s.customAgentCard, s.extendedAgentCard} {
 		if err := validateCardURLs(card); err != nil {
 			return err
+		}
+		if s.usageExtensionEnabled() {
+			declareUsageExtension(card)
 		}
 	}
 
@@ -803,6 +842,11 @@ func (s *A2AServerImpl) handleA2ARequest(c *gin.Context) {
 	if version := c.GetHeader("A2A-Version"); !isSupportedA2AVersion(version) {
 		s.responseSender.SendError(c, req.ID, int(ErrVersionNotSupported), "a2a version "+version+" is not supported")
 		return
+	}
+
+	if s.usageExtensionEnabled() && extensionRequested(c.Request.Header, types.UsageExtensionURI) {
+		c.Set(usageExtensionActiveKey, true)
+		c.Header("A2A-Extensions", types.UsageExtensionURI)
 	}
 
 	if req.JSONRPC == "" {
