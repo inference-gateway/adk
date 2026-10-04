@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.33.0](https://github.com/inference-gateway/adk/compare/v0.32.2...v0.33.0) (2026-10-04)
+
+### ✨ Features
+
+* **server:** count streamed usage and publish it as an A2A extension ([#397](https://github.com/inference-gateway/adk/issues/397)) ([7d0af1f](https://github.com/inference-gateway/adk/commit/7d0af1ff28de40de7aeff45dedfae49d034e787c)), references [inference-gateway/cli#1526](https://github.com/inference-gateway/cli/issues/1526)
+
+### 🐛 Bug Fixes
+
+* **server:** wire default handlers at build time ([#396](https://github.com/inference-gateway/adk/issues/396)) ([21a1af6](https://github.com/inference-gateway/adk/commit/21a1af6dc5387e1dcb16bc0d1c8124b000da9cb6))
+
+### 📚 Documentation
+
+* **agents:** add code readability guidelines ([#392](https://github.com/inference-gateway/adk/issues/392)) ([c19cdd5](https://github.com/inference-gateway/adk/commit/c19cdd540d755cbbfaa7f1c2c9e068e2e6ca3026))
+* correct artifacts server-side setup snippets ([#394](https://github.com/inference-gateway/adk/issues/394)) ([b92cf05](https://github.com/inference-gateway/adk/commit/b92cf056e9bbf6748b1734a4ff3efc4ecc435f20))
+* use v1.0 security field names in authentication ([#395](https://github.com/inference-gateway/adk/issues/395)) ([df5d809](https://github.com/inference-gateway/adk/commit/df5d809d40222366b9327b95a7e02e8af183c4c4))
+
+### 🔧 Miscellaneous
+
+* sync generated types with schemas v1.2.0 ([#393](https://github.com/inference-gateway/adk/issues/393)) ([35c774b](https://github.com/inference-gateway/adk/commit/35c774b24493ab9e5f61476af57d8ad543f15060))
+
 ## [0.32.2](https://github.com/inference-gateway/adk/compare/v0.32.1...v0.32.2) (2026-10-03)
 
 ### ♻️ Improvements
