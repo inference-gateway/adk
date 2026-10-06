@@ -197,7 +197,7 @@ func (c *Client) streamJSONRPC(ctx context.Context, method types.A2AMethod, para
 			c.logger.Warn("failed to close response body", zap.Error(closeErr))
 		}
 		c.logger.Error("unexpected status code", zap.Int("status_code", httpResp.StatusCode))
-		return nil, fmt.Errorf("unexpected status code: %d", httpResp.StatusCode)
+		return nil, &types.HTTPStatusError{StatusCode: httpResp.StatusCode}
 	}
 
 	c.logger.Debug("streaming response started successfully")
@@ -416,7 +416,7 @@ func (c *Client) GetAgentCard(ctx context.Context) (*types.AgentCard, error) {
 		c.logger.Error("unexpected status code for agent card",
 			zap.Int("status_code", httpResp.StatusCode),
 			zap.String("response_body", string(bodyBytes)))
-		return nil, fmt.Errorf("unexpected status code for agent card: %d, body: %s", httpResp.StatusCode, string(bodyBytes))
+		return nil, &types.HTTPStatusError{Operation: "agent card", StatusCode: httpResp.StatusCode, Body: string(bodyBytes)}
 	}
 
 	var agentCard types.AgentCard
@@ -462,7 +462,7 @@ func (c *Client) GetHealth(ctx context.Context) (*HealthResponse, error) {
 		c.logger.Error("unexpected status code for health check",
 			zap.Int("status_code", httpResp.StatusCode),
 			zap.String("response_body", string(bodyBytes)))
-		return nil, fmt.Errorf("unexpected status code for health check: %d, body: %s", httpResp.StatusCode, string(bodyBytes))
+		return nil, &types.HTTPStatusError{Operation: "health check", StatusCode: httpResp.StatusCode, Body: string(bodyBytes)}
 	}
 
 	var healthResp HealthResponse
@@ -569,7 +569,7 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 			zap.String("method", string(req.Method)),
 			zap.Int("status_code", httpResp.StatusCode),
 			zap.String("response_body", string(bodyBytes)))
-		return fmt.Errorf("unexpected status code: %d, body: %s", httpResp.StatusCode, string(bodyBytes))
+		return &types.HTTPStatusError{StatusCode: httpResp.StatusCode, Body: string(bodyBytes)}
 	}
 
 	var rawResp struct {
@@ -588,7 +588,7 @@ func (c *Client) doRequestWithContext(ctx context.Context, req types.JSONRPCRequ
 		c.logger.Error("received A2A error response",
 			zap.String("error_message", rawResp.Error.Message),
 			zap.Int("error_code", rawResp.Error.Code))
-		return fmt.Errorf("A2A error: %s (code: %d)", rawResp.Error.Message, rawResp.Error.Code)
+		return rawResp.Error
 	}
 
 	resp.JSONRPC = rawResp.JSONRPC

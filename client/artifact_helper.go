@@ -516,7 +516,7 @@ func (ah *ArtifactHelper) downloadFromURI(ctx context.Context, uri string, clien
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download failed with status %d", resp.StatusCode)
+		return nil, &types.HTTPStatusError{Operation: "artifact download", StatusCode: resp.StatusCode}
 	}
 
 	data, err = io.ReadAll(resp.Body)
