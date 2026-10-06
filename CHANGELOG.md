@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.34.0](https://github.com/inference-gateway/adk/compare/v0.33.0...v0.34.0) (2026-10-06)
+
+### ✨ Features
+
+* **client:** return typed JSON-RPC and HTTP errors ([#400](https://github.com/inference-gateway/adk/issues/400)) ([6eba77e](https://github.com/inference-gateway/adk/commit/6eba77e981c037bdeb583bfb5a17346a8c80f0a3))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.285 -> 2.1.289 ([#399](https://github.com/inference-gateway/adk/issues/399)) ([aeed1c0](https://github.com/inference-gateway/adk/commit/aeed1c02b0ef2713e3bce230fbf24caf1b90c120))
+
 ## [0.33.0](https://github.com/inference-gateway/adk/compare/v0.32.2...v0.33.0) (2026-10-04)
 
 ### ✨ Features
