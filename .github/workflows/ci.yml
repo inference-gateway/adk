@@ -35,7 +35,7 @@ jobs:
           args: --help
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.0.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 'lts/*'
 
@@ -107,7 +107,7 @@ jobs:
           cache: true
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.0
 
       - name: Start TCK system under test
         working-directory: examples/tck-sut
