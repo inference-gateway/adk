@@ -6,11 +6,11 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/gin-gonic/gin v1.12.0
-	github.com/go-jose/go-jose/v4 v4.1.5
+	github.com/go-jose/go-jose/v4 v4.1.6
 	github.com/google/uuid v1.6.0
 	github.com/inference-gateway/sdk v1.42.0
 	github.com/metoro-io/mcp-golang v0.16.1
-	github.com/minio/minio-go/v7 v7.3.0
+	github.com/minio/minio-go/v7 v7.4.1
 	github.com/prometheus/client_golang v1.25.0
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/sethvargo/go-envconfig v1.4.3
@@ -97,12 +97,12 @@ require (
 	golang.org/x/arch v0.30.0 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	golang.org/x/tools v0.49.0 // indirect
+	golang.org/x/tools v0.50.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/grpc v1.83.2 // indirect
