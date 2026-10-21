@@ -134,6 +134,7 @@ Via the included Inference Gateway:
 - Ollama
 - Ollama Cloud
 - OpenAI (GPT models)
+- Webwright
 - Zai
 
 <!-- providers:end -->
