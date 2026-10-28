@@ -2,7 +2,13 @@
 version: 2
 updates:
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /examples/*/client
+      - /examples/*/server
+      - /examples/*/*/client
+      - /examples/*/*/server
+      - /examples/tck-sut
     schedule:
       interval: weekly
     groups:
