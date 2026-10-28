@@ -8,7 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-jose/go-jose/v4 v4.1.6
 	github.com/google/uuid v1.6.0
-	github.com/inference-gateway/sdk v1.42.0
+	github.com/inference-gateway/sdk v1.43.0
 	github.com/metoro-io/mcp-golang v0.16.1
 	github.com/minio/minio-go/v7 v7.4.1
 	github.com/prometheus/client_golang v1.25.0
