@@ -107,7 +107,7 @@ jobs:
           cache: true
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10.3.0
+        uses: astral-sh/setup-uv@v10.3.2
 
       - name: Start TCK system under test
         working-directory: examples/tck-sut
