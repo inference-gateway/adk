@@ -19,7 +19,7 @@ import (
 	types "github.com/inference-gateway/adk/types"
 )
 
-// Config holds the configuration for the artifacts MinIO example server
+// Config holds the configuration for the artifacts S3 example server
 type Config struct {
 	// Environment determines runtime environment (development, production, etc.)
 	Environment string `env:"ENVIRONMENT,default=development"`
@@ -81,7 +81,7 @@ func createReportContent(userText, fileName, fileContent, taskID string) string 
 User Request: %s
 
 ## Summary
-Enhanced analysis report that can process client-uploaded data using MinIO cloud storage.
+Enhanced analysis report that can process client-uploaded data using S3-compatible object storage.
 
 `, userText)
 
@@ -98,7 +98,7 @@ Enhanced analysis report that can process client-uploaded data using MinIO cloud
 - File successfully processed from client upload
 - Data has been analyzed and incorporated into this report
 - This demonstrates bidirectional artifact exchange in A2A protocol
-- Artifact stored securely in MinIO cloud storage
+- Artifact stored securely in S3-compatible object storage
 
 `, fileName, fileContent)
 	}
@@ -108,13 +108,12 @@ Enhanced analysis report that can process client-uploaded data using MinIO cloud
 - Task ID: %s
 - Client file uploaded: %v
 - Content type: Markdown document
-- Storage backend: MinIO cloud storage
+- Storage backend: S3-compatible object storage (RustFS)
 - Bucket: artifacts
-- Object versioning: Enabled
 
 ## Conclusions
 This demonstrates both artifact creation and client file upload processing
-through the MinIO cloud storage provider, providing scalable and distributed
+through the S3-compatible storage provider, providing scalable and distributed
 artifact storage capabilities.
 `, time.Now().Format(time.RFC3339), taskID, fileContent != "")
 
@@ -134,29 +133,29 @@ func (h *ArtifactsTaskHandler) HandleTask(ctx context.Context, task *types.Task,
 	// Generate report content
 	artifactContent := createReportContent(userText, fileName, fileContent, task.ID)
 
-	// Create artifact using artifact service (with MinIO storage)
+	// Create artifact using artifact service (with S3 storage)
 	filename := "analysis_report.md"
 	mimeType := "text/markdown"
 
 	artifact, err := h.artifactService.CreateFileArtifact(
 		task.GetContextID(),
 		"Analysis Report",
-		"A detailed analysis report based on your request, stored in MinIO cloud storage",
+		"A detailed analysis report based on your request, stored in S3-compatible object storage",
 		filename,
 		[]byte(artifactContent),
 		&mimeType,
 	)
 	if err != nil {
-		h.logger.Error("failed to create artifact in MinIO", zap.Error(err))
-		return nil, fmt.Errorf("failed to create artifact in MinIO: %w", err)
+		h.logger.Error("failed to create artifact in S3 storage", zap.Error(err))
+		return nil, fmt.Errorf("failed to create artifact in S3 storage: %w", err)
 	}
 
-	h.logger.Info("artifact created successfully in MinIO",
+	h.logger.Info("artifact created successfully in S3 storage",
 		zap.String("artifact_id", artifact.ArtifactID),
 		zap.String("filename", filename))
 
 	// Create response message with artifact
-	responseText := fmt.Sprintf("I've created an analysis report for your request: \"%s\". The report has been saved as an artifact in MinIO cloud storage and is available for download.", userText)
+	responseText := fmt.Sprintf("I've created an analysis report for your request: \"%s\". The report has been saved as an artifact in the S3-compatible object storage (RustFS) and is available for download.", userText)
 
 	responseMessage := types.Message{
 		MessageID: uuid.New().String(),
@@ -186,33 +185,33 @@ func (h *ArtifactsTaskHandler) GetAgent() server.OpenAICompatibleAgent {
 	return h.agent
 }
 
-// Artifacts MinIO Example
+// Artifacts S3 Example
 //
 // This example demonstrates an A2A server that creates downloadable artifacts
-// using MinIO cloud storage. The server creates analysis reports as markdown files
-// and makes them available for download via HTTP endpoints using MinIO as the
-// storage backend.
+// using S3-compatible object storage (RustFS via docker compose). The server
+// creates analysis reports as markdown files and makes them available for
+// download via HTTP endpoints using the S3 storage provider.
 //
 // Features:
 // - Creates markdown artifacts for user requests
-// - Stores artifacts using MinIO cloud storage provider
-// - Serves artifacts via HTTP download endpoints with MinIO backend
+// - Stores artifacts using the S3-compatible storage provider
+// - Serves artifacts via HTTP download endpoints
 // - Includes proper artifact metadata in responses
-// - Scalable cloud storage with object versioning
+// - Works with any S3-compatible object store (RustFS, MinIO, AWS S3, ...)
 //
 // Configuration via environment variables:
 //   - ENVIRONMENT: Runtime environment (default: development)
-//   - A2A_AGENT_NAME: Agent name (default: artifacts-minio-agent)
+//   - A2A_AGENT_NAME: Agent name (default: artifacts-s3-agent)
 //   - A2A_SERVER_PORT: A2A server port (default: 8080)
 //   - A2A_ARTIFACTS_ENABLED: Enable artifacts support (default: true)
 //   - A2A_ARTIFACTS_SERVER_HOST: Artifacts server host (default: localhost)
 //   - A2A_ARTIFACTS_SERVER_PORT: Artifacts server port (default: 8081)
-//   - A2A_ARTIFACTS_STORAGE_PROVIDER: Storage provider (default: minio)
-//   - A2A_ARTIFACTS_STORAGE_MINIO_ENDPOINT: MinIO endpoint (default: localhost:9000)
-//   - A2A_ARTIFACTS_STORAGE_MINIO_ACCESS_KEY: MinIO access key (default: minioadmin)
-//   - A2A_ARTIFACTS_STORAGE_MINIO_SECRET_KEY: MinIO secret key (default: minioadmin)
-//   - A2A_ARTIFACTS_STORAGE_MINIO_BUCKET: MinIO bucket name (default: artifacts)
-//   - A2A_ARTIFACTS_STORAGE_MINIO_USE_SSL: Use SSL for MinIO (default: false)
+//   - A2A_ARTIFACTS_STORAGE_PROVIDER: Storage provider (default: s3)
+//   - A2A_ARTIFACTS_STORAGE_ENDPOINT: Object storage endpoint (default: unset)
+//   - A2A_ARTIFACTS_STORAGE_ACCESS_KEY: Access key (default: unset)
+//   - A2A_ARTIFACTS_STORAGE_SECRET_KEY: Secret key (default: unset)
+//   - A2A_ARTIFACTS_STORAGE_BUCKET_NAME: Bucket name (default: artifacts)
+//   - A2A_ARTIFACTS_STORAGE_USE_SSL: Use SSL for storage (default: true)
 //
 // To run: go run main.go
 func main() {
@@ -240,7 +239,7 @@ func main() {
 					Port: "8081",
 				},
 				StorageConfig: serverConfig.ArtifactsStorageConfig{
-					Provider: "minio",
+					Provider: "s3",
 				},
 			},
 		},
@@ -275,9 +274,9 @@ func main() {
 		zap.String("artifacts_port", cfg.A2A.ArtifactsConfig.ServerConfig.Port),
 		zap.Bool("artifacts_enabled", cfg.A2A.ArtifactsConfig.Enable),
 		zap.String("storage_provider", cfg.A2A.ArtifactsConfig.StorageConfig.Provider),
-		zap.String("minio_endpoint", cfg.A2A.ArtifactsConfig.StorageConfig.Endpoint),
-		zap.String("minio_bucket", cfg.A2A.ArtifactsConfig.StorageConfig.BucketName),
-		zap.Bool("minio_use_ssl", cfg.A2A.ArtifactsConfig.StorageConfig.UseSSL),
+		zap.String("storage_endpoint", cfg.A2A.ArtifactsConfig.StorageConfig.Endpoint),
+		zap.String("storage_bucket", cfg.A2A.ArtifactsConfig.StorageConfig.BucketName),
+		zap.Bool("storage_use_ssl", cfg.A2A.ArtifactsConfig.StorageConfig.UseSSL),
 		zap.Bool("debug", cfg.A2A.Debug),
 	)
 
@@ -293,7 +292,7 @@ func main() {
 		WithArtifactService(artifactService).
 		Build()
 	if err != nil {
-		logger.Fatal("failed to create artifacts server with MinIO storage", zap.Error(err))
+		logger.Fatal("failed to create artifacts server with S3 storage", zap.Error(err))
 	}
 
 	// Create task handler with artifact service support

@@ -1,4 +1,4 @@
-module github.com/inference-gateway/adk/examples/artifacts-minio/server
+module github.com/inference-gateway/adk/examples/artifacts-s3/server
 
 go 1.26.8
 

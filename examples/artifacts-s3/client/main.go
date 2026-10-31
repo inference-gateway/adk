@@ -55,7 +55,7 @@ func main() {
 
 	fmt.Printf("🔗 Connecting to A2A server: %s\n", cfg.ServerURL)
 	fmt.Printf("📁 Artifacts server: %s\n", cfg.ArtifactsURL)
-	fmt.Printf("☁️  Using MinIO cloud storage backend\n")
+	fmt.Printf("☁️  Using S3-compatible object storage backend (RustFS)\n")
 
 	// Create client
 	a2aClient := client.NewClientWithLogger(cfg.ServerURL, logger)
@@ -159,7 +159,7 @@ func main() {
 
 	// Process artifacts
 	if len(completedTask.Artifacts) > 0 {
-		fmt.Printf("\n📎 Found %d artifact(s) stored in MinIO:\n", len(completedTask.Artifacts))
+		fmt.Printf("\n📎 Found %d artifact(s) stored in RustFS:\n", len(completedTask.Artifacts))
 
 		// Display artifact details
 		for i, artifact := range completedTask.Artifacts {
@@ -190,10 +190,10 @@ func main() {
 				if result.Error != nil {
 					fmt.Printf("   ❌ Failed to download %s: %v\n", result.FileName, result.Error)
 				} else {
-					// Check if this is a MinIO download
+					// Check if this is a direct object store download
 					downloadSource := "artifacts server proxy"
-					if containsMinIOEndpoint(result.FilePath) {
-						downloadSource = "MinIO storage (direct access)"
+					if containsS3Endpoint(result.FilePath) {
+						downloadSource = "S3-compatible storage (direct access)"
 					}
 					fmt.Printf("   ✅ Downloaded %s (%d bytes) via %s\n      Saved to: %s\n",
 						result.FileName, result.BytesWritten, downloadSource, result.FilePath)
@@ -204,7 +204,7 @@ func main() {
 		fmt.Println("\n📎 No artifacts found in response")
 	}
 
-	fmt.Println("\n🎉 MinIO artifacts client example completed!")
+	fmt.Println("\n🎉 S3 artifacts client example completed!")
 }
 
 // createMessageWithFileUpload creates a message that includes the dummy data file upload
@@ -222,7 +222,7 @@ func createMessageWithFileUpload() types.Message {
 		return types.Message{
 			Role: types.RoleUser,
 			Parts: []types.Part{
-				types.CreateTextPart("Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations. This will be stored in MinIO cloud storage."),
+				types.CreateTextPart("Please create a detailed analysis report about renewable energy trends in 2024. Include charts and recommendations. This will be stored in S3-compatible object storage."),
 			},
 		}
 	}
@@ -244,14 +244,15 @@ func createMessageWithFileUpload() types.Message {
 	return types.Message{
 		Role: types.RoleUser,
 		Parts: []types.Part{
-			types.CreateTextPart("Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics. The report will be stored in MinIO cloud storage for scalable access."),
+			types.CreateTextPart("Please analyze the uploaded energy data and create a comprehensive report with insights and recommendations based on the provided statistics. The report will be stored in S3-compatible object storage (RustFS)."),
 			types.CreateFilePart(filename, mimeType, &encodedContent, nil),
 		},
 	}
 }
 
-// containsMinIOEndpoint checks if the URI contains a MinIO endpoint (port 9000)
-// to determine if we're downloading directly from MinIO vs artifacts server
-func containsMinIOEndpoint(uri string) bool {
+// containsS3Endpoint checks if the URI contains an object store endpoint
+// (port 9000) to determine if we're downloading directly from the object
+// store vs the artifacts server
+func containsS3Endpoint(uri string) bool {
 	return strings.Contains(uri, ":9000") || strings.Contains(uri, "localhost:9000")
 }
