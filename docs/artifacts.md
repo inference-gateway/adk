@@ -268,7 +268,7 @@ The URL path is grouped by the A2A context (session) ID - see [Storage Layout](#
 
 For the CreateArtifact tool to work properly, you need:
 
-1. **Artifact Storage**: Configure artifact storage with `ARTIFACTS_STORAGE_PROVIDER` set to `filesystem` or `minio` (MinIO covers S3-compatible stores). Any other value fails with `unsupported storage provider`.
+1. **Artifact Storage**: Configure artifact storage with `ARTIFACTS_STORAGE_PROVIDER` set to `filesystem` or `s3` (S3-compatible stores such as RustFS). `minio` is accepted as a legacy alias of `s3`. Any other value fails with `unsupported storage provider`.
 2. **Context Setup**: The tool reads the current task from `server.TaskContextKey` and an `server.ArtifactService` from `server.ArtifactServiceContextKey` in the execution context
 
 This is automatically handled when using the standard ADK server setup with artifact storage enabled.
@@ -680,7 +680,8 @@ artifacts/
         └── summary.md
 ```
 
-The same layout applies to both storage backends: filesystem paths and MinIO/S3 object keys are `{contextId}/{artifactId}/{filename}`. Download URLs follow the same shape:
+The same layout applies to both storage backends: filesystem paths and S3-compatible object
+keys are `{contextId}/{artifactId}/{filename}`. Download URLs follow the same shape:
 
 ```
 {baseURL}/artifacts/{contextId}/{artifactId}/{filename}
@@ -695,7 +696,7 @@ The `contextId` is taken from the task the artifact is created for (`task.Contex
 Each example below is a self-contained `server/` + `client/` module pair with its own `docker-compose.yaml`:
 
 - `examples/artifacts-filesystem/` - custom task handler creating file artifacts backed by filesystem storage, plus a client that downloads them
-- `examples/artifacts-minio/` - the same flow with MinIO (S3) storage
+- `examples/artifacts-s3/` - the same flow with S3-compatible object storage (RustFS)
 - `examples/artifacts-autonomous-tool/` - an LLM-powered agent that creates artifacts on its own via the built-in `create_artifact` tool
 - `examples/artifacts-with-default-handlers/` - artifacts with the default task handlers, no custom handler code
 

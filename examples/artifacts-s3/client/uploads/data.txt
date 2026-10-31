@@ -1,4 +1,4 @@
-Energy Production Data 2024 - MinIO Storage Edition
+Energy Production Data 2024 - RustFS Storage Edition
 =====================================================
 
 Solar Energy: 45% increase compared to 2023
@@ -18,6 +18,6 @@ Key Trends:
 - Cloud storage adoption for energy data management
 
 Technology Infrastructure:
-- MinIO object storage for renewable energy data
+- RustFS object storage for renewable energy data
 - Distributed storage systems for grid monitoring
 - Real-time analytics with cloud-native solutions

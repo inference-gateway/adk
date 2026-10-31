@@ -31,7 +31,7 @@ examples/
 ├── input-required/            # Input-required flow (non-streaming and streaming)
 ├── callbacks/                 # Callback hooks for agent/model/tool lifecycle
 ├── artifacts-filesystem/      # Artifact storage using local filesystem
-├── artifacts-minio/           # Artifact storage using MinIO (S3-compatible)
+├── artifacts-s3/              # Artifact storage using S3-compatible object store (RustFS)
 ├── artifacts-autonomous-tool/ # LLM autonomously creates artifacts via create_artifact tool
 ├── queue-storage/             # Queue storage backends (in-memory and Redis)
 ├── tls-example/               # TLS-enabled server with HTTPS communication
@@ -147,12 +147,12 @@ Demonstrates artifact creation and download using local filesystem storage.
 - HTTP download endpoints
 - Client artifact download integration
 
-#### `artifacts-minio/`
+#### `artifacts-s3/`
 
-Demonstrates artifact creation and download using MinIO (S3-compatible) storage.
+Demonstrates artifact creation and download using S3-compatible (RustFS) storage.
 
-- MinIO storage provider
-- S3-compatible API
+- S3 storage provider
+- S3-compatible API (RustFS in docker compose)
 - Enterprise-ready cloud storage
 
 #### `artifacts-autonomous-tool/`
@@ -252,7 +252,7 @@ See each example's README for specific configuration details.
 8. **`streaming/`** - Implement real-time streaming capabilities
 9. **`ai-powered-streaming/`** - Combine AI integration with real-time streaming
 10. **`artifacts-autonomous-tool/`** - Enable LLM to autonomously create artifacts
-11. **`artifacts-minio/`** - Enterprise-ready artifact storage with MinIO
+11. **`artifacts-s3/`** - Enterprise-ready artifact storage with RustFS (S3-compatible)
 12. **`queue-storage/`** - Learn different queue storage backends for scaling
 13. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
 14. **`usage-metadata/`** - Track token usage and execution metrics for cost monitoring

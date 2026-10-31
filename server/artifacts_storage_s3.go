@@ -14,24 +14,25 @@ import (
 	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
-// MinIOArtifactStorage implements ArtifactStorageProvider using MinIO/S3
-type MinIOArtifactStorage struct {
+// S3ArtifactStorage implements ArtifactStorageProvider using an S3-compatible
+// object store such as RustFS, MinIO or AWS S3
+type S3ArtifactStorage struct {
 	client     *minio.Client
 	bucketName string
 	baseURL    string
 }
 
-// NewMinIOArtifactStorage creates a new MinIO-based artifact storage provider
-func NewMinIOArtifactStorage(cfg *serverConfig.ArtifactsStorageConfig) (*MinIOArtifactStorage, error) {
+// NewS3ArtifactStorage creates a new S3-based artifact storage provider
+func NewS3ArtifactStorage(cfg *serverConfig.ArtifactsStorageConfig) (*S3ArtifactStorage, error) {
 	client, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
 		Secure: cfg.UseSSL,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create MinIO client: %w", err)
+		return nil, fmt.Errorf("failed to create S3 client: %w", err)
 	}
 
-	storage := &MinIOArtifactStorage{
+	storage := &S3ArtifactStorage{
 		client:     client,
 		bucketName: cfg.BucketName,
 		baseURL:    strings.TrimSuffix(cfg.BaseURL, "/"),
@@ -53,8 +54,8 @@ func NewMinIOArtifactStorage(cfg *serverConfig.ArtifactsStorageConfig) (*MinIOAr
 	return storage, nil
 }
 
-// Store stores an artifact to MinIO
-func (m *MinIOArtifactStorage) Store(ctx context.Context, contextID string, artifactID string, filename string, data io.Reader) (string, error) {
+// Store stores an artifact in S3 storage
+func (m *S3ArtifactStorage) Store(ctx context.Context, contextID string, artifactID string, filename string, data io.Reader) (string, error) {
 	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
@@ -67,15 +68,15 @@ func (m *MinIOArtifactStorage) Store(ctx context.Context, contextID string, arti
 
 	_, err := m.client.PutObject(ctx, m.bucketName, objectName, data, -1, minio.PutObjectOptions{})
 	if err != nil {
-		return "", fmt.Errorf("failed to store artifact in MinIO: %w", err)
+		return "", fmt.Errorf("failed to store artifact in S3 storage: %w", err)
 	}
 
 	url := m.GetURL(contextID, artifactID, filename)
 	return url, nil
 }
 
-// Retrieve retrieves an artifact from MinIO
-func (m *MinIOArtifactStorage) Retrieve(ctx context.Context, contextID string, artifactID string, filename string) (io.ReadCloser, error) {
+// Retrieve retrieves an artifact from S3 storage
+func (m *S3ArtifactStorage) Retrieve(ctx context.Context, contextID string, artifactID string, filename string) (io.ReadCloser, error) {
 	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
@@ -88,14 +89,14 @@ func (m *MinIOArtifactStorage) Retrieve(ctx context.Context, contextID string, a
 
 	object, err := m.client.GetObject(ctx, m.bucketName, objectName, minio.GetObjectOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve artifact from MinIO: %w", err)
+		return nil, fmt.Errorf("failed to retrieve artifact from S3 storage: %w", err)
 	}
 
 	return object, nil
 }
 
-// Delete removes an artifact from MinIO
-func (m *MinIOArtifactStorage) Delete(ctx context.Context, contextID string, artifactID string, filename string) error {
+// Delete removes an artifact from S3 storage
+func (m *S3ArtifactStorage) Delete(ctx context.Context, contextID string, artifactID string, filename string) error {
 	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
@@ -108,14 +109,14 @@ func (m *MinIOArtifactStorage) Delete(ctx context.Context, contextID string, art
 
 	err := m.client.RemoveObject(ctx, m.bucketName, objectName, minio.RemoveObjectOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to delete artifact from MinIO: %w", err)
+		return fmt.Errorf("failed to delete artifact from S3 storage: %w", err)
 	}
 
 	return nil
 }
 
-// Exists checks if an artifact exists in MinIO
-func (m *MinIOArtifactStorage) Exists(ctx context.Context, contextID string, artifactID string, filename string) (bool, error) {
+// Exists checks if an artifact exists in S3 storage
+func (m *S3ArtifactStorage) Exists(ctx context.Context, contextID string, artifactID string, filename string) (bool, error) {
 	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
@@ -131,27 +132,27 @@ func (m *MinIOArtifactStorage) Exists(ctx context.Context, contextID string, art
 		if minio.ToErrorResponse(err).Code == "NoSuchKey" {
 			return false, nil
 		}
-		return false, fmt.Errorf("failed to check artifact existence in MinIO: %w", err)
+		return false, fmt.Errorf("failed to check artifact existence in S3 storage: %w", err)
 	}
 
 	return true, nil
 }
 
 // GetURL returns the public URL for accessing an artifact
-func (m *MinIOArtifactStorage) GetURL(contextID string, artifactID string, filename string) string {
+func (m *S3ArtifactStorage) GetURL(contextID string, artifactID string, filename string) string {
 	contextID = sanitizePath(contextID)
 	artifactID = sanitizePath(artifactID)
 	filename = sanitizePath(filename)
 	return fmt.Sprintf("%s/artifacts/%s/%s/%s", m.baseURL, contextID, artifactID, filename)
 }
 
-// Close closes the MinIO connection
-func (m *MinIOArtifactStorage) Close() error {
+// Close closes the S3 connection
+func (m *S3ArtifactStorage) Close() error {
 	return nil
 }
 
 // CleanupExpiredArtifacts removes artifacts older than maxAge
-func (m *MinIOArtifactStorage) CleanupExpiredArtifacts(ctx context.Context, maxAge time.Duration) (int, error) {
+func (m *S3ArtifactStorage) CleanupExpiredArtifacts(ctx context.Context, maxAge time.Duration) (int, error) {
 	if maxAge <= 0 {
 		return 0, nil
 	}
@@ -184,13 +185,13 @@ func (m *MinIOArtifactStorage) CleanupExpiredArtifacts(ctx context.Context, maxA
 	return removedCount, nil
 }
 
-type minioArtifactGroup struct {
+type s3ArtifactGroup struct {
 	keys    []string
 	modTime time.Time
 }
 
 // CleanupOldestArtifacts removes the oldest artifacts keeping only maxCount per context
-func (m *MinIOArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCount int) (int, error) {
+func (m *S3ArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCount int) (int, error) {
 	if maxCount <= 0 {
 		return 0, nil
 	}
@@ -217,13 +218,13 @@ func (m *MinIOArtifactStorage) CleanupOldestArtifacts(ctx context.Context, maxCo
 
 // groupObjectsByContext groups stored objects into artifacts per context ID,
 // following the {contextID}/{artifactID}/{filename} key layout
-func (m *MinIOArtifactStorage) groupObjectsByContext(ctx context.Context) map[string][]*minioArtifactGroup {
+func (m *S3ArtifactStorage) groupObjectsByContext(ctx context.Context) map[string][]*s3ArtifactGroup {
 	objectCh := m.client.ListObjects(ctx, m.bucketName, minio.ListObjectsOptions{
 		Recursive: true,
 	})
 
-	contexts := make(map[string][]*minioArtifactGroup)
-	artifactsByID := make(map[string]*minioArtifactGroup)
+	contexts := make(map[string][]*s3ArtifactGroup)
+	artifactsByID := make(map[string]*s3ArtifactGroup)
 
 	for object := range objectCh {
 		if object.Err != nil {
@@ -240,7 +241,7 @@ func (m *MinIOArtifactStorage) groupObjectsByContext(ctx context.Context) map[st
 
 		artifact, ok := artifactsByID[artifactKey]
 		if !ok {
-			artifact = &minioArtifactGroup{}
+			artifact = &s3ArtifactGroup{}
 			artifactsByID[artifactKey] = artifact
 			contexts[contextID] = append(contexts[contextID], artifact)
 		}
@@ -255,7 +256,7 @@ func (m *MinIOArtifactStorage) groupObjectsByContext(ctx context.Context) map[st
 }
 
 // removeObjects deletes the given object keys, reporting whether anything was removed
-func (m *MinIOArtifactStorage) removeObjects(ctx context.Context, keys []string) bool {
+func (m *S3ArtifactStorage) removeObjects(ctx context.Context, keys []string) bool {
 	removed := false
 	for _, key := range keys {
 		if err := m.client.RemoveObject(ctx, m.bucketName, key, minio.RemoveObjectOptions{}); err == nil {

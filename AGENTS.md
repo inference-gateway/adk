@@ -44,8 +44,9 @@ Run from the repo root; `task --list` lists all targets.
   `BeforeTool`/`AfterTool`. Before callbacks short-circuit by returning non-nil; after callbacks can replace outputs.
   Guardrails, caching, and authorization are built on these - there is no separate middleware concept for them.
 - **Storage** is an interface with in-memory (default) and Redis implementations, selected via `QUEUE_PROVIDER`.
-- **Artifacts** run on a separate HTTP server (default port 8081, `ArtifactsServerBuilder`) with filesystem or MinIO
-  backends. Proxy mode is default; `ARTIFACTS_STORAGE_BASE_URL` enables direct downloads. See `docs/artifacts.md`.
+- **Artifacts** run on a separate HTTP server (default port 8081, `ArtifactsServerBuilder`) with filesystem or
+  S3-compatible (RustFS) backends. Proxy mode is default; `ARTIFACTS_STORAGE_BASE_URL` enables direct downloads.
+  See `docs/artifacts.md`.
 - **Config** (`server/config/`) is one `Config` struct loaded by `sethvargo/go-envconfig` with prefixed groups
   (`AGENT_CLIENT_*`, `CAPABILITIES_*`, `AUTH_*`, `QUEUE_*`, `TASK_RETENTION_*`, `SERVER_*`, `TELEMETRY_*`,
   `ARTIFACTS_*`). `AgentName`, `AgentDescription`, `AgentVersion` have no env tags; inject them at build time with

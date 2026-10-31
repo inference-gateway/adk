@@ -123,12 +123,12 @@ func NewArtifactService(cfg *serverConfig.ArtifactsConfig, logger *zap.Logger) (
 			zap.String("base_path", storageConfig.BasePath),
 			zap.String("base_url", storageConfig.BaseURL))
 
-	case "minio":
-		storage, err = NewMinIOArtifactStorage(&storageConfig)
+	case "s3", "minio":
+		storage, err = NewS3ArtifactStorage(&storageConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create MinIO storage: %w", err)
+			return nil, fmt.Errorf("failed to create S3 storage: %w", err)
 		}
-		logger.Info("artifact service initialized with MinIO storage",
+		logger.Info("artifact service initialized with S3 storage",
 			zap.String("endpoint", storageConfig.Endpoint),
 			zap.String("bucket", storageConfig.BucketName))
 
