@@ -201,6 +201,6 @@ docker compose run --rm a2a-debugger tasks list --include-artifacts
 
 ## Next Steps
 
-- Explore the [MinIO artifacts example](../artifacts-minio/) for cloud storage
+- Explore the [S3 (RustFS) artifacts example](../artifacts-s3/) for cloud storage
 - See [ADK documentation](../../README.md) for more features
 - Try [streaming examples](../streaming/) for real-time responses

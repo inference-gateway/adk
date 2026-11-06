@@ -33,10 +33,12 @@ examples/
 ├── artifacts-filesystem/      # Artifact storage using local filesystem
 ├── artifacts-s3/              # Artifact storage using S3-compatible object store (RustFS)
 ├── artifacts-autonomous-tool/ # LLM autonomously creates artifacts via create_artifact tool
+├── artifacts-with-default-handlers/ # Artifacts with AI agents, auto-extracted by default handlers
 ├── queue-storage/             # Queue storage backends (in-memory and Redis)
-├── tls-example/               # TLS-enabled server with HTTPS communication
+├── tls-server/                # TLS-enabled server with HTTPS communication
 ├── usage-metadata/            # Token usage and execution metrics tracking
 ├── authentication/            # Card-driven authentication flow (securitySchemes + extended card)
+├── mcp/                       # MCP client integration with on-demand tool discovery
 ├── protocol-methods/          # Full A2A JSON-RPC surface (CancelTask, ListTasks, push notification configs, SubscribeToTask, GetExtendedAgentCard)
 └── tck-sut/                   # A2A TCK system under test (server only, run by CI)
 ```
@@ -165,6 +167,14 @@ Demonstrates autonomous artifact creation where the LLM decides when and what ar
 - AI-driven decision making for artifact creation
 - Supports multiple file types (JSON, CSV, code files, etc.)
 
+#### `artifacts-with-default-handlers/`
+
+Demonstrates artifact creation with an AI-powered agent using `WithDefaultTaskHandlers()`.
+
+- AI agent creates artifacts via tool calls (`ArtifactService.CreateFileArtifact()`)
+- Default handlers automatically extract and attach artifacts to tasks
+- Requires LLM provider configuration
+
 #### `queue-storage/`
 
 Demonstrates different queue storage backends for task management and horizontal
@@ -216,6 +226,14 @@ call one of these methods directly from your own client.
 - `SubscribeToTask` after a dropped streaming connection
 - `GetExtendedAgentCard` via JSON-RPC
 
+#### `mcp/`
+
+An A2A server whose agent discovers and invokes tools from remote MCP servers using the ADK's MCP client.
+
+- `mcp_list_tools` and `mcp_call_tool` selector tools instead of loading every MCP tool into LLM context
+- Tool metadata is pulled on demand, keeping large MCP catalogs out of the context window
+- Server example only - point `A2A_MCP_SERVERS` at any streamable-HTTP MCP server
+
 ## 🔧 Configuration
 
 All examples follow a consistent environment variable pattern with the `A2A_` prefix:
@@ -254,7 +272,7 @@ See each example's README for specific configuration details.
 10. **`artifacts-autonomous-tool/`** - Enable LLM to autonomously create artifacts
 11. **`artifacts-s3/`** - Enterprise-ready artifact storage with RustFS (S3-compatible)
 12. **`queue-storage/`** - Learn different queue storage backends for scaling
-13. **`tls-example/`** - Learn TLS/SSL encryption and secure communication
+13. **`tls-server/`** - Learn TLS/SSL encryption and secure communication
 14. **`usage-metadata/`** - Track token usage and execution metrics for cost monitoring
 15. **`protocol-methods/`** - Exercise the rest of the A2A JSON-RPC surface (CancelTask, ListTasks, push notification configs, SubscribeToTask, GetExtendedAgentCard)
 

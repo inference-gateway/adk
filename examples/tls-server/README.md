@@ -23,7 +23,7 @@ This example demonstrates how to run an A2A server with TLS encryption, providin
 ## Directory Structure
 
 ```text
-tls-example/
+tls-server/
 ├── server/
 │   ├── main.go           # TLS-enabled A2A server
 │   ├── config/
@@ -49,7 +49,7 @@ Note: Uses ../Dockerfile.server and ../Dockerfile.client for containers
 1. **Navigate to the example directory:**
 
 ```bash
-cd examples/tls-example
+cd examples/tls-server
 ```
 
 2. **Run the complete TLS setup:**

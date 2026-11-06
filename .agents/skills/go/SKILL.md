@@ -82,7 +82,7 @@ type Processor struct{ fetcher UserFetcher }
 > **In this repo:** the deliberate interface seams are `TaskHandler` /
 > `StreamableTaskHandler`, `LLMClient`, `Storage`, and the artifact storage
 > interfaces - these exist precisely because they get swapped (custom handlers,
-> in-memory vs Redis storage, filesystem vs MinIO artifacts) and mocked. Add a
+> in-memory vs Redis storage, filesystem vs RustFS artifacts) and mocked. Add a
 > new interface only when it earns a real second implementation or a generated
 > mock; keep it small.
 
