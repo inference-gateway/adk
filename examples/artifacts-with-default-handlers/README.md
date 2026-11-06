@@ -273,7 +273,7 @@ Response includes:
 | ----------------------------------- | ----------------------------- | ------------------------ | ----------- |
 | **artifacts-with-default-handlers** | `WithDefaultTaskHandlers()`   | **Automatic extraction** | **Yes**     |
 | **artifacts-filesystem**            | Custom `ArtifactsTaskHandler` | Manual in handler        | No          |
-| **artifacts-minio**                 | Custom `ArtifactsTaskHandler` | Manual in handler        | No          |
+| **artifacts-s3**                    | Custom `ArtifactsTaskHandler` | Manual in handler        | No          |
 | **default-handlers**                | `WithDefaultTaskHandlers()`   | None                     | Optional    |
 
 ## Project Structure
