@@ -53,7 +53,7 @@ We welcome contributions to the Application Development Kit for A2A-compatible A
 
 Before contributing, ensure you have the following installed:
 
-- **Go 1.26 or later**
+- **Go 1.27 or later**
 - **[Task](https://taskfile.dev/)** for build automation
 - **[golangci-lint](https://golangci-lint.run/)** for linting (imports are grouped by `gci`: standard library, `testify`, `server/mocks`, third-party, `github.com/inference-gateway/*`, this module) and every non-standard-library import is named after its last path element (`importas`); run `golangci-lint fmt` and `golangci-lint run --fix` to fix both)
 - **Git** for version control
@@ -120,7 +120,7 @@ For a containerized development environment with all tools pre-installed:
    task test
    ```
 
-The dev container includes all required tools: Go 1.26, Task, golangci-lint, GitHub CLI, Node.js, prettier, and more.
+The dev container includes all required tools: Go 1.27, Task, golangci-lint, GitHub CLI, Node.js, prettier, and more.
 
 #### Option 3: Manual Setup
 

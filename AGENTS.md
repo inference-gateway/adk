@@ -76,7 +76,7 @@ with the generated changes; no hand-editing of example or doc files is needed.
 
 ## Code Style
 
-Go 1.26 (matches `go.mod`; CI uses `go-version-file`). Tabs, LF endings, final newlines, 120-column limit for Go
+Go 1.27 (matches `go.mod`; CI uses `go-version-file`). Tabs, LF endings, final newlines, 120-column limit for Go
 (`.editorconfig`). Prefer early returns, `switch` over `if/else` chains, interface-driven dependencies, table-driven
 tests with `t.Run`, and structured logging with lowercase messages.
 
