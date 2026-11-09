@@ -211,7 +211,7 @@ func TestFilesystemArtifactStorage_CleanupOldestArtifacts(t *testing.T) {
 	}
 }
 
-func TestSanitizePath(t *testing.T) {
+func TestSanitizeArtifactPath(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
@@ -226,7 +226,7 @@ func TestSanitizePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := sanitizePath(tt.input)
+			result := SanitizeArtifactPath(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

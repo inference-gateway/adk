@@ -17,6 +17,9 @@ import (
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
+
+	// Opts into the S3-compatible artifact storage backend (RustFS)
+	_ "github.com/inference-gateway/adk/server/storage/s3"
 )
 
 // Config holds the configuration for the artifacts S3 example server

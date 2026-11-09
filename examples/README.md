@@ -153,7 +153,7 @@ Demonstrates artifact creation and download using local filesystem storage.
 
 Demonstrates artifact creation and download using S3-compatible (RustFS) storage.
 
-- S3 storage provider
+- S3 storage provider, opted into with a blank import of `github.com/inference-gateway/adk/server/storage/s3`
 - S3-compatible API (RustFS in docker compose)
 - Enterprise-ready cloud storage
 
