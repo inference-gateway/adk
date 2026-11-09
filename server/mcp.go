@@ -7,29 +7,29 @@ import (
 	"sync"
 	"time"
 
-	golang "github.com/metoro-io/mcp-golang"
-	http "github.com/metoro-io/mcp-golang/transport/http"
 	zap "go.uber.org/zap"
 
 	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
-// mcpToolEntry is the metadata the manager keeps for a single discovered MCP tool.
-type mcpToolEntry struct {
+// MCPToolEntry is the metadata the manager keeps for a single discovered MCP
+// tool. It is the unit exchanged between the manager and any MCPToolCaller.
+type MCPToolEntry struct {
 	Server      string `json:"server"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	InputSchema any    `json:"input_schema,omitempty"`
 }
 
-// mcpToolCaller is the minimal MCP client surface the manager needs. The real
-// implementation wraps metoro-io/mcp-golang over streamable HTTP; tests provide
-// an in-process fake so no network or MCP server is required.
-type mcpToolCaller interface {
+// MCPToolCaller is the minimal MCP client surface the manager needs. The
+// opt-in server/mcp/http subpackage provides the metoro-io/mcp-golang backed
+// implementation; tests provide an in-process fake so no network or MCP
+// server is required.
+type MCPToolCaller interface {
 	// Initialize performs the MCP handshake with the server.
 	Initialize(ctx context.Context) error
 	// ListTools returns the server's tool metadata.
-	ListTools(ctx context.Context) ([]mcpToolEntry, error)
+	ListTools(ctx context.Context) ([]MCPToolEntry, error)
 	// CallTool invokes a tool by name and returns its text content.
 	CallTool(ctx context.Context, name string, arguments map[string]any) (string, error)
 }
@@ -37,8 +37,8 @@ type mcpToolCaller interface {
 // mcpConn tracks a single MCP server connection and its last-known tool catalog.
 type mcpConn struct {
 	url    string
-	client mcpToolCaller
-	tools  []mcpToolEntry
+	client MCPToolCaller
+	tools  []MCPToolEntry
 }
 
 // MCPClientManager connects to one or more MCP servers, keeps their tool catalog
@@ -52,8 +52,8 @@ type MCPClientManager struct {
 	cfg    serverConfig.MCPConfig
 	logger *zap.Logger
 
-	// newClient builds a client for a server URL. Overridable in tests.
-	newClient func(url string) mcpToolCaller
+	// newClient builds a client for a server URL. Set via WithMCPClientFactory.
+	newClient func(url string) MCPToolCaller
 
 	mu     sync.RWMutex
 	conns  map[string]*mcpConn
@@ -61,9 +61,24 @@ type MCPClientManager struct {
 	wg     sync.WaitGroup
 }
 
-// NewMCPClientManager creates a manager for the configured MCP servers. It does
-// not connect until Start is called.
-func NewMCPClientManager(cfg serverConfig.MCPConfig, logger *zap.Logger) (*MCPClientManager, error) {
+// MCPClientOption customizes how MCPClientManager builds its clients.
+type MCPClientOption func(*MCPClientManager)
+
+// WithMCPClientFactory replaces how clients for MCP server URLs are built; the
+// opt-in server/mcp/http subpackage provides the ready-made implementation.
+func WithMCPClientFactory(factory func(url, endpoint string) MCPToolCaller) MCPClientOption {
+	return func(m *MCPClientManager) {
+		m.newClient = func(url string) MCPToolCaller {
+			return factory(url, m.cfg.Endpoint)
+		}
+	}
+}
+
+// NewMCPClientManager creates a manager for the configured MCP servers. It
+// requires an MCP client implementation: pass WithMCPClientFactory with the
+// constructor from the opt-in server/mcp/http subpackage. It does not connect
+// until Start is called.
+func NewMCPClientManager(cfg serverConfig.MCPConfig, logger *zap.Logger, opts ...MCPClientOption) (*MCPClientManager, error) {
 	if logger == nil {
 		logger = zap.NewNop()
 	}
@@ -76,8 +91,8 @@ func NewMCPClientManager(cfg serverConfig.MCPConfig, logger *zap.Logger) (*MCPCl
 		logger: logger,
 		conns:  make(map[string]*mcpConn, len(cfg.Servers)),
 	}
-	m.newClient = func(url string) mcpToolCaller {
-		return newHTTPMCPClient(url, cfg.Endpoint)
+	for _, opt := range opts {
+		opt(m)
 	}
 	for _, url := range cfg.Servers {
 		url = strings.TrimSpace(url)
@@ -85,6 +100,9 @@ func NewMCPClientManager(cfg serverConfig.MCPConfig, logger *zap.Logger) (*MCPCl
 			continue
 		}
 		m.conns[url] = &mcpConn{url: url}
+	}
+	if len(m.conns) > 0 && m.newClient == nil {
+		return nil, fmt.Errorf("mcp: MCP_ENABLED=true requires an MCP client - add the import http \"github.com/inference-gateway/adk/server/mcp/http\" and pass server.WithMCPClientFactory(http.NewHTTPMCPClient)")
 	}
 	return m, nil
 }
@@ -194,11 +212,11 @@ func (m *MCPClientManager) refresh(ctx context.Context, conn *mcpConn) error {
 }
 
 // snapshot returns a flattened copy of every server's current tool catalog.
-func (m *MCPClientManager) snapshot() []mcpToolEntry {
+func (m *MCPClientManager) snapshot() []MCPToolEntry {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	out := make([]mcpToolEntry, 0)
+	out := make([]MCPToolEntry, 0)
 	for _, conn := range m.conns {
 		out = append(out, conn.tools...)
 	}
@@ -278,7 +296,7 @@ func (m *MCPClientManager) executeListTools(_ context.Context, args map[string]a
 
 	tools := m.snapshot()
 	if search != "" {
-		filtered := make([]mcpToolEntry, 0, len(tools))
+		filtered := make([]MCPToolEntry, 0, len(tools))
 		for _, t := range tools {
 			if strings.Contains(strings.ToLower(t.Name), search) ||
 				strings.Contains(strings.ToLower(t.Description), search) {
@@ -345,62 +363,4 @@ func sleepCtx(ctx context.Context, d time.Duration) bool {
 	case <-timer.C:
 		return true
 	}
-}
-
-// httpMCPClient adapts metoro-io/mcp-golang's streamable HTTP client to
-// mcpToolCaller.
-type httpMCPClient struct {
-	url   string
-	inner *golang.Client
-}
-
-// newHTTPMCPClient builds an MCP client for a server base URL and endpoint path.
-func newHTTPMCPClient(url, endpoint string) *httpMCPClient {
-	transport := http.NewHTTPClientTransport(endpoint)
-	transport.WithBaseURL(url)
-	return &httpMCPClient{
-		url:   url,
-		inner: golang.NewClient(transport),
-	}
-}
-
-func (c *httpMCPClient) Initialize(ctx context.Context) error {
-	_, err := c.inner.Initialize(ctx)
-	return err
-}
-
-func (c *httpMCPClient) ListTools(ctx context.Context) ([]mcpToolEntry, error) {
-	// ponytail: single page; add cursor paging if a server ever returns NextCursor.
-	resp, err := c.inner.ListTools(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	entries := make([]mcpToolEntry, 0, len(resp.Tools))
-	for _, t := range resp.Tools {
-		description := ""
-		if t.Description != nil {
-			description = *t.Description
-		}
-		entries = append(entries, mcpToolEntry{
-			Server:      c.url,
-			Name:        t.Name,
-			Description: description,
-			InputSchema: t.InputSchema,
-		})
-	}
-	return entries, nil
-}
-
-func (c *httpMCPClient) CallTool(ctx context.Context, name string, arguments map[string]any) (string, error) {
-	resp, err := c.inner.CallTool(ctx, name, arguments)
-	if err != nil {
-		return "", err
-	}
-	parts := make([]string, 0, len(resp.Content))
-	for _, content := range resp.Content {
-		if content != nil && content.TextContent != nil {
-			parts = append(parts, content.TextContent.Text)
-		}
-	}
-	return strings.Join(parts, ""), nil
 }

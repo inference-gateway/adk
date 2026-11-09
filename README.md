@@ -663,17 +663,17 @@ See [docs/authentication.md](docs/authentication.md) for the full card-driven au
 
 #### Storage Configuration (Optional)
 
-| Variable                 | Default  | Description                                        |
-| ------------------------ | -------- | -------------------------------------------------- |
-| `QUEUE_PROVIDER`         | `memory` | Storage backend: `memory` or `redis`               |
-| `QUEUE_URL`              | -        | Redis connection URL (required when using Redis)   |
-| `QUEUE_MAX_SIZE`         | `100`    | Unused - parsed but not read anywhere in `server/` |
-| `QUEUE_CLEANUP_INTERVAL` | `120s`   | Deprecated, unused (see `TASK_RETENTION_*`)        |
+| Variable                 | Default  | Description                                                           |
+| ------------------------ | -------- | --------------------------------------------------------------------- |
+| `QUEUE_PROVIDER`         | `memory` | Storage backend: `memory` built in; `redis` via its opt-in subpackage |
+| `QUEUE_URL`              | -        | Redis connection URL (required when using Redis)                      |
+| `QUEUE_MAX_SIZE`         | `100`    | Unused - parsed but not read anywhere in `server/`                    |
+| `QUEUE_CLEANUP_INTERVAL` | `120s`   | Deprecated, unused (see `TASK_RETENTION_*`)                           |
 
 **Storage Backends:**
 
 - **Memory Storage (Default)**: Fast in-memory storage for development and single-instance deployments
-- **Redis Storage**: Persistent storage with horizontal scaling support for production deployments
+- **Redis Storage**: Persistent storage with horizontal scaling support for production deployments, via the opt-in subpackage `github.com/inference-gateway/adk/server/storage/redis`
 
 **Redis Configuration Examples:**
 
@@ -693,9 +693,19 @@ export QUEUE_URL=redis://localhost:6379/1
 export QUEUE_URL=rediss://username:password@redis.example.com:6380/0
 ```
 
+**Opt-in redis subpackage:**
+
+The Redis backend is not bundled with `github.com/inference-gateway/adk/server`: link it with a blank import:
+
+```go
+import _ "github.com/inference-gateway/adk/server/storage/redis"
+```
+
+`QUEUE_PROVIDER=redis` without this import fails at startup and names the import to add, instead of silently falling back to in-memory storage.
+
 #### MCP Client Configuration (Optional)
 
-Connect the agent to [MCP](https://modelcontextprotocol.io) servers and expose their tools through a selector that keeps only tool metadata in the LLM context. Disabled by default and only useful when an LLM is configured. Enable with `MCP_ENABLED=true` and point `MCP_SERVERS` at one or more streamable-HTTP MCP servers; the full list of `MCP_*` variables (timeouts, retry, and polling-backoff tuning) is documented in [docs/mcp.md](./docs/mcp.md#configuration).
+Connect the agent to [MCP](https://modelcontextprotocol.io) servers and expose their tools through a selector that keeps only tool metadata in the LLM context. Disabled by default and only useful when an LLM is configured. Enable with `MCP_ENABLED=true` and point `MCP_SERVERS` at one or more streamable-HTTP MCP servers; the full list of `MCP_*` variables (timeouts, retry, and polling-backoff tuning) is documented in [docs/mcp.md](./docs/mcp.md#configuration). The MCP client is opt-in as well: import `http "github.com/inference-gateway/adk/server/mcp/http"` and pass `server.WithMCPClientFactory(http.NewHTTPMCPClient)` when constructing `server.NewMCPClientManager`; with `MCP_ENABLED=true` and no linked client, startup fails naming that import.
 
 #### Artifacts Configuration (Optional)
 

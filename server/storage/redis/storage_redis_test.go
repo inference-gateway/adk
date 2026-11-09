@@ -1,4 +1,4 @@
-package server_test
+package redis_test
 
 import (
 	"context"
@@ -9,14 +9,14 @@ import (
 	assert "github.com/stretchr/testify/assert"
 	require "github.com/stretchr/testify/require"
 
-	mocks "github.com/inference-gateway/adk/server/mocks"
-
 	redis "github.com/redis/go-redis/v9"
 	zap "go.uber.org/zap"
 	zaptest "go.uber.org/zap/zaptest"
 
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
+	redisstorage "github.com/inference-gateway/adk/server/storage/redis" //nolint:importas // collides with go-redis above, which the config forces to "redis"
+	mocks "github.com/inference-gateway/adk/server/storage/redis/mocks"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -31,17 +31,17 @@ const (
 	testQueueNotifyChannel  = "a2a:queue:notify"
 )
 
-func newTestRedisStorage(t *testing.T) (*server.RedisStorage, *mocks.FakeRedisClient, *mocks.FakeRedisPipeliner) {
+func newTestRedisStorage(t *testing.T) (*redisstorage.RedisStorage, *mocks.FakeRedisClient, *mocks.FakeRedisPipeliner) {
 	t.Helper()
 	fakeClient := &mocks.FakeRedisClient{}
 	fakePipe := &mocks.FakeRedisPipeliner{}
 	fakeClient.PipelineReturns(fakePipe)
-	storage := server.NewRedisStorageForTest(fakeClient, zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel)), serverConfig.QueueConfig{URL: "redis://fake"})
+	storage := redisstorage.NewRedisStorageForTest(fakeClient, zaptest.NewLogger(t, zaptest.Level(zap.WarnLevel)), serverConfig.QueueConfig{URL: "redis://fake"})
 	return storage, fakeClient, fakePipe
 }
 
 func TestRedisStorageFactory(t *testing.T) {
-	factory := &server.RedisStorageFactory{}
+	factory := &redisstorage.RedisStorageFactory{}
 
 	assert.Equal(t, "redis", factory.SupportedProvider())
 
@@ -55,7 +55,7 @@ func TestRedisStorageFactory(t *testing.T) {
 }
 
 func TestRedisStorageFactoryWithInvalidURL(t *testing.T) {
-	factory := &server.RedisStorageFactory{}
+	factory := &redisstorage.RedisStorageFactory{}
 	logger := zaptest.NewLogger(t)
 
 	storage, err := factory.CreateStorage(context.Background(), serverConfig.QueueConfig{
@@ -566,4 +566,12 @@ func TestRedisStorageGetStats(t *testing.T) {
 	assert.Equal(t, float64(1), stats.AverageTasksPerContext)
 	assert.Equal(t, 2, stats.TotalMessages)
 	assert.Equal(t, float64(1), stats.AverageMessagesPerContext)
+}
+
+// TestRedisStorageSelfRegistration proves importing this package links the
+// redis provider into the shared server registry.
+func TestRedisStorageSelfRegistration(t *testing.T) {
+	factory, err := server.GetStorageProvider("redis")
+	require.NoError(t, err)
+	assert.Equal(t, "redis", factory.SupportedProvider())
 }

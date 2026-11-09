@@ -113,6 +113,10 @@ The server uses Redis storage with the following key environment variables:
 | `A2A_CAPABILITIES_STREAMING`          | Enable streaming             | `true`               |
 | `A2A_CAPABILITIES_PUSH_NOTIFICATIONS` | Enable push notifications    | `false`              |
 
+The Redis backend is the opt-in subpackage `github.com/inference-gateway/adk/server/storage/redis`: `server/main.go` links it with the blank
+import `_ "github.com/inference-gateway/adk/server/storage/redis"`, which self-registers the `redis` provider into the ADK's shared storage
+registry. A program configured with `QUEUE_PROVIDER=redis` without that import fails at startup and names the import to add.
+
 ### Redis URL Format
 
 The Redis URL supports various formats:

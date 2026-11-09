@@ -49,6 +49,21 @@ func GetSupportedProviders() []string {
 	return globalRegistry.GetProviders()
 }
 
+// isStorageProviderLinked reports whether a factory is registered for provider
+func isStorageProviderLinked(provider string) bool {
+	_, err := GetStorageProvider(provider)
+	return err == nil
+}
+
+// storageProviderNotLinkedError names how to link provider: shipped opt-in
+// providers by their subpackage import, custom ones via the registry
+func storageProviderNotLinkedError(provider string) error {
+	if provider == "redis" {
+		return fmt.Errorf("storage provider %q is available through the opt-in redis subpackage: add the import _ \"github.com/inference-gateway/adk/server/storage/redis\"", provider)
+	}
+	return fmt.Errorf("storage provider %q is not registered: link its subpackage import or register a factory with server.RegisterStorageProvider", provider)
+}
+
 // CreateStorage creates a storage instance using the registered factories
 func CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (Storage, error) {
 	return globalRegistry.CreateStorage(ctx, config, logger)

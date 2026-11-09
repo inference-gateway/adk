@@ -1,4 +1,4 @@
-package server
+package redis
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	redis "github.com/redis/go-redis/v9"
 	zap "go.uber.org/zap"
 
+	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
 )
@@ -52,7 +53,7 @@ func (c *realRedisClient) Pipeline() RedisPipeliner {
 	return c.Client.Pipeline()
 }
 
-// RedisStorageFactory implements StorageFactory for Redis storage
+// RedisStorageFactory implements server.StorageFactory for Redis storage
 type RedisStorageFactory struct{}
 
 // SupportedProvider returns the provider name
@@ -69,7 +70,7 @@ func (f *RedisStorageFactory) ValidateConfig(config serverConfig.QueueConfig) er
 }
 
 // CreateStorage creates a Redis storage instance
-func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (Storage, error) {
+func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config serverConfig.QueueConfig, logger *zap.Logger) (server.Storage, error) {
 	opt, err := redis.ParseURL(config.URL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Redis URL: %w", err)
@@ -119,14 +120,14 @@ func (f *RedisStorageFactory) CreateStorage(ctx context.Context, config serverCo
 	}, nil
 }
 
-// RedisStorage implements Storage interface using Redis
+// RedisStorage implements server.Storage using Redis
 type RedisStorage struct {
 	client RedisClient
 	logger *zap.Logger
 	config serverConfig.QueueConfig
 }
 
-var _ Storage = (*RedisStorage)(nil)
+var _ server.Storage = (*RedisStorage)(nil)
 
 const (
 	taskQueueKey        = "a2a:queue"
@@ -142,12 +143,7 @@ func (s *RedisStorage) EnqueueTask(ctx context.Context, task *types.Task, reques
 		return fmt.Errorf("task cannot be nil")
 	}
 
-	queuedTask := &QueuedTask{
-		Task:         task,
-		RequestID:    requestID,
-		TraceContext: injectTraceContext(ctx),
-		Claims:       extractClaimsFromCtx(ctx),
-	}
+	queuedTask := server.NewQueuedTask(ctx, task, requestID)
 
 	data, err := json.Marshal(queuedTask)
 	if err != nil {
@@ -181,7 +177,7 @@ func (s *RedisStorage) EnqueueTask(ctx context.Context, task *types.Task, reques
 }
 
 // DequeueTask retrieves and removes the next task from the processing queue
-func (s *RedisStorage) DequeueTask(ctx context.Context) (*QueuedTask, error) {
+func (s *RedisStorage) DequeueTask(ctx context.Context) (*server.QueuedTask, error) {
 	result, err := s.client.BRPop(ctx, 0, taskQueueKey).Result()
 	if err != nil {
 		if err == redis.Nil || strings.Contains(err.Error(), "context") {
@@ -194,7 +190,7 @@ func (s *RedisStorage) DequeueTask(ctx context.Context) (*QueuedTask, error) {
 		return nil, fmt.Errorf("unexpected BRPOP result format")
 	}
 
-	var queuedTask QueuedTask
+	var queuedTask server.QueuedTask
 	if err := json.Unmarshal([]byte(result[1]), &queuedTask); err != nil {
 		return nil, fmt.Errorf("failed to deserialize queued task: %w", err)
 	}
@@ -424,7 +420,7 @@ func (s *RedisStorage) DeleteTask(taskID string) error {
 }
 
 // ListTasks retrieves a list of tasks based on the provided filter
-func (s *RedisStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
+func (s *RedisStorage) ListTasks(filter server.TaskFilter) ([]*types.Task, error) {
 	ctx := context.Background()
 	var allTasks []*types.Task
 
@@ -475,7 +471,7 @@ func (s *RedisStorage) ListTasks(filter TaskFilter) ([]*types.Task, error) {
 }
 
 // ListTasksByContext retrieves tasks for a specific context
-func (s *RedisStorage) ListTasksByContext(contextID string, filter TaskFilter) ([]*types.Task, error) {
+func (s *RedisStorage) ListTasksByContext(contextID string, filter server.TaskFilter) ([]*types.Task, error) {
 	ctx := context.Background()
 	contextKey := contextTasksPrefix + contextID
 
@@ -513,8 +509,8 @@ func (s *RedisStorage) ListTasksByContext(contextID string, filter TaskFilter) (
 	return filteredTasks[start:end], nil
 }
 
-// Helper method to check if a task matches the filter
-func (s *RedisStorage) matchesFilter(task *types.Task, filter TaskFilter) bool {
+// matchesFilter checks if a task matches the provided filter
+func (s *RedisStorage) matchesFilter(task *types.Task, filter server.TaskFilter) bool {
 	if filter.State != nil && task.Status.State != *filter.State {
 		return false
 	}
@@ -527,7 +523,7 @@ func (s *RedisStorage) matchesFilter(task *types.Task, filter TaskFilter) bool {
 }
 
 // sortTasks sorts tasks based on the specified field and order
-func (s *RedisStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, order SortOrder) {
+func (s *RedisStorage) sortTasks(tasks []*types.Task, sortBy server.TaskSortField, order server.SortOrder) {
 	if len(tasks) <= 1 {
 		return
 	}
@@ -536,19 +532,19 @@ func (s *RedisStorage) sortTasks(tasks []*types.Task, sortBy TaskSortField, orde
 		var compareResult int
 
 		switch sortBy {
-		case TaskSortFieldCreatedAt, TaskSortFieldUpdatedAt:
+		case server.TaskSortFieldCreatedAt, server.TaskSortFieldUpdatedAt:
 			// Timestamp is an empty struct, so we can't sort by it
 			// Maintain current order
 			compareResult = 0
-		case TaskSortFieldState:
+		case server.TaskSortFieldState:
 			compareResult = strings.Compare(string(tasks[i].Status.State), string(tasks[j].Status.State))
-		case TaskSortFieldContextID:
+		case server.TaskSortFieldContextID:
 			compareResult = strings.Compare(tasks[i].GetContextID(), tasks[j].GetContextID())
 		default:
 			compareResult = strings.Compare(tasks[i].ID, tasks[j].ID)
 		}
 
-		if order == SortOrderAsc {
+		if order == server.SortOrderAsc {
 			return compareResult < 0
 		}
 		return compareResult > 0
@@ -770,14 +766,14 @@ func (s *RedisStorage) sortTasksByTimestamp(tasks []*types.Task, desc bool) {
 }
 
 // GetStats provides statistics about the storage
-func (s *RedisStorage) GetStats() StorageStats {
+func (s *RedisStorage) GetStats() server.StorageStats {
 	ctx := context.Background()
 
 	deadLetterPattern := deadLetterKeyPrefix + "*"
 	deadLetterKeys, err := s.client.Keys(ctx, deadLetterPattern).Result()
 	if err != nil {
 		s.logger.Error("failed to get stats", zap.Error(err))
-		return StorageStats{}
+		return server.StorageStats{}
 	}
 
 	tasksByState := make(map[string]int)
@@ -796,7 +792,7 @@ func (s *RedisStorage) GetStats() StorageStats {
 	contextKeys, err := s.client.Keys(ctx, contextPattern).Result()
 	if err != nil {
 		s.logger.Error("failed to get context stats", zap.Error(err))
-		return StorageStats{}
+		return server.StorageStats{}
 	}
 
 	contextsWithTasks := len(contextKeys)
@@ -810,7 +806,7 @@ func (s *RedisStorage) GetStats() StorageStats {
 		avgMessagesPerContext = float64(totalMessages) / float64(totalContexts)
 	}
 
-	return StorageStats{
+	return server.StorageStats{
 		TotalTasks:                len(deadLetterKeys),
 		TasksByState:              tasksByState,
 		TotalContexts:             totalContexts,
@@ -821,7 +817,8 @@ func (s *RedisStorage) GetStats() StorageStats {
 	}
 }
 
-// init registers the Redis storage provider
+// init registers the Redis storage provider with the shared registry in the
+// server package; importing this package links the provider in.
 func init() {
-	RegisterStorageProvider("redis", &RedisStorageFactory{})
+	server.RegisterStorageProvider("redis", &RedisStorageFactory{})
 }

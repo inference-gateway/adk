@@ -24,8 +24,8 @@ Run from the repo root; `task --list` lists all targets.
   `types/generated_types.go`
 - `task providers:download-schema` + `task generate:providers` - refresh `providers-schema.yaml` and regenerate
   provider artifacts (`.env.example`, `docker-compose.yaml`, READMEs)
-- `task generate:mocks` (`generate:mocks:clean` to wipe first) - regenerate Counterfeiter mocks in `client/mocks/` and
-  `server/mocks/`
+- `task generate:mocks` (`generate:mocks:clean` to wipe first) - regenerate Counterfeiter mocks in `client/mocks/`,
+  `server/mocks/`, and `server/storage/redis/mocks/`
 - `task generate` - umbrella for types, providers, and mocks
 - `task precommit:install` - install the pre-commit hook (format, tidy, mocks, lint, test; fails if files stay dirty)
 
@@ -43,7 +43,7 @@ Run from the repo root; `task --list` lists all targets.
 - **Callbacks** (`server/callbacks.go`): `BeforeAgent`/`AfterAgent`, `BeforeModel`/`AfterModel`,
   `BeforeTool`/`AfterTool`. Before callbacks short-circuit by returning non-nil; after callbacks can replace outputs.
   Guardrails, caching, and authorization are built on these - there is no separate middleware concept for them.
-- **Storage** is an interface with in-memory (default) and Redis implementations, selected via `QUEUE_PROVIDER`.
+- **Storage** is an interface with in-memory (default) and Redis implementations, selected via `QUEUE_PROVIDER`. The Redis implementation is the opt-in subpackage `server/storage/redis` (blank-import it to self-register; a configured but unlinked provider fails startup naming the import). The MCP client (mcp-golang HTTP transport) is likewise opt-in at `server/mcp/http`, wired with `server.WithMCPClientFactory`.
 - **Artifacts** run on a separate HTTP server (default port 8081, `ArtifactsServerBuilder`) with filesystem or
   S3-compatible (RustFS) backends. The filesystem backend is built in, the S3 backend is an opt-in subpackage
   (`server/storage/s3`, blank import registers it via `RegisterArtifactStorageProvider`), so importing `adk/server`
@@ -57,7 +57,7 @@ Run from the repo root; `task --list` lists all targets.
 
 ## Generated Files
 
-`types/generated_types.go`, `client/mocks/*.go`, and `server/mocks/*.go` are generated - never hand-edit them.
+`types/generated_types.go`, `client/mocks/*.go`, `server/mocks/*.go`, and `server/storage/redis/mocks/*.go` are generated - never hand-edit them.
 Change the source (`schema.yaml`, `providers-schema.yaml`, or the interface) and rerun the matching task.
 `CHANGELOG.md` is maintained by semantic-release. CI re-runs formatting, tidy, and generation and then fails on
 `git diff --exit-code`, so uncommitted generated or formatting changes break the build.

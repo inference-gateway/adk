@@ -121,6 +121,7 @@ type A2AServerImpl struct {
 	cfg            *serverConfig.Config
 	logger         *zap.Logger
 	storage        Storage
+	startupErr     error
 	taskManager    TaskManager
 	responseSender ResponseSender
 	otel           otel.OpenTelemetry
@@ -165,25 +166,34 @@ func NewA2AServer(cfg *serverConfig.Config, logger *zap.Logger, otel otel.OpenTe
 	}
 
 	ctx := context.Background()
-	storage, err := CreateStorage(ctx, cfg.QueueConfig, logger)
-	if err != nil {
-		if cfg.QueueConfig.Provider == "" {
-			logger.Info("no storage provider configured, using in-memory storage")
-		} else {
-			logger.Warn("failed to create configured storage, falling back to in-memory",
-				zap.String("provider", cfg.QueueConfig.Provider),
-				zap.Error(err))
-		}
+	storage, storageErr := CreateStorage(ctx, cfg.QueueConfig, logger)
 
-		maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
+	maxConversationHistory := cfg.AgentConfig.MaxConversationHistory
+
+	var startupErr error
+	switch {
+	case storageErr == nil:
+	case cfg.QueueConfig.Provider == "":
+		logger.Info("no storage provider configured, using in-memory storage")
+		storage = NewInMemoryStorage(logger, maxConversationHistory)
+	case !isStorageProviderLinked(cfg.QueueConfig.Provider):
+		// a configured opt-in provider that was never imported must refuse to
+		// start instead of silently degrading persistent work to in-memory
+		storage = NewInMemoryStorage(logger, maxConversationHistory)
+		startupErr = storageProviderNotLinkedError(cfg.QueueConfig.Provider)
+	default:
+		logger.Warn("failed to create configured storage, falling back to in-memory",
+			zap.String("provider", cfg.QueueConfig.Provider),
+			zap.Error(storageErr))
 		storage = NewInMemoryStorage(logger, maxConversationHistory)
 	}
 
 	server := &A2AServerImpl{
-		cfg:     cfg,
-		logger:  logger,
-		storage: storage,
-		otel:    otel,
+		cfg:        cfg,
+		logger:     logger,
+		storage:    storage,
+		startupErr: startupErr,
+		otel:       otel,
 	}
 
 	server.taskManager = NewDefaultTaskManagerWithStorage(logger, storage)
@@ -579,6 +589,9 @@ func extensionRequested(header http.Header, uri string) bool {
 
 // Start starts the A2A server
 func (s *A2AServerImpl) Start(ctx context.Context) error {
+	if s.startupErr != nil {
+		return s.startupErr
+	}
 	if s.customAgentCard == nil {
 		return fmt.Errorf("agent card must be configured before starting the server - use SetAgentCard() or LoadAgentCardFromFile()")
 	}
