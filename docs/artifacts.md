@@ -95,6 +95,25 @@ defer artifactService.Close()
 
 Pass it to the server (and the artifacts server) with `WithArtifactService(artifactService)`.
 
+### Storage Backends Are Opt-In
+
+`filesystem` is the default backend and is always available. Extra backends live in their own subpackages, registered through `server.RegisterArtifactStorageProvider`, so a program only links the storage it actually uses. The S3-compatible backend (RustFS, MinIO, AWS S3) is `github.com/inference-gateway/adk/server/storage/s3`, opted into with a blank import:
+
+```go
+import (
+    // Opts into the S3-compatible artifact storage backend (RustFS, MinIO, AWS S3)
+    _ "github.com/inference-gateway/adk/server/storage/s3"
+)
+```
+
+Configuring `ARTIFACTS_STORAGE_PROVIDER=s3` (or the legacy `minio` alias) without that import fails at startup and names the import to add:
+
+```text
+storage provider s3 requires its backend to be linked: add a blank import of github.com/inference-gateway/adk/server/storage/s3
+```
+
+The `server.ArtifactStorageProvider` interface and the `WithArtifactService` wiring are unchanged - existing consumers migrate by adding the one import line. A custom backend registers a factory the same way the subpackage does.
+
 ### Basic Artifact Creation
 
 ```go
@@ -268,7 +287,7 @@ The URL path is grouped by the A2A context (session) ID - see [Storage Layout](#
 
 For the CreateArtifact tool to work properly, you need:
 
-1. **Artifact Storage**: Configure artifact storage with `ARTIFACTS_STORAGE_PROVIDER` set to `filesystem` or `s3` (S3-compatible stores such as RustFS). `minio` is accepted as a legacy alias of `s3`. Any other value fails with `unsupported storage provider`.
+1. **Artifact Storage**: Configure artifact storage with `ARTIFACTS_STORAGE_PROVIDER` set to `filesystem` or `s3` (S3-compatible stores such as RustFS). `minio` is accepted as a legacy alias of `s3`. The `s3` backend is an opt-in subpackage - add a blank import of `github.com/inference-gateway/adk/server/storage/s3`. Any other value fails with `unsupported storage provider`.
 2. **Context Setup**: The tool reads the current task from `server.TaskContextKey` and an `server.ArtifactService` from `server.ArtifactServiceContextKey` in the execution context
 
 This is automatically handled when using the standard ADK server setup with artifact storage enabled.

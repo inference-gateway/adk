@@ -45,8 +45,10 @@ Run from the repo root; `task --list` lists all targets.
   Guardrails, caching, and authorization are built on these - there is no separate middleware concept for them.
 - **Storage** is an interface with in-memory (default) and Redis implementations, selected via `QUEUE_PROVIDER`.
 - **Artifacts** run on a separate HTTP server (default port 8081, `ArtifactsServerBuilder`) with filesystem or
-  S3-compatible (RustFS) backends. Proxy mode is default; `ARTIFACTS_STORAGE_BASE_URL` enables direct downloads.
-  See `docs/artifacts.md`.
+  S3-compatible (RustFS) backends. The filesystem backend is built in, the S3 backend is an opt-in subpackage
+  (`server/storage/s3`, blank import registers it via `RegisterArtifactStorageProvider`), so importing `adk/server`
+  alone does not link `minio-go`. An `s3`/`minio` provider without that import fails at startup naming the import.
+  Proxy mode is default; `ARTIFACTS_STORAGE_BASE_URL` enables direct downloads. See `docs/artifacts.md`.
 - **Config** (`server/config/`) is one `Config` struct loaded by `sethvargo/go-envconfig` with prefixed groups
   (`AGENT_CLIENT_*`, `CAPABILITIES_*`, `AUTH_*`, `QUEUE_*`, `TASK_RETENTION_*`, `SERVER_*`, `TELEMETRY_*`,
   `ARTIFACTS_*`). `AgentName`, `AgentDescription`, `AgentVersion` have no env tags; inject them at build time with
