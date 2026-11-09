@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -43,4 +44,14 @@ type ArtifactMetadata struct {
 	Size        int64     `json:"size"`
 	ContentType string    `json:"content_type"`
 	UploadedAt  time.Time `json:"uploaded_at"`
+}
+
+// SanitizeArtifactPath removes dangerous characters and path traversal attempts
+// from an artifact path segment
+func SanitizeArtifactPath(path string) string {
+	path = strings.ReplaceAll(path, "/", "")
+	path = strings.ReplaceAll(path, "\\", "")
+	path = strings.ReplaceAll(path, "..", "")
+	path = strings.TrimSpace(path)
+	return path
 }
