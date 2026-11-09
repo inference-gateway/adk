@@ -92,10 +92,6 @@ func NewArtifactService(cfg *serverConfig.ArtifactsConfig, logger *zap.Logger) (
 	}
 
 	// Create storage provider based on configuration
-	var storage ArtifactStorageProvider
-	var err error
-
-	// Generate base URL if not provided
 	storageConfig := cfg.StorageConfig
 	if storageConfig.BaseURL == "" {
 		scheme := "http"
@@ -113,27 +109,17 @@ func NewArtifactService(cfg *serverConfig.ArtifactsConfig, logger *zap.Logger) (
 		storageConfig.BaseURL = fmt.Sprintf("%s://%s:%s", scheme, host, port)
 	}
 
-	switch storageConfig.Provider {
-	case "filesystem":
-		storage, err = NewFilesystemArtifactStorage(&storageConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create filesystem storage: %w", err)
+	factory, err := GetArtifactStorageProvider(storageConfig.Provider)
+	if err != nil {
+		if importPath, isOptIn := optInArtifactStorageImports[storageConfig.Provider]; isOptIn {
+			return nil, fmt.Errorf("storage provider %s requires its backend to be linked: add a blank import of %s", storageConfig.Provider, importPath)
 		}
-		logger.Info("artifact service initialized with filesystem storage",
-			zap.String("base_path", storageConfig.BasePath),
-			zap.String("base_url", storageConfig.BaseURL))
+		return nil, err
+	}
 
-	case "s3", "minio":
-		storage, err = NewS3ArtifactStorage(&storageConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create S3 storage: %w", err)
-		}
-		logger.Info("artifact service initialized with S3 storage",
-			zap.String("endpoint", storageConfig.Endpoint),
-			zap.String("bucket", storageConfig.BucketName))
-
-	default:
-		return nil, fmt.Errorf("unsupported storage provider: %s", storageConfig.Provider)
+	storage, err := factory(&storageConfig, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create %s storage: %w", storageConfig.Provider, err)
 	}
 
 	return &ArtifactServiceImpl{

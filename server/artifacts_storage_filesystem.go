@@ -35,9 +35,9 @@ func NewFilesystemArtifactStorage(cfg *serverConfig.ArtifactsStorageConfig) (*Fi
 
 // Store stores an artifact to the local filesystem
 func (fs *FilesystemArtifactStorage) Store(ctx context.Context, contextID string, artifactID string, filename string, data io.Reader) (string, error) {
-	contextID = sanitizePath(contextID)
-	artifactID = sanitizePath(artifactID)
-	filename = sanitizePath(filename)
+	contextID = SanitizeArtifactPath(contextID)
+	artifactID = SanitizeArtifactPath(artifactID)
+	filename = SanitizeArtifactPath(filename)
 
 	if contextID == "" || artifactID == "" || filename == "" {
 		return "", fmt.Errorf("invalid context ID, artifact ID or filename")
@@ -69,9 +69,9 @@ func (fs *FilesystemArtifactStorage) Store(ctx context.Context, contextID string
 
 // Retrieve retrieves an artifact from the local filesystem
 func (fs *FilesystemArtifactStorage) Retrieve(ctx context.Context, contextID string, artifactID string, filename string) (io.ReadCloser, error) {
-	contextID = sanitizePath(contextID)
-	artifactID = sanitizePath(artifactID)
-	filename = sanitizePath(filename)
+	contextID = SanitizeArtifactPath(contextID)
+	artifactID = SanitizeArtifactPath(artifactID)
+	filename = SanitizeArtifactPath(filename)
 
 	if contextID == "" || artifactID == "" || filename == "" {
 		return nil, fmt.Errorf("invalid context ID, artifact ID or filename")
@@ -91,9 +91,9 @@ func (fs *FilesystemArtifactStorage) Retrieve(ctx context.Context, contextID str
 
 // Delete removes an artifact from the filesystem
 func (fs *FilesystemArtifactStorage) Delete(ctx context.Context, contextID string, artifactID string, filename string) error {
-	contextID = sanitizePath(contextID)
-	artifactID = sanitizePath(artifactID)
-	filename = sanitizePath(filename)
+	contextID = SanitizeArtifactPath(contextID)
+	artifactID = SanitizeArtifactPath(artifactID)
+	filename = SanitizeArtifactPath(filename)
 
 	if contextID == "" || artifactID == "" || filename == "" {
 		return fmt.Errorf("invalid context ID, artifact ID or filename")
@@ -114,9 +114,9 @@ func (fs *FilesystemArtifactStorage) Delete(ctx context.Context, contextID strin
 
 // Exists checks if an artifact exists in the filesystem
 func (fs *FilesystemArtifactStorage) Exists(ctx context.Context, contextID string, artifactID string, filename string) (bool, error) {
-	contextID = sanitizePath(contextID)
-	artifactID = sanitizePath(artifactID)
-	filename = sanitizePath(filename)
+	contextID = SanitizeArtifactPath(contextID)
+	artifactID = SanitizeArtifactPath(artifactID)
+	filename = SanitizeArtifactPath(filename)
 
 	if contextID == "" || artifactID == "" || filename == "" {
 		return false, fmt.Errorf("invalid context ID, artifact ID or filename")
@@ -135,9 +135,9 @@ func (fs *FilesystemArtifactStorage) Exists(ctx context.Context, contextID strin
 
 // GetURL returns the public URL for accessing an artifact
 func (fs *FilesystemArtifactStorage) GetURL(contextID string, artifactID string, filename string) string {
-	contextID = sanitizePath(contextID)
-	artifactID = sanitizePath(artifactID)
-	filename = sanitizePath(filename)
+	contextID = SanitizeArtifactPath(contextID)
+	artifactID = SanitizeArtifactPath(artifactID)
+	filename = SanitizeArtifactPath(filename)
 	return fmt.Sprintf("%s/artifacts/%s/%s/%s", fs.baseURL, contextID, artifactID, filename)
 }
 
@@ -290,13 +290,4 @@ func (fs *FilesystemArtifactStorage) cleanupEmptyDirectories() {
 			_ = os.Remove(contextDir)
 		}
 	}
-}
-
-// sanitizePath removes dangerous characters and path traversal attempts
-func sanitizePath(path string) string {
-	path = strings.ReplaceAll(path, "/", "")
-	path = strings.ReplaceAll(path, "\\", "")
-	path = strings.ReplaceAll(path, "..", "")
-	path = strings.TrimSpace(path)
-	return path
 }

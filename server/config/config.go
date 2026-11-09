@@ -303,7 +303,7 @@ type ArtifactsServerConfig struct {
 
 // ArtifactsStorageConfig holds storage configuration for artifacts
 type ArtifactsStorageConfig struct {
-	Provider    string            `env:"PROVIDER,default=filesystem" description:"Storage provider (filesystem, s3; minio accepted as legacy alias of s3)"`
+	Provider    string            `env:"PROVIDER,default=filesystem" description:"Storage provider (filesystem; s3 selects the S3-compatible backend, minio is its legacy alias). The s3 backend is opt-in: blank-import github.com/inference-gateway/adk/server/storage/s3"`
 	BasePath    string            `env:"BASE_PATH,default=./artifacts" description:"Base path for filesystem storage"`
 	BaseURL     string            `env:"BASE_URL" description:"Base URL for accessing artifacts (e.g., https://api.example.com). If not set, will be auto-generated from server config"`
 	Endpoint    string            `env:"ENDPOINT" description:"Storage endpoint URL (for S3-compatible stores such as RustFS)"`
