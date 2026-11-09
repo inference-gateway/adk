@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.34.1](https://github.com/inference-gateway/adk/compare/v0.34.0...v0.34.1) (2026-11-09)
+
+### ♻️ Improvements
+
+* **artifacts:** replace the MinIO provider with a generic S3 provider running RustFS ([#419](https://github.com/inference-gateway/adk/issues/419)) ([b9d1ead](https://github.com/inference-gateway/adk/commit/b9d1eadd23a0893d8cc2c0d3cae21086c257bb14))
+* bump go toolchain to 1.27.3 ([#429](https://github.com/inference-gateway/adk/issues/429)) ([00b5f1d](https://github.com/inference-gateway/adk/commit/00b5f1d5366aff05656a1ebe7bd324a550203b5c))
+
+### 🐛 Bug Fixes
+
+* **deps:** let dependabot update the example modules with the root go.mod ([#416](https://github.com/inference-gateway/adk/issues/416)) ([fc875ce](https://github.com/inference-gateway/adk/commit/fc875ce6416bfe78e9057e16472b9a7515cb3622))
+
+### 👷 CI
+
+* **deps:** bump actions/create-github-app-token ([#410](https://github.com/inference-gateway/adk/issues/410)) ([f023c10](https://github.com/inference-gateway/adk/commit/f023c10929c95943dfe8386067cae89b234dfcc4))
+* **deps:** bump astral-sh/setup-uv ([#414](https://github.com/inference-gateway/adk/issues/414)) ([1cb9534](https://github.com/inference-gateway/adk/commit/1cb953423b9944ff0bf3426a4b51beeff6c18a41))
+* **deps:** bump astral-sh/setup-uv ([#425](https://github.com/inference-gateway/adk/issues/425)) ([75d9a3a](https://github.com/inference-gateway/adk/commit/75d9a3ab06704a18168e8fb7269cc27de2b78a97))
+* **deps:** bump github.com/inference-gateway/sdk from 1.42.0 to 1.43.0 in the gomod group ([#413](https://github.com/inference-gateway/adk/issues/413)) ([26c5406](https://github.com/inference-gateway/adk/commit/26c54062e4e30cc2d50b52f0ab59b0af94ce23cf))
+* **deps:** bump the github-actions group with 2 updates ([#405](https://github.com/inference-gateway/adk/issues/405)) ([6c73984](https://github.com/inference-gateway/adk/commit/6c73984d1beba15c22e04d142365bb00f7d144e2))
+* **deps:** bump the gomod group across 1 directory with 2 updates ([#426](https://github.com/inference-gateway/adk/issues/426)) ([ae89394](https://github.com/inference-gateway/adk/commit/ae893946f381edbf4c10d1b78ae50c09b2f7a509))
+* **deps:** bump the gomod group with 10 updates ([#402](https://github.com/inference-gateway/adk/issues/402)) ([e03fe04](https://github.com/inference-gateway/adk/commit/e03fe04f9a6c5be98824f366dd5dd377625113e2))
+* **deps:** bump the gomod group with 2 updates ([#409](https://github.com/inference-gateway/adk/issues/409)) ([5c41e68](https://github.com/inference-gateway/adk/commit/5c41e68c55d54c37da319bf2502a5fc13e0b58e5))
+* **deps:** bump the gomod group with 3 updates ([#404](https://github.com/inference-gateway/adk/issues/404)) ([f79f1ca](https://github.com/inference-gateway/adk/commit/f79f1caf9b6359a3b73933feeff78a0af87e942c))
+* **release:** label issues and PRs shipped in an rc with rc ([#418](https://github.com/inference-gateway/adk/issues/418)) ([65eb93a](https://github.com/inference-gateway/adk/commit/65eb93adfe053558faa6a168624cfd2d992af944))
+
+### 📚 Documentation
+
+* replace stale MinIO references and refresh examples index ([#427](https://github.com/inference-gateway/adk/issues/427)) ([9e9f63e](https://github.com/inference-gateway/adk/commit/9e9f63e374669441651c949a55a5f056c54b78b9))
+
+### 🔧 Miscellaneous
+
+* add deprecated include filter to model listing (sync schemas v1.4.1) ([#406](https://github.com/inference-gateway/adk/issues/406)) ([750d909](https://github.com/inference-gateway/adk/commit/750d90941e17a786cce4e0e2c8ab867f72ca9b56))
+* **deps:** bump claude-code 2.1.289 -> 2.1.296 ([#407](https://github.com/inference-gateway/adk/issues/407)) ([a0d4849](https://github.com/inference-gateway/adk/commit/a0d4849ce0352c085008c03161fbb2d811c58e83))
+* **deps:** bump claude-code 2.1.296 -> 2.1.308 ([#412](https://github.com/inference-gateway/adk/issues/412)) ([b87a684](https://github.com/inference-gateway/adk/commit/b87a684f9b16703455d12f8938b75ee390760ae9))
+* **deps:** bump infer CLI v0.221.1 -> v0.226.0 ([#401](https://github.com/inference-gateway/adk/issues/401)) ([039213f](https://github.com/inference-gateway/adk/commit/039213f884d2160946b06ab0e859506b7d789727))
+* **deps:** bump infer CLI v0.226.0 -> v0.231.1 ([#408](https://github.com/inference-gateway/adk/issues/408)) ([cab3920](https://github.com/inference-gateway/adk/commit/cab3920ed66426987535eea05d98d0b464947926))
+* sync generated types with schemas v1.10.0 ([#424](https://github.com/inference-gateway/adk/issues/424)) ([8bb369d](https://github.com/inference-gateway/adk/commit/8bb369d18c218cb7f80af2faf9d2dfcc884f9005))
+* sync generated types with schemas v1.2.2 ([#403](https://github.com/inference-gateway/adk/issues/403)) ([df7d56a](https://github.com/inference-gateway/adk/commit/df7d56af3f106552546a2faefc990330f9737904))
+* sync generated types with schemas v1.5.0 ([#411](https://github.com/inference-gateway/adk/issues/411)) ([b752d48](https://github.com/inference-gateway/adk/commit/b752d48fe1da173f11afcef9614ad651afc7ba94))
+* sync generated types with schemas v1.6.0 ([#421](https://github.com/inference-gateway/adk/issues/421)) ([aa1aebe](https://github.com/inference-gateway/adk/commit/aa1aebe8ca379774849e96412cd22aec6561148d))
+* sync generated types with schemas v1.7.0 ([#423](https://github.com/inference-gateway/adk/issues/423)) ([28d56f2](https://github.com/inference-gateway/adk/commit/28d56f2305bcb4a1829044995ca050c74f55d627))
+
 ## [0.34.0](https://github.com/inference-gateway/adk/compare/v0.33.0...v0.34.0) (2026-10-06)
 
 ### ✨ Features
