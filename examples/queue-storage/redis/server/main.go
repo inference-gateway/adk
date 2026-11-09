@@ -15,6 +15,7 @@ import (
 	config "github.com/inference-gateway/adk/examples/queue-storage/redis/server/config"
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
+	_ "github.com/inference-gateway/adk/server/storage/redis"
 	types "github.com/inference-gateway/adk/types"
 )
 

@@ -6,37 +6,37 @@ import (
 	"sync"
 	"time"
 
-	"github.com/inference-gateway/adk/server"
-	redis "github.com/redis/go-redis/v9"
+	"github.com/inference-gateway/adk/server/storage/redis"
+	redisa "github.com/redis/go-redis/v9"
 )
 
 type FakeRedisPipeliner struct {
-	DelStub        func(context.Context, ...string) *redis.IntCmd
+	DelStub        func(context.Context, ...string) *redisa.IntCmd
 	delMutex       sync.RWMutex
 	delArgsForCall []struct {
 		arg1 context.Context
 		arg2 []string
 	}
 	delReturns struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}
 	delReturnsOnCall map[int]struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}
-	ExecStub        func(context.Context) ([]redis.Cmder, error)
+	ExecStub        func(context.Context) ([]redisa.Cmder, error)
 	execMutex       sync.RWMutex
 	execArgsForCall []struct {
 		arg1 context.Context
 	}
 	execReturns struct {
-		result1 []redis.Cmder
+		result1 []redisa.Cmder
 		result2 error
 	}
 	execReturnsOnCall map[int]struct {
-		result1 []redis.Cmder
+		result1 []redisa.Cmder
 		result2 error
 	}
-	LPushStub        func(context.Context, string, ...any) *redis.IntCmd
+	LPushStub        func(context.Context, string, ...any) *redisa.IntCmd
 	lPushMutex       sync.RWMutex
 	lPushArgsForCall []struct {
 		arg1 context.Context
@@ -44,12 +44,12 @@ type FakeRedisPipeliner struct {
 		arg3 []any
 	}
 	lPushReturns struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}
 	lPushReturnsOnCall map[int]struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}
-	SAddStub        func(context.Context, string, ...any) *redis.IntCmd
+	SAddStub        func(context.Context, string, ...any) *redisa.IntCmd
 	sAddMutex       sync.RWMutex
 	sAddArgsForCall []struct {
 		arg1 context.Context
@@ -57,12 +57,12 @@ type FakeRedisPipeliner struct {
 		arg3 []any
 	}
 	sAddReturns struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}
 	sAddReturnsOnCall map[int]struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}
-	SRemStub        func(context.Context, string, ...any) *redis.IntCmd
+	SRemStub        func(context.Context, string, ...any) *redisa.IntCmd
 	sRemMutex       sync.RWMutex
 	sRemArgsForCall []struct {
 		arg1 context.Context
@@ -70,12 +70,12 @@ type FakeRedisPipeliner struct {
 		arg3 []any
 	}
 	sRemReturns struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}
 	sRemReturnsOnCall map[int]struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}
-	SetStub        func(context.Context, string, any, time.Duration) *redis.StatusCmd
+	SetStub        func(context.Context, string, any, time.Duration) *redisa.StatusCmd
 	setMutex       sync.RWMutex
 	setArgsForCall []struct {
 		arg1 context.Context
@@ -84,16 +84,16 @@ type FakeRedisPipeliner struct {
 		arg4 time.Duration
 	}
 	setReturns struct {
-		result1 *redis.StatusCmd
+		result1 *redisa.StatusCmd
 	}
 	setReturnsOnCall map[int]struct {
-		result1 *redis.StatusCmd
+		result1 *redisa.StatusCmd
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeRedisPipeliner) Del(arg1 context.Context, arg2 ...string) *redis.IntCmd {
+func (fake *FakeRedisPipeliner) Del(arg1 context.Context, arg2 ...string) *redisa.IntCmd {
 	fake.delMutex.Lock()
 	ret, specificReturn := fake.delReturnsOnCall[len(fake.delArgsForCall)]
 	fake.delArgsForCall = append(fake.delArgsForCall, struct {
@@ -119,7 +119,7 @@ func (fake *FakeRedisPipeliner) DelCallCount() int {
 	return len(fake.delArgsForCall)
 }
 
-func (fake *FakeRedisPipeliner) DelCalls(stub func(context.Context, ...string) *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) DelCalls(stub func(context.Context, ...string) *redisa.IntCmd) {
 	fake.delMutex.Lock()
 	defer fake.delMutex.Unlock()
 	fake.DelStub = stub
@@ -132,30 +132,30 @@ func (fake *FakeRedisPipeliner) DelArgsForCall(i int) (context.Context, []string
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeRedisPipeliner) DelReturns(result1 *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) DelReturns(result1 *redisa.IntCmd) {
 	fake.delMutex.Lock()
 	defer fake.delMutex.Unlock()
 	fake.DelStub = nil
 	fake.delReturns = struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) DelReturnsOnCall(i int, result1 *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) DelReturnsOnCall(i int, result1 *redisa.IntCmd) {
 	fake.delMutex.Lock()
 	defer fake.delMutex.Unlock()
 	fake.DelStub = nil
 	if fake.delReturnsOnCall == nil {
 		fake.delReturnsOnCall = make(map[int]struct {
-			result1 *redis.IntCmd
+			result1 *redisa.IntCmd
 		})
 	}
 	fake.delReturnsOnCall[i] = struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) Exec(arg1 context.Context) ([]redis.Cmder, error) {
+func (fake *FakeRedisPipeliner) Exec(arg1 context.Context) ([]redisa.Cmder, error) {
 	fake.execMutex.Lock()
 	ret, specificReturn := fake.execReturnsOnCall[len(fake.execArgsForCall)]
 	fake.execArgsForCall = append(fake.execArgsForCall, struct {
@@ -180,7 +180,7 @@ func (fake *FakeRedisPipeliner) ExecCallCount() int {
 	return len(fake.execArgsForCall)
 }
 
-func (fake *FakeRedisPipeliner) ExecCalls(stub func(context.Context) ([]redis.Cmder, error)) {
+func (fake *FakeRedisPipeliner) ExecCalls(stub func(context.Context) ([]redisa.Cmder, error)) {
 	fake.execMutex.Lock()
 	defer fake.execMutex.Unlock()
 	fake.ExecStub = stub
@@ -193,33 +193,33 @@ func (fake *FakeRedisPipeliner) ExecArgsForCall(i int) context.Context {
 	return argsForCall.arg1
 }
 
-func (fake *FakeRedisPipeliner) ExecReturns(result1 []redis.Cmder, result2 error) {
+func (fake *FakeRedisPipeliner) ExecReturns(result1 []redisa.Cmder, result2 error) {
 	fake.execMutex.Lock()
 	defer fake.execMutex.Unlock()
 	fake.ExecStub = nil
 	fake.execReturns = struct {
-		result1 []redis.Cmder
+		result1 []redisa.Cmder
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeRedisPipeliner) ExecReturnsOnCall(i int, result1 []redis.Cmder, result2 error) {
+func (fake *FakeRedisPipeliner) ExecReturnsOnCall(i int, result1 []redisa.Cmder, result2 error) {
 	fake.execMutex.Lock()
 	defer fake.execMutex.Unlock()
 	fake.ExecStub = nil
 	if fake.execReturnsOnCall == nil {
 		fake.execReturnsOnCall = make(map[int]struct {
-			result1 []redis.Cmder
+			result1 []redisa.Cmder
 			result2 error
 		})
 	}
 	fake.execReturnsOnCall[i] = struct {
-		result1 []redis.Cmder
+		result1 []redisa.Cmder
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeRedisPipeliner) LPush(arg1 context.Context, arg2 string, arg3 ...any) *redis.IntCmd {
+func (fake *FakeRedisPipeliner) LPush(arg1 context.Context, arg2 string, arg3 ...any) *redisa.IntCmd {
 	fake.lPushMutex.Lock()
 	ret, specificReturn := fake.lPushReturnsOnCall[len(fake.lPushArgsForCall)]
 	fake.lPushArgsForCall = append(fake.lPushArgsForCall, struct {
@@ -246,7 +246,7 @@ func (fake *FakeRedisPipeliner) LPushCallCount() int {
 	return len(fake.lPushArgsForCall)
 }
 
-func (fake *FakeRedisPipeliner) LPushCalls(stub func(context.Context, string, ...any) *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) LPushCalls(stub func(context.Context, string, ...any) *redisa.IntCmd) {
 	fake.lPushMutex.Lock()
 	defer fake.lPushMutex.Unlock()
 	fake.LPushStub = stub
@@ -259,30 +259,30 @@ func (fake *FakeRedisPipeliner) LPushArgsForCall(i int) (context.Context, string
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeRedisPipeliner) LPushReturns(result1 *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) LPushReturns(result1 *redisa.IntCmd) {
 	fake.lPushMutex.Lock()
 	defer fake.lPushMutex.Unlock()
 	fake.LPushStub = nil
 	fake.lPushReturns = struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) LPushReturnsOnCall(i int, result1 *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) LPushReturnsOnCall(i int, result1 *redisa.IntCmd) {
 	fake.lPushMutex.Lock()
 	defer fake.lPushMutex.Unlock()
 	fake.LPushStub = nil
 	if fake.lPushReturnsOnCall == nil {
 		fake.lPushReturnsOnCall = make(map[int]struct {
-			result1 *redis.IntCmd
+			result1 *redisa.IntCmd
 		})
 	}
 	fake.lPushReturnsOnCall[i] = struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) SAdd(arg1 context.Context, arg2 string, arg3 ...any) *redis.IntCmd {
+func (fake *FakeRedisPipeliner) SAdd(arg1 context.Context, arg2 string, arg3 ...any) *redisa.IntCmd {
 	fake.sAddMutex.Lock()
 	ret, specificReturn := fake.sAddReturnsOnCall[len(fake.sAddArgsForCall)]
 	fake.sAddArgsForCall = append(fake.sAddArgsForCall, struct {
@@ -309,7 +309,7 @@ func (fake *FakeRedisPipeliner) SAddCallCount() int {
 	return len(fake.sAddArgsForCall)
 }
 
-func (fake *FakeRedisPipeliner) SAddCalls(stub func(context.Context, string, ...any) *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) SAddCalls(stub func(context.Context, string, ...any) *redisa.IntCmd) {
 	fake.sAddMutex.Lock()
 	defer fake.sAddMutex.Unlock()
 	fake.SAddStub = stub
@@ -322,30 +322,30 @@ func (fake *FakeRedisPipeliner) SAddArgsForCall(i int) (context.Context, string,
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeRedisPipeliner) SAddReturns(result1 *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) SAddReturns(result1 *redisa.IntCmd) {
 	fake.sAddMutex.Lock()
 	defer fake.sAddMutex.Unlock()
 	fake.SAddStub = nil
 	fake.sAddReturns = struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) SAddReturnsOnCall(i int, result1 *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) SAddReturnsOnCall(i int, result1 *redisa.IntCmd) {
 	fake.sAddMutex.Lock()
 	defer fake.sAddMutex.Unlock()
 	fake.SAddStub = nil
 	if fake.sAddReturnsOnCall == nil {
 		fake.sAddReturnsOnCall = make(map[int]struct {
-			result1 *redis.IntCmd
+			result1 *redisa.IntCmd
 		})
 	}
 	fake.sAddReturnsOnCall[i] = struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) SRem(arg1 context.Context, arg2 string, arg3 ...any) *redis.IntCmd {
+func (fake *FakeRedisPipeliner) SRem(arg1 context.Context, arg2 string, arg3 ...any) *redisa.IntCmd {
 	fake.sRemMutex.Lock()
 	ret, specificReturn := fake.sRemReturnsOnCall[len(fake.sRemArgsForCall)]
 	fake.sRemArgsForCall = append(fake.sRemArgsForCall, struct {
@@ -372,7 +372,7 @@ func (fake *FakeRedisPipeliner) SRemCallCount() int {
 	return len(fake.sRemArgsForCall)
 }
 
-func (fake *FakeRedisPipeliner) SRemCalls(stub func(context.Context, string, ...any) *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) SRemCalls(stub func(context.Context, string, ...any) *redisa.IntCmd) {
 	fake.sRemMutex.Lock()
 	defer fake.sRemMutex.Unlock()
 	fake.SRemStub = stub
@@ -385,30 +385,30 @@ func (fake *FakeRedisPipeliner) SRemArgsForCall(i int) (context.Context, string,
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *FakeRedisPipeliner) SRemReturns(result1 *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) SRemReturns(result1 *redisa.IntCmd) {
 	fake.sRemMutex.Lock()
 	defer fake.sRemMutex.Unlock()
 	fake.SRemStub = nil
 	fake.sRemReturns = struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) SRemReturnsOnCall(i int, result1 *redis.IntCmd) {
+func (fake *FakeRedisPipeliner) SRemReturnsOnCall(i int, result1 *redisa.IntCmd) {
 	fake.sRemMutex.Lock()
 	defer fake.sRemMutex.Unlock()
 	fake.SRemStub = nil
 	if fake.sRemReturnsOnCall == nil {
 		fake.sRemReturnsOnCall = make(map[int]struct {
-			result1 *redis.IntCmd
+			result1 *redisa.IntCmd
 		})
 	}
 	fake.sRemReturnsOnCall[i] = struct {
-		result1 *redis.IntCmd
+		result1 *redisa.IntCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) Set(arg1 context.Context, arg2 string, arg3 any, arg4 time.Duration) *redis.StatusCmd {
+func (fake *FakeRedisPipeliner) Set(arg1 context.Context, arg2 string, arg3 any, arg4 time.Duration) *redisa.StatusCmd {
 	fake.setMutex.Lock()
 	ret, specificReturn := fake.setReturnsOnCall[len(fake.setArgsForCall)]
 	fake.setArgsForCall = append(fake.setArgsForCall, struct {
@@ -436,7 +436,7 @@ func (fake *FakeRedisPipeliner) SetCallCount() int {
 	return len(fake.setArgsForCall)
 }
 
-func (fake *FakeRedisPipeliner) SetCalls(stub func(context.Context, string, any, time.Duration) *redis.StatusCmd) {
+func (fake *FakeRedisPipeliner) SetCalls(stub func(context.Context, string, any, time.Duration) *redisa.StatusCmd) {
 	fake.setMutex.Lock()
 	defer fake.setMutex.Unlock()
 	fake.SetStub = stub
@@ -449,26 +449,26 @@ func (fake *FakeRedisPipeliner) SetArgsForCall(i int) (context.Context, string, 
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *FakeRedisPipeliner) SetReturns(result1 *redis.StatusCmd) {
+func (fake *FakeRedisPipeliner) SetReturns(result1 *redisa.StatusCmd) {
 	fake.setMutex.Lock()
 	defer fake.setMutex.Unlock()
 	fake.SetStub = nil
 	fake.setReturns = struct {
-		result1 *redis.StatusCmd
+		result1 *redisa.StatusCmd
 	}{result1}
 }
 
-func (fake *FakeRedisPipeliner) SetReturnsOnCall(i int, result1 *redis.StatusCmd) {
+func (fake *FakeRedisPipeliner) SetReturnsOnCall(i int, result1 *redisa.StatusCmd) {
 	fake.setMutex.Lock()
 	defer fake.setMutex.Unlock()
 	fake.SetStub = nil
 	if fake.setReturnsOnCall == nil {
 		fake.setReturnsOnCall = make(map[int]struct {
-			result1 *redis.StatusCmd
+			result1 *redisa.StatusCmd
 		})
 	}
 	fake.setReturnsOnCall[i] = struct {
-		result1 *redis.StatusCmd
+		result1 *redisa.StatusCmd
 	}{result1}
 }
 
@@ -494,4 +494,4 @@ func (fake *FakeRedisPipeliner) recordInvocation(key string, args []interface{})
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
 
-var _ server.RedisPipeliner = new(FakeRedisPipeliner)
+var _ redis.RedisPipeliner = new(FakeRedisPipeliner)

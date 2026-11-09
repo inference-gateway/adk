@@ -87,7 +87,7 @@ tasks:
   clean:mocks:
     desc: 'Clean up generated mocks'
     cmds:
-      - rm -rf server/mocks/*.go
+      - rm -rf server/mocks/*.go server/storage/redis/mocks/*.go
 
   generate:mocks:
     desc: 'Generate all mocks using counterfeiter'
@@ -195,20 +195,20 @@ tasks:
   generate:mock:redis-client:
     desc: 'Generate mock for RedisClient interface'
     sources:
-      - server/storage_redis.go
+      - server/storage/redis/storage_redis.go
     generates:
-      - server/mocks/fake_redis_client.go
+      - server/storage/redis/mocks/fake_redis_client.go
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_redis_client.go server RedisClient
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/storage/redis/mocks/fake_redis_client.go ./server/storage/redis RedisClient
 
   generate:mock:redis-pipeliner:
     desc: 'Generate mock for RedisPipeliner interface'
     sources:
-      - server/storage_redis.go
+      - server/storage/redis/storage_redis.go
     generates:
-      - server/mocks/fake_redis_pipeliner.go
+      - server/storage/redis/mocks/fake_redis_pipeliner.go
     cmds:
-      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/mocks/fake_redis_pipeliner.go server RedisPipeliner
+      - go run github.com/maxbrunsfeld/counterfeiter/v6 -o server/storage/redis/mocks/fake_redis_pipeliner.go ./server/storage/redis RedisPipeliner
 
   generate:mock:response-sender:
     desc: 'Generate mock for ResponseSender interface'

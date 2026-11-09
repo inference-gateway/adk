@@ -53,6 +53,18 @@ type QueuedTask struct {
 	Claims map[string]any `json:"claims,omitempty"`
 }
 
+// NewQueuedTask captures a task plus everything that must survive the queue
+// boundary: the W3C trace context and the verified OIDC claims of the request
+// that enqueued it. Storage implementations of every backend build on it.
+func NewQueuedTask(ctx context.Context, task *types.Task, requestID any) *QueuedTask {
+	return &QueuedTask{
+		Task:         task,
+		RequestID:    requestID,
+		TraceContext: injectTraceContext(ctx),
+		Claims:       extractClaimsFromCtx(ctx),
+	}
+}
+
 // Storage defines the interface for queue-centric task management
 // Tasks carry their complete message history and flow through: Queue -> Processing -> Dead Letter
 type Storage interface {
@@ -766,12 +778,7 @@ func (s *InMemoryStorage) EnqueueTask(ctx context.Context, task *types.Task, req
 		return fmt.Errorf("task cannot be nil")
 	}
 
-	queuedTask := &QueuedTask{
-		Task:         task,
-		RequestID:    requestID,
-		TraceContext: injectTraceContext(ctx),
-		Claims:       extractClaimsFromCtx(ctx),
-	}
+	queuedTask := NewQueuedTask(ctx, task, requestID)
 
 	s.queueMu.Lock()
 	s.taskQueue = append(s.taskQueue, queuedTask)
