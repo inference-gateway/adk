@@ -185,7 +185,7 @@ scaling.
 - Docker Compose setups for both storage backends
 - Complete server and client implementations
 
-#### `tls-example/`
+#### `tls-server/`
 
 TLS-enabled A2A server demonstrating secure HTTPS communication.
 

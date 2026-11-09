@@ -13,7 +13,7 @@ import (
 	envconfig "github.com/sethvargo/go-envconfig"
 	zap "go.uber.org/zap"
 
-	config "github.com/inference-gateway/adk/examples/tls-example/server/config"
+	config "github.com/inference-gateway/adk/examples/tls-server/server/config"
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
 	types "github.com/inference-gateway/adk/types"
