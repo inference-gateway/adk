@@ -15,6 +15,7 @@ import (
 	config "github.com/inference-gateway/adk/examples/mcp/server/config"
 	server "github.com/inference-gateway/adk/server"
 	serverConfig "github.com/inference-gateway/adk/server/config"
+	http "github.com/inference-gateway/adk/server/mcp/http"
 	types "github.com/inference-gateway/adk/types"
 )
 
@@ -87,7 +88,8 @@ func main() {
 	defer cancel()
 
 	if cfg.A2A.MCPConfig.Enable {
-		mcpManager, err := server.NewMCPClientManager(cfg.A2A.MCPConfig, logger)
+		mcpManager, err := server.NewMCPClientManager(cfg.A2A.MCPConfig, logger,
+			server.WithMCPClientFactory(http.NewHTTPMCPClient))
 		if err != nil {
 			logger.Fatal("failed to create MCP client manager", zap.Error(err))
 		}

@@ -17,10 +17,10 @@ import (
 	serverConfig "github.com/inference-gateway/adk/server/config"
 )
 
-// fakeMCPClient is an in-process mcpToolCaller for tests - no network, no server.
+// fakeMCPClient is an in-process MCPToolCaller for tests - no network, no server.
 type fakeMCPClient struct {
 	url          string
-	tools        []mcpToolEntry
+	tools        []MCPToolEntry
 	failInits    int32
 	initCalls    int32
 	listErr      error
@@ -39,11 +39,11 @@ func (f *fakeMCPClient) Initialize(context.Context) error {
 	return nil
 }
 
-func (f *fakeMCPClient) ListTools(context.Context) ([]mcpToolEntry, error) {
+func (f *fakeMCPClient) ListTools(context.Context) ([]MCPToolEntry, error) {
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
-	out := make([]mcpToolEntry, len(f.tools))
+	out := make([]MCPToolEntry, len(f.tools))
 	for i, t := range f.tools {
 		t.Server = f.url
 		out[i] = t
@@ -91,15 +91,15 @@ func waitFor(t *testing.T, cond func() bool) {
 func TestMCPManager_DiscoversToolsAndRegisters(t *testing.T) {
 	fake := &fakeMCPClient{
 		url: "http://mcp-a",
-		tools: []mcpToolEntry{
+		tools: []MCPToolEntry{
 			{Name: "get_weather", Description: "Get weather for a city"},
 			{Name: "get_time", Description: "Get current time"},
 		},
 	}
 
-	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop())
+	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop(),
+		WithMCPClientFactory(func(string, string) MCPToolCaller { return fake }))
 	require.NoError(t, err)
-	m.newClient = func(string) mcpToolCaller { return fake }
 
 	m.Start(context.Background())
 	defer func() { _ = m.Close() }()
@@ -115,14 +115,14 @@ func TestMCPManager_DiscoversToolsAndRegisters(t *testing.T) {
 func TestMCPManager_ListToolsToolFiltersBySearch(t *testing.T) {
 	fake := &fakeMCPClient{
 		url: "http://mcp-a",
-		tools: []mcpToolEntry{
+		tools: []MCPToolEntry{
 			{Name: "get_weather", Description: "Get weather for a city"},
 			{Name: "get_time", Description: "Get current time"},
 		},
 	}
-	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop())
+	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop(),
+		WithMCPClientFactory(func(string, string) MCPToolCaller { return fake }))
 	require.NoError(t, err)
-	m.newClient = func(string) mcpToolCaller { return fake }
 	m.Start(context.Background())
 	defer func() { _ = m.Close() }()
 	waitFor(t, func() bool { return len(m.snapshot()) == 2 })
@@ -132,7 +132,7 @@ func TestMCPManager_ListToolsToolFiltersBySearch(t *testing.T) {
 
 	var payload struct {
 		Count int            `json:"count"`
-		Tools []mcpToolEntry `json:"tools"`
+		Tools []MCPToolEntry `json:"tools"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(out), &payload))
 	assert.Equal(t, 1, payload.Count)
@@ -144,12 +144,12 @@ func TestMCPManager_ListToolsToolFiltersBySearch(t *testing.T) {
 func TestMCPManager_CallToolDispatches(t *testing.T) {
 	fake := &fakeMCPClient{
 		url:        "http://mcp-a",
-		tools:      []mcpToolEntry{{Name: "get_weather", Description: "Get weather"}},
+		tools:      []MCPToolEntry{{Name: "get_weather", Description: "Get weather"}},
 		callResult: `{"temp":"22C"}`,
 	}
-	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop())
+	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop(),
+		WithMCPClientFactory(func(string, string) MCPToolCaller { return fake }))
 	require.NoError(t, err)
-	m.newClient = func(string) mcpToolCaller { return fake }
 	m.Start(context.Background())
 	defer func() { _ = m.Close() }()
 	waitFor(t, func() bool { return len(m.snapshot()) == 1 })
@@ -165,9 +165,9 @@ func TestMCPManager_CallToolDispatches(t *testing.T) {
 }
 
 func TestMCPManager_CallToolUnknownTool(t *testing.T) {
-	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop())
+	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop(),
+		WithMCPClientFactory(func(string, string) MCPToolCaller { return &fakeMCPClient{url: "http://mcp-a"} }))
 	require.NoError(t, err)
-	m.newClient = func(string) mcpToolCaller { return &fakeMCPClient{url: "http://mcp-a"} }
 	m.Start(context.Background())
 	defer func() { _ = m.Close() }()
 
@@ -181,11 +181,11 @@ func TestMCPManager_ConnectRetriesWithBackoff(t *testing.T) {
 	fake := &fakeMCPClient{
 		url:       "http://mcp-a",
 		failInits: 3, // fail the first 3 connect attempts, then succeed
-		tools:     []mcpToolEntry{{Name: "get_weather"}},
+		tools:     []MCPToolEntry{{Name: "get_weather"}},
 	}
-	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop())
+	m, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop(),
+		WithMCPClientFactory(func(string, string) MCPToolCaller { return fake }))
 	require.NoError(t, err)
-	m.newClient = func(string) mcpToolCaller { return fake }
 	m.Start(context.Background())
 	defer func() { _ = m.Close() }()
 
@@ -196,6 +196,14 @@ func TestMCPManager_ConnectRetriesWithBackoff(t *testing.T) {
 func TestMCPManager_NoServers(t *testing.T) {
 	_, err := NewMCPClientManager(serverConfig.MCPConfig{Enable: true}, zap.NewNop())
 	assert.Error(t, err)
+}
+
+// TestMCPManager_RequiresClientFactory proves MCP_ENABLED=true without a
+// linked MCP client subpackage fails construction and names the import to add.
+func TestMCPManager_RequiresClientFactory(t *testing.T) {
+	_, err := NewMCPClientManager(testMCPConfig("http://mcp-a"), zap.NewNop())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "github.com/inference-gateway/adk/server/mcp/http")
 }
 
 func TestNextBackoff(t *testing.T) {
