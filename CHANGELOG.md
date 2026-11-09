@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.34.2](https://github.com/inference-gateway/adk/compare/v0.34.1...v0.34.2) (2026-11-09)
+
+### ⚠ BREAKING CHANGES
+
+* **server:** server.RedisStorage, server.RedisStorageFactory, server.RedisClient, server.RedisPipeliner and the redis fakes in server/mocks moved to the storage/redis subpackage; QUEUE_PROVIDER=redis requires importing the subpackage with a blank import.
+
+  * refactor(server)!: move the MCP HTTP client into an opt-in subpackage
+
+  The metoro-io/mcp-golang backed client moves from server/mcp.go to github.com/inference-gateway/adk/server/mcp/http as http.NewHTTPMCPClient and is wired through the new server.WithMCPClientFactory option. MCPClientManager, the mcp_list_tools and mcp_call_tool selector tools and the seam stay in adk/server: mcpToolCaller and mcpToolEntry become the exported MCPToolCaller and MCPToolEntry so external transports can implement them.
+
+  MCP_ENABLED=true with MCP_SERVERS configured now requires importing http github.com/inference-gateway/adk/server/mcp/http and passing server.WithMCPClientFactory(http.NewHTTPMCPClient) to NewMCPClientManager, which fails construction naming that import when no client is wired - the unconditional httpMCPClient default is gone.
+
+  * docs: document the opt-in redis and mcp subpackage imports
+
+  * chore: tidy example module dependencies after the opt-in subpackage moves
+
+### ♻️ Improvements
+
+* **artifacts:** make artifact storage backends opt-in subpackages to trim linked binary size ([#431](https://github.com/inference-gateway/adk/issues/431)) ([fa96f5a](https://github.com/inference-gateway/adk/commit/fa96f5a04569bd8c287ed9e8709cdb248fe0fc25))
+* **examples:** align tls-server module paths with the renamed directory ([#430](https://github.com/inference-gateway/adk/issues/430)) ([8e971ea](https://github.com/inference-gateway/adk/commit/8e971ea2be926768a20415889871a28127f53023)), closes [#428](https://github.com/inference-gateway/adk/issues/428)
+* **server:** make Redis storage and the MCP client opt-in subpackages ([#432](https://github.com/inference-gateway/adk/issues/432)) ([6516c05](https://github.com/inference-gateway/adk/commit/6516c0521ec016b46e43ff4181a327e28071f76c))
+
 ## [0.34.1](https://github.com/inference-gateway/adk/compare/v0.34.0...v0.34.1) (2026-11-09)
 
 ### ♻️ Improvements
