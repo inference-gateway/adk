@@ -1,4 +1,4 @@
-module github.com/inference-gateway/adk/examples/tls-example/server
+module github.com/inference-gateway/adk/examples/tls-server/server
 
 go 1.27.3
 
