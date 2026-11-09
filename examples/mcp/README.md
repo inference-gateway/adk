@@ -41,6 +41,12 @@ The MCP endpoint path defaults to `/mcp`; override with `A2A_MCP_ENDPOINT`.
 The server starts even if the MCP server is not up yet - it keeps retrying with
 backoff in the background.
 
+The MCP transport (backed by `metoro-io/mcp-golang`) is the opt-in subpackage
+`github.com/inference-gateway/adk/server/mcp/http`: `server/main.go` imports it and
+wires the client with `server.WithMCPClientFactory(http.NewHTTPMCPClient)` when
+building `server.NewMCPClientManager`. With `A2A_MCP_ENABLED=true` and no client
+wired, startup fails naming that import.
+
 ## Try It
 
 Send a task and watch the agent discover and call MCP tools:

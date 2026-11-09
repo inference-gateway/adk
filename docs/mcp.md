@@ -7,7 +7,10 @@ server (or a fleet of them) that all your A2A agents should reuse.
 
 The integration is built on [`metoro-io/mcp-golang`](https://github.com/metoro-io/mcp-golang)
 and is **disabled by default** - it only makes sense when an LLM/agent is
-configured.
+configured. The mcp-golang backed HTTP transport is not bundled with
+`github.com/inference-gateway/adk/server`: it lives in the opt-in subpackage
+`github.com/inference-gateway/adk/server/mcp/http` so consumers that never touch
+MCP do not link it (see [Wiring it up](#wiring-it-up)).
 
 ## Table of Contents
 
@@ -53,13 +56,20 @@ examples, which nest the ADK config under `A2A_`, the prefix is `A2A_MCP_`).
 ## Wiring it up
 
 The manager is a standalone piece you construct, start, and register into the
-agent's toolbox:
+agent's toolbox. The MCP client is opt-in too: import the transport subpackage
+and wire its constructor via `server.WithMCPClientFactory`:
 
 ```go
+import http "github.com/inference-gateway/adk/server/mcp/http"
+
 toolBox := server.NewDefaultToolBox(&cfg.AgentConfig.ToolBoxConfig)
 
 if cfg.MCPConfig.Enable {
-	mcpManager, err := server.NewMCPClientManager(cfg.MCPConfig, logger)
+	mcpManager, err := server.NewMCPClientManager(
+		cfg.MCPConfig,
+		logger,
+		server.WithMCPClientFactory(http.NewHTTPMCPClient),
+	)
 	if err != nil {
 		logger.Fatal("failed to create MCP client manager", zap.Error(err))
 	}
@@ -74,6 +84,10 @@ agent, _ := server.NewAgentBuilder(logger).
 	WithToolBox(toolBox).
 	Build()
 ```
+
+With `MCP_ENABLED=true` and `MCP_SERVERS` set but no MCP client wired,
+`NewMCPClientManager` fails with an error naming this import - it never runs
+without a usable client. Custom transports implement `server.MCPToolCaller`.
 
 `Start` returns immediately; it never blocks server startup if an MCP server is
 not up yet. See [`examples/mcp`](../examples/mcp) for a full runnable example.
@@ -94,7 +108,8 @@ independently of, the A2A server:
 
 ## Limitations
 
-- Transport is streamable **HTTP** only (the cloud-native case). stdio/subprocess
+- Transport is streamable **HTTP** only (the cloud-native case), via the opt-in
+  `github.com/inference-gateway/adk/server/mcp/http` subpackage. stdio/subprocess
   MCP servers are not wired.
 - Tool listing fetches a single page; cursor-based pagination is not yet handled.
 - MCP resources and prompts are not exposed - tools only.
