@@ -97,6 +97,7 @@ Via the included Inference Gateway:
 - Groq
 - llama.cpp
 - MiniMax
+- Mirelo
 - Mistral
 - Moonshot
 - Nvidia
