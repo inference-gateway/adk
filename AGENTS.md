@@ -7,27 +7,32 @@ full contributor workflow.
 
 Go library for building Agent-to-Agent (A2A) protocol agents. Module path: `github.com/inference-gateway/adk`. Core
 packages: `client/` (JSON-RPC client), `server/` (server builder, task handlers, agent, storage, artifacts,
-middlewares, telemetry), `types/` (protocol types). It is not a binary - `main.go` is a placeholder. The root module
-and every `examples/<scenario>/client` and `examples/<scenario>/server` directory are separate Go modules, each example
-with its own `docker-compose.yaml` (run with `cd examples/<name>/server && go run .`). Examples are how users learn the
-API and broken examples do not surface in unit tests; scan them when changing public surfaces.
+middlewares, telemetry), `types/` (protocol types). It is not a binary - `main.go` is a placeholder. Every example directory containing a `go.mod` is a separate Go module
+(walked by `task tidy`). Most examples are client+server module pairs with a `docker-compose.yaml` (run with
+`cd examples/<name>/server && go run .`). Exceptions: `callbacks` and `mcp` ship a server module only, `input-required`
+and `queue-storage` are README containers holding full setups in `non-streaming|streaming/` and `in-memory|redis/`
+subdirectories, `tck-sut` is a single module, and `static-agent-card` has no compose file. Examples are how users learn
+the API and broken examples do not surface in unit tests - scan them when changing public surfaces.
 
 ## Commands
 
 Run from the repo root; `task --list` lists all targets.
 
 - `task format` - gofmt on Go files, Prettier on Markdown
-- `task lint` - `golangci-lint run`; `task lint:examples` runs `markdownlint --fix` on example Markdown
-- `task test` - `go test -v -cover ./...`; single test: `go test -run TestNameRegex -v ./server/...`
+- `task lint` - `golangci-lint run`. `task lint:examples` runs `markdownlint --fix` on example Markdown and
+  golangci-lint (root config) in every example module
+- `task test` - `go test -v -cover ./...`. Single test: `go test -run TestNameRegex -v ./server/...`
 - `task tidy` - `go mod tidy` in every module (root + examples)
 - `task a2a:download-schema` + `task a2a:generate-types` - refresh the vendored `schema.yaml` and regenerate
   `types/generated_types.go`
 - `task providers:download-schema` + `task generate:providers` - refresh `providers-schema.yaml` and regenerate
   provider artifacts (`.env.example`, `docker-compose.yaml`, READMEs)
+- `task schemas-sync` - one shot: fetch both schemas (pin with `SCHEMAS_REF`) and regenerate types and provider
+  artifacts. CI runs the same steps on a schedule to open idempotent schema-sync PRs
 - `task generate:mocks` (`generate:mocks:clean` to wipe first) - regenerate Counterfeiter mocks in `client/mocks/`,
   `server/mocks/`, and `server/storage/redis/mocks/`
 - `task generate` - umbrella for types, providers, and mocks
-- `task precommit:install` - install the pre-commit hook (format, tidy, mocks, lint, test; fails if files stay dirty)
+- `task precommit:install` - install the pre-commit hook (format, tidy, mocks, lint, test - fails if files stay dirty)
 
 ## Architecture
 
@@ -48,22 +53,27 @@ Run from the repo root; `task --list` lists all targets.
   S3-compatible (RustFS) backends. The filesystem backend is built in, the S3 backend is an opt-in subpackage
   (`server/storage/s3`, blank import registers it via `RegisterArtifactStorageProvider`), so importing `adk/server`
   alone does not link `minio-go`. An `s3`/`minio` provider without that import fails at startup naming the import.
-  Proxy mode is default; `ARTIFACTS_STORAGE_BASE_URL` enables direct downloads. See `docs/artifacts.md`.
+  Proxy mode is the default and `ARTIFACTS_STORAGE_BASE_URL` enables direct downloads. The client side exposes
+  `ArtifactHelper` (`client/artifact_helper.go`). See `docs/artifacts.md`.
 - **Config** (`server/config/`) is one `Config` struct loaded by `sethvargo/go-envconfig` with prefixed groups
-  (`AGENT_CLIENT_*`, `CAPABILITIES_*`, `AUTH_*`, `QUEUE_*`, `TASK_RETENTION_*`, `SERVER_*`, `TELEMETRY_*`,
-  `ARTIFACTS_*`). `AgentName`, `AgentDescription`, `AgentVersion` have no env tags; inject them at build time with
+  (`AGENT_CLIENT_*`, `CAPABILITIES_*`, `AUTH_*`, `QUEUE_*`, `MCP_*`, `TASK_RETENTION_*`, `SERVER_*`, `TELEMETRY_*`,
+  `ARTIFACTS_*`), plus an unprefixed `OTEL_*` group of standard OpenTelemetry SDK variables (resolved by
+  `Config.ResolveTelemetry()`). `AgentName`, `AgentDescription`, `AgentVersion` have no env tags; inject them at build time with
   `-ldflags "-X 'github.com/inference-gateway/adk/server.BuildAgentName=...'"` (likewise `BuildAgentDescription`,
   `BuildAgentVersion`).
+
+Feature guides live in `docs/`: `artifacts.md`, `authentication.md`, `mcp.md`, and `telemetry.md`.
 
 ## Generated Files
 
 `types/generated_types.go`, `client/mocks/*.go`, `server/mocks/*.go`, and `server/storage/redis/mocks/*.go` are generated - never hand-edit them.
 Change the source (`schema.yaml`, `providers-schema.yaml`, or the interface) and rerun the matching task.
-`CHANGELOG.md` is maintained by semantic-release. CI re-runs formatting, tidy, and generation and then fails on
-`git diff --exit-code`, so uncommitted generated or formatting changes break the build.
+`CHANGELOG.md` is maintained by semantic-release. CI re-runs formatting and tidy, regenerates types and provider
+artifacts, then fails on `git diff --exit-code`, so uncommitted generated or formatting changes break the build. Mocks
+are not regenerated in CI, so run `task generate:mocks` whenever an interface changes.
 
 Mocks use Counterfeiter (`go run github.com/maxbrunsfeld/counterfeiter/v6`). `Taskfile.yml` has one
-`generate:mock:*` target per interface with `sources:` for incremental builds; add or rename the target when you add
+`generate:mock:*` target per interface with `sources:` for incremental builds - add or rename the target when you add
 or rename an interface.
 
 ## Schema Is Upstream
@@ -73,8 +83,9 @@ or rename an interface.
 JSON-RPC envelope (`JSONRPCRequest`, `JSONRPCSuccessResponse`, `JSONRPCErrorResponse`, `JSONRPCError`) and the
 `A2AMethod` method names, is generated into `types/generated_types.go`. Types missing from the official A2A proto are
 added to the hand-written `a2a/a2a-jsonrpc.proto` in schemas, never hand-written here. To add an LLM provider: add it
-to the `Provider` enum upstream, run `task providers:download-schema` and `task generate`, and commit the schema bump
-with the generated changes; no hand-editing of example or doc files is needed.
+to the `Provider` enum upstream, run `task schemas-sync`, and commit the schema bump with the generated changes - no
+hand-editing of example or doc files is needed. The vendored schema files carry no version header, so name the schemas
+ref (for example `v1.14.1`) in the commit when bumping.
 
 ## Code Style
 
@@ -84,7 +95,8 @@ tests with `t.Run`, and structured logging with lowercase messages.
 
 Import order is enforced by `gci` (`.golangci.yml`): stdlib, `testify`, `server/mocks`, third-party, other
 `inference-gateway/*` modules, then this module. Every non-stdlib import must be aliased to its last path element
-(`zap "go.uber.org/zap"`, enforced by `importas`); pin an alias in `.golangci.yml` only when two packages collide.
+(`zap "go.uber.org/zap"`, enforced by `importas`), with a handful of aliases pinned unconditionally in `.golangci.yml`
+(`serverConfig`, `otelapi`, `sdkmetric`, `sdktrace`, `cloudevents`).
 Auto-fix with `golangci-lint fmt` and `golangci-lint run --fix`.
 
 ### Code Readability
@@ -101,15 +113,15 @@ Auto-fix with `golangci-lint fmt` and `golangci-lint run --fix`.
 
 ## Testing
 
-Tests live beside the code (`server/task_manager_test.go`). Prefer table-driven tests with isolated mocks per case;
-reuse helpers from `server/test_helpers.go` or `server/testutils/`. Run `task test` before submitting.
+Tests live beside the code (`server/task_manager_test.go`). Prefer table-driven tests with isolated mocks per case.
+Reuse helpers from `server/test_helpers.go` or `server/testutils/`. Run `task test` before submitting.
 
 ## Commits & Pull Requests
 
 Conventional commits (`feat(agent): ...`, `fix(auth): ...`, `docs: ...`, `chore:`, `refactor:`, `test:`, `style:`);
 semantic-release reads them (`.releaserc.yaml`). Branch names: `feature/...`, `fix/...`, `docs/...`, `refactor/...`.
 Before opening a PR run `task format`, `task tidy`, `task lint`, `task test`. Call out schema, generated type, mock, or
-example changes; for example behavior, describe how you verified it locally.
+example changes - for example behavior, describe how you verified it locally.
 
 ## Ecosystem Coordination
 
@@ -123,5 +135,5 @@ Part of the `inference-gateway` polyrepo; surface follow-up work when changing p
 
 ## Security
 
-Never commit secrets from `.env` or example configs; keep example credentials clearly non-production. Auth is
-OIDC/OAuth2 (`server/middlewares/auth.go`).
+Never commit secrets from `.env` or example configs - keep example credentials clearly non-production. Auth is
+OIDC/OAuth2 (`server/middlewares/auth.go`) or a static `AUTH_TOKEN` bearer token, mutually exclusive with OIDC.
