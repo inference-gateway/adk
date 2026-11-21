@@ -26,7 +26,7 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta: sdk.ChatCompletionStreamResponseDelta{
-							Content: "Hello! I can help you.",
+							Content: new("Hello! I can help you."),
 						},
 					},
 				},
@@ -35,9 +35,9 @@ func TestUsageMetadata_BackgroundTaskHandler(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta: sdk.ChatCompletionStreamResponseDelta{
-							Content: "",
+							Content: new(""),
 						},
-						FinishReason: "stop",
+						FinishReason: new(sdk.Stop),
 					},
 				},
 				Usage: &sdk.CompletionUsage{
@@ -103,7 +103,7 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta: sdk.ChatCompletionStreamResponseDelta{
-							Content: "I'm here to help!",
+							Content: new("I'm here to help!"),
 						},
 					},
 				},
@@ -112,9 +112,9 @@ func TestUsageMetadata_StreamingTaskHandler(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta: sdk.ChatCompletionStreamResponseDelta{
-							Content: "",
+							Content: new(""),
 						},
-						FinishReason: "stop",
+						FinishReason: new(sdk.Stop),
 					},
 				},
 				Usage: &sdk.CompletionUsage{
@@ -196,7 +196,7 @@ func TestUsageMetadata_BackgroundTaskHandler_Disabled(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta: sdk.ChatCompletionStreamResponseDelta{
-							Content: "Disabled response.",
+							Content: new("Disabled response."),
 						},
 					},
 				},
@@ -204,8 +204,8 @@ func TestUsageMetadata_BackgroundTaskHandler_Disabled(t *testing.T) {
 			{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: ""},
-						FinishReason: "stop",
+						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: new("")},
+						FinishReason: new(sdk.Stop),
 					},
 				},
 				Usage: &sdk.CompletionUsage{
@@ -260,15 +260,15 @@ func TestUsageMetadata_StreamingTaskHandler_Disabled(t *testing.T) {
 			{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Disabled streaming."},
+						Delta: sdk.ChatCompletionStreamResponseDelta{Content: new("Disabled streaming.")},
 					},
 				},
 			},
 			{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: ""},
-						FinishReason: "stop",
+						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: new("")},
+						FinishReason: new(sdk.Stop),
 					},
 				},
 				Usage: &sdk.CompletionUsage{
@@ -322,11 +322,11 @@ func TestUsageMetadata_StreamingTaskHandler_Disabled(t *testing.T) {
 // carries the usage. The usage must be counted once and the turn finish once.
 func TestRunWithStream_CountsTrailingUsageChunk(t *testing.T) {
 	finish := &sdk.CreateChatCompletionStreamResponse{
-		Choices: []sdk.ChatCompletionStreamChoice{{FinishReason: "stop"}},
+		Choices: []sdk.ChatCompletionStreamChoice{{FinishReason: new(sdk.Stop)}},
 	}
 	mockLLMClient := &MockLLMClient{
 		streamResponses: []*sdk.CreateChatCompletionStreamResponse{
-			{Choices: []sdk.ChatCompletionStreamChoice{{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Hi"}}}},
+			{Choices: []sdk.ChatCompletionStreamChoice{{Delta: sdk.ChatCompletionStreamResponseDelta{Content: new("Hi")}}}},
 			finish,
 			finish,
 			{

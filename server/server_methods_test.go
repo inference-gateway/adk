@@ -211,7 +211,7 @@ func TestServer_UsageExtensionGatesTaskMetadata(t *testing.T) {
 			defer close(responses)
 			defer close(errs)
 			for _, chunk := range []*sdk.CreateChatCompletionStreamResponse{
-				{Choices: []sdk.ChatCompletionStreamChoice{{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "hi"}, FinishReason: "stop"}}},
+				{Choices: []sdk.ChatCompletionStreamChoice{{Delta: sdk.ChatCompletionStreamResponseDelta{Content: new("hi")}, FinishReason: new(sdk.Stop)}}},
 				{Choices: []sdk.ChatCompletionStreamChoice{}, Usage: &sdk.CompletionUsage{PromptTokens: 7, CompletionTokens: 3, TotalTokens: 10}},
 			} {
 				select {

@@ -740,7 +740,7 @@ func TestRunWithStream_ContextCancellation(t *testing.T) {
 
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
-					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Partial "}},
+					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: new("Partial ")}},
 				},
 			}
 			time.Sleep(50 * time.Millisecond)
@@ -803,7 +803,7 @@ func TestRunWithStream_WithInputRequiredTool(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
-						FinishReason: "tool_calls",
+						FinishReason: new(sdk.ToolCalls),
 					},
 				},
 			}
@@ -868,7 +868,7 @@ func TestRunWithStream_MaxIterationsReached(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
-						FinishReason: "tool_calls",
+						FinishReason: new(sdk.ToolCalls),
 					},
 				},
 			}
@@ -949,7 +949,7 @@ func TestRunWithStream_ToolExecutionError(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
-						FinishReason: "tool_calls",
+						FinishReason: new(sdk.ToolCalls),
 					},
 				},
 			}
@@ -1029,7 +1029,7 @@ func TestRunWithStream_InvalidToolArguments(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
-						FinishReason: "tool_calls",
+						FinishReason: new(sdk.ToolCalls),
 					},
 				},
 			}
@@ -1099,8 +1099,8 @@ func TestRunWithStream_WithSystemPrompt(t *testing.T) {
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
-						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: "Response"},
-						FinishReason: "stop",
+						Delta:        sdk.ChatCompletionStreamResponseDelta{Content: new("Response")},
+						FinishReason: new(sdk.Stop),
 					},
 				},
 			}
@@ -1166,7 +1166,7 @@ func TestRunWithStream_MultipleIterations(t *testing.T) {
 					Choices: []sdk.ChatCompletionStreamChoice{
 						{
 							Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
-							FinishReason: "tool_calls",
+							FinishReason: new(sdk.ToolCalls),
 						},
 					},
 				}
@@ -1174,8 +1174,8 @@ func TestRunWithStream_MultipleIterations(t *testing.T) {
 				responseChan <- &sdk.CreateChatCompletionStreamResponse{
 					Choices: []sdk.ChatCompletionStreamChoice{
 						{
-							Delta:        sdk.ChatCompletionStreamResponseDelta{Content: "Final response"},
-							FinishReason: "stop",
+							Delta:        sdk.ChatCompletionStreamResponseDelta{Content: new("Final response")},
+							FinishReason: new(sdk.Stop),
 						},
 					},
 				}
@@ -1257,7 +1257,7 @@ func TestRunWithStream_AllEventTypesEmitted(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
-						FinishReason: "tool_calls",
+						FinishReason: new(sdk.ToolCalls),
 					},
 				},
 			}
@@ -1339,7 +1339,7 @@ func TestRunWithStream_ToolFailedEventEmitted(t *testing.T) {
 				Choices: []sdk.ChatCompletionStreamChoice{
 					{
 						Delta:        sdk.ChatCompletionStreamResponseDelta{ToolCalls: &toolCallChunks},
-						FinishReason: "tool_calls",
+						FinishReason: new(sdk.ToolCalls),
 					},
 				},
 			}

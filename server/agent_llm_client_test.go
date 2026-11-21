@@ -129,7 +129,7 @@ func TestLLMClient_StreamingRetriesConnectionOnly(t *testing.T) {
 			var contents []string
 			for response := range responses {
 				for _, choice := range response.Choices {
-					contents = append(contents, choice.Delta.Content)
+					contents = append(contents, *choice.Delta.Content)
 				}
 			}
 
