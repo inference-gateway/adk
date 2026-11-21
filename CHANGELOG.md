@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.35.0](https://github.com/inference-gateway/adk/compare/v0.34.2...v0.35.0) (2026-11-21)
+
+### ✨ Features
+
+* sync generated types with schemas v1.14.0 ([#436](https://github.com/inference-gateway/adk/issues/436)) ([0a53742](https://github.com/inference-gateway/adk/commit/0a53742d7245e83dd7e1265e5660636bbc39b661))
+* sync generated types with schemas v1.14.1 ([#441](https://github.com/inference-gateway/adk/issues/441)) ([c38d8c0](https://github.com/inference-gateway/adk/commit/c38d8c018dc1b7800787aa65bec4d63d0acf72a3))
+
+### 🐛 Bug Fixes
+
+* **server:** handle nullable stream delta fields from sdk v1.48.0 ([#444](https://github.com/inference-gateway/adk/issues/444)) ([0009ec0](https://github.com/inference-gateway/adk/commit/0009ec09043c0f7abc3c3fded1f39036a9c7d6f4))
+
+### 👷 CI
+
+* align Dependabot schedule and grouping ([#439](https://github.com/inference-gateway/adk/issues/439)) ([b30b9b9](https://github.com/inference-gateway/adk/commit/b30b9b96c93e5868cc6b8794ec28846216dd761b))
+* **deps:** bump the gomod group across 1 directory with 2 updates ([#434](https://github.com/inference-gateway/adk/issues/434)) ([d9f88d4](https://github.com/inference-gateway/adk/commit/d9f88d41ccd97a6770564097d779a9271c9690a6))
+* set up orchestrators from repos.yaml ([#440](https://github.com/inference-gateway/adk/issues/440)) ([f3b9e07](https://github.com/inference-gateway/adk/commit/f3b9e077c047f995056659297369c84c6273533d))
+
+### 📚 Documentation
+
+* refresh AGENTS.md with facts verified against the current code ([#443](https://github.com/inference-gateway/adk/issues/443)) ([df80004](https://github.com/inference-gateway/adk/commit/df8000465dac891abc8d4f15ba2f49b07287a685))
+
+### 🔧 Miscellaneous
+
+* **deps:** bump claude-code 2.1.308 -> 2.1.318 ([#433](https://github.com/inference-gateway/adk/issues/433)) ([3d80e19](https://github.com/inference-gateway/adk/commit/3d80e1972af96b49763ee355a5ded3fa865e3c1a))
+* **deps:** bump flox dependencies to latest ([#437](https://github.com/inference-gateway/adk/issues/437)) ([313f663](https://github.com/inference-gateway/adk/commit/313f6634ebbdb72efcfe4d470c992a1695b0232b))
+* **deps:** bump flox dependencies to latest ([#438](https://github.com/inference-gateway/adk/issues/438)) ([ef5df8f](https://github.com/inference-gateway/adk/commit/ef5df8f90502014cea7846968e2d9e0e77e67951))
+* **deps:** bump inference-gateway/sdk v1.45.0 -> v1.45.1 ([#435](https://github.com/inference-gateway/adk/issues/435)) ([59d2fdc](https://github.com/inference-gateway/adk/commit/59d2fdc6d563aac9756577801711b256787735bd))
+
 ## [0.34.2](https://github.com/inference-gateway/adk/compare/v0.34.1...v0.34.2) (2026-11-09)
 
 ### ⚠ BREAKING CHANGES
