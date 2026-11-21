@@ -264,12 +264,12 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 
 					choice := streamResp.Choices[0]
 
-					if choice.Delta.Content != "" {
-						fullContent += choice.Delta.Content
+					if choice.Delta.Content != nil && *choice.Delta.Content != "" {
+						fullContent += *choice.Delta.Content
 
 						chunkMessage := types.NewAssistantMessage(
 							fmt.Sprintf("chunk-%d-%d", iteration, len(fullContent)),
-							[]types.Part{types.NewTextPart(choice.Delta.Content)},
+							[]types.Part{types.NewTextPart(*choice.Delta.Content)},
 						)
 
 						select {
@@ -315,7 +315,7 @@ func (a *OpenAICompatibleAgentImpl) RunWithStream(ctx context.Context, messages 
 						}
 					}
 
-					if choice.FinishReason != "" {
+					if choice.FinishReason != nil && *choice.FinishReason != "" {
 						assistantMessage = types.NewAssistantMessage(
 							fmt.Sprintf("assistant-stream-%d", iteration),
 							make([]types.Part, 0),

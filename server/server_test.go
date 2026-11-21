@@ -620,12 +620,12 @@ func TestAgentStreamingIntegration_SimpleResponse(t *testing.T) {
 
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
-					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Hello"}},
+					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: new("Hello")}},
 				},
 			}
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
-					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: " world!"}},
+					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: new(" world!")}},
 				},
 			}
 		}()
@@ -673,12 +673,12 @@ func TestBackgroundHandler_WithStreamingAgent(t *testing.T) {
 
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
-					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Task completed"}},
+					{Delta: sdk.ChatCompletionStreamResponseDelta{Content: new("Task completed")}},
 				},
 			}
 			responseChan <- &sdk.CreateChatCompletionStreamResponse{
 				Choices: []sdk.ChatCompletionStreamChoice{
-					{FinishReason: "stop"},
+					{FinishReason: new(sdk.Stop)},
 				},
 			}
 		}()
@@ -798,7 +798,7 @@ func TestAgentStreaming_WithToolCalls(t *testing.T) {
 			} else {
 				responseChan <- &sdk.CreateChatCompletionStreamResponse{
 					Choices: []sdk.ChatCompletionStreamChoice{
-						{Delta: sdk.ChatCompletionStreamResponseDelta{Content: "Tool executed successfully"}},
+						{Delta: sdk.ChatCompletionStreamResponseDelta{Content: new("Tool executed successfully")}},
 					},
 				}
 			}
